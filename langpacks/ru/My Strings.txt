@@ -1,0 +1,51 @@
+﻿;============================================================
+;  Module: MataesPack
+;  Plugin:
+;  Versions:
+;  Translators: Mataes
+;  Dates:
+;  Template: 
+;  URL: 
+;============================================================
+[Coordinates]
+Координаты
+[Condition: %[Condition]\r\nTemperature: %[Temperature]\r\nPressure: %[Pressure] (%[Pressure Change])\r\nWind: %[Wind Direction], %[Wind Speed]\r\nHumidity: %[Humidity]\r\nVisibility: %[Visibility]\r\nUV Index: %[UV Index]]
+Состояние: %[Condition]\r\nТемпература: %[Temperature]\r\nДавление: %[Pressure] (%[Pressure Change])\r\nВетер: %[Wind Direction], %[Wind Speed]\r\nВлажность: %[Humidity]\r\nВидимость: %[Visibility]\r\nИндекс УФ: %[UV Index]
+[Max/Min: %[Max]/%[Min]\r\nCondition: %[Condition]\r\nTemperature: %[Temperature]\r\nPressure: %[Pressure] (%[Pressure Change])\r\nWind: %[Wind Direction], %[Wind Speed]\r\nHumidity: %[Humidity]\r\nVisibility: %[Visibility]\r\nDew Point: %[Dewpoint]\r\nUV Index: %[UV Index]\r\nMoon: %[Moon]\r\nCoordinates: Latitude: %[Latitude] Longitude: %[Longitude]\r\n\r\nSunrise: %[Sunrise]\r\nSunset: %[Sunset]\r\nDay Length: %[Day Length]\r\n\r\n5 Days Forecast:\r\n%[Forecast Day 1]\r\n%[Forecast Day 2]\r\n%[Forecast Day 3]\r\n%[Forecast Day 4]\r\n%[Forecast Day 5]]
+День/Ночь: %[Max]/%[Min]\r\nСостояние: %[Condition]\r\nТемпература: %[Temperature]\r\nДавление: %[Pressure] (%[Pressure Change])\r\nВетер: %[Wind Direction], %[Wind Speed]\r\nВлажность: %[Humidity]\r\nВидимость: %[Visibility]\r\nРоса: %[Dewpoint]\r\nИндекс УФ: %[UV Index]\r\nЛуна: %[Moon]\r\nКоординаты: Широта: %[Latitude] Долгота: %[Longitude]\r\n\r\nВосход: %[Sunrise]\r\nЗакат: %[Sunset]\r\nДлительность дня: %[Day Length]\r\n\r\nПрогноз на 5 дней:\r\n%[Forecast Day 1]\r\n%[Forecast Day 2]\r\n%[Forecast Day 3]\r\n%[Forecast Day 4]\r\n%[Forecast Day 5]
+[Temperature: %[Temperature]]
+Температура: %[Temperature]
+[Color schemes]
+Цветовые схемы
+[Native scheme]
+Натуральная схема
+[Wolk scheme]
+Схема Wolk
+[Precise scheme]
+Схема Precise
+[VistaBlack scheme]
+Схема VistaBlack
+[Silver scheme]
+Схема Silver
+[Notepad scheme]
+Схема Notepad
+[ETA]
+Осталось дней
+[Support page]
+Страница поддержки сборки
+[Manage your Miranda NG profile]
+Управление профилем пользователя
+[Import from database]
+Импорт из профиля
+[Hi!]
+Привет!
+[How are you?]
+Как дела?
+[What are you doing?]
+Что делаешь?
+[Bye!]
+Пока!
+[See you again!]
+До встречи!
+[Current = %r\\nPrevious = %p]
+Текущий = %r\\nПредыдущий = %p

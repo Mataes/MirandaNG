@@ -1,0 +1,51 @@
+﻿Miranda NG is designed, written & supported by:
+
+Bartosz Białek aka Dezeath
+Vadim Dashevsky aka watcher
+George Hazan aka ghazan
+Ekaterina Gritsenko aka Tuarisa
+Alexey Koulakov aka Awkward
+Michael Kunz aka Protogenes
+Dmitry Kuzkin aka Bio
+Eugene Lishnevsky aka elishnevsky
+Tobias Weimer aka Wishmaster aka Freak_TheMighty
+Vlad Mironov aka mironych
+Victor Pavlychko aka nullbie
+Robert Pösel aka Robyer
+Ivan Rozhuk aka rozhuk
+Artem Shpynov aka FYR
+Kirill Volinsky aka Mataes
+
+
+People that previously used to develop Miranda IM Project:
+
+Ricardo Domenecci aka pescuma
+Gennady Feldman aka gena01
+Martin Öberg aka Strickz
+Denis Stanishevskiy aka std
+Vladislav Grishenko aka theMIROn
+Richard Hughes aka Cyreve
+Santithorn Bunchua aka keh
+Sam Kothari aka egoDust
+Jörgen Persson aka Matrix
+Tim Hunter aka cojones
+Kubilay Kocak aka koobs
+Boris Krasnovskiy aka borkra
+Josef Kucera aka joe_whale
+Aaron Landwehr aka snaphat
+Lyon Lim aka lyon
+Tjado Maecke aka tjado
+Piotr Piastucki aka the_leech
+Robert Rainwater aka rainwater
+Alex Sanda aka Nightwish
+Adam Strzelecki aka OnO
+Maxim Mluhov aka mlu
+Scott Ellis aka sje
+Cristian Libotean aka eblis
+Roland Rabien aka FigBug
+Tristan van der Velde aka Tristan_VdV 
+Emostar
+Esnow
+Crypt0gl
+Lowspirit
+Glutnix
