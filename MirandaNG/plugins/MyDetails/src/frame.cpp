@@ -266,7 +266,7 @@ int CreateFrame()
 		CLISTFrame Frame = {0};
 		
 		Frame.cbSize = sizeof(Frame);
-		Frame.tname = LPGENT("My Details");
+		Frame.tname = TranslateT("My Details");
 		Frame.cbSize = sizeof(CLISTFrame);
 		Frame.hWnd = hwnd_frame;
 		Frame.align = alTop;
@@ -2310,9 +2310,9 @@ LRESULT CALLBACK FrameWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 					else if (lpnmhdr->hwndFrom == data->listening_to_tt_hwnd)
 						lpttd->lpszText = proto->listening_to;
 					else if (lpnmhdr->hwndFrom == data->next_proto_tt_hwnd)
-						lpttd->lpszText = _T("Show next protocol");
+						lpttd->lpszText = TranslateT("Show next protocol");
 					else if (lpnmhdr->hwndFrom == data->prev_proto_tt_hwnd)
-						lpttd->lpszText = _T("Show previous protocol");
+						lpttd->lpszText = TranslateT("Show previous protocol");
 
 					return 0;
 				}

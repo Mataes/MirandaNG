@@ -1067,38 +1067,15 @@ void InitMainMenuItem()
 	hServiceMenu = (HANDLE)CreateServiceFunction(MS_STATUSCHANGE_MENUCOMMAND, EnableDisableMenuCommand);
 }
 
-struct _tag_iconList
+static IconItem iconList[] =
 {
-	char *szDescr;
-	char *szName;
-	int  iIconID;
-}
-static const iconList[] =
-{
-	{ "Notification enabled",	ICO_NOTIFICATION_OFF,	IDI_NOTIFICATION_OFF	},
-	{ "Notification disabled",	ICO_NOTIFICATION_ON,	IDI_NOTIFICATION_ON		}
+	{ "Notification enabled",	ICO_NOTIFICATION_OFF, IDI_NOTIFICATION_OFF },
+	{ "Notification disabled",	ICO_NOTIFICATION_ON,	 IDI_NOTIFICATION_ON  }
 };
 
 void InitIcolib()
 {
-	char szFile[MAX_PATH];
-	char szSettingName[100];
-	SKINICONDESC sid = {0};
-
-	sid.cbSize = sizeof(sid);
-	sid.cx = sid.cy = 16;
-	sid.pszDefaultFile = szFile;
-	sid.pszName = szSettingName;
-	sid.pszSection = MODULE;
-
-	GetModuleFileNameA(hInst, szFile, MAX_PATH);
-
-	for (int i = 0; i < SIZEOF(iconList); i++) {
-		mir_snprintf(szSettingName, sizeof(szSettingName), "%s_%s", MODULE, iconList[i].szName);
-		sid.pszDescription = Translate(iconList[i].szDescr);
-		sid.iDefaultIndex = -iconList[i].iIconID;
-		Skin_AddIcon(&sid);
-	}
+	Icon_Register(hInst, MODULE, iconList, SIZEOF(iconList), MODULE);
 }
 
 void InitSound()

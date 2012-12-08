@@ -156,12 +156,12 @@ int onPrebuildContactMenu(WPARAM wParam, LPARAM lParam)
 	if (DBGetContactSettingByte((HANDLE)wParam,"AuthState","ShowIcons",1))
 	{
 		mi.flags |= CMIF_TCHAR | CMIM_NAME;
-		mi.ptszName = _T("Disable AuthState icons");
+		mi.ptszName = LPGENT("Disable AuthState icons");
 	}
 	else
 	{
 		mi.flags |= CMIF_TCHAR | CMIM_NAME;
-		mi.ptszName = _T("Enable AuthState icons");
+		mi.ptszName = LPGENT("Enable AuthState icons");
 	}
 
 	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hUserMenu, (LPARAM)&mi);
@@ -169,33 +169,17 @@ int onPrebuildContactMenu(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+static IconItem iconList[] = 
+{
+	{ LPGEN("Auth"),  "auth_icon", IDI_AUTH },
+	{ LPGEN("Grant"), "grant_icon", IDI_GRANT },
+	{ LPGEN("Auth & Grant"), "authgrant_icon", IDI_AUTHGRANT }
+};
+
 int onModulesLoaded(WPARAM wParam,LPARAM lParam)
 {
 	// IcoLib support
-	TCHAR szFile[MAX_PATH];
-	GetModuleFileName(g_hInst, szFile, MAX_PATH);
-
-	SKINICONDESC sid = {0};
-	sid.cbSize = sizeof(sid);
-	sid.flags = SIDF_ALL_TCHAR;
-
-	sid.ptszSection = _T("Auth State");
-	sid.ptszDefaultFile = szFile;
-
-	sid.ptszDescription = _T("Auth");
-	sid.pszName = "auth_icon";
-	sid.iDefaultIndex = -IDI_AUTH;
-	Skin_AddIcon(&sid);
-
-	sid.ptszDescription = _T("Grant");
-	sid.pszName = "grant_icon";
-	sid.iDefaultIndex = -IDI_GRANT;
-	Skin_AddIcon(&sid);
-
-	sid.ptszDescription = _T("Auth & Grant");
-	sid.pszName = "authgrant_icon";
-	sid.iDefaultIndex = -IDI_AUTHGRANT;
-	Skin_AddIcon(&sid);
+	Icon_Register(g_hInst, "Auth State", iconList, SIZEOF(iconList));
 
 	// extra icons
 	hExtraIcon = ExtraIcon_Register("authstate", "Auth State", "authgrant_icon");
@@ -255,7 +239,7 @@ extern "C" int __declspec(dllexport) Load(void)
 		CLISTMENUITEM mi = { sizeof(mi) };
 		mi.position = -1999901005;
 		mi.flags = CMIF_TCHAR;
-		mi.ptszName = _T("Enable AuthState icons");
+		mi.ptszName = LPGENT("Enable AuthState icons");
 		mi.pszService = "AuthState/MenuItem";
 		hUserMenu = Menu_AddContactMenuItem(&mi);
 	}

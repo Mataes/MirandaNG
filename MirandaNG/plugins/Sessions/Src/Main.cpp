@@ -23,12 +23,9 @@ HINSTANCE hinstance = NULL;
 
 WNDPROC mainProc;
 
-HANDLE hServiceOpenManager,hServiceShowFavMenu,hServiceCloseCurrentSession,hServiceSaveUserSession,
-hServiceLoadLastSession,hmSaveCurrentSession, hmLoadLastSession,hmLoadSession,hmSessionsManager,
-hibSessionsLoad,hibSessionsSave,hibSessionsLoadLast,hibChecked,hibNotChecked;
-
-HICON hiChecked,hiNotChecked,hiSessions,hiSessionsLoad ,hiSessionsSave,hiSessionsLoadLast;
-
+HANDLE 
+	hServiceOpenManager, hServiceShowFavMenu, hServiceCloseCurrentSession, hServiceSaveUserSession,
+	hServiceLoadLastSession, hmSaveCurrentSession, hmLoadLastSession, hmLoadSession, hmSessionsManager;
 
 HANDLE hmTBButton[2],hiTBbutton[2],iTBbutton[2];
 
@@ -75,6 +72,15 @@ PLUGININFOEX pluginInfo = {
 		{ 0x60558872, 0x2aab, 0x45aa, { 0x88, 0x8d, 0x9, 0x76, 0x91, 0xc9, 0xb6, 0x83 } }
 };
 
+IconItem iconList[] = 
+{
+	{ LPGEN("Sessions"), "Sessions", IDD_SESSION_CHECKED },
+	{ LPGEN("Favorite Session"), "SessionMarked", IDD_SESSION_CHECKED },
+	{ LPGEN("Not favorite Session"), "SessionUnMarked", IDD_SESSION_UNCHECKED },
+	{ LPGEN("Load Session"), "SessionsLoad", IDI_SESSIONS_LOAD },
+	{ LPGEN("Save Session"), "SessionsSave", IDD_SESSIONS_SAVE },
+	{ LPGEN("Load last Session"), "SessionsLoadLast", IDD_SESSIONS_LOADLAST }
+};
 
 INT_PTR CALLBACK ExitDlgProc(HWND hdlg,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -781,18 +787,9 @@ int SessionPreShutdown(WPARAM wparam,LPARAM lparam)
 	if (g_hDlg)  DestroyWindow(g_hDlg);
 	if (g_hSDlg) DestroyWindow(g_hSDlg);
 
-	DestroyIcon(hiSessions);
-	DestroyIcon(hiSessionsLoad);
-	DestroyIcon(hiSessionsSave);
-	DestroyIcon(hiSessionsLoadLast);
-	DestroyIcon(hiChecked);
-	DestroyIcon(hiNotChecked);
-
-	if(g_bIncompletedSave)
-	{
+	if(g_bIncompletedSave) {
 		int i=0;
-		while(session_list_recovered[i])
-		{
+		while(session_list_recovered[i]) {
 			DBWriteContactSettingByte((HANDLE)session_list_recovered[i], __INTERNAL_NAME, "wasInLastSession", 0);
 			i++;
 		}
@@ -860,22 +857,22 @@ static int CreateButtons(WPARAM wparam,LPARAM lparam)
 
 	button.pszService = MS_SESSIONS_OPENMANAGER;
 	button.pszTooltipUp = button.name = LPGEN("Open Sessions Manager");
-	button.hIconHandleUp = hibSessionsLoad;
+	button.hIconHandleUp = iconList[3].hIcolib;
 	TopToolbar_AddButton(&button);
 
 	button.pszService = MS_SESSIONS_SAVEUSERSESSION;
 	button.pszTooltipUp = button.name = LPGEN("Save Session");
-	button.hIconHandleUp = hibSessionsSave;
+	button.hIconHandleUp = iconList[4].hIcolib;
 	TopToolbar_AddButton(&button);
 
 	button.pszService = MS_SESSIONS_RESTORELASTSESSION;
 	button.pszTooltipUp = button.name = LPGEN("Restore Last Session");
-	button.hIconHandleUp = hibSessionsLoadLast;
+	button.hIconHandleUp = iconList[5].hIcolib;
 	TopToolbar_AddButton(&button);
 
 	button.pszService = MS_SESSIONS_SHOWFAVORITESMENU;
 	button.pszTooltipUp = button.name = LPGEN("Show Favorite Sessions Menu");
-	button.hIconHandleUp = hibChecked;
+	button.hIconHandleUp = iconList[1].hIcolib;
 	TopToolbar_AddButton(&button);
 	return 0;
 }
@@ -888,21 +885,20 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 	HookEvent(ME_OPT_INITIALISE,  OptionsInit);
 	HookEvent(ME_TTB_MODULELOADED, CreateButtons);
 
-	hServiceShowFavMenu=CreateServiceFunction(MS_SESSIONS_SHOWFAVORITESMENU, BuildFavMenu);
-	hServiceOpenManager=CreateServiceFunction(MS_SESSIONS_OPENMANAGER, OpenSessionsManagerWindow);
-	hServiceLoadLastSession=CreateServiceFunction(MS_SESSIONS_RESTORELASTSESSION, LoadLastSession/*LoadSession*/);
-	hServiceSaveUserSession=CreateServiceFunction(MS_SESSIONS_SAVEUSERSESSION, SaveUserSessionHandles);
-	hServiceCloseCurrentSession=CreateServiceFunction(MS_SESSIONS_CLOSESESSION, CloseCurrentSession);
+	hServiceShowFavMenu = CreateServiceFunction(MS_SESSIONS_SHOWFAVORITESMENU, BuildFavMenu);
+	hServiceOpenManager = CreateServiceFunction(MS_SESSIONS_OPENMANAGER, OpenSessionsManagerWindow);
+	hServiceLoadLastSession = CreateServiceFunction(MS_SESSIONS_RESTORELASTSESSION, LoadLastSession/*LoadSession*/);
+	hServiceSaveUserSession = CreateServiceFunction(MS_SESSIONS_SAVEUSERSESSION, SaveUserSessionHandles);
+	hServiceCloseCurrentSession = CreateServiceFunction(MS_SESSIONS_CLOSESESSION, CloseCurrentSession);
 
-	g_ses_count=DBGetContactSettingByte(0, __INTERNAL_NAME, "UserSessionsCount", 0);
+	g_ses_count = DBGetContactSettingByte(0, __INTERNAL_NAME, "UserSessionsCount", 0);
 	if (!g_ses_count)
-		g_ses_count=DBGetContactSettingByte(0, "Sessions (Unicode)", "UserSessionsCount", 0);
-	ses_limit=DBGetContactSettingByte(0, __INTERNAL_NAME, "TrackCount", 10);
+		g_ses_count = DBGetContactSettingByte(0, "Sessions (Unicode)", "UserSessionsCount", 0);
+	ses_limit = DBGetContactSettingByte(0, __INTERNAL_NAME, "TrackCount", 10);
 	g_bExclHidden = DBGetContactSettingByte(NULL, __INTERNAL_NAME, "ExclHidden", 1);
-	g_bWarnOnHidden=DBGetContactSettingByte(NULL, __INTERNAL_NAME, "WarnOnHidden", 0);
-	g_bOtherWarnings=DBGetContactSettingByte(NULL, __INTERNAL_NAME, "OtherWarnings", 1);
+	g_bWarnOnHidden = DBGetContactSettingByte(NULL, __INTERNAL_NAME, "WarnOnHidden", 0);
+	g_bOtherWarnings = DBGetContactSettingByte(NULL, __INTERNAL_NAME, "OtherWarnings", 1);
 	g_bCrashRecovery = DBGetContactSettingByte(NULL, __INTERNAL_NAME, "CrashRecovery", 1);
-
 
 	if(g_bCrashRecovery)
 		g_bIncompletedSave=!DBGetContactSettingByte(NULL, __INTERNAL_NAME, "lastSaveCompleted", 0);
@@ -925,7 +921,7 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 
 	if (!DBGetContactSettingByte(NULL, __INTERNAL_NAME, "lastempty", 1)||g_bIncompletedSave) isLastTRUE=TRUE;
 
-	startup = DBGetContactSettingByte(NULL, __INTERNAL_NAME, "StartupMode", 2);
+	startup=DBGetContactSettingByte(NULL, __INTERNAL_NAME, "StartupMode", 2);
 
 	if (startup==1||(startup==3&&isLastTRUE==TRUE))
 	{
@@ -938,8 +934,8 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 		g_hDlg=CreateDialog(hinstance,MAKEINTRESOURCE(IDD_WLCMDIALOG), 0, LoadSessionDlgProc);
 	}
 
-	HOTKEYDESC hkd = {0};
-	hkd.cbSize = sizeof(hkd);
+	// Hotkeys
+	HOTKEYDESC hkd = { sizeof(hkd) };
 	hkd.dwFlags = HKD_TCHAR;
 	hkd.ptszSection = _T("Sessions");
 	hkd.pszName = "OpenSessionsManager";
@@ -962,50 +958,40 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 	hkd.pszService = MS_SESSIONS_CLOSESESSION;
 	Hotkey_Register(&hkd);
 
-	hiChecked	   = LoadIcon(hinstance, MAKEINTRESOURCE(IDD_SESSION_CHECKED));
-	hiNotChecked   = LoadIcon(hinstance, MAKEINTRESOURCE(IDD_SESSION_UNCHECKED));
+	// Icons
+	Icon_Register(hinstance, __INTERNAL_NAME, iconList, SIZEOF(iconList));
 
-	hiSessions	   = LoadIcon(hinstance, MAKEINTRESOURCE(IDI_SESSIONS));
-	hiSessionsLoad = LoadIcon(hinstance, MAKEINTRESOURCE(IDI_SESSIONS_LOAD));
-	hiSessionsSave = LoadIcon(hinstance, MAKEINTRESOURCE(IDD_SESSIONS_SAVE));
-	hiSessionsLoadLast = LoadIcon(hinstance, MAKEINTRESOURCE(IDD_SESSIONS_LOADLAST));
-
-	hibChecked	  = AddIcon(hiChecked, "SessionMarked", LPGENT("Favorite Session"));
-	hibNotChecked = AddIcon(hiNotChecked, "SessionUnMarked", LPGENT("Not favorite Session"));
-	hibSessionsLoad = AddIcon(hiSessionsLoad, "SessionsLoad", LPGENT("Load Session"));
-	hibSessionsSave = AddIcon(hiSessionsSave, "SessionsSave", LPGENT("Save Session"));
-	hibSessionsLoadLast = AddIcon(hiSessionsLoadLast, "SessionsLoadLast", LPGENT("Load last Session"));
-
+	// Main menu
 	CLISTMENUITEM cl = { sizeof(cl) };
 	cl.position = 1000000000;
-	cl.flags = CMIM_ALL | CMIF_TCHAR;
+	cl.flags = CMIM_ALL | CMIF_TCHAR | CMIF_ICONFROMICOLIB;
 
 	cl.ptszName = _T("Save session...");
 	cl.ptszPopupName = _T("Sessions Manager");
-	cl.hIcon = hiSessions;
+	cl.icolibItem = iconList[0].hIcolib;
 	cl.pszService = MS_SESSIONS_SAVEUSERSESSION;
 	hmSaveCurrentSession = Menu_AddMainMenuItem(&cl);
 
 	cl.ptszName = _T("Load session...");
 	cl.pszService = MS_SESSIONS_OPENMANAGER;
-	cl.hIcon = hiSessionsLoad;
+	cl.icolibItem = iconList[3].hIcolib;
 	hmLoadLastSession = Menu_AddMainMenuItem(&cl);
 
 	cl.ptszName = _T("Close session");
 	cl.pszService = MS_SESSIONS_CLOSESESSION;
-	cl.hIcon = 0;
+	cl.icolibItem = 0;
 	hmLoadSession = Menu_AddMainMenuItem(&cl);
 
 	cl.ptszName = _T("Load last session");
 	cl.pszService = MS_SESSIONS_RESTORELASTSESSION;
-	cl.hIcon = hiSessionsLoadLast;
+	cl.icolibItem = iconList[5].hIcolib;
 	cl.position = 10100000;
 	hmLoadSession = Menu_AddMainMenuItem(&cl);
 
 	ZeroMemory(&cl, sizeof(cl));
 	cl.cbSize = sizeof(cl);
 	cl.flags = CMIM_ICON;
-	cl.hIcon = hiSessionsSave;
+	cl.icolibItem = iconList[4].hIcolib;
 	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hmSaveCurrentSession, (LPARAM)&cl);
 
 	return 0;

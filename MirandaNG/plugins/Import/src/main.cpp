@@ -24,8 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "version.h"
 #include "resource.h"
 
-#include "..\..\Utils\mir_icons.h"
-
 int nImportOption;
 int nCustomOptions;
 
@@ -38,7 +36,8 @@ INT_PTR CALLBACK WizardDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lP
 static HWND hwndWizard = NULL;
 int hLangpack;
 
-PLUGININFOEX pluginInfo = {
+PLUGININFOEX pluginInfo =
+{
 	sizeof(PLUGININFOEX),
 	"Import contacts and messages",
 	__VERSION_DWORD,
@@ -47,8 +46,9 @@ PLUGININFOEX pluginInfo = {
 	"info@miranda-im.org",
 	"© 2000-2010 Martin Öberg, Richard Hughes, Dmitry Kuzkin, George Hazan",
 	"http://miranda-ng.org/",
-	UNICODE_AWARE,	//{2D77A746-00A6-4343-BFC5-F808CDD772EA}
-      {0x2d77a746, 0xa6, 0x4343, { 0xbf, 0xc5, 0xf8, 0x8, 0xcd, 0xd7, 0x72, 0xea }}
+	UNICODE_AWARE,
+	//{2D77A746-00A6-4343-BFC5-F808CDD772EA}
+	{0x2d77a746, 0xa6, 0x4343, { 0xbf, 0xc5, 0xf8, 0x8, 0xcd, 0xd7, 0x72, 0xea }}
 };
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
@@ -107,16 +107,22 @@ static int OnExit(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+static IconItem iconList[] = { 
+	{ LPGEN("Import..."), "import_main", IDI_IMPORT }
+};
+
 extern "C" __declspec(dllexport) int Load(void)
 {
 	mir_getLP( &pluginInfo );
 
 	hImportService = CreateServiceFunction(IMPORT_SERVICE, ImportCommand);
 
-	hIcoHandle = IcoLib_Register("import_main", "Import", LPGEN("Import..."), IDI_IMPORT);
+	// icon
+	Icon_Register(hInst, "Import", iconList, SIZEOF(iconList));
 	
+	// menu item
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.icolibItem = hIcoHandle;
+	mi.icolibItem = iconList[0].hIcolib;
 	mi.pszName = LPGEN("&Import...");
 	mi.position = 500050000;
 	mi.pszService = IMPORT_SERVICE;

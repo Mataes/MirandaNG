@@ -1,7 +1,0 @@
-;#muuid not found, please specify manually!
-;langpack template for OpenFolder
-;file \plugins\OpenFolder\src\openFolder.cpp
-[explore]
-[open]
-[Open Folder]
-[Main]

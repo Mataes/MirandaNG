@@ -303,12 +303,10 @@ void LoadNRFont(int i, LOGFONT *lf, COLORREF *colour)
 static void TrimString(TCHAR *s)
 {
 	if (!s || !*s)
-	{
 		return;
-	}
 
 	TCHAR *start = s;
-	UINT n = _tcslen(s) - 1;
+	UINT n = UINT(_tcslen(s) - 1);
 
 	TCHAR *end = s + n;
 
@@ -602,7 +600,7 @@ void InitSettings(void)
 
 	InitFonts();
 
-	g_hReminderIcon = Skin_GetIconByHandle(hIconLibItem[10]);
+	g_hReminderIcon = Skin_GetIconByHandle(iconList[10].hIcolib);
 
 	if (g_Transparency < MIN_ALPHA)
 		g_Transparency = MIN_ALPHA;

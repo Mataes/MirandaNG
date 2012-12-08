@@ -27,6 +27,9 @@ HANDLE CheckThread = NULL, hNetlibUser = NULL;
 POPUP_OPTIONS PopupOptions = {0};
 aPopups PopupsList[POPUPS];
 
+/////////////////////////////////////////////////////////////////////////////////////
+// we don't use Icon_Register here because it should work under Miranda IM too
+
 struct
 {
 	char *szIconName;
@@ -45,8 +48,7 @@ void IcoLibInit()
 	TCHAR destfile[MAX_PATH];
 	GetModuleFileName(hInst, destfile, MAX_PATH);
 
-	SKINICONDESC sid = { 0 };
-	sid.cbSize = sizeof(sid);
+	SKINICONDESC sid = { sizeof(sid) };
 	sid.flags = SIDF_PATH_TCHAR;
 	sid.cx = sid.cy = 16;
 	sid.ptszDefaultFile = destfile;
