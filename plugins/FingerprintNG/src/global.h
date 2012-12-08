@@ -54,10 +54,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <m_icolib.h>
 #include <m_protocols.h>
 #include <m_userinfo.h>
-
-// plugins SDK
 #include <m_extraicons.h>
-#include <m_folders.h>
 
 //plugins header
 #include "version.h"
@@ -84,7 +81,6 @@ struct KN_FP_MASK
 	LPSTR	szIconName;
 	LPTSTR	szMask;
 	LPTSTR	szClientDescription;
-	LPTSTR	szIconFileName;
 	int		iIconIndex;
 	int		iSectionFlag;
 	BOOL	fNotUseOverlay;
@@ -123,7 +119,7 @@ typedef struct _foundInfo
 #define OVERLAYS_RESOURCE_CASE		3020	//	resource overlays
 #define OVERLAYS_PLATFORM_CASE		3021	//	platforms overlays
 #define OVERLAYS_PROTO_CASE			3022	//	protocols overlays
-#define OVERLAYS_SECURITY_CASE		3023	//	security overlays
+//#define OVERLAYS_SECURITY_CASE		3023	//	security overlays
 
 /*
 #define OVERLAYS_RESOURCE_ALT_CASE	24		//	alternative (old style) overlays
@@ -135,7 +131,7 @@ typedef struct _foundInfo
 #define LIB_REG		2
 #define LIB_USE		3
 
-#define DEFAULT_SKIN_FOLDER		_T("Icons\\fp_ClientIcons")
+#define DEFAULT_SKIN_FOLDER		_T("Icons\\Fp_icons.dll")
 
 void ClearFI();
 
@@ -184,4 +180,5 @@ extern int DEFAULT_KN_FP_MASK_COUNT, DEFAULT_KN_FP_OVERLAYS_COUNT, DEFAULT_KN_FP
 
 #define UNKNOWN_MASK_NUMBER (DEFAULT_KN_FP_MASK_COUNT - 2)								// second from end
 #define NOTFOUND_MASK_NUMBER (DEFAULT_KN_FP_MASK_COUNT - 3)								// third from end
-#define DEFAULT_KN_FP_OVERLAYS2_NO_VER_COUNT (DEFAULT_KN_FP_OVERLAYS2_COUNT - 7)
+// the last count is how many masks from 2nd layer is used as Miranda version overlays	(counting from the end)
+#define DEFAULT_KN_FP_OVERLAYS2_NO_VER_COUNT (DEFAULT_KN_FP_OVERLAYS2_COUNT - 13)

@@ -3,17 +3,14 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by resource.rc
-//##############################################################################################################
-//Other
-#define IDI_NOTFOUND				5
-#define IDI_UNDETECTED				6
-#define IDI_UNKNOWN					7
+//###############################################
+//Other icons
+#define IDI_BLANK					1
+#define IDI_NOTFOUND				2
+#define IDI_UNDETECTED				3
+#define IDI_UNKNOWN					4
 
-//##############################################################################################################
-//Skype clients
-#define IDI_SKYPE					9
-
-//##############################################################################################################
+//###############################################
 //MirandaIM clients
 #define IDI_MIRANDA_NG				10
 #define IDI_MIRANDA_NG_STABLE		11
@@ -28,15 +25,25 @@
 #define IDI_MIRANDA_09XX			26
 #define IDI_MIRANDA_010X			27
 
-#define IDI_MIRANDA_4s				31
-#define IDI_MIRANDA_5s				32
-#define IDI_MIRANDA_6s				33
-#define IDI_MIRANDA_7s				34
-#define IDI_MIRANDA_8s				35
-#define IDI_MIRANDA_9s				36
-#define IDI_MIRANDA_10s				37
+#define IDI_MIRANDA_IM_V4			31
+#define IDI_MIRANDA_IM_V5			32
+#define IDI_MIRANDA_IM_V6			33
+#define IDI_MIRANDA_IM_V7			34
+#define IDI_MIRANDA_IM_V8			35
+#define IDI_MIRANDA_IM_V9			36
+#define IDI_MIRANDA_IM_V10			37
 
-//##############################################################################################################
+#define IDI_MIRANDA_NG_V1			41
+#define IDI_MIRANDA_NG_V2			42
+#define IDI_MIRANDA_NG_V3			43
+#define IDI_MIRANDA_NG_V4			44
+#define IDI_MIRANDA_NG_V5			45
+#define IDI_MIRANDA_NG_V6			46
+#define IDI_MIRANDA_NG_V7			47
+#define IDI_MIRANDA_NG_V8			48
+#define IDI_MIRANDA_NG_V9			49
+
+//###############################################
 //Jabber resource overlays
 #define IDI_DEBUG_OVERLAY			51
 #define IDI_HOME_OVERLAY			52
@@ -45,7 +52,7 @@
 #define IDI_OFFICE_OVERLAY			55
 #define IDI_WORK_OVERLAY			56
 
-//##############################################################################################################
+//###############################################
 //Platform
 #define IDI_PLATFORM_AMIGA			61
 #define IDI_PLATFORM_ANDROID		62
@@ -61,7 +68,7 @@
 #define IDI_PLATFORM_X32			72
 #define IDI_PLATFORM_X64			73
 
-//##############################################################################################################
+//###############################################
 //Clients overlays
 #define IDI_AIM_OVERLAY				75
 #define IDI_GMAIL_OVERLAY			76
@@ -76,11 +83,11 @@
 #define IDI_TLEN_OVERLAY			85
 #define IDI_YAHOO_OVERLAY			86
 
-//##############################################################################################################
+//###############################################
 //Secure overlays
 #define IDI_SECUREIM_OVERLAY		91
 
-//##############################################################################################################
+//###############################################
 //Miranda packs
 #define IDI_MIRANDA_A0X				101
 #define IDI_MIRANDA_AF				102
@@ -124,20 +131,21 @@
 #define IDI_MIRANDA_YAOL			140
 #define IDI_MIRANDA_ZELEBOBA		141
 
-//##############################################################################################################
+//###############################################
 //Official ICQ clients
 #define IDI_ICQ						190
 
-//##############################################################################################################
+//###############################################
 //Official ICQ overlays
+#define IDI_ICQ3_OVERLAY			193
+#define IDI_ICQ4_OVERLAY			194
 #define IDI_ICQ5_OVERLAY			195
 #define IDI_ICQ6_OVERLAY			196
 #define IDI_ICQ7_OVERLAY			197
 #define IDI_ICQ8_OVERLAY			198
 
-//##############################################################################################################
+//###############################################
 //Unofficial ICQ clients
-
 #define IDI_ASIA					202
 #define IDI_DICHAT					203
 #define IDI_GNOMEICU				214
@@ -152,7 +160,7 @@
 #define IDI_STRICQ					223
 #define IDI_TICQ					234
 
-//##############################################################################################################
+//###############################################
 //IRC
 #define IDI_IRC						300
 #define IDI_AMIRC					301
@@ -218,7 +226,7 @@
 #define IDI_IROFFER					362
 #define IDI_ZNC						363
 
-//##############################################################################################################
+//###############################################
 //Jabber clients
 #define IDI_AKENI					400
 #define IDI_AMBROSIA				401
@@ -262,7 +270,6 @@
 #define IDI_EMITE					439
 #define IDI_EMPATHY					440
 #define IDI_EXODUS					441
-#define IDI_FACEBOOK				442
 #define IDI_FIRE					443
 #define IDI_GABBER					444
 #define IDI_GAJIM					445
@@ -395,23 +402,23 @@
 #define IDI_TRANSACTIM				580
 #define IDI_TRANSLATE				581
 #define IDI_TRIPLE_SOFTWARE			582
-#define IDI_TWITTER					583
 //#define IDI_UJABBER				584
-#define IDI_VACUUM					585
-#define IDI_VANDV					586
-#define IDI_VAYUSPHERE				587
-#define IDI_VBUZZER					588
-#define IDI_VIRTUS					589
-#define IDI_VK						590
-#define IDI_VYSPER					591
-#define IDI_WANNACHAT				592
-#define IDI_WEBEX					593
-#define IDI_WHISPERIM				594
-#define IDI_WHOISBOT				595
-#define IDI_WIJA					596
-#define IDI_WILDFIRE				597
-#define IDI_WINJAB					598
-#define IDI_WTW						599
+#define IDI_UKEEPER					585
+#define IDI_VACUUM					586
+#define IDI_VANDV					587
+#define IDI_VAYUSPHERE				588
+#define IDI_VBUZZER					589
+#define IDI_VIRTUS					590
+#define IDI_VK						591
+#define IDI_VYSPER					592
+#define IDI_WANNACHAT				593
+#define IDI_WEBEX					594
+#define IDI_WHISPERIM				595
+#define IDI_WHOISBOT				596
+#define IDI_WIJA					597
+#define IDI_WILDFIRE				598
+#define IDI_WINJAB					599
+#define IDI_WTW						600
 #define IDI_XABBER					601
 #define IDI_GABBLE					602
 #define IDI_XEUS					603
@@ -423,14 +430,14 @@
 #define IDI_YAXIM 					609
 #define IDI_OPENFIRE 				610
 
-//##############################################################################################################
+//###############################################
 //Mail.Ru Agent clients
 #define IDI_MAIL_RU_MOBILE			701
 #define IDI_MAIL_RU_OFFICIAL		702
 #define IDI_MAIL_RU_UNKNOWN			703
 #define IDI_MAIL_RU_WEBAGENT		704
 
-//##############################################################################################################
+//###############################################
 //AIM
 #define IDI_AIM_6					714
 #define IDI_AIM_7					715
@@ -441,7 +448,7 @@
 #define IDI_NAIM					720
 #define IDI_TERRAIM					721
 
-//##############################################################################################################
+//###############################################
 //Gadu-Gadu clients
 #define IDI_GG						724
 #define IDI_GG8_OVERLAY				725
@@ -449,18 +456,18 @@
 #define IDI_GG10_OVERLAY			727
 #define IDI_GG11_OVERLAY			728
 
-//##############################################################################################################
+//###############################################
 //Tlen clients
 #define IDI_TLEN					731
 
-//##############################################################################################################
+//###############################################
 //Tlen clients overlays
 #define IDI_TLEN5_OVERLAY			732
 #define IDI_TLEN6_OVERLAY			733
 #define IDI_TLEN7_OVERLAY			734
 #define IDI_TLEN8_OVERLAY			735
 
-//##############################################################################################################
+//###############################################
 //MSN
 #define IDI_AMSN					741
 #define IDI_MSN_MAC					742
@@ -473,7 +480,7 @@
 #define IDI_WLM_9					749
 #define IDI_WLM_10					750
 
-//##############################################################################################################
+//###############################################
 //RSS
 #define IDI_ATOM1					761
 #define IDI_ATOM3					762
@@ -481,7 +488,7 @@
 #define IDI_RSS1					764
 #define IDI_RSS2					765
 
-//##############################################################################################################
+//###############################################
 //QQ clients
 #define IDI_MOBILEQQ				770
 #define IDI_QQ						771
@@ -494,7 +501,7 @@
 #define IDI_WEBQQ					778
 #define IDI_YAMQQ					799
 
-//##############################################################################################################
+//###############################################
 //QQ clients overlays
 #define IDI_QQ_2000_OVERLAY			780
 #define IDI_QQ_2001_OVERLAY			781
@@ -510,7 +517,7 @@
 #define IDI_QQ_2011_OVERLAY			791
 #define IDI_QQ_2012_OVERLAY			792
 
-//##############################################################################################################
+//###############################################
 //Weather clients
 #define IDI_ACCU					801
 #define IDI_GISMETEO				802
@@ -526,7 +533,7 @@
 #define IDI_METEONOVOSTI			812
 #define IDI_NOAA					813
 
-//##############################################################################################################
+//###############################################
 //Yahoo
 #define IDI_LIBYAHOO2				821
 #define IDI_YAHOO_PINGBOX			822
@@ -534,7 +541,7 @@
 #define IDI_YAHOO_WEB				828
 #define IDI_YAHOO_GO_MOBILE			829
 
-//##############################################################################################################
+//###############################################
 //Yahoo overlays
 #define IDI_YAHOO5_OVERLAY			831
 #define IDI_YAHOO6_OVERLAY			832
@@ -544,7 +551,7 @@
 #define IDI_YAHOO10_OVERLAY			836
 #define IDI_YAHOO11_OVERLAY			837
 
-//##############################################################################################################
+//###############################################
 //Multi-protocols clients
 #define IDI_ADIUM					1000
 #define IDI_AGILE					1001
@@ -636,10 +643,16 @@
 #define IDI_YAMIGO					1087
 #define IDI_YEIGO					1088
 #define IDI_YOONO					1089
-#define IDI_XFIRE					1090
 #define IDI_GNUGADU					1091
 
-//##############################################################################################################
+//###############################################
+//Other clients
+#define IDI_FACEBOOK				9001
+#define IDI_SKYPE					9002
+#define IDI_TWITTER					9003
+#define IDI_XFIRE					9004
+
+//###############################################
 //resources
 #define IDD_DIALOG						10000
 
@@ -669,14 +682,14 @@
 #define IDC_GROUP_OVERLAYS_PROTO		10046
 #define IDC_GROUP_OVERLAYS_SECURITY		10047
 
-/*
-#define IDC_GROUP_OVERLAYS_RESOURCE_ALT	10048
-*/
+
+//#define IDC_GROUP_OVERLAYS_RESOURCE_ALT	10048
+
 
 #define IDS_IDENTIFY					11001
-#define IDC_OPTCHANGENOTE				11002
+//#define IDC_OPTCHANGENOTE				11002
 
-//##############################################################################################################
+//###############################################
 
 // Next default values for new objects
 //

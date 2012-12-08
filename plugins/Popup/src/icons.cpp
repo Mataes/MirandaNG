@@ -32,52 +32,40 @@ Last change by : $Author: Merlin_de $
 
 #include "headers.h"
 
-typedef struct _ICODESC 
-{
-	LPSTR	pszName;
-	LPTSTR	ptszDesc;
-	LPTSTR	ptszSection;
-	BOOL	bfromIconPack;
-	WORD	idResource;
-	LPSTR	pszIcon;
-	int	size;
-} ICODESC;
-
-static ICODESC icoDesc[] = 
+static IconItem iconList[] =
 {
 	//toolbar
-	{ ICO_TB_POPUP_ON,		_T("Popups are enabled"),			_T(SECT_TOLBAR),					0,	IDI_POPUP,			NULL,			0	},
-	{ ICO_TB_POPUP_OFF,		_T("Popups are disabled"),			_T(SECT_TOLBAR),					0,	IDI_NOPOPUP,		NULL,			0	},
-	//common popup
-	{ ICO_POPUP_ON,			_T("Popups are enabled"),			_T(SECT_POPUP),						0,	IDI_POPUP,			NULL,			0	},
-	{ ICO_POPUP_OFF,		_T("Popups are disabled"),			_T(SECT_POPUP),						0,	IDI_NOPOPUP,		NULL,			0	},
-	{ ICO_FAV,				_T("With \"favourite\" overlay"),	_T(SECT_POPUP),						0,	IDI_PU_FAVOURITE,	NULL,			0	},
-	{ ICO_FULLSCREEN,		_T("With \"fullscreen\" overlay"),	_T(SECT_POPUP),						0,	IDI_PU_FULLSCREEN,	NULL,			0	},
-	{ ICO_HISTORY,			_T("Popup History"),				_T(SECT_POPUP),						0,	IDI_HISTORY,		NULL,			-1	},
-	//misc (register is done inside notification service)
-	//{ ICO_MISC_NOTIFY,	_T("Notification"),					_T(SECT_POPUP) _T(SECT_POPUP_MISC),	0,	IDI_MB_INFO,		NULL,			0	},
-	//{ ICO_MISC_WARNING,	_T("Warning"),						_T(SECT_POPUP) _T(SECT_POPUP_MISC),	0,	IDI_MB_WARN,		NULL,			0	},
-	//{ ICO_MISC_ERROR,		_T("Error"),						_T(SECT_POPUP) _T(SECT_POPUP_MISC),	0,	IDI_MB_STOP,		NULL,			0	},
-	//option
-	{ ICO_OPT_RELOAD,		_T("Refresh skin list"),			_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_RELOAD,			NULL,			0	},
-	{ ICO_OPT_RESIZE,		_T("Popup Placement"),				_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_RESIZE,			NULL,			0	},
-	{ ICO_OPT_OK,			_T("OK"),							_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_ACT_OK,			NULL,			0	},
-	{ ICO_OPT_CANCEL,		_T("Cancel"),						_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_ACT_CLOSE,		NULL,			0	},
-	{ ICO_OPT_GROUP,		_T("Popup Group"),					_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_OPT_GROUP,		NULL,			0	},
-	{ ICO_OPT_DEF,			_T("Show default"),					_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_ACT_OK,			NULL,			0	},
-	{ ICO_OPT_FAV,			_T("Favorite Contact"),				_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_OPT_FAVORITE,	NULL,			0	},
-	{ ICO_OPT_FULLSCREEN,	_T("Show in Fullscreen"),			_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_OPT_FULLSCREEN,	NULL,			0	},
-	{ ICO_OPT_BLOCK,		_T("Blocked Contact"),				_T(SECT_POPUP) _T(SECT_POPUP_OPT),	0,	IDI_OPT_BLOCK,		NULL,			0	},
-	//action
-	{ ICO_ACT_REPLY,		_T("Quick Reply"),					_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_REPLY,		NULL,			-1	},
-	{ ICO_ACT_PIN,			_T("Pin Popup"),					_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_PIN,		NULL,			-1	},
-	{ ICO_ACT_PINNED,		_T("Pinned Popup"),					_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_PINNED,		NULL,			-1	},
-	{ ICO_ACT_MESS,			_T("Send Message"),					_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_MESSAGE,	NULL,			-1	},
-	{ ICO_ACT_INFO,			_T("User Details"),					_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_INFO,		NULL,			-1	},
-	{ ICO_ACT_MENU,			_T("Contact Menu"),					_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_MENU,		NULL,			-1	},
-	{ ICO_ACT_ADD,			_T("Add Contact Permanently"),		_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_ADD,		NULL,			-1	},
-	{ ICO_ACT_CLOSE,		_T("Dismiss Popup"),				_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_CLOSE,		NULL,			-1	},
-	{ ICO_ACT_COPY,			_T("Copy to clipboard"),			_T(SECT_POPUP) _T(SECT_POPUP_ACT),	0,	IDI_ACT_COPY,		NULL,			-1	}
+	{ "Popups are enabled",          ICO_TB_POPUP_ON,    IDI_POPUP          },
+	{ "Popups are disabled",         ICO_TB_POPUP_OFF,   IDI_NOPOPUP        },
+
+	//                               common popup
+	{ "Popups are enabled",          ICO_POPUP_ON,       IDI_POPUP          },
+	{ "Popups are disabled",         ICO_POPUP_OFF,      IDI_NOPOPUP        },
+	{ "With \"favourite\" overlay",  ICO_FAV,            IDI_PU_FAVOURITE   },
+	{ "With \"fullscreen\" overlay", ICO_FULLSCREEN,     IDI_PU_FULLSCREEN  },
+	{ "Popup History",               ICO_HISTORY,        IDI_HISTORY        },
+
+	//                               option
+	{ "Refresh skin list",           ICO_OPT_RELOAD,     IDI_RELOAD         },
+	{ "Popup Placement",             ICO_OPT_RESIZE,     IDI_RESIZE         },
+	{ "OK",                          ICO_OPT_OK,         IDI_ACT_OK         },
+	{ "Cancel",                      ICO_OPT_CANCEL,     IDI_ACT_CLOSE      },
+	{ "Popup Group",                 ICO_OPT_GROUP,      IDI_OPT_GROUP      },
+	{ "Show default",                ICO_OPT_DEF,        IDI_ACT_OK         },
+	{ "Favorite Contact",            ICO_OPT_FAV,        IDI_OPT_FAVORITE   },
+	{ "Show in Fullscreen",          ICO_OPT_FULLSCREEN, IDI_OPT_FULLSCREEN },
+	{ "Blocked Contact",             ICO_OPT_BLOCK,      IDI_OPT_BLOCK      },
+
+	//                               action
+	{ "Quick Reply",                 ICO_ACT_REPLY,      IDI_ACT_REPLY      },
+	{ "Pin Popup",                   ICO_ACT_PIN,        IDI_ACT_PIN        },
+	{ "Pinned Popup",                ICO_ACT_PINNED,     IDI_ACT_PINNED     },
+	{ "Send Message",                ICO_ACT_MESS,       IDI_ACT_MESSAGE    },
+	{ "User Details",                ICO_ACT_INFO,       IDI_ACT_INFO       },
+	{ "Contact Menu",                ICO_ACT_MENU,       IDI_ACT_MENU       },
+	{ "Add Contact Permanently",     ICO_ACT_ADD,        IDI_ACT_ADD        },
+	{ "Dismiss Popup",               ICO_ACT_CLOSE,      IDI_ACT_CLOSE      },
+	{ "Copy to clipboard",           ICO_ACT_COPY,       IDI_ACT_COPY       }
 
 };
 
@@ -87,6 +75,7 @@ static ICODESC icoDesc[] =
  * @param	big			- bool big icon (default = false)
  * @return:	HICON if the icon is loaded, NULL otherwise
  **/
+
 HICON IcoLib_GetIcon(LPCSTR pszIcon, bool big)
 {
 	return (pszIcon) ? Skin_GetIcon(pszIcon, big) : NULL;
@@ -94,52 +83,8 @@ HICON IcoLib_GetIcon(LPCSTR pszIcon, bool big)
 
 void InitIcons()
 {
-	SKINICONDESC sid;
-	ZeroMemory(&sid, sizeof(sid));
-	sid.cbSize = sizeof(sid);
-	sid.flags = SIDF_ALL_TCHAR;
-	TCHAR selfDLL[1024];
-	GetModuleFileName(hInst, selfDLL, 1024);
-
-	for(int i=0; i < SIZEOF(icoDesc); i++) {
-		sid.pszName = icoDesc[i].pszName;
-		sid.ptszDescription = icoDesc[i].ptszDesc;		// [TRANSLATED-BY-CORE]
-		sid.ptszSection = icoDesc[i].ptszSection;		//must be always untranslatet !!!!!
-
-		if(icoDesc[i].idResource==0){
-			//use icon from icon lib
-			sid.hDefaultIcon = Skin_GetIcon(icoDesc[i].pszIcon);
-			sid.ptszDefaultFile = NULL;
-			sid.iDefaultIndex = 0;
-		}else{
-			//load and register from popup.dll
-			sid.hDefaultIcon = 0;
-			sid.ptszDefaultFile = selfDLL;
-			sid.iDefaultIndex = -icoDesc[i].idResource;
-		}
-
-		switch (icoDesc[i].size){
-		// small and big icons
-		case -1:{
-				sid.cx = sid.cy = 0;
-				break;
-			}
-		// small icons (16x16)
-		case 0:{
-				sid.cx = sid.cy = 16;
-				break;
-			}
-		// normal icons (32x32)
-		case 1:{
-				sid.cx = sid.cy = 32;
-				break;
-			}
-		// custom icon size
-		default:{
-				sid.cx = sid.cy = icoDesc[i].size;
-				break;
-			}
-		}
-		Skin_AddIcon(&sid);
-	}
+	Icon_Register(hInst, SECT_TOLBAR, iconList, 2);
+	Icon_Register(hInst, SECT_POPUP,  iconList+2, 5);
+	Icon_Register(hInst, SECT_POPUP SECT_POPUP_OPT,  iconList+7, 9);
+	Icon_Register(hInst, SECT_POPUP SECT_POPUP_ACT,  iconList+16, 9);
 }

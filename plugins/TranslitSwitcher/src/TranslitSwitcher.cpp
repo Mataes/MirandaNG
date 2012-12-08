@@ -21,7 +21,6 @@ Boston, MA 02111-1307, USA.
 
 HINSTANCE hInst = NULL;
 
-HANDLE hOnButtonPressed;
 int hLangpack;
 
 PLUGININFOEX pluginInfoEx = {
@@ -37,8 +36,12 @@ PLUGININFOEX pluginInfoEx = {
 	MIID_TS
 };
 
-HANDLE hHook;
-HANDLE hService, hService2, hService3;
+static IconItem iconList[] =
+{
+	{ LPGEN("Switch Layout and Send"), "Switch Layout and Send", IDI_SWITCHSEND   },
+	{ LPGEN("Translit and Send"),      "Translit and Send",      IDI_TRANSLITSEND },
+	{ LPGEN("Invert Case and Send"),   "Invert Case and Send",   IDI_INVERTSEND   },
+};
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
 {
@@ -75,15 +78,13 @@ INT_PTR ServiceInvert(WPARAM wParam, LPARAM lParam)
 
 int OnModulesLoaded(WPARAM wParam, LPARAM lParam) 
 {
-	HANDLE hSwitchIcon = NULL, hTranslitIcon = NULL, hInvertIcon = NULL;
+	CreateServiceFunction(MS_TS_SWITCHLAYOUT, ServiceSwitch);
+	CreateServiceFunction(MS_TS_TRANSLITLAYOUT, ServiceTranslit);
+	CreateServiceFunction(MS_TS_INVERTCASE, ServiceInvert);
 
 	HOTKEYDESC hkd = {0};
 	hkd.cbSize = sizeof(hkd);
 	hkd.dwFlags = HKD_TCHAR;
-
-	hService = CreateServiceFunction(MS_TS_SWITCHLAYOUT, ServiceSwitch);
-	hService2 = CreateServiceFunction(MS_TS_TRANSLITLAYOUT, ServiceTranslit);
-	hService3 = CreateServiceFunction(MS_TS_INVERTCASE, ServiceInvert);
 
 	hkd.pszName = "TranslitSwitcher/ConvertAllOrSelected";
 	hkd.ptszDescription = _T("Convert All / Selected");
@@ -131,48 +132,30 @@ int OnModulesLoaded(WPARAM wParam, LPARAM lParam)
 
 	Hotkey_Register(&hkd);
 
-	hOnButtonPressed = HookEvent(ME_MSG_BUTTONPRESSED, OnButtonPressed); 
+	HookEvent(ME_MSG_BUTTONPRESSED, OnButtonPressed); 
 	if (ServiceExists(MS_BB_ADDBUTTON)) {
-		SKINICONDESC sid = {0};
-		sid.cbSize = sizeof(SKINICONDESC);
-		sid.flags = SIDF_TCHAR;
-		sid.ptszSection = _T("TabSRMM/TranslitSwitcher");
-		sid.cx = sid.cy = 16;
-		sid.ptszDescription = _T("SwitchLayout and Send");
-		sid.pszName = "SwitchLayout and Send";
-		sid.hDefaultIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_SWITCHSEND));
-		hSwitchIcon = Skin_AddIcon(&sid);
-
-		sid.ptszDescription = _T("Translit and Send");
-		sid.pszName = "Translit and Send";
-		sid.hDefaultIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_TRANSLITSEND));
-		hTranslitIcon = Skin_AddIcon(&sid);
-
-		sid.ptszDescription = _T("Invert Case and Send");
-		sid.pszName = "Invert Case and Send";
-		sid.hDefaultIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_INVERTSEND));
-		hInvertIcon = Skin_AddIcon(&sid);
+		Icon_Register(hInst, "TabSRMM/TranslitSwitcher", iconList, SIZEOF(iconList));
 
 		BBButton bbd = {0};
 		bbd.cbSize = sizeof(BBButton);
 		bbd.bbbFlags = BBBF_ISIMBUTTON | BBBF_ISCHATBUTTON | BBBF_ISRSIDEBUTTON;
 		bbd.pszModuleName = "SwitchLayout and Send";
 		bbd.ptszTooltip = TranslateT("SwitchLayout and Send");
-		bbd.hIcon = (HANDLE)hSwitchIcon;
+		bbd.hIcon = iconList[0].hIcolib;
 		bbd.dwButtonID = 1;
 		bbd.dwDefPos = 30;
 		CallService(MS_BB_ADDBUTTON, 0, (LPARAM)&bbd);
 
 		bbd.pszModuleName = "Translit and Send";
 		bbd.ptszTooltip = TranslateT("Translit and Send");
-		bbd.hIcon = (HANDLE)hTranslitIcon;
+		bbd.hIcon = iconList[1].hIcolib;
 		bbd.dwButtonID = 1;
 		bbd.dwDefPos = 40;
 		CallService(MS_BB_ADDBUTTON, 0, (LPARAM)&bbd);
 
 		bbd.pszModuleName = "Invert Case and Send";
 		bbd.ptszTooltip = TranslateT("Invert Case and Send");
-		bbd.hIcon = (HANDLE)hInvertIcon;
+		bbd.hIcon = iconList[2].hIcolib;
 		bbd.dwButtonID = 1;
 		bbd.dwDefPos = 50;
 		CallService(MS_BB_ADDBUTTON, 0, (LPARAM)&bbd);
@@ -184,21 +167,13 @@ int OnModulesLoaded(WPARAM wParam, LPARAM lParam)
 
 extern "C" __declspec(dllexport) int Load(void)
 {
-
 	mir_getLP(&pluginInfoEx);
 
-	hHook = HookEvent(ME_SYSTEM_MODULESLOADED, OnModulesLoaded);
-
+	HookEvent(ME_SYSTEM_MODULESLOADED, OnModulesLoaded);
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	DestroyServiceFunction(hService);
-	DestroyServiceFunction(hService2);
-	DestroyServiceFunction(hService3);
-	UnhookEvent(hHook);
-	UnhookEvent(hOnButtonPressed);
-
 	return 0;
 }

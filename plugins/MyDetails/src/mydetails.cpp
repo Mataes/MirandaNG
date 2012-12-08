@@ -38,6 +38,13 @@ PLUGININFOEX pluginInfo={
 	{ 0xa82baeb3, 0xa33c, 0x4036, { 0xb8, 0x37, 0x78, 0x3, 0xa5, 0xb6, 0xc2, 0xab } } // {A82BAEB3-A33C-4036-B837-7803A5B6C2AB}
 };
 
+static IconItem iconList[] = 
+{
+	{ LPGEN("Listening to"), "LISTENING_TO_ICON", IDI_LISTENINGTO },
+	{ LPGEN("Previous protocol"), "MYDETAILS_PREV_PROTOCOL", IDI_LEFT_ARROW },
+	{ LPGEN("Next protocol"), "MYDETAILS_NEXT_PROTOCOL", IDI_RIGHT_ARROW }
+};
+
 // Hooks
 HANDLE hModulesLoadedHook = NULL;
 HANDLE hPreShutdownHook = NULL;
@@ -199,34 +206,10 @@ static int MainInit(WPARAM wparam,LPARAM lparam)
 
 	InitFrames();
 
-	if ( Skin_GetIcon("LISTENING_TO_ICON") == NULL) {
-		SKINICONDESC sid = { sizeof(SKINICONDESC) };
-		sid.flags = SIDF_TCHAR;
-		sid.ptszSection = LPGENT("Contact List");
-		sid.ptszDescription = LPGENT("Listening to");
-		sid.pszName = "LISTENING_TO_ICON";
-		sid.hDefaultIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_LISTENINGTO));
-		Skin_AddIcon(&sid);
-	}
-	{
-		SKINICONDESC sid = { sizeof(SKINICONDESC) };
-		sid.flags = SIDF_TCHAR;
-		sid.ptszSection = LPGENT("My Details");
-		sid.ptszDescription = LPGENT("Previous protocol");
-		sid.pszName = "MYDETAILS_PREV_PROTOCOL";
-		sid.hDefaultIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_LEFT_ARROW));
-		Skin_AddIcon(&sid);
-	}
-	{
-		SKINICONDESC sid = { sizeof(SKINICONDESC) };
-		sid.flags = SIDF_TCHAR;
-		sid.ptszSection = LPGENT("My Details");
-		sid.ptszDescription = LPGENT("Next protocol");
-		sid.pszName = "MYDETAILS_NEXT_PROTOCOL";
-		sid.hDefaultIcon = LoadIcon(hInst, MAKEINTRESOURCE(IDI_RIGHT_ARROW));
-		Skin_AddIcon(&sid);
-	}
+	if ( Skin_GetIcon("LISTENING_TO_ICON") == NULL)
+		Icon_Register(hInst, LPGEN("Contact List"), iconList, 1);
 
+	Icon_Register(hInst, LPGEN("My Details"), iconList+1, SIZEOF(iconList)-1);
 	return 0;
 }
 

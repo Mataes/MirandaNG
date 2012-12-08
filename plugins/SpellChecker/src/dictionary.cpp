@@ -88,7 +88,7 @@ protected:
 
 	void appendToCustomDict(const TCHAR *word)
 	{
-		CreatePath(userPath);
+		CreateDirectoryTreeT(userPath);
 
 		TCHAR filename[1024];
 		mir_sntprintf(filename, SIZEOF(filename), _T("%s\\%s.cdic"), userPath, language);
@@ -516,7 +516,7 @@ void GetDictsInfo(LIST<Dictionary> &dicts)
 
 			char lang[128];
 			WideCharToMultiByte(CP_ACP, 0, dict->language, -1, lang, sizeof(lang), NULL, NULL);
-			if (!DBGetContactSettingTString(NULL, MODULE_NAME, lang, &dbv))
+			if (!db_get_ts(NULL, MODULE_NAME, lang, &dbv))
 
 			{
 				lstrcpyn(dict->localized_name, dbv.ptszVal, SIZEOF(dict->localized_name));
