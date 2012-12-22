@@ -1,12 +1,10 @@
 #include "headers.h"
 
-int UOS;
-
 void setupSettingsList(HWND hwnd2List)
 {
 	LVCOLUMN sLC;
 
-	ListView_SetUnicodeFormat(hwnd2List, UOS);
+	ListView_SetUnicodeFormat(hwnd2List, TRUE);
 
 	sLC.fmt = LVCFMT_LEFT;
 	ListView_SetExtendedListViewStyle(hwnd2List, 32|LVS_EX_SUBITEMIMAGES); //LVS_EX_FULLROWSELECT
@@ -199,17 +197,9 @@ void additem(HWND hwnd2Settings,HANDLE hContact, char* module, char* setting, in
 				lvi.iImage = 5;
 				ListView_SetItem(hwnd2Settings,&lvi);
 
-				if (UOS)
-				{
-					WCHAR *wc = (WCHAR*)_alloca(length*sizeof(WCHAR));
-					MultiByteToWideChar(CP_UTF8, 0, dbv.pszVal, -1, wc, length);
-					ListView_SetItemTextW(hwnd2Settings,index,1,wc);
-				}
-				else
-				{
-					// convert from UTF8
-					ListView_SetItemText(hwnd2Settings,index,1,dbv.pszVal);
-				}
+				WCHAR *wc = (WCHAR*)_alloca(length*sizeof(WCHAR));
+				MultiByteToWideChar(CP_UTF8, 0, dbv.pszVal, -1, wc, length);
+				ListView_SetItemTextW(hwnd2Settings,index,1,wc);
 
 				ListView_SetItemText(hwnd2Settings,index,2,Translate("UNICODE"));
 				mir_snprintf(data, 512, "0x%04X (%d)", length,length);
@@ -608,10 +598,7 @@ static LRESULT CALLBACK SettingLabelEditSubClassProc(HWND hwnd,UINT msg,WPARAM w
 		case WM_GETDLGCODE:
 			return DLGC_WANTALLKEYS;
 	}
-	if (UOS)
-		return CallWindowProcW(SettingLabelEditSubClass,hwnd,msg,wParam,lParam);
-	else
-		return CallWindowProc(SettingLabelEditSubClass,hwnd,msg,wParam,lParam);
+	return CallWindowProcW(SettingLabelEditSubClass,hwnd,msg,wParam,lParam);
 }
 
 
@@ -656,7 +643,7 @@ void EditLabel(HWND hwnd2List, int item, int subitem)
 	switch (dbv.type)
 	{
 		case DBVT_UTF8:
-			if (subitem && UOS)
+			if (subitem)
 			{
 				int len = mir_strlen(dbv.pszVal)+1;
 				WCHAR *wc = (WCHAR*)_alloca(len*sizeof(WCHAR));
@@ -721,10 +708,7 @@ void EditLabel(HWND hwnd2List, int item, int subitem)
 
 	DBFreeVariant(&dbv);
 
-	if (UOS)
-		SettingLabelEditSubClass=(WNDPROC)SetWindowLongPtrW(info->hwnd2Edit,GWLP_WNDPROC,(LONG)SettingLabelEditSubClassProc);
-	else
-		SettingLabelEditSubClass=(WNDPROC)SetWindowLongPtr(info->hwnd2Edit,GWLP_WNDPROC,(LONG)SettingLabelEditSubClassProc);
+	SettingLabelEditSubClass=(WNDPROC)SetWindowLongPtrW(info->hwnd2Edit,GWLP_WNDPROC,(LONG)SettingLabelEditSubClassProc);
 
 	SendMessage(info->hwnd2Edit,WM_USER,0,(LPARAM)data);
 }
@@ -841,421 +825,340 @@ void SettingsListRightClick(HWND hwnd, WPARAM wParam,LPARAM lParam) // hwnd here
 {
 	HWND hSettings = GetDlgItem(hwnd,IDC_SETTINGS);
 	SettingListInfo* info = (SettingListInfo*)GetWindowLongPtr(hSettings,GWLP_USERDATA);
+	if (!info)
+		return;
+
 	char setting[256], *module;
 	HANDLE hContact;
 	LVHITTESTINFO hti;
 	POINT pt;
 	HMENU hMenu, hSubMenu;
+	DBsetting *dbsetting;
+	DBVARIANT dbv = {0}; // freed in the dialog
 
-	if (!info) return;
 	module = info->module;
 	hContact = info->hContact;
 
 	hti.pt=((NMLISTVIEW*)lParam)->ptAction;
-	if (ListView_SubItemHitTest(hSettings,&hti) == -1)
-	{
+	if ( ListView_SubItemHitTest(hSettings,&hti) == -1) {
 		// nowhere.. new item menu
 		GetCursorPos(&pt);
 		hMenu = LoadMenu(hInst, MAKEINTRESOURCE(IDR_CONTEXTMENU));
 		hSubMenu = GetSubMenu(hMenu, 6);
 		TranslateMenu(hSubMenu);
 
-		if (!UDB)
-			RemoveMenu(hSubMenu, MENU_ADD_UNICODE, MF_BYCOMMAND);
-
-		switch (TrackPopupMenu(hSubMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hwnd, NULL))
-		{
-			case MENU_ADD_BYTE:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_BYTE;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_WORD:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_WORD;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_DWORD:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_DWORD;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_STRING:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_ASCIIZ;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_UNICODE:
-			if (UDB)
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_UTF8;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				if (UOS)
-					CreateDialogParamW(hInst,MAKEINTRESOURCEW(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-				else
-					CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_BLOB:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_BLOB;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
+		switch (TrackPopupMenu(hSubMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hwnd, NULL)) {
+		case MENU_ADD_BYTE:
+			dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+			dbv.type = DBVT_BYTE;
+			dbsetting->dbv = dbv;
+			dbsetting->hContact = hContact;
+			dbsetting->module = mir_tstrdup(module);
+			dbsetting->setting = mir_tstrdup("");
+			CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
 			break;
 
-		} // switch
+		case MENU_ADD_WORD:
+			dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+			dbv.type = DBVT_WORD;
+			dbsetting->dbv = dbv;
+			dbsetting->hContact = hContact;
+			dbsetting->module = mir_tstrdup(module);
+			dbsetting->setting = mir_tstrdup("");
+			CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+			break;
+
+		case MENU_ADD_DWORD:
+			dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+			dbv.type = DBVT_DWORD;
+			dbsetting->dbv = dbv;
+			dbsetting->hContact = hContact;
+			dbsetting->module = mir_tstrdup(module);
+			dbsetting->setting = mir_tstrdup("");
+			CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+			break;
+
+		case MENU_ADD_STRING:
+			dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+			dbv.type = DBVT_ASCIIZ;
+			dbsetting->dbv = dbv;
+			dbsetting->hContact = hContact;
+			dbsetting->module = mir_tstrdup(module);
+			dbsetting->setting = mir_tstrdup("");
+			CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+			break;
+
+		case MENU_ADD_UNICODE:
+			dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+			dbv.type = DBVT_UTF8;
+			dbsetting->dbv = dbv;
+			dbsetting->hContact = hContact;
+			dbsetting->module = mir_tstrdup(module);
+			dbsetting->setting = mir_tstrdup("");
+			CreateDialogParamW(hInst,MAKEINTRESOURCEW(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+			break;
+
+		case MENU_ADD_BLOB:
+			dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+			dbv.type = DBVT_BLOB;
+			dbsetting->dbv = dbv;
+			dbsetting->hContact = hContact;
+			dbsetting->module = mir_tstrdup(module);
+			dbsetting->setting = mir_tstrdup("");
+			CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+			break;
+		}
+		return;
 	}
-	else // on item
-	{
-		char type[8];
-		LVITEM lvi;
-		int i;
-		int watching = 0;
-		GetCursorPos(&pt);
-		hMenu = LoadMenu(hInst, MAKEINTRESOURCE(IDR_CONTEXTMENU));
-		hSubMenu = GetSubMenu(hMenu, 0);
-		TranslateMenu(hSubMenu);
+	
+	// on item
+	char type[8];
+	LVITEM lvi;
+	int i;
+	int watching = 0;
+	GetCursorPos(&pt);
+	hMenu = LoadMenu(hInst, MAKEINTRESOURCE(IDR_CONTEXTMENU));
+	hSubMenu = GetSubMenu(hMenu, 0);
+	TranslateMenu(hSubMenu);
 
-		lvi.mask = LVIF_IMAGE|LVIF_TEXT;
-		lvi.iItem = hti.iItem;
-		lvi.iSubItem = 0;
-		lvi.pszText = setting;
-		lvi.cchTextMax = 256;
+	lvi.mask = LVIF_IMAGE|LVIF_TEXT;
+	lvi.iItem = hti.iItem;
+	lvi.iSubItem = 0;
+	lvi.pszText = setting;
+	lvi.cchTextMax = 256;
 
-		ListView_GetItem(hSettings,&lvi);
-		ListView_GetItemText(hSettings, hti.iItem, 2, type, 8);
+	ListView_GetItem(hSettings,&lvi);
+	ListView_GetItemText(hSettings, hti.iItem, 2, type, 8);
 
-		if (!UDB)
-		{
-			RemoveMenu(hSubMenu, MENU_ADD_UNICODE, MF_BYCOMMAND);
-			RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
-		}
-
-		switch(lvi.iImage) {
-		case 4: // STRING
-			RemoveMenu(hSubMenu, MENU_CHANGE2STRING, MF_BYCOMMAND);
-			break;
-		case 1: // BYTE
-			RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, MENU_CHANGE2BYTE, MF_BYCOMMAND);
-			RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
+	switch(lvi.iImage) {
+	case 4: // STRING
+		RemoveMenu(hSubMenu, MENU_CHANGE2STRING, MF_BYCOMMAND);
 		break;
-		case 2: // WORD
-			RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, MENU_CHANGE2WORD, MF_BYCOMMAND);
-			RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
+	case 1: // BYTE
+		RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, MENU_CHANGE2BYTE, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
 		break;
-		case 3: // DWORD
-			RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, MENU_CHANGE2DWORD, MF_BYCOMMAND);
-			RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
+	case 2: // WORD
+		RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, MENU_CHANGE2WORD, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
 		break;
-		case 0: // BLOB
-			RemoveMenu(hSubMenu, 3, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, 1, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, 2, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, MENU_EDIT_SET, MF_BYCOMMAND);
+	case 3: // DWORD
+		RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, MENU_CHANGE2DWORD, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
 		break;
-		case 5: // UTF8
-			RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, MENU_CHANGE2DWORD, MF_BYCOMMAND);
-			RemoveMenu(hSubMenu, MENU_CHANGE2WORD, MF_BYCOMMAND);
-			RemoveMenu(hSubMenu, MENU_CHANGE2BYTE, MF_BYCOMMAND);
-			if (!UDB)
-			{
-				RemoveMenu(hSubMenu, 3, MF_BYPOSITION);
-				RemoveMenu(hSubMenu, 1, MF_BYPOSITION);
-				RemoveMenu(hSubMenu, 2, MF_BYPOSITION);
-				RemoveMenu(hSubMenu, MENU_EDIT_SET, MF_BYCOMMAND);
-				RemoveMenu(hSubMenu, MENU_WATCH_ITEM, MF_BYCOMMAND);
-			}
-			else
-				RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
+	case 0: // BLOB
+		RemoveMenu(hSubMenu, 3, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, 1, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, 2, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, MENU_EDIT_SET, MF_BYCOMMAND);
 		break;
-		}
+	case 5: // UTF8
+		RemoveMenu(hSubMenu, 4, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, MENU_CHANGE2DWORD, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, MENU_CHANGE2WORD, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, MENU_CHANGE2BYTE, MF_BYCOMMAND);
+		RemoveMenu(hSubMenu, MENU_CHANGE2UNICODE, MF_BYCOMMAND);
+		break;
+	}
 
-		// watch list stuff
+	// watch list stuff
 
-		if (ListView_GetSelectedCount(hSettings) >1)
-		{
-			RemoveMenu(hSubMenu, 3, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, 1, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, 3, MF_BYPOSITION);
-			RemoveMenu(hSubMenu, MENU_EDIT_SET, MF_BYCOMMAND);
-		}
+	if (ListView_GetSelectedCount(hSettings) > 1) {
+		RemoveMenu(hSubMenu, 3, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, 1, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, 3, MF_BYPOSITION);
+		RemoveMenu(hSubMenu, MENU_EDIT_SET, MF_BYCOMMAND);
+	}
 
-		// check if the setting is being watched and if it is then check the menu item
-		for (i=0; i<WatchListArray.count; i++)
-		{
-			if (WatchListArray.item[i].module && (hContact == WatchListArray.item[i].hContact))
-			{
-				if (WatchListArray.item[i].WatchModule == WATCH_MODULE) continue;
+	// check if the setting is being watched and if it is then check the menu item
+	for (i=0; i<WatchListArray.count; i++) {
+		if (WatchListArray.item[i].module && (hContact == WatchListArray.item[i].hContact)) {
+			if (WatchListArray.item[i].WatchModule == WATCH_MODULE)
+				continue;
 
-				if (!mir_strcmp(module, WatchListArray.item[i].module) && WatchListArray.item[i].setting[0])
-				{
-					if (!mir_strcmp(setting, WatchListArray.item[i].setting))
-					{
-						// yes so uncheck it
-						CheckMenuItem(hSubMenu, MENU_WATCH_ITEM, MF_CHECKED|MF_BYCOMMAND);
-						watching =1;
-						break;
-					}
+			if (!mir_strcmp(module, WatchListArray.item[i].module) && WatchListArray.item[i].setting[0]) {
+				if (!mir_strcmp(setting, WatchListArray.item[i].setting)) {
+					// yes so uncheck it
+					CheckMenuItem(hSubMenu, MENU_WATCH_ITEM, MF_CHECKED|MF_BYCOMMAND);
+					watching =1;
+					break;
 				}
 			}
 		}
-		switch (TrackPopupMenu(hSubMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hwnd, NULL))
-		{
-			case MENU_EDIT_SET:
-				editSetting(info->hContact,info->module, setting);
-			break;
-///////////////////////// divider
-////////////////////////  NEW item submenu
-			case MENU_ADD_BYTE:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_BYTE;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_WORD:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_WORD;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_DWORD:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_DWORD;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_STRING:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_ASCIIZ;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_UNICODE:
-			if (UDB)
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_UTF8;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				if (UOS)
-					CreateDialogParamW(hInst,MAKEINTRESOURCEW(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-				else
-					CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-			case MENU_ADD_BLOB:
-			{
-				struct DBsetting *dbsetting = (struct DBsetting *)mir_alloc(sizeof(struct DBsetting)); // gets safe_free()ed in the window proc
-				DBVARIANT dbv = {0}; // freed in the dialog
-				dbv.type = DBVT_BLOB;
-				dbsetting->dbv = dbv;
-				dbsetting->hContact = hContact;
-				dbsetting->module = mir_tstrdup(module);
-				dbsetting->setting = mir_tstrdup("");
-				CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
-			}
-			break;
-///////////////////////// convert to submenu
-			case MENU_CHANGE2BYTE:
-				if (convertSetting(hContact, module, setting, 0))
-				{
-					lvi.iImage = 1;
-					ListView_SetItem(hSettings,&lvi);
-				}
-			break;
-			case MENU_CHANGE2WORD:
-				if (convertSetting(hContact, module, setting, 1))
-				{
-					lvi.iImage = 2;
-					ListView_SetItem(hSettings,&lvi);
-				}
-			break;
-			case MENU_CHANGE2DWORD:
-				if (convertSetting(hContact, module, setting, 2))
-				{
-					lvi.iImage = 3;
-					ListView_SetItem(hSettings,&lvi);
-				}
-			break;
-			case MENU_CHANGE2STRING:
-				if (convertSetting(hContact, module, setting, 3))
-				{
-					lvi.iImage = 4;
-					ListView_SetItem(hSettings,&lvi);
-				}
-			break;
-			case MENU_CHANGE2UNICODE:
-				if (convertSetting(hContact, module, setting, 4))
-				{
-					lvi.iImage = 5;
-					ListView_SetItem(hSettings,&lvi);
-				}
-			break;
-///////////////////////// convert to submenu
-			case MENU_VIEWDECRYPT:
-			{
-				DBVARIANT dbv;
-				if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type==DBVT_ASCIIZ)
-				{
-					if (lstrcmpA(setting, "LoginPassword"))
-					{
-						char *text = mir_strdup(dbv.pszVal);
-						CallService(MS_DB_CRYPT_DECODESTRING, (WPARAM)lstrlenA(dbv.pszVal)+1, (LPARAM)text);
-						msg(text, Translate("Decoded string.."));
-						mir_free(text);
-					}
-					else
-					{
-						char *str = mir_strdup(dbv.pszVal);
-						char *str1 = str;
-						for (;*str1; ++str1) 
-						{
-							const char c = *str1 ^ 0xc3;
-							if (c) *str1 = c;
-						}
-						if (UOS)
-						{
-							WCHAR *res = mir_utf8decodeW(str);
-							MessageBoxW(0, res, TranslateW(L"Decoded string.."),MB_OK);
-							mir_free(res);
-						}
-						else
-						{
-							mir_utf8decode(str, NULL);
-							MessageBoxA(0, str, Translate("Decoded string.."),MB_OK);
-						}
-						mir_free(str);
-					}
-				}
-				DBFreeVariant(&dbv);
-			}
-			break;
-			case MENU_VIEWENCRYPT:
-			{
-				DBVARIANT dbv;
-				char *text;
-				if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type==DBVT_ASCIIZ)
-				{
-					text = mir_tstrdup(dbv.pszVal);
-					CallService(MS_DB_CRYPT_ENCODESTRING, (WPARAM)strlen(dbv.pszVal)+1, (LPARAM)text);
-					msg(text, Translate("Encoded string.."));
-					mir_free(text);
-				}
-				DBFreeVariant(&dbv);
-			}
-			break;
-			case MENU_DECRYPT:
-			{
-				DBVARIANT dbv;
-				char *text;
-				if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type==DBVT_ASCIIZ)
-				{
-					text = mir_tstrdup(dbv.pszVal);
-					CallService(MS_DB_CRYPT_DECODESTRING, (WPARAM)strlen(dbv.pszVal)+1, (LPARAM)text);
-					DBWriteContactSettingString(hContact,module,setting,text);
-					mir_free(text);
-				}
-				DBFreeVariant(&dbv);
-			}
-			break;
-			case MENU_ENCRYPT:
-			{
-				DBVARIANT dbv;
-				char *text;
-				if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type==DBVT_ASCIIZ)
-				{
-					text = mir_tstrdup(dbv.pszVal);
-					CallService(MS_DB_CRYPT_ENCODESTRING, (WPARAM)strlen(dbv.pszVal)+1, (LPARAM)text);
-					DBWriteContactSettingString(hContact,module,setting,text);
-					mir_free(text);
-				}
-				DBFreeVariant(&dbv);
-			}
-			break;
-///////////////////////// divider
-			case MENU_WATCH_ITEM:
+	}
 
-				if (!watching)
-				{
-					addSettingToWatchList(hContact,module,setting);
-				}
-				else freeWatchListItem(i);
-				if (hwnd2watchedVarsWindow)
-					PopulateWatchedWindow(GetDlgItem(hwnd2watchedVarsWindow, IDC_VARS));
-			break;
-			case MENU_DELETE_SET:
-				DeleteSettingsFromList(hSettings, hContact, module, setting);
-			break;
+	switch (TrackPopupMenu(hSubMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hwnd, NULL)) {
+	case MENU_EDIT_SET:
+		editSetting(info->hContact,info->module, setting);
+		break;
+
+	case MENU_ADD_BYTE:
+		dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+		dbv.type = DBVT_BYTE;
+		dbsetting->dbv = dbv;
+		dbsetting->hContact = hContact;
+		dbsetting->module = mir_tstrdup(module);
+		dbsetting->setting = mir_tstrdup("");
+		CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+		break;
+
+	case MENU_ADD_WORD:
+		dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+		dbv.type = DBVT_WORD;
+		dbsetting->dbv = dbv;
+		dbsetting->hContact = hContact;
+		dbsetting->module = mir_tstrdup(module);
+		dbsetting->setting = mir_tstrdup("");
+		CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+		break;
+
+	case MENU_ADD_DWORD:
+		dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+		dbv.type = DBVT_DWORD;
+		dbsetting->dbv = dbv;
+		dbsetting->hContact = hContact;
+		dbsetting->module = mir_tstrdup(module);
+		dbsetting->setting = mir_tstrdup("");
+		CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+		break;
+
+	case MENU_ADD_STRING:
+		dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+		dbv.type = DBVT_ASCIIZ;
+		dbsetting->dbv = dbv;
+		dbsetting->hContact = hContact;
+		dbsetting->module = mir_tstrdup(module);
+		dbsetting->setting = mir_tstrdup("");
+		CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+		break;
+
+	case MENU_ADD_UNICODE:
+		dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+		dbv.type = DBVT_UTF8;
+		dbsetting->dbv = dbv;
+		dbsetting->hContact = hContact;
+		dbsetting->module = mir_tstrdup(module);
+		dbsetting->setting = mir_tstrdup("");
+		CreateDialogParamW(hInst,MAKEINTRESOURCEW(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+		break;
+
+	case MENU_ADD_BLOB:
+		dbsetting = (DBsetting*)mir_alloc(sizeof(DBsetting)); // gets safe_free()ed in the window proc
+		dbv.type = DBVT_BLOB;
+		dbsetting->dbv = dbv;
+		dbsetting->hContact = hContact;
+		dbsetting->module = mir_tstrdup(module);
+		dbsetting->setting = mir_tstrdup("");
+		CreateDialogParam(hInst,MAKEINTRESOURCE(IDD_EDIT_SETTING),hwnd,EditSettingDlgProc, (LPARAM)dbsetting);
+		break;
+
+	///////////////////////// convert to submenu
+	case MENU_CHANGE2BYTE:
+		if (convertSetting(hContact, module, setting, 0)) {
+			lvi.iImage = 1;
+			ListView_SetItem(hSettings,&lvi);
 		}
+		break;
+
+	case MENU_CHANGE2WORD:
+		if (convertSetting(hContact, module, setting, 1)) {
+			lvi.iImage = 2;
+			ListView_SetItem(hSettings,&lvi);
+		}
+		break;
+
+	case MENU_CHANGE2DWORD:
+		if (convertSetting(hContact, module, setting, 2)) {
+			lvi.iImage = 3;
+			ListView_SetItem(hSettings,&lvi);
+		}
+		break;
+
+	case MENU_CHANGE2STRING:
+		if (convertSetting(hContact, module, setting, 3)) {
+			lvi.iImage = 4;
+			ListView_SetItem(hSettings,&lvi);
+		}
+		break;
+
+	case MENU_CHANGE2UNICODE:
+		if (convertSetting(hContact, module, setting, 4)) {
+			lvi.iImage = 5;
+			ListView_SetItem(hSettings,&lvi);
+		}
+		break;
+
+	///////////////////////// convert to submenu
+	case MENU_VIEWDECRYPT:
+		if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type == DBVT_ASCIIZ) {
+			if (lstrcmpA(setting, "LoginPassword")) {
+				char *text = mir_strdup(dbv.pszVal);
+				CallService(MS_DB_CRYPT_DECODESTRING, (WPARAM)lstrlenA(dbv.pszVal)+1, (LPARAM)text);
+				msg(text, Translate("Decoded string.."));
+				mir_free(text);
+			}
+			else {
+				char *str = mir_strdup(dbv.pszVal);
+				char *str1 = str;
+				for (;*str1; ++str1) {
+					const char c = *str1 ^ 0xc3;
+					if (c) *str1 = c;
+				}
+
+				WCHAR *res = mir_utf8decodeW(str);
+				MessageBoxW(0, res, TranslateW(L"Decoded string.."),MB_OK);
+				mir_free(res);
+				mir_free(str);
+			}
+			DBFreeVariant(&dbv);
+		}
+		break;
+
+	case MENU_VIEWENCRYPT:
+		if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type == DBVT_ASCIIZ) {
+			char *text = mir_tstrdup(dbv.pszVal);
+			CallService(MS_DB_CRYPT_ENCODESTRING, (WPARAM)strlen(dbv.pszVal)+1, (LPARAM)text);
+			msg(text, Translate("Encoded string.."));
+			mir_free(text);
+		}
+		DBFreeVariant(&dbv);
+		break;
+
+	case MENU_DECRYPT:
+		if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type == DBVT_ASCIIZ) {
+			char *text = mir_tstrdup(dbv.pszVal);
+			CallService(MS_DB_CRYPT_DECODESTRING, (WPARAM)strlen(dbv.pszVal)+1, (LPARAM)text);
+			DBWriteContactSettingString(hContact,module,setting,text);
+			mir_free(text);
+		}
+		DBFreeVariant(&dbv);
+		break;
+
+	case MENU_ENCRYPT:
+		if (!DBGetContactSetting(hContact,module,setting,&dbv) && dbv.type == DBVT_ASCIIZ) {
+			char *text = mir_tstrdup(dbv.pszVal);
+			CallService(MS_DB_CRYPT_ENCODESTRING, (WPARAM)strlen(dbv.pszVal)+1, (LPARAM)text);
+			DBWriteContactSettingString(hContact,module,setting,text);
+			mir_free(text);
+		}
+		DBFreeVariant(&dbv);
+		break;
+
+	///////////////////////// divider
+	case MENU_WATCH_ITEM:
+		if (!watching)
+			addSettingToWatchList(hContact,module,setting);
+		else
+			freeWatchListItem(i);
+		if (hwnd2watchedVarsWindow)
+			PopulateWatchedWindow(GetDlgItem(hwnd2watchedVarsWindow, IDC_VARS));
+		break;
+
+	case MENU_DELETE_SET:
+		DeleteSettingsFromList(hSettings, hContact, module, setting);
+		break;
 	}
 }

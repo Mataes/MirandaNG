@@ -11,6 +11,60 @@ typedef INT_PTR (__cdecl CSkypeProto::* SkypeServiceFunc)(WPARAM, LPARAM);
 typedef int     (__cdecl CSkypeProto::* SkypeEventFunc)(WPARAM, LPARAM);
 typedef INT_PTR (__cdecl CSkypeProto::* SkypeServiceFuncParam)(WPARAM, LPARAM, LPARAM);
 
+struct StringList : public LIST<char>
+{
+	static int compare(const char* p1, const char* p2)
+	{ return _stricmp(p1, p2); }
+
+	StringList() : LIST<char>(2, compare) {}
+	StringList(const char* string, const char *delimeters) : LIST<char>(2, compare) 
+	{
+		char *data = ::mir_strdup(string);
+		if (data)
+		{
+			char *p = ::strtok(data, delimeters);
+			if (p)
+			{
+				this->insert(::mir_strdup(p));
+				while (p = strtok(NULL, delimeters))
+				{
+					this->insert(::mir_strdup(p));
+				}
+			}
+			::mir_free(data);
+		}
+	}
+	~StringList() { destroy(); }
+
+	void destroy( void )
+	{
+		for (int i=0; i < count; i++)
+			mir_free(items[i]);
+
+		List_Destroy((SortedList*)this);
+	}
+
+	int insertn(const char* p) { return insert(mir_strdup(p)); }
+
+	int remove(int idx)
+	{
+		mir_free(items[idx]);
+		return List_Remove((SortedList*)this, idx);
+	}
+
+	int remove(const char* p)
+	{
+		int idx;
+		return  List_GetIndex((SortedList*)this, (char*)p, &idx) == 1 ? remove(idx) : -1;
+	}
+
+	bool contains(char* p)
+	{
+		int idx;
+		return List_GetIndex((SortedList*)this, (char*)p, &idx) == 1;
+	}
+};
+
 struct _tag_iconList
 {
 	wchar_t*	Description;
@@ -59,6 +113,19 @@ const SettingItem setting[]={
   {LPGENT("Language"),		"Language1",	DBVT_WCHAR,	LI_LIST},
 
   {LPGENT("About"),			"About",		DBVT_WCHAR,	LI_STRING}
+};
+
+struct InviteChatParam
+{
+	char		*id;
+	HANDLE		hContact;
+	CSkypeProto *ppro;
+
+	InviteChatParam(const char *id, HANDLE hContact, CSkypeProto *ppro)
+		: id(::mir_strdup(id)), hContact(hContact), ppro(ppro) {}
+
+	~InviteChatParam()
+	{ ::mir_free(id); }
 };
 
 struct CSkypeProto : public PROTO_INTERFACE, public MZeroedObject
@@ -125,7 +192,7 @@ public:
 	int __cdecl OnContactDeleted(WPARAM, LPARAM);
 	int __cdecl OnOptionsInit(WPARAM, LPARAM);
 	int __cdecl OnUserInfoInit(WPARAM, LPARAM);
-	int __cdecl OnAccountManagerInit(WPARAM wParam, LPARAM lParam);
+	INT_PTR __cdecl OnAccountManagerInit(WPARAM wParam, LPARAM lParam);
 
 	// instances
 	static CSkypeProto* InitSkypeProto(const char* protoName, const wchar_t* userName);
@@ -140,11 +207,16 @@ public:
 	static HANDLE GetIconHandle(const char *name);
 
 	// menus
+	void OnInitStatusMenu();
 	static void InitMenus();
 	static void UninitMenus();
 
+	INT_PTR __cdecl InviteCommand(WPARAM, LPARAM);
+
 	static CSkypeProto* GetInstanceByHContact(HANDLE hContact);
 	static int PrebuildContactMenu(WPARAM wParam, LPARAM lParam);
+
+	bool	IsOnline();
 
 protected:
 	DWORD   dwCMDNum;
@@ -153,8 +225,12 @@ protected:
 	CContactGroup::Ref commonList;
 	CContactGroup::Ref authWaitList;
 
-	wchar_t	*login;
-	wchar_t *password;
+	// account
+
+	void	OnAccountChanged(int prop);
+
+	char	*login;
+	char	*password;
 	bool	rememberPassword;
 	void	RequestPassword();
 
@@ -162,13 +238,42 @@ protected:
 	bool	SignIn(bool isReadPassword = true);
 	void __cdecl SignInAsync(void*);
 
-	bool	IsOnline();
-
+	static wchar_t* LogoutReasons[];
 	static LanguagesListEntry languages[223];
 
 	// messages
-	void	OnOnMessageReceived(const char *sid, const char *text);
-	void	OnConversationAdded(CConversation::Ref conversation);
+	void	OnMessage(CConversation::Ref conversation, CMessage::Ref message);
+	void	OnMessageSended(CConversation::Ref conversation, CMessage::Ref message);
+	void	OnMessageReceived(CConversation::Ref conversation, CMessage::Ref message);
+
+	// chat
+	bool IsChatRoom(HANDLE hContact);
+	HANDLE GetChatRoomByID(const char *cid);
+	HANDLE	AddChatRoomByID(const char* cid, const char* name, DWORD flags = 0);
+	
+	char *CSkypeProto::GetChatUsers(const char *cid);
+
+	void ChatValidateContact(HANDLE hItem, HWND hwndList, const char *contacts);
+	void ChatPrepare(HANDLE hItem, HWND hwndList, const char *contacts);
+
+	void GetInviteContacts(HANDLE hItem, HWND hwndList, SEStringList &invitedContacts);
+	
+	void InitChat();
+	char *StartChat(const char *cid, const SEStringList &invitedContacts);
+	void JoinToChat(const char *cid, bool showWindow = true);
+	void LeaveChat(const char *cid);
+
+	void RaiseChatEvent(const char *cid, const char *sid, int evt, const char *message = NULL);
+	void SendChatMessage(const char *cid, const char *sid, const char *message);
+	void AddChatContact(const char *cid, const char *sid);
+	void KickChatContact(const char *cid, const char *sid);
+	void RemoveChatContact(const char *cid, const char *sid);
+
+	INT_PTR __cdecl OnJoinChat(WPARAM wParam, LPARAM);
+	INT_PTR __cdecl OnLeaveChat(WPARAM wParam, LPARAM);
+
+	int __cdecl OnGCMenuHook(WPARAM, LPARAM lParam);
+	int __cdecl OnGCEventHook(WPARAM, LPARAM lParam);
 
 	// contacts
 	void	UpdateContactAboutText(HANDLE hContact, CContact::Ref contact);
@@ -200,9 +305,9 @@ protected:
 	void	OnContactListChanged(const ContactRef& contact);
 	
 	bool	IsProtoContact(HANDLE hContact);
-	HANDLE	GetContactBySid(const wchar_t* sid);
+	HANDLE	GetContactBySid(const char* sid);
 	HANDLE	GetContactFromAuthEvent(HANDLE hEvent);
-	HANDLE	AddContactBySid(const wchar_t* skypeName, const wchar_t* nick, DWORD flags = 0);
+	HANDLE	AddContactBySid(const char* sid, const char* nick, DWORD flags = 0);
 
 	int		SkypeToMirandaStatus(CContact::AVAILABILITY availability);
 	CContact::AVAILABILITY MirandaToSkypeStatus(int status);
@@ -232,7 +337,7 @@ protected:
 	void	UpdateOwnProfile();	
 	void	UpdateOwnAbout();	
 
-	void	OnAccountChanged(int prop);
+	void	OnProfileChanged(int prop);
 
 	void __cdecl LoadOwnInfo(void*);
 
@@ -247,7 +352,11 @@ protected:
 
 	int SkypeToMirandaLoginError(CAccount::LOGOUTREASON logoutReason);
 
-	void ShowNotification(const wchar_t *sid, const wchar_t *message, int flags = 0);
+	void ShowNotification(const char *nick, const wchar_t *message, int flags = 0);
+
+	//
+	static char CharBase64[];
+	static ULONG Base64Encode(char *inputString, char *outputBuffer, SIZE_T nMaxLength);
 
 	// instances
 	static LIST<CSkypeProto> instanceList;
@@ -275,15 +384,16 @@ protected:
 	// services
 	static LIST<void> serviceList;
 
-	int __cdecl GetAvatarInfo(WPARAM, LPARAM);
-	int __cdecl GetAvatarCaps(WPARAM, LPARAM);
-	int __cdecl GetMyAvatar(WPARAM, LPARAM);
-	int __cdecl SetMyAvatar(WPARAM, LPARAM);
+	INT_PTR __cdecl GetAvatarInfo(WPARAM, LPARAM);
+	INT_PTR __cdecl GetAvatarCaps(WPARAM, LPARAM);
+	INT_PTR __cdecl GetMyAvatar(WPARAM, LPARAM);
+	INT_PTR __cdecl SetMyAvatar(WPARAM, LPARAM);
 
 	// icons
 	static _tag_iconList iconList[];
 
 	// menu
+	HGENMENU m_hMenuRoot;
 	static HANDLE hChooserMenu;
 	static HANDLE hPrebuildMenuHook;
 	static HANDLE g_hContactMenuItems[CMITEMS_COUNT];
@@ -295,6 +405,11 @@ protected:
 	// database
 	HANDLE AddDataBaseEvent(HANDLE hContact, WORD type, DWORD time, DWORD flags, DWORD cbBlob, PBYTE pBlob);
 	void RaiseMessageReceivedEvent(
+		DWORD timestamp, 
+		const char* sid, 
+		const char* nick, 
+		const char* message = "");
+	void RaiseMessageSendedEvent(
 		DWORD timestamp, 
 		const char* sid, 
 		const char* nick, 
@@ -314,10 +429,9 @@ protected:
 	WORD	GetSettingWord(HANDLE hContact, const char *setting, WORD errorValue = 0);
 	DWORD	GetSettingDword(const char *setting, DWORD defVal = 0);
 	DWORD	GetSettingDword(HANDLE hContact, const char *setting, DWORD errorValue = 0);
-	wchar_t*	GetSettingString(const char *setting, wchar_t* errorValue = NULL);
-	wchar_t*	GetSettingString(HANDLE hContact, const char *setting, wchar_t* errorValue = NULL);
-	wchar_t*	GetDecodeSettingString(const char *setting, wchar_t* errorValue = NULL);
-	wchar_t*	GetDecodeSettingString(HANDLE hContact, const char *setting, wchar_t* errorValue = NULL);
+	wchar_t *GetSettingString(const char *setting, wchar_t* errorValue = NULL);
+	wchar_t *GetSettingString(HANDLE hContact, const char *setting, wchar_t* errorValue = NULL);
+	char	*GetDecodeSettingString(HANDLE hContact, const char *setting, char* errorValue = NULL);
 	//
 	bool	SetSettingByte(const char *setting, BYTE value);
 	bool	SetSettingByte(HANDLE hContact, const char *setting, BYTE value);
@@ -327,8 +441,7 @@ protected:
 	bool	SetSettingDword(HANDLE hContact, const char *setting, DWORD value);
 	bool	SetSettingString(const char *setting, const wchar_t* value);
 	bool	SetSettingString(HANDLE hContact, const char *setting, const wchar_t* value);
-	bool	SetDecodeSettingString(const char *setting, const wchar_t* value);
-	bool	SetDecodeSettingString(HANDLE hContact, const char *setting, const wchar_t* value);
+	bool	SetDecodeSettingString(HANDLE hContact, const char *setting, const char* value);
 	//
 	void	DeleteSetting(const char *setting);
 	void	DeleteSetting(HANDLE hContact, const char *setting);
@@ -339,4 +452,5 @@ protected:
 	static INT_PTR CALLBACK SkypePasswordProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 	static INT_PTR CALLBACK SkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 	static INT_PTR CALLBACK OwnSkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK InviteToChatProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 };

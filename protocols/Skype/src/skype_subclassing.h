@@ -7,21 +7,45 @@
 
 struct CSkypeProto;
 
+class CSkype;
+
+class CMessage : public Message
+{
+public:
+
+	typedef DRef<CMessage, Message> Ref;
+	typedef DRefs<CMessage, Message> Refs;
+
+	CMessage(unsigned int oid, SERootObject* root);
+};
+
+class CParticipant : public Participant
+{
+public:
+	typedef DRef<CParticipant, Participant> Ref;
+	typedef DRefs<CParticipant, Participant> Refs;
+
+	CParticipant(unsigned int oid, SERootObject* root);
+};
+
 class CConversation : public Conversation
 {
 public:
-	typedef void (CSkypeProto::* OnMessageReceived)(const char *sid, const char *text);
+	typedef void (CSkypeProto::* OnMessageReceived)(CMessage::Ref message);
 
 	typedef DRef<CConversation, Conversation> Ref;
 	typedef DRefs<CConversation, Conversation> Refs;
 
 	CConversation(unsigned int oid, SERootObject* root);
 
+	static CConversation::Ref FindBySid(CSkype *skype, SEString sid);
+
 	void SetOnMessageReceivedCallback(OnMessageReceived callback, CSkypeProto* proto);
 
 private:
 	CSkypeProto* proto;
-	OnMessageReceived callback;
+	OnMessageReceived messageReceivedCallback;
+	
 	void OnMessage(const MessageRef & message);
 };
 
@@ -82,10 +106,7 @@ public:
 	typedef DRefs<CContactGroup, ContactGroup> Refs;
 	CContactGroup(unsigned int oid, SERootObject* root);
 
-	//CContact::Refs ContactList;
 	void SetOnContactListChangedCallback(OnContactListChanged callback, CSkypeProto* proto);
-
-	//bool Contains(const ContactRef& contact);
 
 private:
 	CSkypeProto* proto;
@@ -102,18 +123,8 @@ public:
 	typedef DRef<CAccount, Account> Ref;
 	typedef DRefs<CAccount, Account> Refs;
 	
-	bool isLoggedIn;
-	bool isLoggedOut;
-	LOGOUTREASON logoutReason;
-	char logoutReasonString[2048];
-	
 	CAccount(unsigned int oid, SERootObject* root);
 	
-	void BlockWhileLoggingIn();
-	void BlockWhileLoggingOut();
-
-	bool IsOnline();
-
 	void SetOnAccountChangedCallback(OnAccountChanged callback, CSkypeProto* proto);
 
 private:
@@ -125,26 +136,29 @@ private:
 class CSkype : public Skype
 {
 public:
-	typedef void (CSkypeProto::* OnConversationAdded)(CConversation::Ref conversation);
+	typedef void (CSkypeProto::* OnMessaged)(CConversation::Ref conversation, CMessage::Ref message);
 
 	CAccount*		newAccount(int oid);
 	CContactGroup*	newContactGroup(int oid);
 	CConversation*	newConversation(int oid);
 	CContactSearch*	newContactSearch(int oid);
-	CContact*		newContact(int oid);
+	CParticipant*	newParticipant(int oid);
+	CContact*		newContact(int oid);	
+	CMessage*		newMessage(int oid);
 
 	CConversation::Refs inbox;
 
 	CSkype(int num_threads = 1);
 
-	void SetOnConversationAddedCallback(OnConversationAdded callback, CSkypeProto* proto);
+	void SetOnMessageCallback(OnMessaged callback, CSkypeProto* proto);
 
 private:
-	CSkypeProto* proto;
-	OnConversationAdded callback;
+	CSkypeProto*	proto;
+	OnMessaged		onMessagedCallback;
 
-	void OnConversationListChange(
-		const ConversationRef &conversation, 
-		const Conversation::LIST_TYPE &type, 
-		const bool &added);
+	void OnMessage(
+		const MessageRef & message,
+		const bool & changesInboxTimestamp,
+		const MessageRef & supersedesHistoryMessage,
+		const ConversationRef & conversation);
 };
