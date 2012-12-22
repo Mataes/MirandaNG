@@ -216,26 +216,6 @@
     <ResourceCompile Include="res\version.rc" />
     <ResourceCompile Include="res\WhenWasIt.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="res\add.ico" />
-    <None Include="res\check.ico" />
-    <None Include="res\dlg.ico" />
-    <None Include="res\dtb0.ico" />
-    <None Include="res\dtb1.ico" />
-    <None Include="res\dtb2.ico" />
-    <None Include="res\dtb3.ico" />
-    <None Include="res\dtb4.ico" />
-    <None Include="res\dtb5.ico" />
-    <None Include="res\dtb6.ico" />
-    <None Include="res\dtb7.ico" />
-    <None Include="res\dtb8.ico" />
-    <None Include="res\dtb9.ico" />
-    <None Include="res\dtbX.ico" />
-    <None Include="res\export.ico" />
-    <None Include="res\import.ico" />
-    <None Include="res\list.ico" />
-    <None Include="res\refresh.ico" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

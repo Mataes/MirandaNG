@@ -3,6 +3,7 @@
 
 int hLangpack;
 HINSTANCE g_hInstance;
+XML_API  xi = {0};
 TIME_API tmi = {0};
 
 CSkype* g_skype;
@@ -152,8 +153,10 @@ char* LoadKeyPair()
 			aes_set_key( &ctx, tmpK, 128);
 			int dwResSize = SizeofResource(g_hInstance, hRes);
 			char *pData = (char*)GlobalLock(hResource);
-			pData[dwResSize] = 0;
-			int basedecoded = decodeSize(pData);
+			char *pCopy = (char*)_alloca(dwResSize+1);
+			memcpy(pCopy, pData, dwResSize);
+			pCopy[dwResSize] = 0;
+			int basedecoded = decodeSize(pCopy);
 			GlobalUnlock(hResource);
 			unsigned char *bufD = (unsigned char*)mir_alloc(basedecoded + 1);
 			unsigned char *tmpD = (unsigned char*)mir_alloc(basedecoded + 1);
@@ -345,6 +348,7 @@ extern "C" int __declspec(dllexport) Load(void)
 	if (!StartSkypeRuntime())
 		return 1;
 
+	mir_getXI(&xi);
 	mir_getTMI(&tmi);
 	mir_getLP(&pluginInfo);
 
@@ -355,7 +359,7 @@ extern "C" int __declspec(dllexport) Load(void)
 	g_skype->start();	
 
 	PROTOCOLDESCRIPTOR pd = { sizeof(pd) };
-	pd.szName = MODULE;
+	pd.szName = "SKYPE";
 	pd.type = PROTOTYPE_PROTOCOL;
 	pd.fnInit = (pfnInitProto)CSkypeProto::InitSkypeProto;
 	pd.fnUninit = (pfnUninitProto)CSkypeProto::UninitSkypeProto;

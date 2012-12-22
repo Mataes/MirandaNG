@@ -10,7 +10,6 @@ HANDLE hTTBButt = NULL;
 BOOL bServiceMode = FALSE;
 BOOL usePopUps;
 HWND hwnd2watchedVarsWindow;
-int UDB;
 int hLangpack;
 BYTE nameOrder[NAMEORDERCOUNT];
 HANDLE hUserMenu;
@@ -239,29 +238,6 @@ int ModulesLoaded(WPARAM wParam,LPARAM lParam)
 		DBFreeVariant(&dbv);
 	}
 
-	// check DB engine for unicode support
-	UDB = FALSE;
-
-	if (ServiceExists(MS_DB_CONTACT_GETSETTING_STR)) {
-		DBCONTACTGETSETTING cgs;
-		dbv.type = 0;
-
-		if (DBGetContactSettingByte(NULL,modname,"WarnOnDelete",-1) == -1)
-			DBWriteContactSettingByte(NULL,modname,"WarnOnDelete",1);
-
-		cgs.szModule=modname;
-		cgs.szSetting="WarnOnDelete";
-		cgs.pValue=&dbv;
-
-		if (!CallService(MS_DB_CONTACT_GETSETTING_STR, 0,(LPARAM)&cgs))
-			if (dbv.type == DBVT_BYTE)
-				UDB = TRUE;
-	}
-
-	// check OS support for unicode
-	// useless if DB doesnt not support unicode
-	UOS = (UDB && IsCP_UTF8() && IsWinVerNT());
-
 	hTTBHook = HookEvent(ME_TTB_MODULELOADED, OnTTBLoaded);
 
 	if ( bServiceMode )
@@ -402,44 +378,19 @@ int WriteBlobFromString(HANDLE hContact,const char *szModule,const char *szSetti
 int GetSetting(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv)
 {
 	DBCONTACTGETSETTING cgs;
-
-	cgs.szModule=szModule;
-	cgs.szSetting=szSetting;
-	cgs.pValue=dbv;
+	cgs.szModule = szModule;
+	cgs.szSetting = szSetting;
+	cgs.pValue = dbv;
 	dbv->type = 0;
-
-	if (UDB)
-		return CallService(MS_DB_CONTACT_GETSETTING_STR,(WPARAM)hContact,(LPARAM)&cgs);
-	else
-	{
-		int rr = CallService(MS_DB_CONTACT_GETSETTING,(WPARAM)hContact,(LPARAM)&cgs);
-
-		if 	(dbv->type != DBVT_UTF8)
-			return rr;
-		else
-			return 1;
-	}
+	return CallService(MS_DB_CONTACT_GETSETTING_STR,(WPARAM)hContact,(LPARAM)&cgs);
 }
-
 
 int GetValue(HANDLE hContact, const char* szModule, const char* szSetting, char* Value, int length)
 {
-    DBVARIANT dbv = {0};
+	DBVARIANT dbv = {0};
 
-	if (Value && length >= 10 && !GetSetting(hContact, szModule, szSetting, &dbv))
-	{
+	if (Value && length >= 10 && !GetSetting(hContact, szModule, szSetting, &dbv)) {
 		switch(dbv.type) {
-		case DBVT_UTF8:
-			if (UOS)
-			{
-				int len = (int)strlen(dbv.pszVal)+1;
-				char *sz = (char*)_alloca(len*3);
-				WCHAR *wc = (WCHAR*)_alloca(len*sizeof(WCHAR));
-				MultiByteToWideChar(CP_UTF8, 0, dbv.pszVal, -1, wc, len);
-				WideCharToMultiByte(CP_ACP, 0, wc, -1, sz, len, NULL, NULL);
-				strncpy(Value, sz, length);
-				break;
-			}// else fall through
 		case DBVT_ASCIIZ:
 			strncpy(Value, dbv.pszVal, length);
 			break;
@@ -451,6 +402,14 @@ int GetValue(HANDLE hContact, const char* szModule, const char* szSetting, char*
 			break;
 		case DBVT_WORD:
 			_itoa(dbv.wVal,Value,10);
+			break;
+		case DBVT_UTF8:
+			int len = (int)strlen(dbv.pszVal)+1;
+			char *sz = (char*)_alloca(len*3);
+			WCHAR *wc = (WCHAR*)_alloca(len*sizeof(WCHAR));
+			MultiByteToWideChar(CP_UTF8, 0, dbv.pszVal, -1, wc, len);
+			WideCharToMultiByte(CP_ACP, 0, wc, -1, sz, len, NULL, NULL);
+			strncpy(Value, sz, length);
 			break;
 		}
 
@@ -471,8 +430,7 @@ int GetValueW(HANDLE hContact, const char* szModule, const char* szSetting, WCHA
 {
 	DBVARIANT dbv ={0};
 
-	if (Value && length >= 10 && !GetSetting(hContact, szModule, szSetting, &dbv))
-	{
+	if (Value && length >= 10 && !GetSetting(hContact, szModule, szSetting, &dbv)) {
 		switch(dbv.type) {
 		case DBVT_UTF8:
 			{
@@ -482,6 +440,7 @@ int GetValueW(HANDLE hContact, const char* szModule, const char* szSetting, WCHA
 				wcsncpy((WCHAR*)Value, wc, length);
 			}
 			break;
+
 		case DBVT_ASCIIZ:
 			{
 				int len = (int)strlen(dbv.pszVal) + 1;
@@ -490,12 +449,15 @@ int GetValueW(HANDLE hContact, const char* szModule, const char* szSetting, WCHA
 				wcsncpy((WCHAR*)Value, wc, length);
 			}
 			break;
+
 		case DBVT_DWORD:
 			_itow(dbv.dVal,Value,10);
 			break;
+
 		case DBVT_BYTE:
 			_itow(dbv.bVal,Value,10);
 			break;
+
 		case DBVT_WORD:
 			_itow(dbv.wVal,Value,10);
 			break;
@@ -513,33 +475,29 @@ int GetValueW(HANDLE hContact, const char* szModule, const char* szSetting, WCHA
 	return 0;
 }
 
-
 char *u2a( wchar_t* src )
 {
-    if (src)
-    {
-		int cbLen = WideCharToMultiByte( CP_ACP, 0, src, -1, NULL, 0, NULL, NULL );
-		char* result = (char*)mir_calloc((cbLen+1)*sizeof(char));
-		if ( result == NULL )
-			return NULL;
+    if (!src)
+		 return NULL;
 
-		WideCharToMultiByte( CP_ACP, 0, src, -1, result, cbLen, NULL, NULL );
-		result[ cbLen ] = 0;
-		return result;
-	}
-	else
+	int cbLen = WideCharToMultiByte( CP_ACP, 0, src, -1, NULL, 0, NULL, NULL );
+	char* result = (char*)mir_calloc((cbLen+1)*sizeof(char));
+	if ( result == NULL )
 		return NULL;
-}
 
+	WideCharToMultiByte( CP_ACP, 0, src, -1, result, cbLen, NULL, NULL );
+	result[ cbLen ] = 0;
+	return result;
+}
 
 wchar_t *a2u( char* src , wchar_t *buffer, int len )
 {
-    wchar_t *result = buffer;
+	wchar_t *result = buffer;
 	if ( result == NULL || len < 3)
 		return NULL;
 
 	MultiByteToWideChar( CP_ACP, 0, src, -1, result, len - 1 );
-		result[ len - 1 ] = 0;
+	result[ len - 1 ] = 0;
 
 	return result;
 }
@@ -558,7 +516,6 @@ int mir_snwprintf(WCHAR *buffer, size_t count, const WCHAR* fmt, ...)
 	return len;
 }
 
-
 int GetDatabaseString(HANDLE hContact, const char *szModule, const char* szSetting, WCHAR *Value, int length, BOOL unicode)
 {
 	if (unicode)
@@ -567,61 +524,49 @@ int GetDatabaseString(HANDLE hContact, const char *szModule, const char* szSetti
 		return GetValue(hContact, szModule, szSetting, (char*)Value, length);
 }
 
-
 WCHAR *GetContactName(HANDLE hContact, const char *szProto, int unicode)
 {
-
 	int i, r = 0;
 	static WCHAR res[512];
 	char *proto = (char*)szProto;
 	char name[256];
 
 	if (hContact && !proto)
-	{
 		if (GetValue(hContact,"Protocol","p",name,SIZEOF(name)))
 			proto = name;
-	}
 
-	if (proto)
-	{
-
-		for(i=0;i<NAMEORDERCOUNT-1;i++)
-		{
+	if (proto) {
+		for(i=0; i < NAMEORDERCOUNT-1; i++) {
 			switch(nameOrder[i])  {
-				case 0: // custom name
-				{
-					r = GetDatabaseString(hContact,"CList","MyHandle",res,SIZEOF(res),unicode);
+			case 0: // custom name
+				r = GetDatabaseString(hContact,"CList","MyHandle",res,SIZEOF(res),unicode);
+				break;
+
+			case 1: // nick
+				r = GetDatabaseString(hContact,proto,"Nick",res,SIZEOF(res),unicode);
+				break;
+
+			case 2: // First Name
+				r = GetDatabaseString(hContact,proto,"FirstName",res,SIZEOF(res),unicode);
+				break;
+
+			case 3: // E-mail
+				r = GetDatabaseString(hContact,proto,"e-mail",res,SIZEOF(res),unicode);
+				break;
+
+			case 4: // Last Name
+				if (GetDatabaseString(hContact,proto,"LastName",res,SIZEOF(res),unicode))
 					break;
-				}
-				case 1: // nick
-				{
-					r = GetDatabaseString(hContact,proto,"Nick",res,SIZEOF(res),unicode);
-					break;
-				}
-				case 2: // First Name
-				{
-					r = GetDatabaseString(hContact,proto,"FirstName",res,SIZEOF(res),unicode);
-					break;
-				}
-				case 3: // E-mail
-				{
-					r = GetDatabaseString(hContact,proto,"e-mail",res,SIZEOF(res),unicode);
-					break;
-				}
-				case 4: // Last Name
-				{
-					if (GetDatabaseString(hContact,proto,"LastName",res,SIZEOF(res),unicode))
-					break;
-				}
-				case 5: // Unique id
+
+			case 5: // Unique id
 				{
 					// protocol must define a PFLAG_UNIQUEIDSETTING
 					char *uid = (char*)CallProtoService(proto,PS_GETCAPS,PFLAG_UNIQUEIDSETTING,0);
-					if ((int)uid!=CALLSERVICE_NOTFOUND && uid)
+					if ((INT_PTR)uid != CALLSERVICE_NOTFOUND && uid)
 						r = GetDatabaseString(hContact,proto,uid,res,SIZEOF(res),unicode);
 					break;
 				}
-				case 6: // first + last name
+			case 6: // first + last name
 				{
 					int len = 0;
 
@@ -635,8 +580,7 @@ WCHAR *GetContactName(HANDLE hContact, const char *szProto, int unicode)
 					else
 						res[0] = 0;
 
-					if (len && len < SIZEOF(res) - 2)
-					{
+					if (len && len < SIZEOF(res) - 2) {
 						if (unicode)
 							wcscat(res,L" ");
 						else
@@ -656,8 +600,5 @@ WCHAR *GetContactName(HANDLE hContact, const char *szProto, int unicode)
 		}
 	}
 
-	if (unicode)
-		return nick_unknownW;
-	else
-		return (WCHAR*)nick_unknown;
+	return (unicode) ? nick_unknownW : (WCHAR*)nick_unknown;
 }

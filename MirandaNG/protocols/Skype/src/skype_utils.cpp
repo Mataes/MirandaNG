@@ -1,5 +1,36 @@
 #include "skype_proto.h"
 
+wchar_t* CSkypeProto::LogoutReasons[] = 
+{
+	LPGENW("LOGOUT_CALLED")												/* LOGOUT_CALLED				*/,
+	LPGENW("HTTPS_PROXY_AUTH_FAILED")									/* HTTPS_PROXY_AUTH_FAILED		*/,
+	LPGENW("SOCKS_PROXY_AUTH_FAILED")									/* SOCKS_PROXY_AUTH_FAILED		*/,
+	LPGENW("P2P_CONNECT_FAILED")										/* P2P_CONNECT_FAILED			*/,
+	LPGENW("SERVER_CONNECT_FAILED")										/* SERVER_CONNECT_FAILED		*/,
+	LPGENW("SERVER_OVERLOADED")											/* SERVER_OVERLOADED			*/,
+	LPGENW("DB_IN_USE")													/* DB_IN_USE					*/,
+	LPGENW("Invalid skypename")											/* INVALID_SKYPENAME			*/,
+	LPGENW("Invalid email")												/* INVALID_EMAIL				*/,
+	LPGENW("Unacceptable password")										/* UNACCEPTABLE_PASSWORD		*/,
+	LPGENW("SKYPENAME_TAKEN")											/* SKYPENAME_TAKEN				*/,
+	LPGENW("REJECTED_AS_UNDERAGE")										/* REJECTED_AS_UNDERAGE			*/,
+	LPGENW("NO_SUCH_IDENTITY")											/* NO_SUCH_IDENTITY				*/,
+	LPGENW("Incorrect password")										/* INCORRECT_PASSWORD			*/,
+	LPGENW("Too many login attempts")									/* TOO_MANY_LOGIN_ATTEMPTS		*/,
+	LPGENW("PASSWORD_HAS_CHANGED")										/* PASSWORD_HAS_CHANGED			*/,
+	LPGENW("PERIODIC_UIC_UPDATE_FAILED")								/* PERIODIC_UIC_UPDATE_FAILED	*/,
+	LPGENW("DB_DISK_FULL")												/* DB_DISK_FULL					*/,
+	LPGENW("DB_IO_ERROR")												/* DB_IO_ERROR					*/,
+	LPGENW("DB_CORRUPT")												/* DB_CORRUPT					*/,
+	LPGENW("DB_FAILURE")												/* DB_FAILURE					*/,
+	LPGENW("INVALID_APP_ID")											/* INVALID_APP_ID				*/,
+	LPGENW("APP_ID_FAILURE")											/* APP_ID_FAILURE				*/,
+	LPGENW("UNSUPPORTED_VERSION")										/* UNSUPPORTED_VERSION			*/,
+	LPGENW("ATO (Account TakeOver) detected, account blocked")			/* ATO_BLOCKED					*/,
+	LPGENW("Logout from another instance")								/* REMOTE_LOGOUT				*/,
+	LPGENW("")															/* ACCESS_TOKEN_RENEWAL_FAILED 	*/
+};
+
 LanguagesListEntry CSkypeProto::languages[] = 
 {
 	{"Abkhazian", "ab"},
@@ -342,8 +373,7 @@ void CSkypeProto::HookEvent(const char* szEvent, SkypeEventFunc handler)
 
 int CSkypeProto::SendBroadcast(HANDLE hContact, int type, int result, HANDLE hProcess, LPARAM lParam)
 {
-	ACKDATA ack = {0};
-	ack.cbSize = sizeof(ACKDATA);
+	ACKDATA ack = { sizeof(ACKDATA) };
 	ack.szModule = this->m_szModuleName;
 	ack.hContact = hContact;
 	ack.type = type;
@@ -413,29 +443,29 @@ int CSkypeProto::SkypeToMirandaLoginError(CAccount::LOGOUTREASON logoutReason)
 	case CAccount::UNACCEPTABLE_PASSWORD:
 		loginError = LOGINERR_WRONGPASSWORD;
 		break;
+
+	case CAccount::INVALID_APP_ID:
+		loginError = 1001;
+		break;
 	}
 
 	return loginError;
 }
 
-void CSkypeProto::ShowNotification(const wchar_t *sid, const wchar_t *message, int flags)
+void CSkypeProto::ShowNotification(const char *nick, const wchar_t *message, int flags)
 {
 	if (::Miranda_Terminated()) return;
 
-	if ( !ServiceExists(MS_POPUP_ADDPOPUPEX) || !DBGetContactSettingByte(NULL, "PopUp", "ModuleIsEnabled", 1) )
-	{
-		MessageBoxW(
-			NULL, 
-			message, 
-			TranslateT("Skype Protocol"), 
-			MB_OK);
-	}
-	else
-	{
+	if ( !ServiceExists(MS_POPUP_ADDPOPUPT) || !DBGetContactSettingByte(NULL, "PopUp", "ModuleIsEnabled", 1))
+		MessageBoxW(NULL, message, TranslateT("Skype Protocol"), MB_OK);
+	else {
+		if ( !nick)
+			nick = "";
+
 		POPUPDATAT_V2 ppd = {0};
 		ppd.cbSize = sizeof(POPUPDATAT_V2);
 		ppd.lchContact = NULL;
-		lstrcpyn(ppd.lpwzContactName, sid, MAX_CONTACTNAME);
+		lstrcpyn(ppd.lpwzContactName, ::mir_a2u(nick), MAX_CONTACTNAME);
 		lstrcpyn(ppd.lpwzText, message, MAX_SECONDLINE);
 		ppd.lchIcon = Skin_GetIcon("Skype_main");
 		ppd.colorBack = ppd.colorText = 0;
@@ -443,4 +473,55 @@ void CSkypeProto::ShowNotification(const wchar_t *sid, const wchar_t *message, i
 
 		::CallService(MS_POPUP_ADDPOPUPT, (WPARAM)&ppd, 0);
 	}
+}
+
+char CSkypeProto::CharBase64[] = 
+{
+	'A','B','C','D','E','F','G','H','I','J','K','L','M  ','N','O','P',
+	'Q','R','S','T','U','V','W','X','Y','Z','a','b','c  ','d','e','f',
+	'g','h','i','j','k','l','m','n','o','p','q','r','s  ','t','u','v',
+	'w','x','y','z','0','1','2','3','4','5','6','7','8  ','9','+','/'
+};
+
+ULONG CSkypeProto::Base64Encode(char *inputString, char *outputBuffer, SIZE_T nMaxLength)
+{
+	int outpos = 0;
+	char chr[3], enc[4];
+
+	for (uint i = 0; i < ::strlen(inputString); i += 3)
+	{
+		if (outpos + 4 >= nMaxLength)
+			break;
+
+		chr[0] = inputString[i];
+		chr[1] = inputString[i+1];
+		chr[2] = inputString[i+2];
+
+		enc[0] = chr[0] >> 2;
+		enc[1] = ((chr[0] & 0x03) << 4) | (chr[1] >> 4);
+		enc[2] = ((chr[1] & 0x0F) << 2) | (chr[2] >> 6);
+		enc[3] = chr[2] & 0x3F;
+
+		outputBuffer[outpos++] = CSkypeProto::CharBase64[enc[0]];
+		outputBuffer[outpos++] = CSkypeProto::CharBase64[enc[1]];
+
+		if (i + 1 >= ::strlen(inputString))
+		{
+			outputBuffer[outpos++] = '=';
+			outputBuffer[outpos++] = '=';
+		}
+		else if (i + 2 >= ::strlen(inputString))
+		{
+			outputBuffer[outpos++] = CSkypeProto::CharBase64[enc[2]];
+			outputBuffer[outpos++] = '=';
+		}
+		else
+		{
+			outputBuffer[outpos++] = CSkypeProto::CharBase64[enc[2]];
+			outputBuffer[outpos++] = CSkypeProto::CharBase64[enc[3]];
+		}
+	}
+
+	outputBuffer[outpos] = 0;
+	return outpos;
 }

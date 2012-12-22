@@ -59,13 +59,13 @@ FacebookProto::FacebookProto(const char* proto_name,const TCHAR* username)
 	nlu.flags = NUF_INCOMING | NUF_OUTGOING | NUF_HTTPCONNS | NUF_TCHAR;
 	nlu.szSettingsModule = m_szModuleName;
 	char module[512];
-	mir_snprintf(module,SIZEOF(module),"%sAv",m_szModuleName);
+	mir_snprintf(module, SIZEOF(module), "%s", m_szModuleName);
 	nlu.szSettingsModule = module;
-	mir_sntprintf(descr,SIZEOF(descr),TranslateT("%s server connection"),m_tszUserName);
+	mir_sntprintf(descr, SIZEOF(descr), TranslateT("%s server connection"), m_tszUserName);
 	nlu.ptszDescriptiveName = descr;
-	m_hNetlibUser = (HANDLE)CallService(MS_NETLIB_REGISTERUSER,0,(LPARAM)&nlu);
+	m_hNetlibUser = (HANDLE)CallService(MS_NETLIB_REGISTERUSER, 0, (LPARAM)&nlu);
 	if (m_hNetlibUser == NULL)
-		MessageBox(NULL,TranslateT("Unable to get Netlib connection for Facebook"),m_tszUserName,MB_OK);
+		MessageBox(NULL, TranslateT("Unable to get Netlib connection for Facebook"), m_tszUserName, MB_OK);
 
 	facy.set_handle(m_hNetlibUser);
 
@@ -480,27 +480,27 @@ int FacebookProto::RefreshBuddyList(WPARAM, LPARAM)
 
 
 int FacebookProto::VisitProfile(WPARAM wParam,LPARAM lParam)
-{
-	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);
+{	
+	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);	
 
+	std::string url = FACEBOOK_URL_PROFILE;
 	DBVARIANT dbv;
-	if ( wParam != 0 && !DBGetContactSettingString(hContact,m_szModuleName,"Homepage",&dbv))
-	{
-		CallService(MS_UTILS_OPENURL,1,reinterpret_cast<LPARAM>(dbv.pszVal));
-		DBFreeVariant(&dbv);
-	}
-	else if (DBGetContactSettingByte(hContact,m_szModuleName,"ChatRoom",0))
-	{
-		std::string url = FACEBOOK_URL_GROUP;
-		if (!DBGetContactSettingString(hContact,m_szModuleName,"ChatRoomID",&dbv)) {
+
+	// TODO: why isn't wParam == 0 when is status menu moved to main menu?
+	if (wParam != 0 && IsMyContact(hContact)) {
+		if (!DBGetContactSettingString(hContact, m_szModuleName, "Homepage", &dbv)) {
+			// Homepage link already present, get it
+			url = dbv.pszVal;
+			DBFreeVariant(&dbv);
+		} else if (!DBGetContactSettingString(hContact, m_szModuleName, FACEBOOK_KEY_ID, &dbv)) {
+			// No homepage link, create and save it
 			url += dbv.pszVal;
+			DBWriteContactSettingString(hContact, m_szModuleName, "Homepage", url.c_str());
 			DBFreeVariant(&dbv);
 		}
-		CallService(MS_UTILS_OPENURL,1,reinterpret_cast<LPARAM>(url.c_str()));
-	} else {
-		// TODO: why isn't wParam == 0 when is status menu moved to main menu?
-		CallService(MS_UTILS_OPENURL,1,reinterpret_cast<LPARAM>(FACEBOOK_URL_PROFILE));
 	}
+
+	CallService(MS_UTILS_OPENURL, 1, reinterpret_cast<LPARAM>(url.c_str()));
 
 	return 0;
 }

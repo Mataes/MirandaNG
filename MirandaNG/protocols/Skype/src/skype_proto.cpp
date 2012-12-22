@@ -7,8 +7,8 @@ CSkypeProto::CSkypeProto(const char* protoName, const TCHAR* userName)
 	this->m_tszUserName = mir_tstrdup(userName);
 	this->m_szModuleName = mir_strdup(protoName);
 	this->m_szProtoName = mir_strdup(protoName);
-	//_strlwr(m_szProtoName);
-	//this->m_szProtoName[0] = toupper(m_szProtoName[0]);
+	::strlwr(m_szProtoName);
+	this->m_szProtoName[0] = ::toupper(m_szProtoName[0]);
 
 	//this->login = NULL;
 	this->password = NULL;
@@ -18,6 +18,9 @@ CSkypeProto::CSkypeProto(const char* protoName, const TCHAR* userName)
 	this->SetAllContactStatus(ID_STATUS_OFFLINE);
 
 	this->CreateService(PS_CREATEACCMGRUI, &CSkypeProto::OnAccountManagerInit);
+	// Chat
+	this->CreateService(PS_JOINCHAT, &CSkypeProto::OnJoinChat);
+	this->CreateService(PS_LEAVECHAT, &CSkypeProto::OnLeaveChat);
 	// Avatar API
 	this->CreateService(PS_GETAVATARINFOT, &CSkypeProto::GetAvatarInfo);
 	this->CreateService(PS_GETAVATARCAPS, &CSkypeProto::GetAvatarCaps);
@@ -26,6 +29,11 @@ CSkypeProto::CSkypeProto(const char* protoName, const TCHAR* userName)
 
 	this->InitNetLib();
 	this->InitCustomFolders();
+
+	//
+	g_skype->SetOnMessageCallback(
+		(CSkype::OnMessaged)&CSkypeProto::OnMessage,
+		this);
 }
 
 CSkypeProto::~CSkypeProto()
@@ -44,7 +52,8 @@ CSkypeProto::~CSkypeProto()
 
 HANDLE __cdecl CSkypeProto::AddToList(int flags, PROTOSEARCHRESULT* psr) 
 {
-	return this->AddContactBySid(psr->id, psr->nick, 0);
+	//todo:ref
+	return this->AddContactBySid(::mir_u2a(psr->id), ::mir_u2a(psr->nick), 0);
 }
 
 HANDLE __cdecl CSkypeProto::AddToListByEvent(int flags, int iContact, HANDLE hDbEvent) 
@@ -196,6 +205,7 @@ HANDLE __cdecl CSkypeProto::SearchByEmail(const TCHAR* email)
 
 	return (HANDLE)SKYPE_SEARCH_BYEMAIL;
 }
+
 HANDLE __cdecl CSkypeProto::SearchByName(const TCHAR* nick, const TCHAR* firstName, const TCHAR* lastName) 
 { 
 	PROTOSEARCHRESULT isr = {0};
@@ -209,6 +219,7 @@ HANDLE __cdecl CSkypeProto::SearchByName(const TCHAR* nick, const TCHAR* firstNa
 
 	return (HANDLE)SKYPE_SEARCH_BYNAMES;
 }
+
 HWND   __cdecl CSkypeProto::SearchAdvanced( HWND owner ) { return 0; }
 
 HWND   __cdecl CSkypeProto::CreateExtendedSearchUI( HWND owner ){ return 0; }
@@ -231,8 +242,9 @@ int    __cdecl CSkypeProto::SendMsg(HANDLE hContact, int flags, const char* msg)
 { 
 	int result = ::InterlockedIncrement((LONG volatile*)&dwCMDNum);
 
-	CConversation::Ref conversation;
-	g_skype->GetConversationByIdentity(::mir_u2a(this->GetSettingString(hContact, "sid")), conversation);
+	CConversation::Ref conversation = CConversation::FindBySid(
+		g_skype,
+		::DBGetString(hContact, this->m_szModuleName, "sid"));
 	if (conversation) 
 	{
 		Message::Ref message;
@@ -261,14 +273,11 @@ int CSkypeProto::SetStatus(int new_status)
 	int old_status = this->m_iStatus;
 	this->m_iDesiredStatus = new_status;
 
-	switch (new_status)
-	{
+	switch (new_status) {
 	case ID_STATUS_OFFLINE:
-		if ( this->account->IsOnline())
-		{
+		if	(this->IsOnline()) {
 			this->account->SetAvailability(CContact::OFFLINE);
 			this->account->Logout(true);
-			this->account->BlockWhileLoggingOut();
 
 			this->m_iStatus = new_status;
 			this->SetAllContactStatus(ID_STATUS_OFFLINE);
@@ -295,8 +304,7 @@ int CSkypeProto::SetStatus(int new_status)
 	}
 
 	this->SetSettingWord("Status", this->m_iStatus);
-	this->SendBroadcastAsync(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, this->m_iStatus); 
-
+	this->SendBroadcast(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, this->m_iStatus); 
 	return 0;
 }
 
@@ -309,22 +317,27 @@ int    __cdecl CSkypeProto::UserIsTyping( HANDLE hContact, int type )
 { 
 	if (hContact && this->IsOnline() && this->m_iStatus != ID_STATUS_INVISIBLE)
 	{
-		CConversation::Ref conversation;
-		g_skype->GetConversationByIdentity(::mir_u2a(this->GetSettingString(hContact, "sid")), conversation);
-		if (conversation) 
+		if (::strcmp(::DBGetString(hContact, this->m_szModuleName, "sid"), this->login) != 0)
 		{
-			switch (type) 
+			CConversation::Ref conversation = CConversation::FindBySid(
+				g_skype,
+				::DBGetString(hContact, this->m_szModuleName, "sid"));
+			if (conversation) 
 			{
-				case PROTOTYPE_SELFTYPING_ON:
-					conversation->SetMyTextStatusTo(Participant::WRITING);
-					return 0;
+				switch (type) 
+				{
+					case PROTOTYPE_SELFTYPING_ON:
+						conversation->SetMyTextStatusTo(Participant::WRITING);
+						return 0;
 
-				case PROTOTYPE_SELFTYPING_OFF:
-					conversation->SetMyTextStatusTo(Participant::READING); // mb TEXT_UNKNOWN?
-					return 0;
+					case PROTOTYPE_SELFTYPING_OFF:
+						conversation->SetMyTextStatusTo(Participant::READING); // mb TEXT_UNKNOWN?
+						return 0;
+				}
 			}
 		}
 	}
+
 	return 1; 
 }
 
@@ -338,6 +351,9 @@ int    __cdecl CSkypeProto::OnEvent(PROTOEVENTTYPE eventType, WPARAM wParam, LPA
 	case EV_PROTO_ONEXIT: 
 		return this->OnPreShutdown(wParam, lParam);
 
+	case EV_PROTO_ONMENU:
+		this->OnInitStatusMenu();
+
 	case EV_PROTO_ONCONTACTDELETED:
 		return this->OnContactDeleted(wParam, lParam);
 	}
@@ -347,90 +363,103 @@ int    __cdecl CSkypeProto::OnEvent(PROTOEVENTTYPE eventType, WPARAM wParam, LPA
 
 void __cdecl CSkypeProto::SignInAsync(void*)
 {
-	//WaitForSingleObject(&this->signin_lock, INFINITE);
+	this->SetStatus(this->m_iDesiredStatus);
 
-	this->account->LoginWithPassword(::mir_u2a(this->password), false, false);
-	this->account->BlockWhileLoggingIn();
-	if ( !this->rememberPassword)
-	{
-		for (int i = ::wcslen(this->password); i >= 0; i--)
-			this->password[i] = L'\0';
-	}
-
-	if (this->account->isLoggedOut)
-	{
-		this->m_iStatus = ID_STATUS_OFFLINE;
-		this->SendBroadcast(
-			ACKTYPE_LOGIN,
-			ACKRESULT_FAILED,
-			NULL, 
-			this->SkypeToMirandaLoginError(this->account->logoutReason));
-		this->ShowNotification(
-			NULL, 
-			::mir_a2u(this->account->logoutReasonString));
-	}
-	else
-	{
-		g_skype->GetConversationList(g_skype->inbox, CConversation::INBOX_CONVERSATIONS);
-		fetch(g_skype->inbox);
-		g_skype->SetOnConversationAddedCallback(
-			(CSkype::OnConversationAdded)&CSkypeProto::OnConversationAdded, this);
-		for (uint i = 0 ; i < g_skype->inbox.size(); i++)
-		{
-			g_skype->inbox[i]->SetOnMessageReceivedCallback(
-				(CConversation::OnMessageReceived)&CSkypeProto::OnOnMessageReceived, this);
-		}
-
-		this->SetStatus(this->m_iDesiredStatus);
-		this->ForkThread(&CSkypeProto::LoadContactList, this);
-		//this->LoadContactList(this);
-		
-		/*this->account.fetch();
-		this->account->SetOnAccountChangedCallback(
-			(CAccount::OnAccountChanged)&CSkypeProto::OnAccountChanged, this);*/
-
-		this->ForkThread(&CSkypeProto::LoadOwnInfo, this);
-		//this->LoadOwnInfo(this);
-	}
-
-	//ReleaseMutex(this->signin_lock);
+	this->LoadOwnInfo(this);
+	this->LoadContactList(this);
 }
 
 bool CSkypeProto::SignIn(bool isReadPassword)
 {
-	if (::wcscmp(this->login, L"") == 0)
+	if (!this->login || !::lstrcmpA(this->login, ""))
 	{
 		this->m_iStatus = ID_STATUS_OFFLINE;
 		this->SendBroadcast(ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_BADUSERID);
 		::MessageBox(
 			NULL, 
 			TranslateT("You have not entered a Skype name.\nConfigure this in Options->Network->Skype and try again."),
-			_T("Skype"),
+			_T(MODULE),
 			MB_OK);
 	}
-	else if (g_skype->GetAccount(::mir_u2a(this->login), this->account))
+	else if (g_skype->GetAccount(this->login, this->account))
 	{
-		/*this->m_iStatus = ID_STATUS_CONNECTING;
-		this->SendBroadcast(ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)ID_STATUS_OFFLINE, this->m_iStatus); */
 		if (isReadPassword)
-			this->password = this->GetDecodeSettingString(SKYPE_SETTINGS_PASSWORD);				
-		if (::wcscmp(this->password, L"") == 0)
+			this->password = this->GetDecodeSettingString(NULL, SKYPE_SETTINGS_PASSWORD);				
+		if ( !::lstrcmpA(this->password, ""))
 			this->RequestPassword();
 		else
 		{
-			this->ForkThread(&CSkypeProto::SignInAsync, this);
-			//this->SignInAsync(this);
+			this->account.fetch();
+			this->account->SetOnAccountChangedCallback(
+				(CAccount::OnAccountChanged)&CSkypeProto::OnAccountChanged,
+				this);
+			//
+			int port;
+			g_skype->GetInt(SETUPKEY_PORT, port);
+			g_skype->SetInt(SETUPKEY_PORT, this->GetSettingWord("Port", port));
+			g_skype->SetInt(SETUPKEY_DISABLE_PORT80, (int)!this->GetSettingByte("UseAlternativePorts", 1));
+			//
+			if (this->hNetlibUser)
+			{
+				NETLIBUSERSETTINGS nlus = { sizeof(NETLIBUSERSETTINGS) };
+				::CallService(MS_NETLIB_GETUSERSETTINGS, (WPARAM)this->hNetlibUser, (LPARAM)&nlus);
+
+				if (nlus.useProxy) 
+				{
+					char address[MAX_PATH];
+					::mir_snprintf(address, MAX_PATH, "%s:%d", nlus.szProxyServer, nlus.wProxyPort);
+
+					switch (nlus.proxyType)
+					{
+					case PROXYTYPE_HTTP:
+					case PROXYTYPE_HTTPS:
+						g_skype->SetInt(SETUPKEY_HTTPS_PROXY_ENABLE, 1);
+						g_skype->SetInt(SETUPKEY_SOCKS_PROXY_ENABLE, 0);
+						g_skype->SetStr(SETUPKEY_HTTPS_PROXY_ADDR, address);
+						if (nlus.useProxyAuth)
+						{
+							g_skype->SetStr(SETUPKEY_HTTPS_PROXY_USER, nlus.szProxyAuthUser);
+
+							char *encodedPass = new char[MAX_PATH];
+
+							CSkypeProto::Base64Encode(nlus.szProxyAuthPassword, encodedPass, MAX_PATH);
+
+							g_skype->SetStr(SETUPKEY_HTTPS_PROXY_PWD, encodedPass);
+						}
+						break;
+
+					case PROXYTYPE_SOCKS4:
+					case PROXYTYPE_SOCKS5:
+						g_skype->SetInt(SETUPKEY_HTTPS_PROXY_ENABLE, 0);
+						g_skype->SetInt(SETUPKEY_SOCKS_PROXY_ENABLE, 1);
+						g_skype->SetStr(SETUPKEY_SOCKS_PROXY_ADDR, address);
+						if (nlus.useProxyAuth)
+						{
+							g_skype->SetStr(SETUPKEY_SOCKS_PROXY_USER, nlus.szProxyAuthUser);
+							g_skype->SetStr(SETUPKEY_SOCKS_PROXY_PWD, nlus.szProxyAuthPassword);
+						}
+						break;
+
+					default:
+						g_skype->Delete(SETUPKEY_HTTPS_PROXY_ENABLE);
+						g_skype->Delete(SETUPKEY_HTTPS_PROXY_ADDR);
+						g_skype->Delete(SETUPKEY_HTTPS_PROXY_USER);
+						g_skype->Delete(SETUPKEY_HTTPS_PROXY_PWD);
+						g_skype->Delete(SETUPKEY_SOCKS_PROXY_ENABLE);
+						g_skype->Delete(SETUPKEY_SOCKS_PROXY_ADDR);
+						g_skype->Delete(SETUPKEY_SOCKS_PROXY_USER);
+						g_skype->Delete(SETUPKEY_SOCKS_PROXY_PWD);
+						break;
+					}
+				}
+			}
+			//
+			this->account->LoginWithPassword(this->password, false, false);
 			return true;
 		}
 	}
 
 	return false;
-}
-
-bool  CSkypeProto::IsOnline()
-{
-	return this->account && this->account->IsOnline();
-	//return this->m_iStatus != ID_STATUS_OFFLINE;
 }
 
 void CSkypeProto::RequestPassword()
@@ -441,15 +470,4 @@ void CSkypeProto::RequestPassword()
 		NULL, 
 		CSkypeProto::SkypePasswordProc, 
 		LPARAM(this));
-}
-
-void CSkypeProto::OnOnMessageReceived(const char *sid, const char *text)
-{
-	this->RaiseMessageReceivedEvent(time(NULL), sid, sid, text);
-}
-
-void CSkypeProto::OnConversationAdded(CConversation::Ref conversation)
-{
-	conversation->SetOnMessageReceivedCallback(
-		(CConversation::OnMessageReceived)&CSkypeProto::OnOnMessageReceived, this);
 }
