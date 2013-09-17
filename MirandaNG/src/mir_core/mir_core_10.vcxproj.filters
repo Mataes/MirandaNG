@@ -8,11 +8,11 @@
     <Filter Include="Header Files">
       <UniqueIdentifier>{a578a180-0eb9-4c3e-b4ae-0eaefa01d207}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\json">
+      <UniqueIdentifier>{fd36323a-6636-4faa-90b0-e2980235fe19}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="commonheaders.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -58,6 +58,51 @@
     <ClCompile Include="icons.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="subclass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="http.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="protos.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="json\internalJSONNode.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONChildren.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONDebug.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONIterators.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONMemory.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONNode.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONNode_Mutex.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONWorker.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\JSONWriter.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="json\libJSON.cpp">
+      <Filter>Source Files\json</Filter>
+    </ClCompile>
+    <ClCompile Include="logger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mstring.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="commonheaders.h">
@@ -74,6 +119,33 @@
     </ClInclude>
     <ClInclude Include="..\..\include\m_database.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="json\internalJSONNode.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JSONChildren.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JSONDebug.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JSONDefs.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JSONMemory.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JSONNode.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JSONOptions.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\JSONWorker.h">
+      <Filter>Source Files\json</Filter>
+    </ClInclude>
+    <ClInclude Include="json\NumberToString.h">
+      <Filter>Source Files\json</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

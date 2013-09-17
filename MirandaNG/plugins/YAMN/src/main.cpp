@@ -8,12 +8,7 @@
  * (c) majvan 2002-2004
  */
 
-
 #include "yamn.h"
-#include "main.h"
-#include <io.h>
-
-#include "m_hotkeys.h"
 
 //--------------------------------------------------------------------------------------------------
 
@@ -39,15 +34,16 @@ int hLangpack;
 
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
-	YAMN_SHORTNAME,
-	YAMN_VERSION,
-	"Mail notifier and browser for Miranda NG. Included POP3 protocol.",
-	"y_b tweety (majvan)",
-	"francois.mean@skynet.be",
-	"© (2002-2004 majvan) 2005-2007 tweety y_b Miranda community",
-	"http://miranda-ng.org/", //"http://www.majvan.host.sk/Projekty/YAMN?fm = soft",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
-	{ 0xb047a7e5, 0x27a, 0x4cfc, { 0x8b, 0x18, 0xed, 0xa8, 0x34, 0x5d, 0x27, 0x90 } } // {B047A7E5-027A-4cfc-8B18-EDA8345D2790}
+	// {B047A7E5-027A-4CFC-8B18-EDA8345D2790}
+	{0xb047a7e5, 0x27a, 0x4cfc, {0x8b, 0x18, 0xed, 0xa8, 0x34, 0x5d, 0x27, 0x90}}
 };
 
 HANDLE hNewMailHook;
@@ -56,9 +52,9 @@ HANDLE hTTButton;
 
 UINT SecTimer;
 
-HANDLE hMenuItemMain = 0;
-HANDLE hMenuItemCont = 0;
-HANDLE hMenuItemContApp = 0;
+HGENMENU hMenuItemMain = 0;
+HGENMENU hMenuItemCont = 0;
+HGENMENU hMenuItemContApp = 0;
 
 HMODULE hUxTheme = 0;
 BOOL (WINAPI *MyEnableThemeDialogTexture)(HANDLE, DWORD) = 0;
@@ -122,7 +118,7 @@ static void GetProfileDirectory(TCHAR *szPath, int cbPath)
 	CallService(MS_DB_GETPROFILEPATHT, SIZEOF(tszOldPath), (LPARAM)tszOldPath);
 	_tcscat(tszOldPath, _T("\\*.book"));
 
-	TCHAR* ptszNewPath = Utils_ReplaceVarsT( _T("%miranda_userdata%"));
+	VARST ptszNewPath( _T("%miranda_userdata%"));
 
 	SHFILEOPSTRUCT file_op = {
 		NULL,
@@ -136,7 +132,6 @@ static void GetProfileDirectory(TCHAR *szPath, int cbPath)
 	SHFileOperation(&file_op);
 
 	_tcsncpy(szPath, ptszNewPath, cbPath);
-	mir_free(ptszNewPath);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -156,12 +151,8 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MUUID_YAMN_FORCECHECK, MIID_LAST};
-
-/////////////////////////////////////////////////////////////////////////////////////////
-
-#ifdef YAMN_DEBUG
-static char unknownCP[1500] = {0};
+#ifdef _DEBUG
+static TCHAR unknownCP[1500] = {0};
 #endif
 // The callback function
 BOOL CALLBACK EnumSystemCodePagesProc(LPTSTR cpStr)
@@ -174,21 +165,21 @@ BOOL CALLBACK EnumSystemCodePagesProc(LPTSTR cpStr)
     //Get Code Page name
     CPINFOEX info;
     if (GetCPInfoEx(cp, 0, &info)) {
-		#ifdef YAMN_DEBUG
+		#ifdef _DEBUG
 		BOOLEAN found = FALSE;
 		#endif
 		for (int i = 1;i<CPLENALL;i++) if (CodePageNamesAll[i].CP == cp) {
 			CodePageNamesAll[i].isValid = TRUE;
 			CPLENSUPP++;
-			#ifdef YAMN_DEBUG
+			#ifdef _DEBUG
 			found = TRUE;
 			#endif
 			break;
 		}
-		#ifdef YAMN_DEBUG
+		#ifdef _DEBUG
 		if (!found) {
-			strcat(unknownCP, info.CodePageName);
-			strcat(unknownCP, "\n");
+			_tcscat(unknownCP, info.CodePageName);
+			_tcscat(unknownCP, _T("\n"));
 		}
 		#endif
 	}
@@ -197,12 +188,7 @@ BOOL CALLBACK EnumSystemCodePagesProc(LPTSTR cpStr)
 
 void CheckMenuItems()
 {
-	CLISTMENUITEM clmi = { sizeof(clmi) };
-	clmi.flags = CMIM_FLAGS;
-	if ( !DBGetContactSettingByte(NULL, YAMN_DBMODULE, YAMN_SHOWMAINMENU, 1))
-		clmi.flags |= CMIF_HIDDEN;
-
-	CallService( MS_CLIST_MODIFYMENUITEM, ( WPARAM )hMenuItemMain, ( LPARAM )&clmi );
+	Menu_ShowItem(hMenuItemMain, db_get_b(NULL, YAMN_DBMODULE, YAMN_SHOWMAINMENU, 1) != 0);
 }
 
 int SystemModulesLoaded(WPARAM, LPARAM)
@@ -210,30 +196,27 @@ int SystemModulesLoaded(WPARAM, LPARAM)
 	//Insert "Check mail (YAMN)" item to Miranda's menu
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.position = 0xb0000000;
-	mi.flags = CMIF_ICONFROMICOLIB;
 	mi.icolibItem = g_GetIconHandle(0);
-	mi.pszName = "Check &mail (All Account)";
+	mi.pszName = LPGEN("Check &mail (All Account)");
 	mi.pszPopupName = NULL;//YAMN_DBMODULE;
 	mi.pszService = MS_YAMN_FORCECHECK;
 	hMenuItemMain = Menu_AddMainMenuItem(&mi);
 
-	mi.pszName = "Check &mail (This Account)";
+	mi.pszName = LPGEN("Check &mail (This Account)");
 	mi.pszContactOwner = YAMN_DBMODULE;
 	mi.pszService = MS_YAMN_CLISTCONTEXT;
 	hMenuItemCont = Menu_AddContactMenuItem(&mi);
 
 	mi.icolibItem = g_GetIconHandle(1);
-	mi.pszName = "Launch application";
+	mi.pszName = LPGEN("Launch application");
 	mi.pszContactOwner = YAMN_DBMODULE;
 	mi.pszService = MS_YAMN_CLISTCONTEXTAPP;
 	hMenuItemContApp = Menu_AddContactMenuItem(&mi);
 
 	CheckMenuItems();
 
-	if (ServiceExists(MS_FOLDERS_GET_PATH)) {
-		hAccountFolder = FoldersRegisterCustomPathT(YAMN_DBMODULE, YAMN_DBMODULE" Account Folder", UserDirectory);
+	if (hAccountFolder = FoldersRegisterCustomPathT(LPGEN("YAMN"), LPGEN("YAMN Account Folder"), UserDirectory))
 		FoldersGetCustomPathT(hAccountFolder, UserDirectory, MAX_PATH, UserDirectory);
-	}
 
 	RegisterPOP3Plugin(0, 0);
 	return 0;
@@ -275,17 +258,14 @@ void WINAPI g_ReleaseIcon( HICON hIcon )
 
 static void LoadPlugins()
 {
-	HANDLE hFind;
-	WIN32_FIND_DATA fd;
 	TCHAR szSearchPath[MAX_PATH];
-	TCHAR szPluginPath[MAX_PATH];
-	lstrcpy(szSearchPath, szMirandaDir);
-	lstrcat(szSearchPath, _T("\\Plugins\\YAMN\\*.dll"));
-	typedef INT_PTR (*LOADFILTERFCN)(MIRANDASERVICE GetYAMNFcn);
+	mir_sntprintf(szSearchPath, MAX_PATH, _T("%s\\Plugins\\YAMN\\*.dll"), szMirandaDir);
 
 	hDllPlugins = NULL;
 
-	if (INVALID_HANDLE_VALUE!=(hFind = FindFirstFile(szSearchPath, &fd))) {
+	WIN32_FIND_DATA fd;
+	HANDLE hFind = FindFirstFile(szSearchPath, &fd);
+	if (hFind != INVALID_HANDLE_VALUE) {
 		do {
 			//rewritten from Miranda sources... Needed because Win32 API has a bug in FindFirstFile, search is done for *.dlllllll... too
 			TCHAR *dot = _tcsrchr(fd.cFileName, '.');
@@ -293,21 +273,20 @@ static void LoadPlugins()
 				continue;
 
 			// we have a dot
-			int len = (int)lstrlen(fd.cFileName); // find the length of the string
+			int len = lstrlen(fd.cFileName); // find the length of the string
 			TCHAR* end = fd.cFileName+len; // get a pointer to the NULL
 			int safe = (end-dot)-1;	// figure out how many chars after the dot are "safe", not including NULL
 
-			if ((safe!=3) || (lstrcmpi(dot+1, _T("dll"))!=0)) //not bound, however the "dll" string should mean only 3 chars are compared
+			if ((safe != 3) || (lstrcmpi(dot+1, _T("dll")) != 0)) //not bound, however the "dll" string should mean only 3 chars are compared
 				continue;
 
-			HINSTANCE hDll;
-			LOADFILTERFCN LoadFilter;
+			TCHAR szPluginPath[MAX_PATH];
+			mir_sntprintf(szPluginPath, MAX_PATH,_T("%s\\Plugins\\YAMN\\%s"), szMirandaDir, fd.cFileName);
+			HINSTANCE hDll = LoadLibrary(szPluginPath);
+			if (hDll == NULL)
+				continue;
 
-			lstrcpy(szPluginPath, szMirandaDir);
-			lstrcat(szPluginPath, _T("\\Plugins\\YAMN\\"));
-			lstrcat(szPluginPath, fd.cFileName);
-			if ((hDll = LoadLibrary(szPluginPath)) == NULL) continue;
-			LoadFilter = (LOADFILTERFCN)GetProcAddress(hDll, "LoadFilter");
+			LOADFILTERFCN LoadFilter = (LOADFILTERFCN) GetProcAddress(hDll, "LoadFilter");
 			if (NULL == LoadFilter) {
 				FreeLibrary(hDll);
 				hDll = NULL;
@@ -332,19 +311,12 @@ static void LoadPlugins()
 
 extern "C" int __declspec(dllexport) Load(void)
 {
-	int i, k;
 	mir_getLP(&pluginInfo);
 
 	YAMN_STATUS = ID_STATUS_OFFLINE;
 
 	//	we get the Miranda Root Path
-	if (ServiceExists(MS_UTILS_PATHTOABSOLUTET))
-		CallService(MS_UTILS_PATHTOABSOLUTET, (WPARAM)_T("."), (LPARAM)szMirandaDir);
-	else {
-		GetModuleFileName(GetModuleHandle(NULL), szMirandaDir, MAX_PATH);
-		TCHAR* str2 = _tcsrchr(szMirandaDir, '\\');
-		if (str2!=NULL) *str2 = 0;
-	}
+	PathToAbsoluteT( _T("."), szMirandaDir);
 
 	// retrieve the current profile name
 	CallService(MS_DB_GETPROFILENAMET, (WPARAM)SIZEOF(ProfileName), (LPARAM)ProfileName);	//not to pass entire array to fcn
@@ -357,8 +329,8 @@ extern "C" int __declspec(dllexport) Load(void)
 	// Enumerate all the code pages available for the System Locale
 	EnumSystemCodePages(EnumSystemCodePagesProc, CP_INSTALLED);
 	CodePageNamesSupp = new _tcptable[CPLENSUPP];
-	for (i = 0, k = 0; i < CPLENALL; i++) {
-		if (CodePageNamesAll[i].isValid){
+	for (int i = 0, k = 0; i < CPLENALL; i++) {
+		if (CodePageNamesAll[i].isValid) {
 			CodePageNamesSupp[k] = CodePageNamesAll[i];
 			k++;
 	}	}
@@ -380,18 +352,18 @@ extern "C" int __declspec(dllexport) Load(void)
 	if (NULL == (ExitEV = CreateEvent(NULL, TRUE, FALSE, NULL)))
 		return 1;
 
-	PosX = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBPOSX, 0);
-	PosY = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBPOSY, 0);
-	SizeX = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBSIZEX, 800);
-	SizeY = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBSIZEY, 200);
+	PosX = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBPOSX, 0);
+	PosY = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBPOSY, 0);
+	SizeX = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBSIZEX, 800);
+	SizeY = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBSIZEY, 200);
 
-	HeadPosX = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBMSGPOSX, 0);
-	HeadPosY = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBMSGPOSY, 0);
-	HeadSizeX = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBMSGSIZEX, 690);
-	HeadSizeY = DBGetContactSettingDword(NULL, YAMN_DBMODULE, YAMN_DBMSGSIZEY, 300);
-	HeadSplitPos = DBGetContactSettingWord(NULL, YAMN_DBMODULE, YAMN_DBMSGPOSSPLIT, 250);
+	HeadPosX = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBMSGPOSX, 0);
+	HeadPosY = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBMSGPOSY, 0);
+	HeadSizeX = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBMSGSIZEX, 690);
+	HeadSizeY = db_get_dw(NULL, YAMN_DBMODULE, YAMN_DBMSGSIZEY, 300);
+	HeadSplitPos = db_get_w(NULL, YAMN_DBMODULE, YAMN_DBMSGPOSSPLIT, 250);
 
-	optDateTime = DBGetContactSettingByte(NULL, YAMN_DBMODULE, YAMN_DBTIMEOPTIONS, optDateTime);
+	optDateTime = db_get_b(NULL, YAMN_DBMODULE, YAMN_DBTIMEOPTIONS, optDateTime);
 
 	// Create new window queues for broadcast messages
 	YAMNVar.MessageWnds = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST, 0, 0);
@@ -401,7 +373,7 @@ extern "C" int __declspec(dllexport) Load(void)
 	hCurSplitNS = LoadCursor(NULL, IDC_SIZENS);
 	hCurSplitWE = LoadCursor(NULL, IDC_SIZEWE);
 
-#ifdef YAMN_DEBUG
+#ifdef _DEBUG
 	InitDebug();
 #endif
 
@@ -418,6 +390,7 @@ extern "C" int __declspec(dllexport) Load(void)
 
 	HOTKEYDESC hkd = {0};
 	hkd.cbSize = sizeof(hkd);
+	hkd.pszName = "YAMN_hotkey";
 	hkd.pszService = MS_YAMN_FORCECHECK;
 	hkd.pszSection = YAMN_DBMODULE;
 	hkd.pszDescription = LPGEN("Check mail");
@@ -425,7 +398,7 @@ extern "C" int __declspec(dllexport) Load(void)
 	Hotkey_Register(&hkd);
 
 	//Create thread that will be executed every second
-	if (!(SecTimer = SetTimer(NULL, 0, 1000, (TIMERPROC)TimerProc)))
+	if (!(SecTimer = SetTimer(NULL, 0, 1000, TimerProc)))
 		return 1;
 
 	return 0;
@@ -441,7 +414,7 @@ static void UnloadPlugins()
 			iDllPlugins --;
 		}
 	}
-	if (hDllPlugins){
+	if (hDllPlugins) {
 		free((void *)hDllPlugins);
 		hDllPlugins = NULL;
 	}
@@ -449,7 +422,7 @@ static void UnloadPlugins()
 
 extern "C" int __declspec(dllexport) Unload(void)
 {
-#ifdef YAMN_DEBUG
+#ifdef _DEBUG
 	UnInitDebug();
 #endif
 	DestroyCursor(hCurSplitNS);

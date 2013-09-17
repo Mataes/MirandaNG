@@ -32,7 +32,7 @@ PLUGININFOEX pluginInfo={
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {36753AE3-840B-4797-94A5-FD9F5852B942}
-	{ 0x36753ae3, 0x840b, 0x4797, { 0x94, 0xa5, 0xfd, 0x9f, 0x58, 0x52, 0xb9, 0x42 } } 
+	{0x36753ae3, 0x840b, 0x4797, {0x94, 0xa5, 0xfd, 0x9f, 0x58, 0x52, 0xb9, 0x42}} 
 };
 
 HINSTANCE hInst;
@@ -58,7 +58,7 @@ LIST<Dictionary> languages(1);
 
 // Functions ////////////////////////////////////////////////////////////////////////////
 
-extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) 
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) 
 {
 	hInst = hinstDLL;
 	return TRUE;
@@ -69,32 +69,26 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 	return &pluginInfo;
 }
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = { MIID_SPELLCHECKER, MIID_LAST };
-
-////////////////////////////////////////////////////////////////////////////////////////
-
 static int IconsChanged(WPARAM wParam, LPARAM lParam) 
 {
-	if ( ServiceExists(MS_MSG_MODIFYICON)) {
-		StatusIconData sid = { sizeof(sid) };
-		sid.szModule = MODULE_NAME;
-		sid.hIconDisabled = Skin_GetIcon("spellchecker_disabled");
-		sid.flags = MBF_HIDDEN;
+	StatusIconData sid = { sizeof(sid) };
+	sid.szModule = MODULE_NAME;
+	sid.hIconDisabled = Skin_GetIcon("spellchecker_disabled");
+	sid.flags = MBF_HIDDEN | MBF_TCHAR;
 
-		for (int i = 0; i < languages.getCount(); i++) {
-			sid.dwId = i;
+	for (int i = 0; i < languages.getCount(); i++) {
+		sid.dwId = i;
 
-			char tmp[128];
-			mir_snprintf(tmp, SIZEOF(tmp), "%s - " TCHAR_STR_PARAM, 
-				Translate("Spell Checker"), languages[i]->full_name);
-			sid.szTooltip = tmp;
+		TCHAR tmp[128];
+		mir_sntprintf(tmp, SIZEOF(tmp), _T("%s - %s"),
+			TranslateT("Spell Checker"), languages[i]->full_name);
+		sid.tszTooltip = tmp;
 
-			HICON hIcon = (opts.use_flags) ? Skin_GetIconByHandle(languages[i]->hIcolib) : Skin_GetIcon("spellchecker_enabled");
-			sid.hIcon = CopyIcon(hIcon);
-			Skin_ReleaseIcon(hIcon);
+		HICON hIcon = (opts.use_flags) ? Skin_GetIconByHandle(languages[i]->hIcolib) : Skin_GetIcon("spellchecker_enabled");
+		sid.hIcon = CopyIcon(hIcon);
+		Skin_ReleaseIcon(hIcon);
 
-			CallService(MS_MSG_MODIFYICON, 0, (LPARAM) &sid);
-		}
+		Srmm_ModifyIcon(NULL, &sid);
 	}
 
 	return 0;
@@ -102,12 +96,6 @@ static int IconsChanged(WPARAM wParam, LPARAM lParam)
 
 static int PreShutdown(WPARAM wParam, LPARAM lParam)
 {
-	if (ServiceExists(MS_MSG_REMOVEICON)) {
-		StatusIconData sid = { sizeof(sid) };
-		sid.szModule = MODULE_NAME;
-		CallService(MS_MSG_REMOVEICON, 0, (LPARAM) &sid);
-	}
-
 	mir_free(dictionariesFolder);
 	mir_free(customDictionariesFolder);
 	mir_free(flagsDllFolder);
@@ -123,27 +111,23 @@ static int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	CallService("DBEditorpp/RegisterSingleModule", (WPARAM) MODULE_NAME, 0);
 
 	// Folders plugin support
-	if ( ServiceExists(MS_FOLDERS_REGISTER_PATH)) {
-		hDictionariesFolder = FoldersRegisterCustomPathT(LPGEN("Spell Checker"), LPGEN("Dictionaries"), DICTIONARIES_FOLDER);
-
+	if (hDictionariesFolder = FoldersRegisterCustomPathT(LPGEN("Spell Checker"), LPGEN("Dictionaries"), DICTIONARIES_FOLDER)) {
 		dictionariesFolder = (TCHAR *) mir_alloc(sizeof(TCHAR) * MAX_PATH);
 		FoldersGetCustomPathT(hDictionariesFolder, dictionariesFolder, MAX_PATH, _T("."));
+	}
+	else dictionariesFolder = Utils_ReplaceVarsT(DICTIONARIES_FOLDER);
 
-		hCustomDictionariesFolder = FoldersRegisterCustomPathT(LPGEN("Spell Checker"), LPGEN("Custom Dictionaries"), CUSTOM_DICTIONARIES_FOLDER);
-
+	if (hCustomDictionariesFolder = FoldersRegisterCustomPathT(LPGEN("Spell Checker"), LPGEN("Custom Dictionaries"), CUSTOM_DICTIONARIES_FOLDER)) {
 		customDictionariesFolder = (TCHAR *) mir_alloc(sizeof(TCHAR) * MAX_PATH);
 		FoldersGetCustomPathT(hCustomDictionariesFolder, customDictionariesFolder, MAX_PATH, _T("."));
+	}
+	else customDictionariesFolder = Utils_ReplaceVarsT(CUSTOM_DICTIONARIES_FOLDER);
 		
-		hFlagsDllFolder = FoldersRegisterCustomPathT(LPGEN("Spell Checker"), LPGEN("Flags DLL"), FLAGS_DLL_FOLDER);
-
+	if (hFlagsDllFolder = FoldersRegisterCustomPathT(LPGEN("Spell Checker"), LPGEN("Flags DLL"), FLAGS_DLL_FOLDER)) {
 		flagsDllFolder = (TCHAR *) mir_alloc(sizeof(TCHAR) * MAX_PATH);
 		FoldersGetCustomPathT(hFlagsDllFolder, flagsDllFolder, MAX_PATH, _T("."));
 	}
-	else {
-		dictionariesFolder = Utils_ReplaceVarsT(DICTIONARIES_FOLDER);
-		customDictionariesFolder = Utils_ReplaceVarsT(CUSTOM_DICTIONARIES_FOLDER);
-		flagsDllFolder = Utils_ReplaceVarsT(FLAGS_DLL_FOLDER);
-	}
+	else flagsDllFolder = Utils_ReplaceVarsT(FLAGS_DLL_FOLDER);
 
 	InitOptions();
 	
@@ -219,30 +203,27 @@ static int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	CreateServiceFunction(MS_SPELLCHECKER_REMOVE_RICHEDIT, RemoveContactTextBoxService);
 	CreateServiceFunction(MS_SPELLCHECKER_SHOW_POPUP_MENU, ShowPopupMenuService);
 
-	if (ServiceExists(MS_MSG_ADDICON)) {
-		StatusIconData sid = { sizeof(sid) };
-		sid.szModule = MODULE_NAME;
-		sid.hIconDisabled = Skin_GetIcon("spellchecker_disabled");
-		sid.flags = MBF_HIDDEN;
+	StatusIconData sid = { sizeof(sid) };
+	sid.szModule = MODULE_NAME;
+	sid.hIconDisabled = Skin_GetIcon("spellchecker_disabled");
+	sid.flags = MBF_TCHAR | MBF_HIDDEN;
 
-		for (int i = 0; i < languages.getCount(); i++) {
-			sid.dwId = i;
+	for (int i = 0; i < languages.getCount(); i++) {
+		sid.dwId = i;
 
-			char tmp[128];
-			mir_snprintf(tmp, SIZEOF(tmp), "%s - " TCHAR_STR_PARAM, 
-				Translate("Spell Checker"), languages[i]->full_name);
-			sid.szTooltip = tmp;
+		TCHAR tmp[128];
+		mir_sntprintf(tmp, SIZEOF(tmp), _T("%s - %s"), 
+			TranslateT("Spell Checker"), languages[i]->full_name);
+		sid.tszTooltip = tmp;
 
-			HICON hIcon = (opts.use_flags) ? Skin_GetIconByHandle(languages[i]->hIcolib) : Skin_GetIcon("spellchecker_enabled");
-			sid.hIcon = CopyIcon(hIcon);
-			Skin_ReleaseIcon(hIcon);
+		HICON hIcon = (opts.use_flags) ? Skin_GetIconByHandle(languages[i]->hIcolib) : Skin_GetIcon("spellchecker_enabled");
+		sid.hIcon = CopyIcon(hIcon);
+		Skin_ReleaseIcon(hIcon);
 
-			CallService(MS_MSG_ADDICON, 0, (LPARAM) &sid);
-		}
+		Srmm_AddIcon(&sid);
 	}
 
-	HOTKEYDESC hkd = {0};
-	hkd.cbSize = sizeof(hkd);
+	HOTKEYDESC hkd = { sizeof(hkd) };
 	hkd.pszName = "Spell Checker/Toggle";
 	hkd.pszSection = LPGEN("Spell Checker");
 	hkd.pszDescription = LPGEN("Enable/disable spell checker");

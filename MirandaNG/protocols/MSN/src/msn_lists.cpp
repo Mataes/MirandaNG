@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2006-2012 Boris Krasnovskiy.
 Copyright (c) 2003-2005 George Hazan.
 Copyright (c) 2002-2003 Richard Hughes (original version).
@@ -33,7 +35,7 @@ void CMsnProto::Lists_Uninit(void)
 	DeleteCriticalSection(&csLists);
 }
 
-void  CMsnProto::Lists_Wipe(void)
+void CMsnProto::Lists_Wipe(void)
 {
 	EnterCriticalSection(&csLists);
 	contList.destroy();
@@ -43,7 +45,7 @@ void  CMsnProto::Lists_Wipe(void)
 bool CMsnProto::Lists_IsInList(int list, const char* email)
 {
 	EnterCriticalSection(&csLists);
-	
+
 	MsnContact* p = contList.find((MsnContact*)&email);
 	bool res = p != NULL;
 	if (res && list != -1)
@@ -168,9 +170,9 @@ unsigned CMsnProto::p2p_getMsgId(const char* wlid, int inc)
 	EnterCriticalSection(&csLists);
 	MsnPlace* p = Lists_GetPlace(wlid);
 
-	unsigned res = p && p->p2pMsgId ? p->p2pMsgId : MSN_GenRandom(); 
+	unsigned res = p && p->p2pMsgId ? p->p2pMsgId : MSN_GenRandom();
 	if (p) p->p2pMsgId = res + inc;
-	
+
 	LeaveCriticalSection(&csLists);
 	return res;
 }
@@ -218,104 +220,84 @@ int CMsnProto::Lists_Add(int list, int netId, const char* email, HANDLE hContact
 	return result;
 }
 
-void  CMsnProto::Lists_Remove(int list, const char* email)
+void CMsnProto::Lists_Remove(int list, const char* email)
 {
 	EnterCriticalSection(&csLists);
 	int i = contList.getIndex((MsnContact*)&email);
-	if (i != -1) 
+	if (i != -1)
 	{
 		MsnContact& p = contList[i];
 		p.list &= ~list;
 		if (list & LIST_PL) { mir_free(p.invite); p.invite = NULL; }
-		if (p.list == 0 && p.hContact == NULL) 
+		if (p.list == 0 && p.hContact == NULL)
 			contList.remove(i);
 	}
 	LeaveCriticalSection(&csLists);
 }
 
 
-void  CMsnProto::Lists_Populate(void)
+void CMsnProto::Lists_Populate(void)
 {
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL)
-	{
-		HANDLE hContactN = db_find_next(hContact);
-		if (MSN_IsMyContact(hContact)) 
-		{
-			char szEmail[MSN_MAX_EMAIL_LEN] = "";;
-			if (getStaticString(hContact, "wlid", szEmail, sizeof(szEmail)))
-				getStaticString(hContact, "e-mail", szEmail, sizeof(szEmail));
-
-			if (szEmail[0])
-			{
-				bool localList = getByte(hContact, "LocalList", 0) != 0;
-				if (localList) 
-					Lists_Add(LIST_LL, NETID_MSN, szEmail, hContact);
-				else
-					Lists_Add(0, NETID_UNKNOWN, szEmail, hContact);
-			}
+	HANDLE hContact = db_find_first(m_szModuleName);
+	while (hContact) {
+		HANDLE hNext = db_find_next(hContact, m_szModuleName);
+		char szEmail[MSN_MAX_EMAIL_LEN] = "";
+		if (getStaticString(hContact, "wlid", szEmail, sizeof(szEmail)))
+			getStaticString(hContact, "e-mail", szEmail, sizeof(szEmail));
+		if (szEmail[0]) {
+			bool localList = getByte(hContact, "LocalList", 0) != 0;
+			if (localList)
+				Lists_Add(LIST_LL, NETID_MSN, szEmail, hContact);
 			else
-				CallService(MS_DB_CONTACT_DELETE, (WPARAM)hContact, 0);
+				Lists_Add(0, NETID_UNKNOWN, szEmail, hContact);
 		}
-		hContact = hContactN;
+		else CallService(MS_DB_CONTACT_DELETE, (WPARAM)hContact, 0);
+		hContact = hNext;
 	}
 }
 
 void CMsnProto::MSN_CleanupLists(void)
 {
-//	EnterCriticalSection(&csLists);
-	for (int i=contList.getCount(); i--;)
-	{
+	for (int i=contList.getCount(); i--;) {
 		MsnContact& p = contList[i];
+		if (p.list & LIST_FL)
+			MSN_SetContactDb(p.hContact, p.email);
 
-		if (p.list & LIST_FL) MSN_SetContactDb(p.hContact, p.email);
-
-		if (p.list & LIST_PL)
-		{
+		if (p.list & LIST_PL) {
 			if (p.list & (LIST_AL | LIST_BL))
 				MSN_AddUser(NULL, p.email, p.netId, LIST_PL + LIST_REMOVE);
 			else
 				MSN_AddAuthRequest(p.email, p.nick, p.invite);
 		}
 
-//		if (p.list == LIST_RL)
-//			MSN_AddAuthRequest(p.email, NULL, p.invite);
-
-		if (p.hContact && !(p.list & (LIST_LL | LIST_FL | LIST_PL)) && p.list != LIST_RL)
-		{
-			int count = CallService(MS_DB_EVENT_GETCOUNT, (WPARAM)p.hContact, 0);
-			if (count) 
-			{
+		if (p.hContact && !(p.list & (LIST_LL | LIST_FL | LIST_PL)) && p.list != LIST_RL) {
+			int count = db_event_count(p.hContact);
+			if (count) {
 				TCHAR text[256];
-				TCHAR* sze = mir_a2t(p.email);
-				mir_sntprintf(text, SIZEOF(text), _T("Contact %s has been removed from the server.\nWould you like to keep it as \"Local Only\" contact to preserve history?"), sze);
+				TCHAR *sze = mir_a2t(p.email);
+				mir_sntprintf(text, SIZEOF(text), TranslateT("Contact %s has been removed from the server.\nWould you like to keep it as \"Local Only\" contact to preserve history?"), sze);
 				mir_free(sze);
-			   
+
 				TCHAR title[128];
 				mir_sntprintf(title, SIZEOF(title), TranslateT("%s protocol"), m_tszUserName);
 
-				if (MessageBox(NULL, text, title, MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND) == IDYES) 
-				{
+				if (MessageBox(NULL, text, title, MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND) == IDYES) {
 					MSN_AddUser(p.hContact, p.email, 0, LIST_LL);
 					setByte(p.hContact, "LocalList", 1);
 					continue;
 				}
 			}
 
-			if (!(p.list & (LIST_LL | LIST_FL)))
-			{
+			if (!(p.list & (LIST_LL | LIST_FL))) {
 				CallService(MS_DB_CONTACT_DELETE, (WPARAM)p.hContact, 0);
 				p.hContact = NULL;
 			}
-
 		}
-		
-		if (p.list & (LIST_LL | LIST_FL) && p.hContact)
-		{
+
+		if (p.list & (LIST_LL | LIST_FL) && p.hContact) {
 			TCHAR path[MAX_PATH];
 			MSN_GetCustomSmileyFileName(p.hContact, path, SIZEOF(path), "", 0);
-			if (path[0])
-			{
+			if (path[0]) {
 				SMADD_CONT cont;
 				cont.cbSize = sizeof(SMADD_CONT);
 				cont.hContact = p.hContact;
@@ -326,18 +308,16 @@ void CMsnProto::MSN_CleanupLists(void)
 			}
 		}
 	}
-//	LeaveCriticalSection(&csLists);
 }
 
 void CMsnProto::MSN_CreateContList(void)
 {
 	bool *used = (bool*)mir_calloc(contList.getCount()*sizeof(bool));
 
-	char cxml[8192]; 
-	size_t sz;
+	char cxml[8192];
 
-	sz = mir_snprintf(cxml , sizeof(cxml), "<ml l=\"1\">");
-		
+	size_t sz = mir_snprintf(cxml , sizeof(cxml), "<ml l=\"1\">");
+
 	EnterCriticalSection(&csLists);
 
 	for (int i=0; i < contList.getCount(); i++)
@@ -350,9 +330,9 @@ void CMsnProto::MSN_CreateContList(void)
 		for (int j=0; j < contList.getCount(); j++)
 		{
 			if (used[j]) continue;
-			
+
 			const MsnContact& C = contList[j];
-			
+
 			if (C.list == LIST_RL || C.list == LIST_PL || C.list == LIST_LL)
 			{
 				used[j] = true;
@@ -388,7 +368,7 @@ void CMsnProto::MSN_CreateContList(void)
 			}
 
 			if (used[j] && sz > 7400)
-			{ 
+			{
 				sz += mir_snprintf(cxml+sz, sizeof(cxml)-sz, "</%c></ml>", lastds ? 'd' : 't');
 				msnNsThread->sendPacket("ADL", "%d\r\n%s", sz, cxml);
 				sz = 0;
@@ -399,7 +379,7 @@ void CMsnProto::MSN_CreateContList(void)
 	}
 	LeaveCriticalSection(&csLists);
 
-	if (sz) 
+	if (sz)
 	{
 		sz += mir_snprintf(cxml+sz, sizeof(cxml)-sz,  "</ml>");
 		msnNsThread->sendPacket("ADL", "%d\r\n%s", sz, cxml);
@@ -419,11 +399,11 @@ static void AddPrivacyListEntries(HWND hwndList, CMsnProto *proto)
 
 	// Delete old info
 	HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_GETNEXTITEM, CLGN_ROOT, 0);
-	while (hItem) 
+	while (hItem)
 	{
 		HANDLE hItemNext = (HANDLE)SendMessage(hwndList, CLM_GETNEXTITEM, CLGN_NEXT, (LPARAM)hItem);
 
-		if (IsHContactInfo(hItem)) 
+		if (IsHContactInfo(hItem))
 			SendMessage(hwndList, CLM_DELETEITEM, (WPARAM)hItem, 0);
 
 		hItem = hItemNext;
@@ -485,7 +465,7 @@ static void SetAllContactIcons(HANDLE hItem, HWND hwndList, CMsnProto* proto)
 	if (hItem == NULL)
 		hItem = (HANDLE)SendMessage(hwndList, CLM_GETNEXTITEM, CLGN_ROOT, 0);
 
-	while (hItem) 
+	while (hItem)
 	{
 		HANDLE hItemN = (HANDLE)SendMessage(hwndList, CLM_GETNEXTITEM, CLGN_NEXT, (LPARAM)hItem);
 
@@ -528,7 +508,7 @@ static void SaveSettings(HANDLE hItem, HWND hwndList, CMsnProto* proto)
 	if (hItem == NULL)
 		hItem = (HANDLE)SendMessage(hwndList, CLM_GETNEXTITEM, CLGN_ROOT, 0);
 
-	while (hItem) 
+	while (hItem)
 	{
 		if (IsHContactGroup(hItem))
 		{
@@ -573,7 +553,7 @@ static void SaveSettings(HANDLE hItem, HWND hwndList, CMsnProto* proto)
 				{
 					CallService(MS_DB_CONTACT_DELETE, (WPARAM)hItem, 0);
 					MsnContact* msc = proto->Lists_Get(szEmail);
-					if (msc) msc->hContact = NULL; 
+					if (msc) msc->hContact = NULL;
 				}
 			}
 		}
@@ -583,7 +563,7 @@ static void SaveSettings(HANDLE hItem, HWND hwndList, CMsnProto* proto)
 
 INT_PTR CALLBACK DlgProcMsnServLists(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch(msg) 
+	switch(msg)
 	{
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
@@ -622,7 +602,7 @@ INT_PTR CALLBACK DlgProcMsnServLists(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 			SendMessage(hwndList, CLM_SETEXTRAIMAGELIST, 0, (LPARAM)hIml);
 			SendMessage(hwndList, CLM_SETEXTRACOLUMNS, 5, 0);
-			
+
 			ResetListOptions(hwndList);
 			EnableWindow(hwndList, ((CMsnProto*)lParam)->msnLoggedIn);
 		}
@@ -633,7 +613,7 @@ INT_PTR CALLBACK DlgProcMsnServLists(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 //		break;
 
 	case WM_COMMAND:
-		if (LOWORD(wParam) == IDC_LISTREFRESH) 
+		if (LOWORD(wParam) == IDC_LISTREFRESH)
 		{
 			HWND hwndList = GetDlgItem(hwndDlg, IDC_LIST);
 			SendMessage(hwndList, CLM_AUTOREBUILD, 0, 0);
@@ -657,10 +637,10 @@ INT_PTR CALLBACK DlgProcMsnServLists(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 		}
 		else if (nmc->hdr.idFrom == IDC_LIST)
 		{
-			switch (nmc->hdr.code) 
+			switch (nmc->hdr.code)
 			{
 			case CLN_NEWCONTACT:
-				if ((nmc->flags & (CLNF_ISGROUP | CLNF_ISINFO)) == 0) 
+				if ((nmc->flags & (CLNF_ISGROUP | CLNF_ISINFO)) == 0)
 					SetContactIcons(nmc->hItem, nmc->hdr.hwndFrom, proto);
 				break;
 

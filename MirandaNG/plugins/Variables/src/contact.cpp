@@ -16,8 +16,8 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+
 #include "variables.h"
-#include "contact.h"
 
 struct _tagType
 {
@@ -85,19 +85,16 @@ static int cacheSize = 0;
 static CRITICAL_SECTION csContactCache;
 
 static HANDLE hContactSettingChangedHook;
-static HANDLE hGetContactFromStringService;
 
 /*
 	converts a string into a CNF_ type
 */
-BYTE getContactInfoType(TCHAR* type) {
-
-	int i;
-
+BYTE getContactInfoType(TCHAR* type)
+{
 	if (type == NULL || _tcslen(type) == 0 )
 		return 0;
 
-	for ( i=0; i < SIZEOF(builtinCnfs); i++ )
+	for (int i=0; i < SIZEOF(builtinCnfs); i++ )
 		if (!_tcscmp( builtinCnfs[i].str, type ))
 			return builtinCnfs[i].cnfCode;
 
@@ -110,137 +107,100 @@ BYTE getContactInfoType(TCHAR* type) {
 TCHAR* getContactInfoT(BYTE type, HANDLE hContact)
 {
 	/* returns dynamic allocated buffer with info, or NULL if failed */
-	CONTACTINFO ci;
-	TCHAR *res = NULL, *szStatus;
-	char *szProto, protoname[128], szVal[16];
-	DBVARIANT dbv;
+	TCHAR *res = NULL;
+	char protoname[128], szVal[16];
+	PROTOACCOUNT *pa;
 
 	if (hContact == NULL)
 		return NULL;
 
-	szProto = GetContactProto(hContact);
+	char *szProto = GetContactProto(hContact);
 	if (szProto == NULL)
 		return NULL;
 
-	switch (type)
-	{
-		case CCNF_PROTOID:
-			return (TCHAR*)mir_a2t(szProto);
+	switch (type) {
+	case CCNF_PROTOID:
+		return mir_a2t(szProto);
 
-		case CCNF_ACCOUNT:
-			if (g_mirandaVersion < PLUGIN_MAKE_VERSION( 0,8,0,0 ))
+	case CCNF_ACCOUNT:
+		pa = ProtoGetAccount(szProto);
+		return pa ? mir_tstrdup(pa->tszAccountName) : NULL;
+
+	case CCNF_PROTOCOL:
+		if (CallProtoService(szProto, PS_GETNAME, (WPARAM)sizeof(protoname), (LPARAM)protoname))
+			return NULL;
+		return mir_a2t(protoname);
+
+	case CCNF_STATUS:
+		return mir_tstrdup((TCHAR*)CallService(
+			MS_CLIST_GETSTATUSMODEDESCRIPTION,
+			db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE),
+			GSMDF_UNICODE));
+
+	case CCNF_INTERNALIP:
+	case CCNF_EXTERNALIP:
+		{
+			DWORD ip = db_get_dw(hContact, szProto, (type == CCNF_INTERNALIP) ? "RealIP" : "IP", 0);
+			if (ip == 0)
 				return NULL;
-			{
-				PROTOACCOUNT* pa = ProtoGetAccount(szProto);
-				return pa ? mir_tstrdup(pa->tszAccountName) : NULL;
-			}
 
-		case CCNF_PROTOCOL:
-			if (CallProtoService(szProto, PS_GETNAME, (WPARAM)sizeof(protoname), (LPARAM)protoname))
-				return NULL;
-			return (TCHAR*)mir_a2t(protoname);
+			struct in_addr in;
+			in.s_addr = htonl(ip);
+			return mir_a2t( inet_ntoa(in));
+		}
 
-		case CCNF_STATUS:
-			szStatus = (TCHAR*)CallService(
-					MS_CLIST_GETSTATUSMODEDESCRIPTION,
-					(WPARAM)DBGetContactSettingWord(hContact, szProto, "Status", ID_STATUS_OFFLINE),
-					(LPARAM)GSMDF_UNICODE);
-			if (szStatus == NULL)
-				return NULL;
-			return mir_tstrdup(szStatus);
+	case CCNF_GROUP:
+		if ((res = db_get_tsa(hContact, "CList", "Group")) != NULL)
+			return res;
+		break;
 
-		case CCNF_INTERNALIP:
-		case CCNF_EXTERNALIP:
-			{
-				DWORD ip = DBGetContactSettingDword(hContact, szProto, (type == CCNF_INTERNALIP) ? "RealIP" : "IP", 0);
-				if (ip == 0)
-					return NULL;
-
-				struct in_addr in;
-				in.s_addr = htonl(ip);
-				char* dotted = inet_ntoa(in);
-				if (dotted == NULL)
-					return NULL;
-				return (TCHAR*)mir_a2t(dotted);
-			}
-
-		case CCNF_GROUP:
-			if (!DBGetContactSettingTString(hContact, "CList", "Group", &dbv))
-			{
-				res = (TCHAR*)mir_wstrdup(dbv.pwszVal);
-				DBFreeVariant(&dbv);
+	case CNF_UNIQUEID:
+		//UID for ChatRoom
+		if (db_get_b(hContact, szProto, "ChatRoom", 0) == 1)
+			if ((res = db_get_tsa(hContact, szProto, "ChatRoomID")) != NULL)
 				return res;
-			}
-			break;
 
-		case CNF_UNIQUEID:
-			//UID for ChatRoom
-			if (DBGetContactSettingByte(hContact, szProto, "ChatRoom", 0) == 1)
-			{
-				DBVARIANT dbv;
-				if (!DBGetContactSettingTString(hContact, szProto, "ChatRoomID", &dbv ))
-				{
-					res = mir_tstrdup( dbv.ptszVal );
-					DBFreeVariant( &dbv );
-					return res;
-
-				}
-			}
-
-			//UID for other contact
-			break;
+		//UID for other contact
+		break;
 	}
 
-	ZeroMemory(&ci,sizeof(CONTACTINFO));
-	ci.cbSize = sizeof(CONTACTINFO);
+	CONTACTINFO ci = { sizeof(ci) };
 	ci.hContact = hContact;
 	ci.dwFlag = type | CNF_UNICODE;
 	CallService(MS_CONTACT_GETCONTACTINFO, 0, (LPARAM)&ci);
 
 	memset(szVal, '\0', sizeof(szVal));
-	switch(ci.type)
-	{
-		case CNFT_BYTE:
-			if (type != CNF_GENDER)
-				return itot(ci.bVal);
+	switch(ci.type) {
+	case CNFT_BYTE:
+		if (type == CNF_GENDER) {
+			szVal[0] = (char)ci.bVal; szVal[1] = 0;
+			return mir_a2t(szVal);
+		}
+		return itot(ci.bVal);
 
-			szVal[0] = (char)ci.bVal;
-			return (TCHAR*)mir_a2t(szVal);
+	case CNFT_WORD:
+		return itot(ci.wVal);
 
-		case CNFT_WORD:
-			return itot(ci.wVal);
+	case CNFT_DWORD:
+		return itot(ci.dVal);
 
-		case CNFT_DWORD:
-			return itot(ci.dVal);
-
-		case CNFT_ASCIIZ:
-			if (ci.pszVal != NULL)
-			{
-				res = mir_tstrdup(ci.pszVal);
-				mir_free(ci.pszVal);
-			}
-			break;
+	case CNFT_ASCIIZ:
+		return ci.pszVal;
 	}
 
-	return res;
+	return NULL;
 }
 
 /*
 	MS_VARS_GETCONTACTFROMSTRING
 */
-int getContactFromString( CONTACTSINFO* ci )
+int getContactFromString(CONTACTSINFO *ci)
 {
 	/* service to retrieve a contact's HANDLE from a given string */
-	char *szProto;
-	TCHAR *szFind, *cInfo, *tszContact, *tszProto;
-	BOOL bMatch;
-	DBVARIANT dbv;
-	HANDLE hContact;
-	int count, i;
-
 	if (ci == NULL)
 		return -1;
 
+	TCHAR *tszContact;
 	if (ci->flags & CI_UNICODE)
 		tszContact = NEWTSTR_ALLOCA(ci->tszContact);
 	else {
@@ -252,173 +212,141 @@ int getContactFromString( CONTACTSINFO* ci )
 		return -1;
 
 	ci->hContacts = NULL;
-	count = 0;
+	int count = 0;
 	/* search the cache */
-	EnterCriticalSection(&csContactCache);
-	for (i=0;i<cacheSize;i++) {
-		if ((!_tcscmp(cce[i].tszContact, tszContact)) && (ci->flags == cce[i].flags)) {
-			/* found in cache */
-			ci->hContacts = ( HANDLE* )mir_alloc(sizeof(HANDLE));
-			if (ci->hContacts == NULL) {
-				LeaveCriticalSection(&csContactCache);
-				return -1;
+	{
+		mir_cslock lck(csContactCache);
+		for (int i=0; i < cacheSize; i++) {
+			if ((!_tcscmp(cce[i].tszContact, tszContact)) && (ci->flags == cce[i].flags)) {
+				/* found in cache */
+				ci->hContacts = (HANDLE*)mir_alloc(sizeof(HANDLE));
+				if (ci->hContacts == NULL)
+					return -1;
+
+				ci->hContacts[0] = cce[i].hContact;
+				return 1;
 			}
-			ci->hContacts[0] = cce[i].hContact;
-			LeaveCriticalSection(&csContactCache);
-			return 1;
 		}
 	}
 
-	LeaveCriticalSection(&csContactCache);
 	/* contact was not in cache, do a search */
-	hContact = db_find_first();
-	while (hContact != NULL) {
-		szFind = NULL;
-		bMatch = FALSE;
-		ZeroMemory(&dbv, sizeof(DBVARIANT));
-		szProto = GetContactProto(hContact);
-		if (szProto == NULL) {
-			hContact = db_find_next(hContact);
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+		char *szProto = GetContactProto(hContact);
+		if (szProto == NULL)
 			continue;
-		}
+
 		// <proto:id> (exact)
-		if (ci->flags&CI_PROTOID)
-		{
-			cInfo = getContactInfoT(CNF_UNIQUEID, hContact);
-			if (cInfo == NULL)
-			{
+		TCHAR *szFind = NULL;
+		BOOL bMatch = FALSE;
+		if (ci->flags & CI_PROTOID) {
+			TCHAR *cInfo = getContactInfoT(CNF_UNIQUEID, hContact);
+			if (cInfo == NULL) {
 				// <HANDLE:hContact>
-				cInfo = (TCHAR*)mir_alloc(32);
-				_stprintf(cInfo, _T("%p"), hContact);
-				szFind = (TCHAR*)mir_alloc((_tcslen(cInfo) + _tcslen(_T(PROTOID_HANDLE)) + 4)*sizeof(TCHAR));
-				if (szFind != NULL)
-				{
-					wsprintf(szFind, _T("<%s:%s>"), _T(PROTOID_HANDLE), cInfo);
+				size_t size = _tcslen(_T(PROTOID_HANDLE)) + 36;
+				szFind = (TCHAR *)mir_alloc(size * sizeof(TCHAR));
+				if (szFind != NULL) {
+					mir_sntprintf(szFind, size, _T("<%s:%p>"), _T(PROTOID_HANDLE), hContact);
 					if (!_tcsncmp(tszContact, szFind, _tcslen(tszContact)))
-					{
 						bMatch = TRUE;
-					}
-					mir_free(cInfo);
+
 					mir_free(szFind);
 				}
 			}
-			else
-			{
-				szFind = (TCHAR*)mir_alloc((_tcslen(cInfo) + strlen(szProto) + 4)*sizeof(TCHAR));
-				if (szFind != NULL)
-				{
-					tszProto = mir_a2t(szProto);
-
-					if ((tszProto != NULL) && (szFind != NULL))
-					{
-						wsprintf(szFind, _T("<%s:%s>"), tszProto, cInfo);
-						mir_free(cInfo);
-						mir_free(tszProto);
-						if (!_tcsncmp(tszContact, szFind, _tcslen(tszContact)))
-							bMatch = TRUE;
-
-						mir_free(szFind);
-					}
+			else {
+				size_t size = _tcslen(cInfo) + strlen(szProto) + 4;
+				szFind = (TCHAR *)mir_alloc(size * sizeof(TCHAR));
+				if (szFind != NULL) {
+					mir_sntprintf(szFind, size, _T("<%S:%s>"), szProto, cInfo);
+					mir_free(cInfo);
+					if (!_tcsncmp(tszContact, szFind, _tcslen(tszContact)))
+						bMatch = TRUE;
+					mir_free(szFind);
 				}
 			}
 		}
 		// id (exact)
-		if ((ci->flags&CI_UNIQUEID) && (!bMatch)) {
+		if ((ci->flags & CI_UNIQUEID) && (!bMatch)) {
 			szFind = getContactInfoT(CNF_UNIQUEID, hContact);
 			if (szFind != NULL) {
 				if (!_tcscmp(tszContact, szFind))
 					bMatch = TRUE;
-
 				mir_free(szFind);
 			}
 		}
 		// nick (not exact)
-		if ((ci->flags&CI_NICK) && (!bMatch)) {
+		if ((ci->flags & CI_NICK) && (!bMatch)) {
 			szFind = getContactInfoT(CNF_NICK, hContact);
 			if (szFind != NULL) {
 				if (!_tcscmp(tszContact, szFind))
 					bMatch = TRUE;
-
 				mir_free(szFind);
 			}
 		}
 		// list name (not exact)
-		if ((ci->flags&CI_LISTNAME) && (!bMatch)) {
+		if ((ci->flags & CI_LISTNAME) && (!bMatch)) {
 			szFind = getContactInfoT(CNF_DISPLAY, hContact);
 			if (szFind != NULL) {
 				if (!_tcscmp(tszContact, szFind))
 					bMatch = TRUE;
-
 				mir_free(szFind);
 			}
 		}
 		// firstname (exact)
-		if ((ci->flags&CI_FIRSTNAME) && (!bMatch)) {
+		if ((ci->flags & CI_FIRSTNAME) && (!bMatch)) {
 			szFind = getContactInfoT(CNF_FIRSTNAME, hContact);
 			if (szFind != NULL) {
-				if (!_tcscmp(tszContact, szFind)) {
+				if (!_tcscmp(tszContact, szFind))
 					bMatch = TRUE;
-				}
 				mir_free(szFind);
 			}
 		}
 		// lastname (exact)
-		if ((ci->flags&CI_LASTNAME) && (!bMatch)) {
+		if ((ci->flags & CI_LASTNAME) && (!bMatch)) {
 			szFind = getContactInfoT(CNF_LASTNAME, hContact);
 			if (szFind != NULL) {
-				if (!_tcscmp(tszContact, szFind)) {
+				if (!_tcscmp(tszContact, szFind))
 					bMatch = TRUE;
-				}
 				mir_free(szFind);
 			}
 		}
 		// email (exact)
-		if ((ci->flags&CI_EMAIL) && (!bMatch)) {
+		if ((ci->flags & CI_EMAIL) && (!bMatch)) {
 			szFind = getContactInfoT(CNF_EMAIL, hContact);
 			if (szFind != NULL) {
-				if (!_tcscmp(tszContact, szFind)) {
+				if (!_tcscmp(tszContact, szFind))
 					bMatch = TRUE;
-				}
 				mir_free(szFind);
 			}
 		}
 		// CNF_ (exact)
-		if ((ci->flags&CI_CNFINFO) && (!bMatch)) {
+		if ((ci->flags & CI_CNFINFO) && (!bMatch)) {
 			szFind = getContactInfoT((BYTE)(ci->flags&~(CI_CNFINFO|CI_TCHAR)), hContact);
 			if (szFind != NULL) {
-				if (!_tcscmp(tszContact, szFind)) {
+				if (!_tcscmp(tszContact, szFind))
 					bMatch = TRUE;
-				}
 				mir_free(szFind);
 			}
 		}
 		if (bMatch) {
-			ci->hContacts = ( HANDLE* )mir_realloc(ci->hContacts, (count+1)*sizeof(HANDLE));
-			if (ci->hContacts == NULL) {
-
+			ci->hContacts = (HANDLE*)mir_realloc(ci->hContacts, (count+1)*sizeof(HANDLE));
+			if (ci->hContacts == NULL)
 				return -1;
-			}
+
 			ci->hContacts[count] = hContact;
 			count += 1;
 		}
-		hContact=db_find_next(hContact);
 	}
 
 	if (count == 1) { /* cache the found result */
-		EnterCriticalSection(&csContactCache);
-		cce = ( CONTACTCE* )mir_realloc(cce, (cacheSize+1)*sizeof(CONTACTCE));
-		if (cce == NULL) {
-			LeaveCriticalSection(&csContactCache);
-			return count;
+		mir_cslock lck(csContactCache);
+		cce = (CONTACTCE*)mir_realloc(cce, (cacheSize+1)*sizeof(CONTACTCE));
+		if (cce != NULL) {
+			cce[cacheSize].hContact = ci->hContacts[0];
+			cce[cacheSize].flags = ci->flags;
+			cce[cacheSize].tszContact = mir_tstrdup(tszContact);
+			if (cce[cacheSize].tszContact != NULL)
+				cacheSize += 1;
 		}
-
-		cce[cacheSize].hContact = ci->hContacts[0];
-		cce[cacheSize].flags = ci->flags;
-		cce[cacheSize].tszContact = mir_tstrdup(tszContact);
-		if (cce[cacheSize].tszContact != NULL)
-			cacheSize += 1;
-
-		LeaveCriticalSection(&csContactCache);
 	}
 
 	return count;
@@ -427,27 +355,24 @@ int getContactFromString( CONTACTSINFO* ci )
 /* keep cache consistent */
 static int contactSettingChanged(WPARAM wParam, LPARAM lParam)
 {
-	int i;
-	DBCONTACTWRITESETTING *dbw;
-	char *szProto, *uid;
+	DBCONTACTWRITESETTING *dbw = (DBCONTACTWRITESETTING*)lParam;
+	HANDLE hContact = (HANDLE) wParam;
 
-	uid = NULL;
-	EnterCriticalSection(&csContactCache);
-	for (i=0;i<cacheSize;i++) {
-		if ((HANDLE)wParam != cce[i].hContact && (cce[i].flags & CI_CNFINFO) == 0 )
+	mir_cslock lck(csContactCache);
+	for (int i=0; i < cacheSize; i++) {
+		if (hContact != cce[i].hContact && (cce[i].flags & CI_CNFINFO) == 0 )
 			continue;
 
-		dbw = (DBCONTACTWRITESETTING*)lParam;
-		szProto = GetContactProto((HANDLE)wParam);
+		char *szProto = GetContactProto(hContact);
 		if (szProto == NULL)
 			continue;
 
-		uid = (char*)CallProtoService(szProto,PS_GETCAPS,PFLAG_UNIQUEIDSETTING,0);
-		if (((!strcmp(dbw->szSetting, "Nick")) && (cce[i].flags&CI_NICK)) ||
-			 ((!strcmp(dbw->szSetting, "FirstName")) && (cce[i].flags&CI_FIRSTNAME)) ||
-			 ((!strcmp(dbw->szSetting, "LastName")) && (cce[i].flags&CI_LASTNAME)) ||
-			 ((!strcmp(dbw->szSetting, "e-mail")) && (cce[i].flags&CI_EMAIL)) ||
-			 ((!strcmp(dbw->szSetting, "MyHandle")) && (cce[i].flags&CI_LISTNAME)) ||
+		char *uid = (char*)CallProtoService(szProto,PS_GETCAPS,PFLAG_UNIQUEIDSETTING,0);
+		if (((!strcmp(dbw->szSetting, "Nick")) && (cce[i].flags & CI_NICK)) ||
+			 ((!strcmp(dbw->szSetting, "FirstName")) && (cce[i].flags & CI_FIRSTNAME)) ||
+			 ((!strcmp(dbw->szSetting, "LastName")) && (cce[i].flags & CI_LASTNAME)) ||
+			 ((!strcmp(dbw->szSetting, "e-mail")) && (cce[i].flags & CI_EMAIL)) ||
+			 ((!strcmp(dbw->szSetting, "MyHandle")) && (cce[i].flags & CI_LISTNAME)) ||
 			 (cce[i].flags & CI_CNFINFO) != 0 || // lazy; always invalidate CNF info cache entries
 			 (( ((INT_PTR)uid != CALLSERVICE_NOTFOUND) && (uid != NULL)) && (!strcmp(dbw->szSetting, uid)) && (cce[i].flags & CI_UNIQUEID)))
 		{
@@ -466,26 +391,18 @@ static int contactSettingChanged(WPARAM wParam, LPARAM lParam)
 			break;
 		}
 	}
-	LeaveCriticalSection(&csContactCache);
 	return 0;
-}
-
-static INT_PTR getContactFromStringSvc( WPARAM wParam, LPARAM lParam)
-{
-	return getContactFromString(( CONTACTSINFO* )wParam );
 }
 
 int initContactModule()
 {
 	InitializeCriticalSection(&csContactCache);
 	hContactSettingChangedHook = HookEvent(ME_DB_CONTACT_SETTINGCHANGED, contactSettingChanged);
-	hGetContactFromStringService = CreateServiceFunction(MS_VARS_GETCONTACTFROMSTRING, getContactFromStringSvc);
 	return 0;
 }
 
 int deinitContactModule()
 {
-	DestroyServiceFunction(hGetContactFromStringService);
 	UnhookEvent(hContactSettingChangedHook);
 	DeleteCriticalSection(&csContactCache);
 	return 0;
@@ -495,29 +412,15 @@ int deinitContactModule()
 // result must be freed
 TCHAR *encodeContactToString(HANDLE hContact)
 {
-	char *szProto;
-	TCHAR *tszUniqueId, *tszResult, *tszProto;
-	DBVARIANT dbv;
-
-	ZeroMemory(&dbv, sizeof(DBVARIANT));
-	szProto = GetContactProto(hContact);
-	tszUniqueId = getContactInfoT(CNF_UNIQUEID, hContact);
+	char *szProto = GetContactProto(hContact);
+	TCHAR *tszUniqueId = getContactInfoT(CNF_UNIQUEID, hContact);
 	if (szProto == NULL || tszUniqueId == NULL)
 		return NULL;
 
-	tszResult = (TCHAR*)mir_calloc((_tcslen(tszUniqueId) + strlen(szProto) + 4) * sizeof(TCHAR));
-	if (tszResult == NULL)
-		return NULL;
-
-	tszProto = mir_a2t(szProto);
-	
-	if (tszProto == NULL)
-		return NULL;
-
-	wsprintf(tszResult, _T("<%s:%s>"), tszProto, tszUniqueId);
-
-	mir_free(tszProto);
-
+	size_t size = _tcslen(tszUniqueId) + strlen(szProto) + 4;
+	TCHAR *tszResult = (TCHAR *)mir_calloc(size * sizeof(TCHAR));
+	if (tszResult)
+		mir_sntprintf(tszResult, size, _T("<%S:%s>"), szProto, tszUniqueId);
 	return tszResult;
 }
 
@@ -525,26 +428,21 @@ TCHAR *encodeContactToString(HANDLE hContact)
 // returns INVALID_HANDLE_VALUE in case of an error.
 HANDLE *decodeContactFromString(TCHAR *tszContact)
 {
-	int count;
-	HANDLE hContact;
-	CONTACTSINFO ci;
-
-	hContact = INVALID_HANDLE_VALUE;
-	ZeroMemory(&ci, sizeof(CONTACTSINFO));
-	ci.cbSize = sizeof(CONTACTSINFO);
+	HANDLE hContact = INVALID_HANDLE_VALUE;
+	CONTACTSINFO ci = { sizeof(ci) };
 	ci.tszContact = tszContact;
 	ci.flags = CI_PROTOID|CI_TCHAR;
-	count = getContactFromString( &ci );
+	int count = getContactFromString( &ci );
 	if (count != 1) {
 		if (ci.hContacts != NULL)
 			mir_free(ci.hContacts);
-
-		return ( HANDLE* )hContact;
+		return (HANDLE*)hContact;
 	}
+
 	if (ci.hContacts != NULL) {
 		hContact = ci.hContacts[0];
 		mir_free(ci.hContacts);
 	}
 
-	return ( HANDLE* )hContact;
+	return (HANDLE*)hContact;
 }

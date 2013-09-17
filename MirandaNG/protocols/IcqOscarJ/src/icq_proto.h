@@ -37,23 +37,17 @@
 
 #define XSTATUS_COUNT 86
 
-struct CIcqProto;
-typedef void    ( __cdecl CIcqProto::*IcqThreadFunc )( void* );
-typedef int     ( __cdecl CIcqProto::*IcqEventFunc )( WPARAM, LPARAM );
-typedef INT_PTR ( __cdecl CIcqProto::*IcqServiceFunc )( WPARAM, LPARAM );
-typedef INT_PTR ( __cdecl CIcqProto::*IcqServiceFuncParam )( WPARAM, LPARAM, LPARAM );
-
 // for InfoUpdate
 struct userinfo
 {
-  DWORD dwUin;
+	DWORD dwUin;
 	HANDLE hContact;
-  time_t queued;
+	time_t queued;
 };
 
-struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
+struct CIcqProto : public PROTO<CIcqProto>
 {
-				CIcqProto( const char*, const TCHAR* );
+				CIcqProto(const char*, const TCHAR*);
 				~CIcqProto();
 
 	//====================================================================================
@@ -76,7 +70,6 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	virtual	int    __cdecl FileResume( HANDLE hTransfer, int* action, const TCHAR** szFilename );
 
 	virtual	DWORD_PTR __cdecl GetCaps( int type, HANDLE hContact = NULL );
-	virtual	HICON  __cdecl GetIcon( int iconIndex );
 	virtual	int    __cdecl GetInfo( HANDLE hContact, int infoType );
 
 	virtual	HANDLE __cdecl SearchBasic( const PROTOCHAR *id );
@@ -153,12 +146,12 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	int  __cdecl OnPreBuildStatusMenu( WPARAM, LPARAM );
 
 	//====| Data |========================================================================
-	IcqIconHandle m_hIconProtocol;
 	HANDLE m_hServerNetlibUser, m_hDirectNetlibUser;
 
 	BYTE m_bGatewayMode;
 	BYTE m_bSecureLogin;
 	BYTE m_bSecureConnection;
+	BYTE m_bLegacyFix;
 	BYTE m_bAimEnabled;
 	BYTE m_bUtfEnabled;
 	WORD m_wAnsiCodepage;
@@ -271,8 +264,6 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	void   icq_sendXtrazResponseDirect(HANDLE hContact, WORD wCookie, char* szBody, int nBodyLen, WORD wType);
 
 	//----| fam_01service.cpp |-----------------------------------------------------------
-	HANDLE m_hNotifyNameInfoEvent;
-
 	void   handleServiceFam(BYTE *pBuffer, WORD wBufferLength, snac_header *pSnacHeader, serverthread_info *info);
 	char*  buildUinList(int subtype, WORD wMaxLen, HANDLE *hContactResume);
 	void   sendEntireListServ(WORD wFamily, WORD wSubtype, int listType);
@@ -431,18 +422,12 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 
 	//----| icq_db.cpp |------------------------------------------------------------------
 	HANDLE AddEvent(HANDLE hContact, WORD wType, DWORD dwTime, DWORD flags, DWORD cbBlob, PBYTE pBlob);
-	void   CreateResidentSetting(const char* szSetting);
 	HANDLE FindFirstContact();
 	HANDLE FindNextContact(HANDLE hContact);
 	int    IsICQContact(HANDLE hContact);
 
 	int    getSetting(HANDLE hContact, const char *szSetting, DBVARIANT *dbv);
-	BYTE   getSettingByte(HANDLE hContact, const char *szSetting, BYTE byDef);
-	WORD   getSettingWord(HANDLE hContact, const char *szSetting, WORD wDef);
-	DWORD  getSettingDword(HANDLE hContact, const char *szSetting, DWORD dwDef);
 	double getSettingDouble(HANDLE hContact, const char *szSetting, double dDef);
-	int    getSettingString(HANDLE hContact, const char *szSetting, DBVARIANT *dbv);
-	int    getSettingStringW(HANDLE hContact, const char *szSetting, DBVARIANT *dbv);
 	int    getSettingStringStatic(HANDLE hContact, const char *szSetting, char *dest, int dest_len);
 	char*  getSettingStringUtf(HANDLE hContact, const char *szModule, const char *szSetting, char *szDef);
 	char*  getSettingStringUtf(HANDLE hContact, const char *szSetting, char *szDef);
@@ -451,16 +436,7 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	WORD   getContactStatus(HANDLE hContact);
 	char*  getContactCListGroup(HANDLE hContact);
 
-	int    deleteSetting(HANDLE hContact, const char *szSetting);
-
-	int    setSettingByte(HANDLE hContact, const char *szSetting, BYTE byValue);
-	int    setSettingWord(HANDLE hContact, const char *szSetting, WORD wValue);
-	int    setSettingDword(HANDLE hContact, const char *szSetting, DWORD dwValue);
 	int    setSettingDouble(HANDLE hContact, const char *szSetting, double dValue);
-	int    setSettingString(HANDLE hContact, const char *szSetting, const char *szValue);
-	int    setSettingStringW(HANDLE hContact, const char *szSetting, const WCHAR *wszValue);
-	int    setSettingStringUtf(HANDLE hContact, const char *szModule, const char *szSetting, const char *szValue);
-	int    setSettingStringUtf(HANDLE hContact, const char *szSetting, const char *szValue);
 	int    setSettingBlob(HANDLE hContact, const char *szSetting, const BYTE *pValue, const int cbValue);
 	int    setContactHidden(HANDLE hContact, BYTE bHidden);
 	void   setStatusMsgVar(HANDLE hContact, char* szStatusMsg, bool isAnsi);
@@ -554,7 +530,7 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	BOOL   unpackUID(BYTE **ppBuf, WORD *pwLen, DWORD *pdwUIN, uid_str *ppszUID);
 
 	//----| icq_popups.cpp |--------------------------------------------------------------
-	int    ShowPopUpMsg(HANDLE hContact, const char *szTitle, const char *szMsg, BYTE bType);
+	int    ShowPopupMsg(HANDLE hContact, const char *szTitle, const char *szMsg, BYTE bType);
 
 	//----| icq_proto.cpp |--------------------------------------------------------------
 	void   __cdecl CheekySearchThread( void* );
@@ -702,7 +678,6 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	void   resetServContactAuthState(HANDLE hContact, DWORD dwUin);
 
 	void   FlushSrvGroupsCache();
-	int    getCListGroupHandle(const char *szGroup);
 	int    getCListGroupExists(const char *szGroup);
 	int    moveContactToCListGroup(HANDLE hContact, const char *szGroup); /// TODO: this should be DB function
 
@@ -814,8 +789,7 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	HANDLE hHookExtraIconsRebuild;
 	HANDLE hHookStatusBuild;
 	HANDLE hHookExtraIconsApply;
-
-	HANDLE hXStatusItems[XSTATUS_COUNT + 1];
+	HGENMENU hXStatusItems[XSTATUS_COUNT + 1];
 
 	void   InitXStatusItems(BOOL bAllowStatus);
 	BYTE   getContactXStatus(HANDLE hContact);
@@ -894,7 +868,6 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	int    StringToListItemId(const char *szSetting,int def);
 
 	//----| utilities.cpp |---------------------------------------------------------------
-	int    BroadcastAck(HANDLE hContact,int type,int result,HANDLE hProcess,LPARAM lParam);
 	char*  ConvertMsgToUserSpecificAnsi(HANDLE hContact, const char* szMsg);
 
 	char*  GetUserStoredPassword(char *szBuffer, int cbSize);
@@ -904,16 +877,8 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	DWORD  ReportGenericSendError(HANDLE hContact, int nType, const char* szErrorMsg);
 	void   SetCurrentStatus(int nStatus);
 
-	void   ForkThread( IcqThreadFunc pFunc, void* arg );
-	HANDLE ForkThreadEx( IcqThreadFunc pFunc, void* arg, UINT* threadID = NULL );
-
 	void   __cdecl ProtocolAckThread(icq_ack_args* pArguments);
 	void   SendProtoAck(HANDLE hContact, DWORD dwCookie, int nAckResult, int nAckType, char* pszMessage);
-
-	HANDLE CreateProtoEvent(const char* szEvent);
-	void   CreateProtoService(const char* szService, IcqServiceFunc serviceProc);
-	void   CreateProtoServiceParam(const char* szService, IcqServiceFuncParam serviceProc, LPARAM lParam);
-	HANDLE HookProtoEvent(const char* szEvent, IcqEventFunc pFunc);
 
 	int    NetLog_Server(const char *fmt,...);
 	int    NetLog_Direct(const char *fmt,...);
@@ -955,7 +920,6 @@ struct CIcqProto : public PROTO_INTERFACE, public MZeroedObject
 	BOOL   writeDbInfoSettingByteWithTable(HANDLE hContact, const char *szSetting, const FieldNamesItem *table, char **buf, WORD* pwLength);
 
 	void   writeDbInfoSettingTLVStringUtf(HANDLE hContact, const char *szSetting, oscar_tlv_chain *chain, WORD wTlv);
-	void   writeDbInfoSettingTLVString(HANDLE hContact, const char *szSetting, oscar_tlv_chain *chain, WORD wTlv);
 	void   writeDbInfoSettingTLVWord(HANDLE hContact, const char *szSetting, oscar_tlv_chain *chain, WORD wTlv);
 	void   writeDbInfoSettingTLVByte(HANDLE hContact, const char *szSetting, oscar_tlv_chain *chain, WORD wTlv);
 	void   writeDbInfoSettingTLVDouble(HANDLE hContact, const char *szSetting, oscar_tlv_chain *chain, WORD wTlv);

@@ -1,5 +1,5 @@
 /*
-   Splash Screen Plugin for Miranda-IM (www.miranda-im.org)
+   Splash Screen Plugin for Miranda NG (www.miranda-ng.org)
    (c) 2004-2007 nullbie, (c) 2005-2007 Thief
 
    This program is free software; you can redistribute it and/or modify
@@ -15,42 +15,30 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-   File name      : $URL: http://svn.miranda.im/mainrepo/splashscreen/trunk/src/headers.h $
-   Revision       : $Rev: 1587 $
-   Last change on : $Date: 2010-04-09 14:01:30 +0400 (Пт, 09 апр 2010) $
-   Last change by : $Author: Thief $
 */
 
 #ifndef HEADERS_H
 #define HEADERS_H
 
-#define MIRANDA_VER    0x0A00
-
 #define _WIN32_WINNT 0x0500
 #define WINVER 0x0400
 #define AC_SRC_ALPHA  0x01
-#define OEMRESOURCE
 #define _CRT_SECURE_NO_DEPRECATE
 
 #include <windows.h>
-#include <stdio.h>
-#include <commctrl.h>
+#include <tchar.h>
 #include <time.h>
-#include <mmsystem.h>
+#include <dshow.h>
 
-// Miranda API headers
 #include <win2k.h>
 #include <newpluginapi.h>
 #include <m_database.h>
 #include <m_options.h>
-#include <m_utils.h>
 #include <m_langpack.h>
-#include <m_system.h>
 #include <m_png.h>
-#include "m_splash.h"
 
-// Common headers
+#include <m_splash.h>
+
 #include "version.h"
 #include "resource.h"
 #include "bitmap_funcs.h"
@@ -73,14 +61,11 @@ struct SPLASHOPTS
 {
 	byte active;
 	byte playsnd;
-	byte loopsnd;
-	byte runonce;
 	byte fadein;
 	byte fadeout;
-	byte inheritGS;
+	byte inheritGS; //???
 	byte random;
 	byte showversion;
-	byte fontsize;
 	int showtime;
 	int fosteps;
 	int fisteps;
@@ -95,16 +80,13 @@ extern BOOL bserviceinvoked, bmodulesloaded, png2dibavail;
 extern HANDLE hSplashThread;
 extern HINSTANCE hInst;
 
-extern BOOL (WINAPI *MyUpdateLayeredWindow)
-   (HWND hwnd, HDC hdcDST, POINT *pptDst, SIZE *psize, HDC hdcSrc, POINT *pptSrc,
-    COLORREF crKey, BLENDFUNCTION *pblend, DWORD dwFlags);
 // png2dib interface
 typedef BOOL ( *pfnConvertPng2dib )( char*, size_t, BITMAPINFOHEADER** );
 extern pfnConvertPng2dib png2dibConvertor;
 
 extern int OptInit(WPARAM wParam, LPARAM lParam);
 extern BOOL ShowSplash(BOOL bpreview);
-extern VOID ReadIniConfig();
+extern VOID ReadDbConfig();
 extern INT_PTR ShowSplashService(WPARAM wparam,LPARAM lparam);
 #ifdef _DEBUG
 	extern INT_PTR TestService(WPARAM wParam,LPARAM lParam);

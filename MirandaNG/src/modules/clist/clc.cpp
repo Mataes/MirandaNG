@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "clc.h"
 
@@ -35,8 +36,6 @@ static BOOL bModuleInitialized = FALSE;
 static HANDLE hClcWindowList;
 static HANDLE hShowInfoTipEvent;
 HANDLE hHideInfoTipEvent;
-static HANDLE hAckHook;
-static HANDLE hClcSettingsChanged;
 
 int g_IconWidth, g_IconHeight;
 
@@ -189,7 +188,7 @@ static int ClcIconsChanged(WPARAM, LPARAM)
 
 static INT_PTR SetInfoTipHoverTime(WPARAM wParam, LPARAM)
 {
-	DBWriteContactSettingWord(NULL, "CLC", "InfoTipHoverTime", (WORD) wParam);
+	db_set_w(NULL, "CLC", "InfoTipHoverTime", (WORD) wParam);
 	cli.pfnClcBroadcast(INTM_SETINFOTIPHOVERTIME, wParam, 0);
 	return 0;
 }
@@ -222,12 +221,12 @@ int LoadCLCModule(void)
 
 	HookEvent(ME_SYSTEM_MODULESLOADED, ClcModulesLoaded);
 	HookEvent(ME_PROTO_ACCLISTCHANGED, ClcAccountsChanged);
-	hClcSettingsChanged = HookEvent(ME_DB_CONTACT_SETTINGCHANGED, ClcSettingChanged);
+	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, ClcSettingChanged);
 	HookEvent(ME_DB_CONTACT_ADDED, ClcContactAdded);
 	HookEvent(ME_DB_CONTACT_DELETED, ClcContactDeleted);
 	HookEvent(ME_CLIST_CONTACTICONCHANGED, ClcContactIconChanged);
 	HookEvent(ME_SKIN_ICONSCHANGED, ClcIconsChanged);
-	hAckHook = (HANDLE) HookEvent(ME_PROTO_ACK, ClcProtoAck);
+	HookEvent(ME_PROTO_ACK, ClcProtoAck);
 
 	InitCustomMenus();
 	return 0;
@@ -237,15 +236,12 @@ void UnloadClcModule()
 {
 	if ( !bModuleInitialized) return;
 
-	UnhookEvent(hAckHook);
-	UnhookEvent(hClcSettingsChanged);
-
 	mir_free(cli.clcProto);
 
 	FreeDisplayNameCache();
 
 	UninitCustomMenus();
-	UnitGenMenu();	
+	UnitGenMenu();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -520,7 +516,7 @@ LRESULT CALLBACK fnContactListControlWndProc(HWND hwnd, UINT msg, WPARAM wParam,
 			// this means an offline msg is flashing, so the contact should be shown
 			DWORD style = GetWindowLongPtr(hwnd, GWL_STYLE);
 			shouldShow = (style & CLS_SHOWHIDDEN || !db_get_b((HANDLE)wParam, "CList", "Hidden", 0))
-				&& ( !cli.pfnIsHiddenMode(dat, status) || CallService(MS_CLIST_GETCONTACTICON, wParam, 0) != lParam); 
+				&& ( !cli.pfnIsHiddenMode(dat, status) || CallService(MS_CLIST_GETCONTACTICON, wParam, 0) != lParam);
 
 			contact = NULL;
 			group = NULL;
@@ -589,7 +585,7 @@ LRESULT CALLBACK fnContactListControlWndProc(HWND hwnd, UINT msg, WPARAM wParam,
 	case INTM_NOTONLISTCHANGED:
 		if ( !cli.pfnFindItem(hwnd, dat, (HANDLE)wParam, &contact, NULL, NULL))
 			break;
-		
+
 		if (contact->type == CLCIT_CONTACT) {
 			DBCONTACTWRITESETTING *dbcws = (DBCONTACTWRITESETTING *) lParam;
 			if (dbcws->value.type == DBVT_DELETED || dbcws->value.bVal == 0)
@@ -661,7 +657,7 @@ LRESULT CALLBACK fnContactListControlWndProc(HWND hwnd, UINT msg, WPARAM wParam,
 		{
 			PAINTSTRUCT ps;
 			HDC hdc = BeginPaint(hwnd, &ps);
-			/* we get so many cli.pfnInvalidateRect()'s that there is no point painting, 
+			/* we get so many cli.pfnInvalidateRect()'s that there is no point painting,
 			Windows in theory shouldn't queue up WM_PAINTs in this case but it does so
 			we'll just ignore them */
 			if (IsWindowVisible(hwnd))
@@ -1231,7 +1227,7 @@ LRESULT CALLBACK fnContactListControlWndProc(HWND hwnd, UINT msg, WPARAM wParam,
 			if (!dat->filterSearch)
 				dat->szQuickSearch[0] = 0;
 
-			POINT pt = { LOWORD(lParam), HIWORD(lParam) };
+			POINT pt = { (short) LOWORD(lParam), (short) HIWORD(lParam) };
 			if (pt.x == -1 && pt.y == -1) {
 				dat->selection = cli.pfnGetRowByIndex(dat, dat->selection, &contact, NULL);
 				if (dat->selection != -1)
@@ -1303,7 +1299,7 @@ LRESULT CALLBACK fnContactListControlWndProc(HWND hwnd, UINT msg, WPARAM wParam,
 		case POPUP_GROUPHIDEOFFLINE:
 			if (contact->type != CLCIT_GROUP)
 				break;
-			CallService(MS_CLIST_GROUPSETFLAGS, contact->groupId, 
+			CallService(MS_CLIST_GROUPSETFLAGS, contact->groupId,
 				MAKELPARAM(contact->group->hideOffline ? 0 : GROUPF_HIDEOFFLINE, GROUPF_HIDEOFFLINE));
 			break;
 		}

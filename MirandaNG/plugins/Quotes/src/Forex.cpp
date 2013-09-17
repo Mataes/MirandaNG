@@ -3,33 +3,6 @@
 
 #include "stdafx.h"
 
-#pragma warning(disable:4996)
-#include <m_protocols.h>
-#include <m_protomod.h>
-#pragma warning(default:4996)
-#include "WorkingThread.h"
-#include <m_protosvc.h>
-#include "resource.h"
-#include "IconLib.h"
-#include <m_options.h>
-#include <m_userinfo.h>
-#include "QuoteInfoDlg.h"
-#include "ModuleInfo.h"
-#include "QuotesProviders.h"
-#include "IQuotesProvider.h"
-#include "EconomicRateInfo.h"
-#include "DBUtils.h"
-#include "ExtraImages.h"
-#include "HTTPSession.h"
-#include "CurrencyConverter.h"
-#ifdef CHART_IMPLEMENT
-#include "QuoteChart.h"
-#endif
-#include "WinCtrlHelper.h"
-#include "ImportExport.h"
-#include "m_Quotes.h"
-#include "version.h"
-
 int hLangpack;
 HINSTANCE g_hInstance = NULL;
 HANDLE g_hEventWorkThreadStop;
@@ -61,7 +34,7 @@ namespace
 		__AUTHORWEB,
 		UNICODE_AWARE,
 		// {E882056D-0D1D-4131-9A98-404CBAEA6A9C}
-		{0xe882056d, 0xd1d, 0x4131, { 0x9a, 0x98, 0x40, 0x4c, 0xba, 0xea, 0x6a, 0x9c } }
+		{0xe882056d, 0xd1d, 0x4131, {0x9a, 0x98, 0x40, 0x4c, 0xba, 0xea, 0x6a, 0x9c}}
 	};
 
 	INT_PTR QuotesMenu_RefreshAll(WPARAM wp,LPARAM lp)
@@ -74,14 +47,14 @@ namespace
 	void InitMenu()
 	{
 		CLISTMENUITEM mi = { sizeof(mi) };
-		mi.ptszName = _T("Quotes");
-		mi.flags = CMIF_TCHAR|CMIF_ICONFROMICOLIB|CMIF_ROOTPOPUP;
+		mi.ptszName = LPGENT("Quotes");
+		mi.flags = CMIF_TCHAR | CMIF_ROOTPOPUP;
 		mi.icolibItem = Quotes_GetIconHandle(IDI_ICON_MAIN);
 		HGENMENU hMenuRoot = Menu_AddMainMenuItem(&mi);
 		g_ahMenus.push_back(hMenuRoot);
 
-		mi.ptszName = _T("Refresh All Quotes\\Rates");
-		mi.flags = CMIF_TCHAR|CMIF_ICONFROMICOLIB|CMIF_ROOTHANDLE;
+		mi.ptszName = LPGENT("Refresh All Quotes\\Rates");
+		mi.flags = CMIF_TCHAR | CMIF_ROOTHANDLE;
 		//mi.position = 0x0FFFFFFF;
 		mi.icolibItem = Quotes_GetIconHandle(IDI_ICON_MAIN);
 		mi.pszService = "Quotes/RefreshAll";
@@ -91,7 +64,7 @@ namespace
 		HANDLE h = CreateServiceFunction(mi.pszService, QuotesMenu_RefreshAll);
 		g_ahServices.push_back(h);
 
-		mi.ptszName = _T("Currency Converter...");
+		mi.ptszName = LPGENT("Currency Converter...");
 		//mi.flags = CMIF_TCHAR|CMIF_ICONFROMICOLIB|CMIF_ROOTHANDLE;
 		//mi.position = 0x0FFFFFFF;
 		mi.icolibItem = Quotes_GetIconHandle(IDI_ICON_CURRENCY_CONVERTER);
@@ -102,7 +75,7 @@ namespace
 		g_ahServices.push_back(h);
 
 #ifdef TEST_IMPORT_EXPORT
-		mi.ptszName = _T("Export All Quotes");
+		mi.ptszName = LPGENT("Export All Quotes");
 		//mi.flags = CMIF_TCHAR|CMIF_ICONFROMICOLIB|CMIF_ROOTHANDLE;
 		mi.icolibItem = Quotes_GetIconHandle(IDI_ICON_EXPORT);
 		mi.pszService = "Quotes/ExportAll";
@@ -111,7 +84,7 @@ namespace
 		h = CreateServiceFunction(mi.pszService, QuotesMenu_ExportAll);
 		g_ahServices.push_back(h);
 
-		mi.ptszName =_T("Import All Quotes");
+		mi.ptszName = LPGENT("Import All Quotes");
 		//mi.flags = CMIF_TCHAR|CMIF_ICONFROMICOLIB|CMIF_ROOTHANDLE;
 		mi.icolibItem = Quotes_GetIconHandle(IDI_ICON_IMPORT);
 		mi.pszService = "Quotes/ImportAll";
@@ -134,7 +107,7 @@ namespace
 		{
 			mi.pszPopupName=(char *)-1;
 			mi.icolibItem = Quotes_GetIconHandle(IDI_ICON_MAIN);
-			mi.flags = CMIF_ICONFROMICOLIB|CMIF_TCHAR|CMIF_ROOTPOPUP;
+			mi.flags = CMIF_TCHAR | CMIF_ROOTPOPUP;
 			tstring sProtocolName = quotes_a2t(QUOTES_PROTOCOL_NAME);
 			mi.ptszName = const_cast<TCHAR*>(sProtocolName.c_str());//A2T(QUOTES_PROTOCOL_NAME);
 			mi.position = 0;
@@ -149,9 +122,8 @@ namespace
 			mi.pszPopupName = (char*)hMenuRoot;
 		}
 
-		mi.ptszName = _T("Refresh");
+		mi.ptszName = LPGENT("Refresh");
 		mi.popupPosition = 0;
-		mi.flags |= CMIF_ICONFROMICOLIB;
 		mi.icolibItem =  Quotes_GetIconHandle(IDI_ICON_REFRESH);
 		mi.pszService = "Quotes/RefreshContact";
 		hMenu = Menu_AddContactMenuItem(&mi);
@@ -160,7 +132,7 @@ namespace
 		h = CreateServiceFunction(mi.pszService, QuotesMenu_RefreshContact);
 		g_ahServices.push_back(h);
 
-		mi.ptszName = _T("Open Log File...");
+		mi.ptszName = LPGENT("Open Log File...");
 		mi.popupPosition = 1;
 		mi.icolibItem = NULL;
 		mi.pszService = "Quotes/OpenLogFile";
@@ -171,7 +143,7 @@ namespace
 		g_ahServices.push_back(h);
 
 #ifdef CHART_IMPLEMENT
-		mi.ptszName = _T("Chart...");
+		mi.ptszName = LPGENT("Chart...");
 		mi.popupPosition = 2;
 		mi.icolibItem = NULL;
 		mi.pszService = "Quotes/Chart";
@@ -182,7 +154,7 @@ namespace
 		g_ahServices.push_back(h);
 #endif
 
-		mi.ptszName = _T("Edit Settings...");
+		mi.ptszName = LPGENT("Edit Settings...");
 #ifdef CHART_IMPLEMENT
 		mi.popupPosition = 3;
 #else
@@ -270,8 +242,7 @@ namespace
 					for(CQuotesProviders::TQuotesProviders::const_iterator i = rapProviders.begin();i != rapProviders.end();++i)
 					{
 						const CQuotesProviders::TQuotesProviderPtr& pProvider = *i;
-						HANDLE hThread = reinterpret_cast<HANDLE>(mir_forkthread(WorkingThread,pProvider.get()));
-						g_ahThreads.push_back(hThread);
+						g_ahThreads.push_back( mir_forkthread(WorkingThread, pProvider.get()));
 					}
 				}
 
@@ -383,7 +354,7 @@ namespace
 
 }
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	g_hInstance = hinstDLL;
 	return TRUE;
@@ -396,20 +367,11 @@ extern "C"
 		return &Global_pluginInfo;
 	}
 
-
-	#define MIID_QUOTES	{0x723243c2, 0x8d4b, 0x4c29, { 0x8a, 0x37, 0xc0, 0x11, 0x48, 0x65, 0xb0, 0x80}}
-
-	__declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_PROTOCOL,MIID_QUOTES,MIID_LAST};
-
 	int __declspec(dllexport) Load(void)
 	{
 
 		mir_getLP(&Global_pluginInfo);
-// 		if ((mirandaVersion >= 0x0800) && (1 == mir_getXI(&xi)))
-// 		{
-// 			CModuleInfo::SetXMLEnginePtr(CModuleInfo::TXMLEnginePtr(new CXMLEngineMI));
-// 		}
-
+ 
 		if(false == CModuleInfo::Verify())
 		{
 			return 1;
@@ -420,7 +382,7 @@ extern "C"
 		PROTOCOLDESCRIPTOR pd = { PROTOCOLDESCRIPTOR_V3_SIZE };
 		pd.szName = QUOTES_PROTOCOL_NAME;
 		pd.type = PROTOTYPE_VIRTUAL;
-		CallService( MS_PROTO_REGISTERMODULE, 0, ( LPARAM )&pd );
+		CallService(MS_PROTO_REGISTERMODULE, 0, ( LPARAM )&pd );
 
 		HANDLE h = CreateProtoServiceFunction(QUOTES_PROTOCOL_NAME, PS_GETNAME, QuoteProtoFunc_GetName);
 		g_ahServices.push_back(h);

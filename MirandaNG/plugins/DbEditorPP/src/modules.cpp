@@ -17,28 +17,28 @@ void renameModule(char* oldName, char* newName, HANDLE hContact)
 			switch (dbv.type)
 			{
 				case DBVT_BYTE:
-					DBWriteContactSettingByte(hContact, newName, setting->name, dbv.bVal);
+					db_set_b(hContact, newName, setting->name, dbv.bVal);
 				break;
 				case DBVT_WORD:
-					DBWriteContactSettingWord(hContact, newName, setting->name, dbv.wVal);
+					db_set_w(hContact, newName, setting->name, dbv.wVal);
 				break;
 				case DBVT_DWORD:
-					DBWriteContactSettingDword(hContact, newName, setting->name, dbv.dVal);
+					db_set_dw(hContact, newName, setting->name, dbv.dVal);
 				break;
 				case DBVT_ASCIIZ:
-					DBWriteContactSettingString(hContact, newName, setting->name, dbv.pszVal);
+					db_set_s(hContact, newName, setting->name, dbv.pszVal);
 				break;
 				case DBVT_UTF8:
-					DBWriteContactSettingStringUtf(hContact, newName, setting->name, dbv.pszVal);
+					db_set_utf(hContact, newName, setting->name, dbv.pszVal);
 				break;
 				case DBVT_BLOB:
-					DBWriteContactSettingBlob(hContact, newName, setting->name, dbv.pbVal, dbv.cpbVal);
+					db_set_blob(hContact, newName, setting->name, dbv.pbVal, dbv.cpbVal);
 				break;
 
 			}
-			DBDeleteContactSetting(hContact, oldName, setting->name);
+			db_unset(hContact, oldName, setting->name);
 		}
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		setting = (struct ModSetLinkLinkItem *)setting->next;
 	}
 	FreeModuleSettingLL(&settinglist);
@@ -61,21 +61,14 @@ INT_PTR CALLBACK AddModDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 				{
 					char modulename[256];
 					GetDlgItemText(hwnd, IDC_MODNAME, modulename, 256);
-					if (IsDlgButtonChecked(hwnd,CHK_ADD2ALL))
-					{
-						HANDLE hContact = db_find_first();
+					if (IsDlgButtonChecked(hwnd,CHK_ADD2ALL)) {
 						// null contact
-						DBWriteContactSettingByte(NULL, modulename, "(Default)", 0);
-						while (hContact)
-						{
-							DBWriteContactSettingByte(hContact, modulename, "(Default)", 0);
-							hContact = db_find_next(hContact);
-						}
+						db_set_b(NULL, modulename, "(Default)", 0);
+						for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
+							db_set_b(hContact, modulename, "(Default)", 0);
 					}
-					else
-					{
-						DBWriteContactSettingByte((HANDLE)GetWindowLongPtr(hwnd,GWLP_USERDATA), modulename, "(Default)", 0);
-					}
+					else db_set_b((HANDLE)GetWindowLongPtr(hwnd,GWLP_USERDATA), modulename, "(Default)", 0);
+
 					refreshTree(1);
 				}
 			}

@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,13 +20,14 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 
 int LoadProtoChains(void);
 int LoadProtoOptions(void);
 
 HANDLE hAccListChanged;
-static HANDLE hAckEvent, hTypeEvent;
+static HANDLE hTypeEvent;
 static BOOL bModuleInitialized = FALSE;
 
 typedef struct
@@ -37,7 +38,8 @@ typedef struct
 	TServiceListItem;
 
 static int CompareServiceItems(const TServiceListItem* p1, const TServiceListItem* p2)
-{	return strcmp(p1->name, p2->name);
+{
+	return strcmp(p1->name, p2->name);
 }
 
 static LIST<TServiceListItem> serviceItems(10, CompareServiceItems);
@@ -45,7 +47,8 @@ static LIST<TServiceListItem> serviceItems(10, CompareServiceItems);
 //------------------------------------------------------------------------------------
 
 static int CompareProtos(const PROTOCOLDESCRIPTOR* p1, const PROTOCOLDESCRIPTOR* p2)
-{	return strcmp(p1->szName, p2->szName);
+{
+	return strcmp(p1->szName, p2->szName);
 }
 
 static LIST<PROTOCOLDESCRIPTOR> protos(10, CompareProtos);
@@ -62,23 +65,6 @@ LIST<PROTOCOLDESCRIPTOR> filters(10, CompareProtos2);
 
 //------------------------------------------------------------------------------------
 
-static INT_PTR Proto_BroadcastAck(WPARAM wParam, LPARAM lParam)
-{
-	ACKDATA *ack = (ACKDATA*)lParam;
-	if (ack && ack->type == ACKTYPE_AVATAR && ack->hProcess) {
-		PROTO_AVATAR_INFORMATION* ai = (PROTO_AVATAR_INFORMATION*)ack->hProcess;
-		if (ai->cbSize == sizeof(PROTO_AVATAR_INFORMATION)) {
-			PROTO_AVATAR_INFORMATIONW aiw = { sizeof(aiw), ai->hContact, ai->format };
-			MultiByteToWideChar(CP_ACP, 0, ai->filename, -1, aiw.filename, SIZEOF(aiw.filename));
-
-			ack->hProcess = &aiw;
-		}
-	}
-
-	return NotifyEventHooks(hAckEvent, wParam, lParam);
-}
-
-INT_PTR __fastcall MyCallProtoService(const char *szModule, const char *szService, WPARAM wParam, LPARAM lParam);
 void FreeFilesMatrix(TCHAR ***files);
 
 PROTOCOLDESCRIPTOR* __fastcall Proto_IsProtocolLoaded(const char* szProtoName)
@@ -162,7 +148,7 @@ static INT_PTR Proto_RecvMessage(WPARAM, LPARAM lParam)
 	if (pre->szMessage == NULL)
 		return NULL;
 
-	mir_ptr<char> pszTemp;
+	ptrA pszTemp;
 
 	DBEVENTINFO dbei = { 0 };
 	dbei.cbSize = sizeof(dbei);
@@ -185,7 +171,7 @@ static INT_PTR Proto_RecvMessage(WPARAM, LPARAM lParam)
 	if (pre->flags & PREF_UTF)
 		dbei.flags |= DBEF_UTF;
 
-	return CallService(MS_DB_EVENT_ADD, (WPARAM) ccs->hContact, (LPARAM)&dbei);
+	return (INT_PTR)db_event_add(ccs->hContact, &dbei);
 }
 
 static INT_PTR Proto_AuthRecv(WPARAM wParam, LPARAM lParam)
@@ -201,7 +187,7 @@ static INT_PTR Proto_AuthRecv(WPARAM wParam, LPARAM lParam)
 	dbei.eventType = EVENTTYPE_AUTHREQUEST;
 	dbei.cbBlob = pre->lParam;
 	dbei.pBlob = (PBYTE)pre->szMessage;
-	return CallService(MS_DB_EVENT_ADD,0,(LPARAM)&dbei);
+	return (INT_PTR)db_event_add(NULL, &dbei);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -266,10 +252,10 @@ void Proto_SetStatus(const char* szProto, unsigned status)
 		{
 			CallProtoServiceInt(NULL,szProto, PS_SETAWAYMSGT, status, (LPARAM) awayMsg);
 			mir_free(awayMsg);
-	}	}
+		}
+	}
 	CallProtoServiceInt(NULL,szProto, PS_SETSTATUS, status, 0);
 }
-
 
 char** __fastcall Proto_FilesMatrixA(wchar_t **files)
 {
@@ -299,11 +285,33 @@ static wchar_t** __fastcall Proto_FilesMatrixU(char **files)
 	return filesU;
 }
 
+HICON Proto_GetIcon(PROTO_INTERFACE *ppro, int iconIndex)
+{
+	if (LOWORD(iconIndex) == PLI_PROTOCOL) {
+		if (iconIndex & PLIF_ICOLIBHANDLE)
+			return (HICON)ppro->m_hProtoIcon;
+
+		bool big = (iconIndex & PLIF_SMALL) == 0;
+		HICON hIcon = Skin_GetIconByHandle(ppro->m_hProtoIcon, big);
+
+		if (iconIndex & PLIF_ICOLIB)
+			return hIcon;
+
+		HICON hIcon2 = CopyIcon(hIcon);
+		Skin_ReleaseIcon(hIcon);
+		return hIcon2;
+	}
+	return NULL;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////
 // 0.8.0+ - accounts
 
 PROTOACCOUNT* __fastcall Proto_GetAccount(const char* accName)
 {
+	if (accName == NULL)
+		return NULL;
+
 	int idx;
 	PROTOACCOUNT temp;
 	temp.szModuleName = (char*)accName;
@@ -345,6 +353,12 @@ static INT_PTR srvProto_IsAccountLocked(WPARAM, LPARAM lParam)
 	return (INT_PTR)Proto_IsAccountLocked(Proto_GetAccount((char*)lParam));
 }
 
+static INT_PTR Proto_BroadcastAck(WPARAM, LPARAM lParam)
+{
+	ACKDATA *ack = (ACKDATA*)lParam;
+	return ProtoBroadcastAck(ack->szModule, ack->hContact, ack->type, ack->result, ack->hProcess, ack->lParam);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////
 
 INT_PTR CallProtoService(const char* szModule, const char* szService, WPARAM wParam, LPARAM lParam)
@@ -363,7 +377,7 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 		TServiceListItem *item = serviceItems.find((TServiceListItem*)&szService);
 		if (item) {
 			switch(item->id) {
-			case  1:
+			case 1:
 				if (ppi->m_iVersion > 1 || !(((PROTOSEARCHRESULT*)lParam)->flags & PSR_UNICODE))
 					return (INT_PTR)ppi->AddToList(wParam, (PROTOSEARCHRESULT*)lParam);
 				else {
@@ -386,27 +400,27 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 					return res;
 				}
 
-			case  2: return (INT_PTR)ppi->AddToListByEvent(LOWORD(wParam), HIWORD(wParam), (HANDLE)lParam);
-			case  3: return (INT_PTR)ppi->Authorize((HANDLE)wParam);
-			case  4:
+			case 2: return (INT_PTR)ppi->AddToListByEvent(LOWORD(wParam), HIWORD(wParam), (HANDLE)lParam);
+			case 3: return (INT_PTR)ppi->Authorize((HANDLE)wParam);
+			case 4:
 				if (ppi->m_iVersion > 1)
 					return (INT_PTR)ppi->AuthDeny((HANDLE)wParam,  StrConvT((char*)lParam));
 				else
 					return (INT_PTR)ppi->AuthDeny((HANDLE)wParam, (PROTOCHAR*)lParam);
-			case  5: return (INT_PTR)ppi->AuthRecv(hContact, (PROTORECVEVENT*)lParam);
-			case  6:
+			case 5: return (INT_PTR)ppi->AuthRecv(hContact, (PROTORECVEVENT*)lParam);
+			case 6:
 				if (ppi->m_iVersion > 1)
 					return (INT_PTR)ppi->AuthRequest(hContact,  StrConvT((char*)lParam));
 				else
 					return (INT_PTR)ppi->AuthRequest(hContact, (PROTOCHAR*)lParam);
-			case  7: return (INT_PTR)ppi->ChangeInfo(wParam, (void*)lParam);
-			case  8:
+			case 7: return (INT_PTR)ppi->ChangeInfo(wParam, (void*)lParam);
+			case 8:
 				if (ppi->m_iVersion > 1)
 					return (INT_PTR)ppi->FileAllow(hContact, (HANDLE)wParam,  StrConvT((char*)lParam));
 				else
 					return (INT_PTR)ppi->FileAllow(hContact, (HANDLE)wParam, (PROTOCHAR*)lParam);
-			case  9: return (INT_PTR)ppi->FileCancel(hContact, (HANDLE)wParam);
-			case  10:
+			case 9: return (INT_PTR)ppi->FileCancel(hContact, (HANDLE)wParam);
+			case 10:
 				if (ppi->m_iVersion > 1)
 					return (INT_PTR)ppi->FileDeny(hContact, (HANDLE)wParam,  StrConvT((char*)lParam));
 				else
@@ -423,7 +437,7 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 					return (INT_PTR)ppi->FileResume((HANDLE)wParam, &pfr->action, (const PROTOCHAR**)&pfr->szFilename);
 			}
 			case 12: return (INT_PTR)ppi->GetCaps(wParam, (HANDLE)lParam);
-			case 13: return (INT_PTR)ppi->GetIcon(wParam);
+			case 13: return (INT_PTR)Proto_GetIcon(ppi, wParam);
 			case 14: return (INT_PTR)ppi->GetInfo(hContact, wParam);;
 			case 15:
 				if (ppi->m_iVersion > 1)
@@ -509,7 +523,8 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 					INT_PTR res = (INT_PTR)ppi->FileResume((HANDLE)wParam, &pfr->action,
 						(const PROTOCHAR**)&szFname);
 					mir_free(szFname);
-			}	}
+				}
+			}
 			case 106:
 				if (ppi->m_iVersion > 1)
 					return (INT_PTR)ppi->AuthRequest(hContact, (const TCHAR*)lParam);
@@ -538,8 +553,9 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 					return (INT_PTR)ppi->SearchByEmail((const TCHAR*)lParam);
 				else
 					return (INT_PTR)ppi->SearchByEmail(StrConvA((const TCHAR*)lParam));
-	}	}	}
-
+			}
+		}
+	}
 
 	if ( !strcmp(szService, PS_ADDTOLIST)) {
 		PROTOSEARCHRESULT *psr = (PROTOSEARCHRESULT*)lParam;
@@ -551,7 +567,7 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 			psra->lastName = (PROTOCHAR*)mir_u2a(psr->lastName);
 			psra->email = (PROTOCHAR*)mir_u2a(psr->email);
 
-			INT_PTR res = MyCallProtoService(szModule, szService, wParam, (LPARAM)psra);
+			INT_PTR res = ProtoCallService(szModule, szService, wParam, (LPARAM)psra);
 
 			mir_free(psra->nick);
 			mir_free(psra->firstName);
@@ -562,7 +578,7 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 		}
 	}
 
-	INT_PTR res = MyCallProtoService(szModule, szService, wParam, lParam);
+	INT_PTR res = ProtoCallService(szModule, szService, wParam, lParam);
 
 	if (res == CALLSERVICE_NOTFOUND && pa && pa->bOldProto && pa->ppro && strchr(szService, 'W')) {
 		TServiceListItem *item = serviceItems.find((TServiceListItem*)&szService);
@@ -601,8 +617,8 @@ INT_PTR CallProtoServiceInt(HANDLE hContact, const char *szModule, const char *s
 			}
 			case 110:
 				return (INT_PTR)pa->ppro->SearchByEmail((const TCHAR*)lParam);
-	}	}
-
+		}
+	}
 
 	return res;
 }
@@ -672,7 +688,6 @@ int LoadProtocolsModule(void)
 	InsertServiceListItem(109, PS_SEARCHBYNAMEW);
 	InsertServiceListItem(110, PS_SEARCHBYEMAILW);
 
-	hAckEvent = CreateHookableEvent(ME_PROTO_ACK);
 	hTypeEvent = CreateHookableEvent(ME_PROTO_CONTACTISTYPING);
 	hAccListChanged = CreateHookableEvent(ME_PROTO_ACCLISTCHANGED);
 
@@ -698,40 +713,36 @@ int LoadProtocolsModule(void)
 
 void UnloadProtocolsModule()
 {
-	int i;
-
 	if ( !bModuleInitialized) return;
 
-	if (hAckEvent) {
-		DestroyHookableEvent(hAckEvent);
-		hAckEvent = NULL;
-	}
 	if (hAccListChanged) {
 		DestroyHookableEvent(hAccListChanged);
 		hAccListChanged = NULL;
 	}
 
 	if (protos.getCount()) {
-		for (i=0; i < protos.getCount(); i++) {
+		for (int i=0; i < protos.getCount(); i++) {
 			mir_free(protos[i]->szName);
 			mir_free(protos[i]);
 		}
 		protos.destroy();
 	}
 
-	for (i=0; i < serviceItems.getCount(); i++)
+	for (int i=0; i < serviceItems.getCount(); i++)
 		mir_free(serviceItems[i]);
 	serviceItems.destroy();
+
+	filters.destroy();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
 pfnUninitProto GetProtocolDestructor(char* szProto)
 {
-	int idx;
 	PROTOCOLDESCRIPTOR temp;
 	temp.szName = szProto;
-	if ((idx = protos.getIndex(&temp)) != -1)
+	int idx = protos.getIndex(&temp);
+	if (idx != -1)
 		return protos[idx]->fnUninit;
 
 	return NULL;

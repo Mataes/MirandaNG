@@ -21,8 +21,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "hdr/modern_commonheaders.h"
-#include "m_clui.h"
-#include "m_clc.h"
 #include "hdr/modern_clist.h"
 #include "hdr/modern_commonprototypes.h"
 #include "hdr/modern_awaymsg.h"
@@ -230,7 +228,7 @@ void cliCheckCacheItem(ClcCacheEntry *pdnce)
 		pdnce->m_cache_cszProto = GetProtoForContact(pdnce->hContact);
 		if (pdnce->m_cache_cszProto == NULL) 
 			pdnce->m_cache_bProtoNotExists = FALSE;
-		else if (CallService(MS_PROTO_ISPROTOCOLLOADED,0,(LPARAM)pdnce->m_cache_cszProto) == (int)NULL  && 0)
+		else if (CallService(MS_PROTO_ISPROTOCOLLOADED, 0, (LPARAM)pdnce->m_cache_cszProto) == (int)NULL  && 0)
 			pdnce->m_cache_bProtoNotExists = TRUE;
 		else if (pdnce->m_cache_cszProto && pdnce->tszName)
 			pdnce->freeName();
@@ -240,7 +238,7 @@ void cliCheckCacheItem(ClcCacheEntry *pdnce)
 		pdnce->getName();
 
 	else if (pdnce->isUnknown && pdnce->m_cache_cszProto && pdnce->m_cache_bProtoNotExists == TRUE && g_flag_bOnModulesLoadedCalled) {
-		if (CallService(MS_PROTO_ISPROTOCOLLOADED,0,(LPARAM)pdnce->m_cache_cszProto) == 0) {
+		if (CallService(MS_PROTO_ISPROTOCOLLOADED, 0, (LPARAM)pdnce->m_cache_cszProto) == 0) {
 			pdnce->m_cache_bProtoNotExists = FALSE;						
 			pdnce->getName();
 		}
@@ -251,7 +249,7 @@ void cliCheckCacheItem(ClcCacheEntry *pdnce)
 
 	if (pdnce->tszGroup == NULL) {
 		DBVARIANT dbv = {0};
-		if ( !DBGetContactSettingTString(pdnce->hContact,"CList","Group",&dbv)) {
+		if ( !db_get_ts(pdnce->hContact,"CList","Group",&dbv)) {
 			pdnce->tszGroup = mir_tstrdup(dbv.ptszVal);
 			db_free(&dbv);
 		}
@@ -377,9 +375,6 @@ void ClcCacheEntry::freeName()
 
 void ClcCacheEntry::getName()
 {
-	if (UnknownConctactTranslatedName == NULL)
-		UnknownConctactTranslatedName = TranslateT("(Unknown Contact)");
-
 	freeName();
 
 	if (m_cache_bProtoNotExists || !m_cache_cszProto) {
@@ -423,7 +418,7 @@ int ContactAdded(WPARAM wParam,LPARAM lParam)
 {
 	if ( !MirandaExiting()) {
 		HANDLE hContact = (HANDLE)wParam;
-		cli_ChangeContactIcon(hContact,ExtIconFromStatusMode(hContact,(char*)GetContactCachedProtocol(hContact),ID_STATUS_OFFLINE),1); ///by FYR
+		cli_ChangeContactIcon(hContact,pcli->pfnIconFromStatusMode((char*)GetContactCachedProtocol(hContact),ID_STATUS_OFFLINE,hContact),1); ///by FYR
 		pcli->pfnSortContacts();
 	}
 	return 0;
@@ -449,9 +444,9 @@ int ContactSettingChanged(WPARAM wParam,LPARAM lParam)
 		InvalidateDNCEbyPointer(hContact, pdnce, cws->value.type);
 
 		if ( !strcmp(cws->szSetting,"IsSubcontact"))
-			PostMessage(pcli->hwndContactTree,CLM_AUTOREBUILD,0,0);
+			PostMessage(pcli->hwndContactTree,CLM_AUTOREBUILD, 0, 0);
 
-		if ( !mir_strcmp(cws->szSetting, "Status") || wildcmp((char*)cws->szSetting, (char*) "Status?",2)) {
+		if ( !mir_strcmp(cws->szSetting, "Status") || wildcmp(cws->szSetting, "Status?")) {
 			if (g_szMetaModuleName && !mir_strcmp(cws->szModule,g_szMetaModuleName) && mir_strcmp(cws->szSetting, "Status")) {
 				int res = 0;
 				if (pcli->hwndContactTree && g_flag_bOnModulesLoadedCalled) 
@@ -473,7 +468,7 @@ int ContactSettingChanged(WPARAM wParam,LPARAM lParam)
 					amRequestAwayMsg(hContact);  
 
 				pcli->pfnClcBroadcast(INTM_STATUSCHANGED, wParam, 0);
-				cli_ChangeContactIcon(hContact, ExtIconFromStatusMode(hContact,cws->szModule, cws->value.wVal), 0); //by FYR
+				cli_ChangeContactIcon(hContact, pcli->pfnIconFromStatusMode(cws->szModule, cws->value.wVal, hContact), 0); //by FYR
 				pcli->pfnSortContacts();
 			}
 			else {
@@ -500,20 +495,22 @@ int ContactSettingChanged(WPARAM wParam,LPARAM lParam)
 			InvalidateDNCEbyPointer(hContact,pdnce,cws->value.type);		
 			if (cws->value.type == DBVT_DELETED || cws->value.bVal == 0) {
 				char *szProto = GetContactProto((HANDLE)wParam);
-				cli_ChangeContactIcon(hContact,ExtIconFromStatusMode(hContact,szProto,szProto == NULL?ID_STATUS_OFFLINE:db_get_w(hContact,szProto,"Status",ID_STATUS_OFFLINE)),1);  //by FYR
+				cli_ChangeContactIcon(hContact,pcli->pfnIconFromStatusMode(szProto, 
+					szProto == NULL ? ID_STATUS_OFFLINE : db_get_w(hContact,szProto,"Status",ID_STATUS_OFFLINE), hContact),1);  //by FYR
 			}
-			pcli->pfnClcBroadcast(CLM_AUTOREBUILD,0, 0);
+			pcli->pfnClcBroadcast(CLM_AUTOREBUILD, 0, 0);
 		}
 		else if ( !strcmp(cws->szSetting,"noOffline")) {
 			InvalidateDNCEbyPointer(hContact,pdnce,cws->value.type);		
-			pcli->pfnClcBroadcast(CLM_AUTOREBUILD,0, 0);
+			pcli->pfnClcBroadcast(CLM_AUTOREBUILD, 0, 0);
 		}
 	}
 	else if ( !strcmp(cws->szModule,"Protocol")) {
 		if ( !strcmp(cws->szSetting,"p")) {
 			InvalidateDNCEbyPointer(hContact,pdnce,cws->value.type);	
 			char *szProto = (cws->value.type == DBVT_DELETED) ? NULL : cws->value.pszVal;
-			cli_ChangeContactIcon(hContact,ExtIconFromStatusMode(hContact,szProto,szProto == NULL?ID_STATUS_OFFLINE:db_get_w(hContact,szProto,"Status",ID_STATUS_OFFLINE)),0); //by FYR
+			cli_ChangeContactIcon(hContact,pcli->pfnIconFromStatusMode(szProto, 
+				szProto == NULL ? ID_STATUS_OFFLINE : db_get_w(hContact,szProto,"Status",ID_STATUS_OFFLINE), hContact), 0);
 		}
 	}
 
@@ -523,6 +520,12 @@ int ContactSettingChanged(WPARAM wParam,LPARAM lParam)
 int PostAutoRebuidMessage(HWND hwnd)
 {
 	if ( !CLM_AUTOREBUILD_WAS_POSTED)
-		CLM_AUTOREBUILD_WAS_POSTED = PostMessage(hwnd,CLM_AUTOREBUILD,0,0);
+		CLM_AUTOREBUILD_WAS_POSTED = PostMessage(hwnd,CLM_AUTOREBUILD, 0, 0);
 	return CLM_AUTOREBUILD_WAS_POSTED;
+}
+
+int OnLoadLangpack(WPARAM, LPARAM)
+{
+	UnknownConctactTranslatedName = TranslateT("(Unknown Contact)");
+	return 0;
 }

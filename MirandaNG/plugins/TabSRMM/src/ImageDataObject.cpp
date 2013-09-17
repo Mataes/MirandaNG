@@ -24,9 +24,6 @@
  *
  * part of tabSRMM messaging plugin for Miranda.
  *
- *  *
- * $Id: ImageDataObject.cpp 11611 2010-04-22 12:36:29Z silvercircle $
- *
  * This inserts a bitmap into a rich edit control using OLE
  * code partially taken from public example on the internet, source unknown.
  *
@@ -35,7 +32,6 @@
  */
 
 #include "commonheaders.h"
-#include "include\ImageDataObject.h"
 
 extern void ReleaseRichEditOle(IRichEditOle *ole)
 {
@@ -47,7 +43,7 @@ extern void ImageDataInsertBitmap(IRichEditOle *ole, HBITMAP hBm)
 	CImageDataObject::InsertBitmap(ole, hBm);
 }
 
-int CacheIconToBMP(struct TLogIcon *theIcon, HICON hIcon, COLORREF backgroundColor, int sizeX, int sizeY)
+int CacheIconToBMP(TLogIcon *theIcon, HICON hIcon, COLORREF backgroundColor, int sizeX, int sizeY)
 {
 	bool succeeded = false;
 
@@ -85,7 +81,7 @@ int CacheIconToBMP(struct TLogIcon *theIcon, HICON hIcon, COLORREF backgroundCol
 	return TRUE;
 }
 
-void DeleteCachedIcon(struct TLogIcon *theIcon)
+void DeleteCachedIcon(TLogIcon *theIcon)
 {
 	DeleteDC(theIcon->hdcMem);
 	DeleteObject(theIcon->hBmp);

@@ -19,16 +19,12 @@ Boston, MA 02111-1307, USA.
 */
 
 #include "common.h"
-#include "translations.h"
-#include "subst.h"
-#include "str_utils.h"
 
 int iTransFuncsCount = 0;
 DBVTranslation *translations = 0;
 
 DWORD dwNextFuncId;
 HANDLE hServiceAdd;
-
 
 void AddTranslation(DBVTranslation *newTrans) 
 {
@@ -47,7 +43,7 @@ void AddTranslation(DBVTranslation *newTrans)
 	} 
 	else 
 	{
-		DWORD id = DBGetContactSettingDword(0, MODULE_ITEMS, szSetting, 0);
+		DWORD id = db_get_dw(0, MODULE_ITEMS, szSetting, 0);
 		if (id != 0) 
 		{
 			translations[iTransFuncsCount - 1].id = id;
@@ -56,10 +52,10 @@ void AddTranslation(DBVTranslation *newTrans)
 		else
 		{
 			translations[iTransFuncsCount - 1].id = dwNextFuncId++;
-			DBWriteContactSettingDword(0, MODULE_ITEMS, szSetting, translations[iTransFuncsCount - 1].id);
+			db_set_dw(0, MODULE_ITEMS, szSetting, translations[iTransFuncsCount - 1].id);
 		}
 
-		DBWriteContactSettingDword(0, MODULE_ITEMS, "NextFuncId", dwNextFuncId);
+		db_set_dw(0, MODULE_ITEMS, "NextFuncId", dwNextFuncId);
 	}
 
 	mir_free(szName);
@@ -74,7 +70,7 @@ TCHAR *NullTranslation(HANDLE hContact, const char *szModuleName, const char *sz
 
 TCHAR *TimestampToShortDate(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	DWORD ts = DBGetContactSettingDword(hContact, szModuleName, szSettingName, 0);
+	DWORD ts = db_get_dw(hContact, szModuleName, szSettingName, 0);
 	if (ts == 0) return 0;
 	
 	DBTIMETOSTRINGT dbt = {0};
@@ -87,7 +83,7 @@ TCHAR *TimestampToShortDate(HANDLE hContact, const char *szModuleName, const cha
 
 TCHAR *TimestampToLongDate(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	DWORD ts = DBGetContactSettingDword(hContact, szModuleName, szSettingName, 0);
+	DWORD ts = db_get_dw(hContact, szModuleName, szSettingName, 0);
 	if (ts == 0) return 0;
 	
 	DBTIMETOSTRINGT dbt = {0};
@@ -100,7 +96,7 @@ TCHAR *TimestampToLongDate(HANDLE hContact, const char *szModuleName, const char
 
 TCHAR *TimestampToTime(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	DWORD ts = DBGetContactSettingDword(hContact, szModuleName, szSettingName, 0);
+	DWORD ts = db_get_dw(hContact, szModuleName, szSettingName, 0);
 	if (ts == 0) return 0;
 	
 	DBTIMETOSTRINGT dbt = {0};
@@ -113,7 +109,7 @@ TCHAR *TimestampToTime(HANDLE hContact, const char *szModuleName, const char *sz
 
 TCHAR *TimestampToTimeNoSecs(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	DWORD ts = DBGetContactSettingDword(hContact, szModuleName, szSettingName, 0);
+	DWORD ts = db_get_dw(hContact, szModuleName, szSettingName, 0);
 	if (ts == 0) return 0;
 	
 	DBTIMETOSTRINGT dbt = {0};
@@ -126,7 +122,7 @@ TCHAR *TimestampToTimeNoSecs(HANDLE hContact, const char *szModuleName, const ch
 
 TCHAR *TimestampToTimeDifference(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	DWORD ts = DBGetContactSettingDword(hContact, szModuleName, szSettingName, 0);
+	DWORD ts = db_get_dw(hContact, szModuleName, szSettingName, 0);
 	DWORD t = (DWORD)time(0);
 	if (ts == 0) return 0;
 	
@@ -146,7 +142,7 @@ TCHAR *TimestampToTimeDifference(HANDLE hContact, const char *szModuleName, cons
 
 TCHAR *SecondsToTimeDifference(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	DWORD diff = DBGetContactSettingDword(hContact, szModuleName, szSettingName, 0);
+	DWORD diff = db_get_dw(hContact, szModuleName, szSettingName, 0);
 	int d = (diff / 60 / 60 / 24);
 	int h = (diff - d * 60 * 60 * 24) / 60 / 60;
 	int m = (diff  - d * 60 * 60 * 24 - h * 60 * 60) / 60;
@@ -162,7 +158,7 @@ TCHAR *SecondsToTimeDifference(HANDLE hContact, const char *szModuleName, const 
 
 TCHAR *WordToStatusDesc(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	WORD wStatus = DBGetContactSettingWord(hContact, szModuleName, szSettingName, ID_STATUS_OFFLINE);
+	WORD wStatus = db_get_w(hContact, szModuleName, szSettingName, ID_STATUS_OFFLINE);
 	TCHAR *szStatus = (TCHAR *)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)wStatus, GSMDF_TCHAR);
 	_tcsncpy(buff,szStatus, bufflen);
 	buff[bufflen - 1] = 0;
@@ -172,7 +168,7 @@ TCHAR *WordToStatusDesc(HANDLE hContact, const char *szModuleName, const char *s
 TCHAR *ByteToYesNo(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
 	DBVARIANT dbv;
-	if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv))
+	if (!db_get(hContact, szModuleName, szSettingName, &dbv))
 	{
 		if (dbv.type == DBVT_BYTE)
 		{
@@ -181,17 +177,17 @@ TCHAR *ByteToYesNo(HANDLE hContact, const char *szModuleName, const char *szSett
 			else
 				_tcsncpy(buff, _T("No"), bufflen);
 			buff[bufflen - 1] = 0;
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			return buff;
 		}
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 	}
 	return 0;
 }
 
 TCHAR *ByteToGender(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	BYTE val = (BYTE)DBGetContactSettingByte(hContact, szModuleName, szSettingName, 0);
+	BYTE val = (BYTE)db_get_b(hContact, szModuleName, szSettingName, 0);
 	if (val == 'F')
 		_tcsncpy(buff, TranslateT("Female"), bufflen);
 	else if (val == 'M')
@@ -206,7 +202,7 @@ TCHAR *ByteToGender(HANDLE hContact, const char *szModuleName, const char *szSet
 TCHAR *WordToCountry(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
 	char *szCountryName = 0;
-	WORD cid = (WORD)DBGetContactSettingWord(hContact, szModuleName, szSettingName, (WORD)-1);
+	WORD cid = (WORD)db_get_w(hContact, szModuleName, szSettingName, (WORD)-1);
 	if (cid != (WORD)-1 && ServiceExists(MS_UTILS_GETCOUNTRYBYNUMBER) && (szCountryName = (char *)CallService(MS_UTILS_GETCOUNTRYBYNUMBER, cid, 0)) != 0)
 	{
 		if (strcmp(szCountryName, "Unknown") == 0)
@@ -220,7 +216,7 @@ TCHAR *WordToCountry(HANDLE hContact, const char *szModuleName, const char *szSe
 
 TCHAR *DwordToIp(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	DWORD ip = DBGetContactSettingDword(hContact, szModuleName, szSettingName, 0);
+	DWORD ip = db_get_dw(hContact, szModuleName, szSettingName, 0);
 	if (ip) {
 		unsigned char *ipc = (unsigned char*)&ip;
 		mir_sntprintf(buff, bufflen, _T("%u.%u.%u.%u"), ipc[3], ipc[2], ipc[1], ipc[0]);
@@ -253,26 +249,26 @@ TCHAR *DayMonthYearToDate(HANDLE hContact, const char *szModuleName, const char 
 	DBVARIANT dbv;
 	char szSettingName[256];
 	mir_snprintf(szSettingName, 256, "%sDay", prefix);
-	if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+	if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 	{
 		int day = 0;
 		if (GetInt(dbv, &day))
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			mir_snprintf(szSettingName, 256, "%sMonth", prefix);
 			int month = 0;
-			if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv))
+			if (!db_get(hContact, szModuleName, szSettingName, &dbv))
 			{
 				if (GetInt(dbv, &month))
 				{
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					mir_snprintf(szSettingName, 256, "%sYear", prefix);
 					int year = 0;
-					if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+					if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 					{
 						if (GetInt(dbv, &year))
 						{
-							DBFreeVariant(&dbv);
+							db_free(&dbv);
 
 							SYSTEMTIME st = {0};
 							st.wDay = day;
@@ -283,15 +279,15 @@ TCHAR *DayMonthYearToDate(HANDLE hContact, const char *szModuleName, const char 
 							return buff;
 						} 
 						else 
-							DBFreeVariant(&dbv);
+							db_free(&dbv);
 					}
 				} 
 				else 
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 			}
 		} 
 		else 
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 	}
 	return 0;
 }
@@ -301,26 +297,26 @@ TCHAR *DayMonthYearToAge(HANDLE hContact, const char *szModuleName, const char *
 	DBVARIANT dbv;
 	char szSettingName[256];
 	mir_snprintf(szSettingName, 256, "%sDay", szPrefix);
-	if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+	if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 	{
 		int day = 0;
 		if (GetInt(dbv, &day))
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			mir_snprintf(szSettingName, 256, "%sMonth", szPrefix);
 			int month = 0;
-			if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+			if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 			{
 				if (GetInt(dbv, &month))
 				{
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					mir_snprintf(szSettingName, 256, "%sYear", szPrefix);
 					int year = 0;
-					if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+					if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 					{
 						if (GetInt(dbv, &year)) 
 						{
-							DBFreeVariant(&dbv);
+							db_free(&dbv);
 
 							SYSTEMTIME now;
 							GetLocalTime(&now);
@@ -332,15 +328,15 @@ TCHAR *DayMonthYearToAge(HANDLE hContact, const char *szModuleName, const char *
 							return buff;
 						} 
 						else
-							DBFreeVariant(&dbv);
+							db_free(&dbv);
 					}
 				} 
 				else
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 			}
 		} 
 		else
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 	}
 	return 0;
 }
@@ -350,25 +346,25 @@ TCHAR *HoursMinutesSecondsToTime(HANDLE hContact, const char *szModuleName, cons
 	DBVARIANT dbv;
 	char szSettingName[256];
 	mir_snprintf(szSettingName, 256, "%sHours", szPrefix);
-	if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+	if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 	{
 		int hours = 0;
 		if (GetInt(dbv, &hours))
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			mir_snprintf(szSettingName, 256, "%sMinutes", szPrefix);
 			int minutes = 0;
-			if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv))
+			if (!db_get(hContact, szModuleName, szSettingName, &dbv))
 			{
 				if (GetInt(dbv, &minutes))
 				{
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					mir_snprintf(szSettingName, 256, "%sSeconds", szPrefix);
 					int seconds = 0;
-					if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+					if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 					{
 						GetInt(dbv, &seconds);
-						DBFreeVariant(&dbv);
+						db_free(&dbv);
 					}
 
 					SYSTEMTIME st = {0};
@@ -380,11 +376,11 @@ TCHAR *HoursMinutesSecondsToTime(HANDLE hContact, const char *szModuleName, cons
 					return buff;
 				} 
 				else
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 			}
 		} 
 		else
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 	}
 	return 0;
 }
@@ -394,19 +390,19 @@ TCHAR *HoursMinutesToTime(HANDLE hContact, const char *szModuleName, const char 
 	DBVARIANT dbv;
 	char szSettingName[256];
 	mir_snprintf(szSettingName, 256, "%sHours", szPrefix);
-	if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+	if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 	{
 		int hours = 0;
 		if (GetInt(dbv, &hours)) 
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			mir_snprintf(szSettingName, 256, "%sMinutes", szPrefix);
 			int minutes = 0;
-			if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv))
+			if (!db_get(hContact, szModuleName, szSettingName, &dbv))
 			{
 				if (GetInt(dbv, &minutes))
 				{
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 
 					SYSTEMTIME st = {0};
 					st.wHour = hours;
@@ -416,11 +412,11 @@ TCHAR *HoursMinutesToTime(HANDLE hContact, const char *szModuleName, const char 
 					return buff;
 				} 
 				else
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 			}
 		} 
 		else
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 	}
 	return 0;
 }
@@ -430,46 +426,46 @@ TCHAR *DmyToTimeDifference(HANDLE hContact, const char *szModuleName, const char
 	DBVARIANT dbv;
 	char szSettingName[256];
 	mir_snprintf(szSettingName, 256, "%sDay", szPrefix);
-	if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv))
+	if (!db_get(hContact, szModuleName, szSettingName, &dbv))
 	{
 		int day = 0;
 		if (GetInt(dbv, &day))
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			mir_snprintf(szSettingName, 256, "%sMonth", szPrefix);
 			int month = 0;
-			if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+			if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 			{
 				if (GetInt(dbv, &month)) 
 				{
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					mir_snprintf(szSettingName, 256, "%sYear", szPrefix);
 					int year = 0;
-					if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+					if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 					{
 						if (GetInt(dbv, &year)) 
 						{
-							DBFreeVariant(&dbv);
+							db_free(&dbv);
 							mir_snprintf(szSettingName, 256, "%sHours", szPrefix);
-							if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv))
+							if (!db_get(hContact, szModuleName, szSettingName, &dbv))
 							{
 								int hours = 0;
 								if (GetInt(dbv, &hours))
 								{
-									DBFreeVariant(&dbv);
+									db_free(&dbv);
 									mir_snprintf(szSettingName, 256, "%sMinutes", szPrefix);
 									int minutes = 0;
-									if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv))
+									if (!db_get(hContact, szModuleName, szSettingName, &dbv))
 									{
 										if (GetInt(dbv, &minutes)) 
 										{
-											DBFreeVariant(&dbv);
+											db_free(&dbv);
 											mir_snprintf(szSettingName, 256, "%sSeconds", szPrefix);
 											int seconds = 0;
-											if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+											if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 											{
 												GetInt(dbv, &seconds);
-												DBFreeVariant(&dbv);
+												db_free(&dbv);
 											}
 
 											SYSTEMTIME st = {0}, st_now;
@@ -506,23 +502,23 @@ TCHAR *DmyToTimeDifference(HANDLE hContact, const char *szModuleName, const char
 											return buff;
 										} 
 										else
-											DBFreeVariant(&dbv);
+											db_free(&dbv);
 									}
 								} 
 								else
-									DBFreeVariant(&dbv);
+									db_free(&dbv);
 							}
 						} 
 						else
-							DBFreeVariant(&dbv);
+							db_free(&dbv);
 					}
 				} 
 				else
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 			}
 		} 
 		else
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 	}
 	return 0;
 }
@@ -532,19 +528,19 @@ TCHAR *DayMonthToDaysToNextBirthday(HANDLE hContact, const char *szModuleName, c
 	DBVARIANT dbv;
 	char szSettingName[256];
 	mir_snprintf(szSettingName, 256, "%sDay", szPrefix);
-	if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+	if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 	{
 		int day = 0;
 		if (GetInt(dbv, &day))
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			mir_snprintf(szSettingName, 256, "%sMonth", szPrefix);
 			int month = 0;
-			if (!DBGetContactSetting(hContact, szModuleName, szSettingName, &dbv)) 
+			if (!db_get(hContact, szModuleName, szSettingName, &dbv)) 
 			{
 				if (GetInt(dbv, &month)) 
 				{
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					time_t now = time(NULL);
 					struct tm *ti = localtime(&now);
 					int yday_now = ti->tm_yday;
@@ -567,13 +563,13 @@ TCHAR *DayMonthToDaysToNextBirthday(HANDLE hContact, const char *szModuleName, c
 				}
 				else
 				{
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 				}
 			}
 		} 
 		else
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 	return 0;
@@ -589,7 +585,7 @@ TCHAR *EmptyXStatusToDefaultName(HANDLE hContact, const char *szModuleName, cons
 	// translate jabber mood
 	if (ProtoServiceExists(szModuleName, "/SendXML")) // jabber protocol?
 	{ 
-		if (!DBGetContactSettingTString(hContact, szModuleName, szSettingName, &dbv))
+		if (!db_get_ts(hContact, szModuleName, szSettingName, &dbv))
 		{
 			_tcsncpy(buff, TranslateTS(dbv.ptszVal), bufflen);
 			buff[bufflen - 1] = 0;
@@ -600,7 +596,7 @@ TCHAR *EmptyXStatusToDefaultName(HANDLE hContact, const char *szModuleName, cons
 	if (NullTranslation(hContact, szModuleName, szSettingName, buff, bufflen))
 	   return buff;
 	
-	int status = DBGetContactSettingByte(hContact, szModuleName, "XStatusId", 0);
+	int status = db_get_b(hContact, szModuleName, "XStatusId", 0);
 	if (!status) return 0;
 	
 	if (ProtoServiceExists(szModuleName, PS_GETCUSTOMSTATUSEX))
@@ -622,7 +618,7 @@ TCHAR *EmptyXStatusToDefaultName(HANDLE hContact, const char *szModuleName, cons
 
 TCHAR *TimezoneToTime(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	int timezone = DBGetContactSettingByte(hContact,szModuleName,szSettingName,256);
+	int timezone = db_get_b(hContact,szModuleName,szSettingName,256);
 	if (timezone==256 || (char)timezone==-100) 
 		return 0;
 
@@ -647,7 +643,7 @@ TCHAR *TimezoneToTime(HANDLE hContact, const char *szModuleName, const char *szS
 
 TCHAR *ByteToDay(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	int iDay = DBGetContactSettingWord(hContact, szModuleName, szSettingName, -1);
+	int iDay = db_get_w(hContact, szModuleName, szSettingName, -1);
 	if (iDay > -1 && iDay < 7)
 	{
 		a2t(Translate(days[iDay]), buff, bufflen);
@@ -660,7 +656,7 @@ TCHAR *ByteToDay(HANDLE hContact, const char *szModuleName, const char *szSettin
 
 TCHAR *ByteToMonth(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	int iMonth = DBGetContactSettingWord(hContact, szModuleName, szSettingName, 0);
+	int iMonth = db_get_w(hContact, szModuleName, szSettingName, 0);
 	if (iMonth > 0 && iMonth < 13) 
 	{
 		a2t(Translate(months[iMonth - 1]), buff, bufflen);
@@ -673,7 +669,7 @@ TCHAR *ByteToMonth(HANDLE hContact, const char *szModuleName, const char *szSett
 
 TCHAR *ByteToLanguage(HANDLE hContact, const char *szModuleName, const char *szSettingName, TCHAR *buff, int bufflen) 
 {
-	int iLang = DBGetContactSettingByte(hContact, szModuleName, szSettingName, 0);
+	int iLang = db_get_b(hContact, szModuleName, szSettingName, 0);
 	if (iLang)
 	{
 		for (int i = 0; i < SIZEOF(languages); i++)
@@ -702,34 +698,34 @@ INT_PTR ServiceAddTranslation(WPARAM wParam, LPARAM lParam)
 
 static DBVTranslation internalTranslations[] = 
 {
-	{	NullTranslation,               _T("[No translation]")                                                },
-	{	WordToStatusDesc,              _T("WORD to status description")                                      },
-	{	TimestampToTime,               _T("DWORD timestamp to time")                                         },
-	{	TimestampToTimeDifference,     _T("DWORD timestamp to time difference")                              },
-	{	ByteToYesNo,                   _T("BYTE to Yes/No")                                                  },
-	{	ByteToGender,                  _T("BYTE to Male/Female (ICQ)")                                       },
-	{	WordToCountry,                 _T("WORD to country name")                                            },
-	{	DwordToIp,                     _T("DWORD to ip address")                                             },
-	{	DayMonthYearToDate,            _T("<prefix>Day|Month|Year to date")                                  },
-	{  	DayMonthYearToAge,             _T("<prefix>Day|Month|Year to age")                                   },
-	{	HoursMinutesSecondsToTime,     _T("<prefix>Hours|Minutes|Seconds to time")                           },
-	{	DmyToTimeDifference,           _T("<prefix>Day|Month|Year|Hours|Minutes|Seconds to time difference") },
-	{	DayMonthToDaysToNextBirthday,  _T("<prefix>Day|Month to days to next birthday")                      },
-	{	TimestampToTimeNoSecs,         _T("DWORD timestamp to time (no seconds)")                            },
-	{	HoursMinutesToTime,            _T("<prefix>Hours|Minutes to time")                                   },
-	{	TimestampToShortDate,          _T("DWORD timestamp to date (short)")                                 },
-	{	TimestampToLongDate,           _T("DWORD timestamp to date (long)")                                  },
-	{	EmptyXStatusToDefaultName,     _T("xStatus: empty xStatus name to default name")                     },
-	{	SecondsToTimeDifference,       _T("DWORD seconds to time difference")                                },
-	{	TimezoneToTime,                _T("BYTE timezone to time")                                           },
-	{	ByteToDay,                     _T("WORD to name of a day (0..6, 0 is Sunday)")                       },
-	{	ByteToMonth,                   _T("WORD to name of a month (1..12, 1 is January)")                   },
-	{	ByteToLanguage,                _T("BYTE to language (ICQ)")                                          },
+	{	NullTranslation,               LPGENT("[No translation]")                                                },
+	{	WordToStatusDesc,              LPGENT("WORD to status description")                                      },
+	{	TimestampToTime,               LPGENT("DWORD timestamp to time")                                         },
+	{	TimestampToTimeDifference,     LPGENT("DWORD timestamp to time difference")                              },
+	{	ByteToYesNo,                   LPGENT("BYTE to Yes/No")                                                  },
+	{	ByteToGender,                  LPGENT("BYTE to Male/Female (ICQ)")                                       },
+	{	WordToCountry,                 LPGENT("WORD to country name")                                            },
+	{	DwordToIp,                     LPGENT("DWORD to ip address")                                             },
+	{	DayMonthYearToDate,            LPGENT("<prefix>Day|Month|Year to date")                                  },
+	{  	DayMonthYearToAge,             LPGENT("<prefix>Day|Month|Year to age")                                   },
+	{	HoursMinutesSecondsToTime,     LPGENT("<prefix>Hours|Minutes|Seconds to time")                           },
+	{	DmyToTimeDifference,           LPGENT("<prefix>Day|Month|Year|Hours|Minutes|Seconds to time difference") },
+	{	DayMonthToDaysToNextBirthday,  LPGENT("<prefix>Day|Month to days to next birthday")                      },
+	{	TimestampToTimeNoSecs,         LPGENT("DWORD timestamp to time (no seconds)")                            },
+	{	HoursMinutesToTime,            LPGENT("<prefix>Hours|Minutes to time")                                   },
+	{	TimestampToShortDate,          LPGENT("DWORD timestamp to date (short)")                                 },
+	{	TimestampToLongDate,           LPGENT("DWORD timestamp to date (long)")                                  },
+	{	EmptyXStatusToDefaultName,     LPGENT("xStatus: empty xStatus name to default name")                     },
+	{	SecondsToTimeDifference,       LPGENT("DWORD seconds to time difference")                                },
+	{	TimezoneToTime,                LPGENT("BYTE timezone to time")                                           },
+	{	ByteToDay,                     LPGENT("WORD to name of a day (0..6, 0 is Sunday)")                       },
+	{	ByteToMonth,                   LPGENT("WORD to name of a month (1..12, 1 is January)")                   },
+	{	ByteToLanguage,                LPGENT("BYTE to language (ICQ)")                                          },
 };
 
 void InitTranslations() 
 {
-	dwNextFuncId = DBGetContactSettingDword(0, MODULE_ITEMS, "NextFuncId", 1);
+	dwNextFuncId = db_get_dw(0, MODULE_ITEMS, "NextFuncId", 1);
 	for (int i = 0; i < SIZEOF(internalTranslations); i++) 
 		AddTranslation( &internalTranslations[i] );
 

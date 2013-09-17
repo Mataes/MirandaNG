@@ -28,6 +28,10 @@ static HANDLE hFolderChanged = NULL, hIconFolder = NULL;
 static FOUNDINFO* fiList = NULL;
 static int nFICount = 0;
 
+static LIST<void> arMonitoredWindows(3, PtrKeySortT);
+
+static INT_PTR ServiceGetClientIconW(WPARAM wParam, LPARAM lParam);
+
 /*
 *	Prepare
 *	prepares upperstring masks and registers them in IcoLib
@@ -42,7 +46,7 @@ static TCHAR* getSectionName(int flag)
 	return NULL;
 }
 
-void FASTCALL Prepare(KN_FP_MASK* mask, bool bEnable)
+void __fastcall Prepare(KN_FP_MASK* mask, bool bEnable)
 {
 	mask->szMaskUpper = NULL;
 
@@ -98,48 +102,36 @@ void RegisterIcons()
 		HeapDestroy(hHeap);
 	hHeap = HeapCreate(HEAP_NO_SERIALIZE, 0, 0);
 
-	for (i=0; i < DEFAULT_KN_FP_MASK_COUNT; i++)
+	for (i = 0; i < DEFAULT_KN_FP_MASK_COUNT; i++)
 		Prepare(&def_kn_fp_mask[i], true);
 
-	for (i=0; i < DEFAULT_KN_FP_OVERLAYS_COUNT; i++)
+	for (i = 0; i < DEFAULT_KN_FP_OVERLAYS_COUNT; i++)
 		Prepare(&def_kn_fp_overlays_mask[i], true);
 
-	if ( db_get_b(NULL, "Finger", "GroupMirandaVersion", 0)) {
+	if ( db_get_b(NULL, MODULENAME, "GroupMirandaVersion", 0)) {
 		for (i = 0; i < DEFAULT_KN_FP_OVERLAYS2_COUNT; i++)
 			Prepare(&def_kn_fp_overlays2_mask[i], true);
 	}
 	else {
-		for (i=0; i < DEFAULT_KN_FP_OVERLAYS2_NO_VER_COUNT; i++)
+		for (i = 0; i < DEFAULT_KN_FP_OVERLAYS2_NO_VER_COUNT; i++)
 			Prepare(&def_kn_fp_overlays2_mask[i], true);
 		for (; i < DEFAULT_KN_FP_OVERLAYS2_COUNT; i++)
 			Prepare(&def_kn_fp_overlays2_mask[i], false);
 	}
 
-	for (i=0; i < DEFAULT_KN_FP_OVERLAYS3_COUNT; i++)
-		Prepare(&def_kn_fp_overlays3_mask[i], true);
-}
+	if ( db_get_b(NULL, MODULENAME, "GroupOverlaysUnicode", 1)) {
+		for (i = 0; i < DEFAULT_KN_FP_OVERLAYS3_COUNT; i++)
+			Prepare(&def_kn_fp_overlays3_mask[i], true);
+	}
+	else {
+		for (i = 0; i < DEFAULT_KN_FP_OVERLAYS3_NO_UNICODE_COUNT; i++)
+			Prepare(&def_kn_fp_overlays3_mask[i], true);
+		for (; i < DEFAULT_KN_FP_OVERLAYS3_COUNT; i++)
+			Prepare(&def_kn_fp_overlays3_mask[i], false);
+	}
 
-/*
-*	OnModulesLoaded
-*	Hook necessary events here
-*/
-int OnModulesLoaded(WPARAM wParam, LPARAM lParam)
-{
-	g_LPCodePage = CallService(MS_LANGPACK_GETCODEPAGE, 0, 0);
-
-	//Hook necessary events
-	HookEvent(ME_SKIN2_ICONSCHANGED, OnIconsChanged);
-	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, OnContactSettingChanged);
-	HookEvent(ME_OPT_INITIALISE, OnOptInitialise);
-
-	CallService(MS_UTILS_PATHTOABSOLUTET, (WPARAM)DEFAULT_SKIN_FOLDER, (LPARAM)g_szSkinLib);
-
-	RegisterIcons();
-
-	hExtraIcon = ExtraIcon_Register("Client","Fingerprint","client_Miranda_Unknown",
-		OnExtraIconListRebuild,OnExtraImageApply,OnExtraIconClick);
-
-	return 0;
+	for (i = 0; i < DEFAULT_KN_FP_OVERLAYS4_COUNT; i++)
+		Prepare(&def_kn_fp_overlays4_mask[i], true);
 }
 
 /*	ApplyFingerprintImage
@@ -148,7 +140,23 @@ int OnModulesLoaded(WPARAM wParam, LPARAM lParam)
 *	 3)Set ExtraImage for contact
 */
 
-int FASTCALL ApplyFingerprintImage(HANDLE hContact, LPTSTR szMirVer)
+static void SetSrmmIcon(HANDLE hContact, LPTSTR ptszMirver)
+{
+	StatusIconData sid = { sizeof(sid) };
+	sid.szModule = MODULENAME;
+	sid.dwId = 1;
+	sid.flags = MBF_TCHAR;
+	sid.tszTooltip = ptszMirver;
+
+	if ( lstrlen(ptszMirver))
+		sid.hIcon = (HICON)ServiceGetClientIconW((WPARAM)ptszMirver, TRUE);
+	else
+		sid.flags |= MBF_HIDDEN;
+
+	Srmm_ModifyIcon(hContact, &sid);
+}
+
+int __fastcall ApplyFingerprintImage(HANDLE hContact, LPTSTR szMirVer)
 {
 	if (hContact == NULL)
 		return 0;
@@ -158,6 +166,9 @@ int FASTCALL ApplyFingerprintImage(HANDLE hContact, LPTSTR szMirVer)
 		hImage = GetIconIndexFromFI(szMirVer);
 
 	ExtraIcon_SetIcon(hExtraIcon, hContact, hImage);
+
+	if (arMonitoredWindows.getIndex(hContact) != -1)
+		SetSrmmIcon(hContact, szMirVer);
 	return 0;
 }
 
@@ -167,141 +178,6 @@ int OnExtraIconClick(WPARAM wParam, LPARAM lParam, LPARAM)
 	return 0;
 }
 
-/*
-*	OnExtraIconListRebuild
-*	Set all registered indexes in array to EMPTY_EXTRA_ICON (unregistered icon)
-*/
-int OnExtraIconListRebuild(WPARAM wParam, LPARAM lParam)
-{
-	ClearFI();
-	return 0;
-}
-
-/*
-*	OnIconsChanged
-*/
-int OnIconsChanged(WPARAM wParam, LPARAM lParam)
-{
-	ClearFI();
-	return 0;
-}
-
-/*
-*	 OnExtraImageApply
-*	 Try to get MirVer value from db for contact and if success calls ApplyFingerprintImage
-*/
-
-int OnExtraImageApply(WPARAM wParam, LPARAM lParam)
-{
-	HANDLE hContact = (HANDLE)wParam;
-	if (hContact == NULL)
-		return 0;
-
-	char *szProto = GetContactProto((HANDLE)wParam);
-	if (szProto != NULL) {
-		DBVARIANT dbvMirVer;
-		if ( !db_get_ts(hContact, szProto, "MirVer", &dbvMirVer)) {
-			ApplyFingerprintImage(hContact, dbvMirVer.ptszVal);
-			DBFreeVariant(&dbvMirVer);
-		}
-		else ApplyFingerprintImage(hContact, NULL);
-	}
-	else ApplyFingerprintImage(hContact, NULL);
-	return 0;
-}
-
-/*
-*	 OnContactSettingChanged
-*	 if contact settings changed apply new image or remove it
-*/
-int OnContactSettingChanged(WPARAM wParam, LPARAM lParam)
-{
-	if ((HANDLE)wParam == NULL)
-		return 0;
-
-	DBCONTACTWRITESETTING* cws = (DBCONTACTWRITESETTING*)lParam;
-	if (cws && cws->szSetting && !strcmp(cws->szSetting, "MirVer")) {
-		if (cws->value.type == DBVT_UTF8) {
-			LPWSTR wszVal = NULL;
-			int iValLen = MultiByteToWideChar(CP_UTF8, 0, cws->value.pszVal, -1, NULL, 0);
-			if (iValLen > 0) {
-				wszVal = (LPWSTR)mir_alloc(iValLen * sizeof(WCHAR));
-				MultiByteToWideChar(CP_UTF8, 0, cws->value.pszVal, -1, wszVal, iValLen);
-			}
-			ApplyFingerprintImage((HANDLE)wParam, wszVal);
-			mir_free(wszVal);
-		}
-		else if (cws->value.type == DBVT_ASCIIZ) {
-			LPWSTR wszVal = NULL;
-			int iValLen = MultiByteToWideChar(g_LPCodePage, 0, cws->value.pszVal, -1, NULL, 0);
-			if (iValLen > 0) {
-				wszVal = (LPWSTR)mir_alloc(iValLen * sizeof(WCHAR));
-				MultiByteToWideChar(g_LPCodePage, 0, cws->value.pszVal, -1, wszVal, iValLen);
-			}
-			ApplyFingerprintImage((HANDLE)wParam, wszVal);
-			mir_free(wszVal);
-		}
-		else if (cws->value.type == DBVT_WCHAR) {
-			ApplyFingerprintImage((HANDLE)wParam, cws->value.pwszVal);
-		}
-		else ApplyFingerprintImage((HANDLE)wParam, NULL);
-	}
-	return 0;
-}
-
-/*
-*	WildCompareA
-*	Compare 'name' string with 'mask' strings.
-*	Masks can contain '*' or '?' wild symbols
-*	Asterics '*' symbol covers 'empty' symbol too e.g WildCompare("Tst","T*st*"), returns TRUE
-*	In order to handle situation 'at least one any sybol' use "?*" combination:
-*	e.g WildCompare("Tst","T?*st*"), returns FALSE, but both WildCompare("Test","T?*st*") and
-*	WildCompare("Teeest","T?*st*") return TRUE.
-*
-*	Function is case sensitive! so convert input or modify func to use _qtoupper()
-*
-*	Mask can contain several submasks. In this case each submask (including first)
-*	should start from '|' e.g: "|first*submask|second*mask".
-*
-*	Dec 25, 2006 by FYR:
-*	Added Exception to masks: the mask "|^mask3|mask2|mask1" means:
-*	if NOT according to mask 3 AND (mask1 OR mask2)
-*	EXCEPTION should be BEFORE main mask:
-*		IF Exception match - the comparing stops as FALSE
-*		IF Exception does not match - comparing continue
-*		IF Mask match - comparing stops as TRUE
-*		IF Mask does not not match comparing continue
-*/
-BOOL FASTCALL WildCompareA(LPSTR szName, LPSTR szMask)
-{
-	if (*szMask != '|')
-		return WildCompareProcA(szName, szMask);
-
-	size_t s = 1, e = 1;
-	LPSTR szTemp = (LPSTR)_alloca(strlen(szMask) * sizeof(CHAR) + sizeof(CHAR));
-	BOOL bExcept;
-
-	while(szMask[e] != '\0') {
-		s = e;
-		while(szMask[e] != '\0' && szMask[e] != '|') e++;
-
-		// exception mask
-		bExcept = (*(szMask + s) == '^');
-		if (bExcept) s++;
-
-		memcpy(szTemp, szMask + s, (e - s) * sizeof(CHAR));
-		szTemp[e - s] = '\0';
-
-		if (WildCompareProcA(szName, szTemp))
-			return !bExcept;
-
-		if (szMask[e] != '\0')
-			e++;
-		else
-			return FALSE;
-	}
-	return FALSE;
-}
 
 /*
 *	WildCompareW
@@ -326,13 +202,13 @@ BOOL FASTCALL WildCompareA(LPSTR szName, LPSTR szMask)
 *		IF Mask match - comparing stops as TRUE
 *		IF Mask does not not match comparing continue
 */
-BOOL FASTCALL WildCompareW(LPWSTR wszName, LPWSTR wszMask)
+BOOL __fastcall WildCompareW(LPWSTR wszName, LPWSTR wszMask)
 {
 	if (wszMask == NULL)
 		return NULL;
 
 	if (*wszMask != L'|')
-		return WildCompareProcW(wszName, wszMask);
+		return wildcmpw(wszName, wszMask);
 
 	size_t s = 1, e = 1;
 	LPWSTR wszTemp = (LPWSTR)_alloca(wcslen(wszMask) * sizeof(WCHAR) + sizeof(WCHAR));
@@ -350,7 +226,7 @@ BOOL FASTCALL WildCompareW(LPWSTR wszName, LPWSTR wszMask)
 		memcpy(wszTemp, wszMask + s, (e - s) * sizeof(WCHAR));
 		wszTemp[e - s] = L'\0';
 
-		if (WildCompareProcW(wszName, wszTemp))
+		if ( wildcmpw(wszName, wszTemp))
 			return !bExcept;
 
 		if (wszMask[e] != L'\0')
@@ -361,59 +237,9 @@ BOOL FASTCALL WildCompareW(LPWSTR wszName, LPWSTR wszMask)
 	return FALSE;
 }
 
-BOOL __inline WildCompareProcA(LPSTR szName, LPSTR szMask)
+static void MatchMasks(TCHAR* szMirVer, short *base, short *overlay, short *overlay2, short *overlay3, short *overlay4)
 {
-	LPSTR szLast = NULL;
-	for (;; szMask++, szName++)
-	{
-		if (*szMask != '?' && *szMask != *szName) break;
-		if (*szName == '\0') return ((BOOL)!*szMask);
-	}
-	if (*szMask != '*') return FALSE;
-	for (;; szMask++, szName++)
-	{
-		while(*szMask == '*')
-		{
-			szLast = szMask++;
-			if (*szMask == '\0') return ((BOOL)!*szMask);	/* true */
-		}
-		if (*szName == '\0') return ((BOOL)!*szMask);		/* *mask == EOS */
-		if (*szMask != '?' && *szMask != *szName && szLast != NULL)
-		{
-			szName -= (size_t)(szMask - szLast) - 1;
-			szMask = szLast;
-		}
-	}
-}
-
-BOOL __inline WildCompareProcW(LPWSTR wszName, LPWSTR wszMask)
-{
-	LPWSTR wszLast = NULL;
-	for (;; wszMask++, wszName++)
-	{
-		if (*wszMask != L'?' && *wszMask != *wszName) break;
-		if (*wszName == L'\0') return ((BOOL)!*wszMask);
-	}
-	if (*wszMask != L'*') return FALSE;
-	for (;; wszMask++, wszName++)
-	{
-		while(*wszMask == L'*')
-		{
-			wszLast = wszMask++;
-			if (*wszMask == L'\0') return ((BOOL)!*wszMask);	/* true */
-		}
-		if (*wszName == L'\0') return ((BOOL)!*wszMask);		/* *mask == EOS */
-		if (*wszMask != L'?' && *wszMask != *wszName && wszLast != NULL)
-		{
-			wszName -= (size_t)(wszMask - wszLast) - 1;
-			wszMask = wszLast;
-		}
-	}
-}
-
-static void MatchMasks(TCHAR* szMirVer, short *base, short *overlay,short *overlay2,short *overlay3)
-{
-	int i = 0, j = -1, k = -1, n = -1;
+	int i = 0, j = -1, k = -1, n = -1, m = -1;
 
 	for (i=0; i < DEFAULT_KN_FP_MASK_COUNT; i++) {
 		KN_FP_MASK& p = def_kn_fp_mask[i];
@@ -467,31 +293,42 @@ static void MatchMasks(TCHAR* szMirVer, short *base, short *overlay,short *overl
 			if ( WildCompareW(szMirVer, p.szMaskUpper))
 				break;
 		}
+
+		for (m = 0; m < DEFAULT_KN_FP_OVERLAYS4_COUNT; m++) {
+			KN_FP_MASK& p = def_kn_fp_overlays4_mask[m];
+			if (p.hIcolibItem == NULL)
+				continue;
+
+			if ( WildCompareW(szMirVer, p.szMaskUpper))
+				break;
+		}
 	}
 
 	*base = (i < DEFAULT_KN_FP_MASK_COUNT) ? i : -1;
 	*overlay = (j < DEFAULT_KN_FP_OVERLAYS_COUNT) ? j : -1;
 	*overlay2 = (k < DEFAULT_KN_FP_OVERLAYS2_COUNT) ? k : -1;
 	*overlay3 = (n < DEFAULT_KN_FP_OVERLAYS3_COUNT) ? n : -1;
+	*overlay4 = (m < DEFAULT_KN_FP_OVERLAYS4_COUNT) ? m : -1;
 }
 
 /*	GetIconsIndexesA
 *	Retrieves Icons indexes by Mirver
 */
 
-void FASTCALL GetIconsIndexesA(LPSTR szMirVer, short *base, short *overlay,short *overlay2,short *overlay3)
+void __fastcall GetIconsIndexesA(LPSTR szMirVer, short *base, short *overlay, short *overlay2, short *overlay3, short *overlay4)
 {
 	if (strcmp(szMirVer, "?") == 0) {
 		*base = UNKNOWN_MASK_NUMBER;
 		*overlay = -1;
 		*overlay2 = -1;
 		*overlay3 = -1;
+		*overlay4 = -1;
 		return;
 	}
 
 	LPTSTR tszMirVerUp = mir_a2t(szMirVer);
 	_tcsupr(tszMirVerUp);
-	MatchMasks(tszMirVerUp, base, overlay, overlay2, overlay3);
+	MatchMasks(tszMirVerUp, base, overlay, overlay2, overlay3, overlay4);
 	mir_free(tszMirVerUp);
 }
 
@@ -499,7 +336,7 @@ void FASTCALL GetIconsIndexesA(LPSTR szMirVer, short *base, short *overlay,short
 *	Retrieves Icons indexes by Mirver
 */
 
-void FASTCALL GetIconsIndexesW(LPWSTR wszMirVer, short *base, short *overlay,short *overlay2,short *overlay3)
+void __fastcall GetIconsIndexesW(LPWSTR wszMirVer, short *base, short *overlay, short *overlay2, short *overlay3, short *overlay4)
 {
 	if (wcscmp(wszMirVer, L"?") == 0)
 	{
@@ -507,12 +344,13 @@ void FASTCALL GetIconsIndexesW(LPWSTR wszMirVer, short *base, short *overlay,sho
 		*overlay = -1;
 		*overlay2 = -1;
 		*overlay3 = -1;
+		*overlay4 = -1;
 		return;
 	}
 
 	LPWSTR wszMirVerUp = NEWWSTR_ALLOCA(wszMirVer);
 	_wcsupr(wszMirVerUp);
-	MatchMasks(wszMirVerUp, base, overlay, overlay2, overlay3);
+	MatchMasks(wszMirVerUp, base, overlay, overlay2, overlay3, overlay4);
 }
 
 /*
@@ -520,7 +358,7 @@ void FASTCALL GetIconsIndexesW(LPWSTR wszMirVer, short *base, short *overlay,sho
 * returns hIcon of joined icon by given indexes
 */
 
-HICON FASTCALL CreateIconFromIndexes(short base, short overlay, short overlay2, short overlay3)
+HICON __fastcall CreateIconFromIndexes(short base, short overlay, short overlay2, short overlay3, short overlay4)
 {
 	HICON hIcon = NULL;	// returned HICON
 	HICON hTmp = NULL;
@@ -528,6 +366,7 @@ HICON FASTCALL CreateIconFromIndexes(short base, short overlay, short overlay2, 
 	HICON icOverlay = NULL;
 	HICON icOverlay2 = NULL;
 	HICON icOverlay3 = NULL;
+	HICON icOverlay4 = NULL;
 
 	KN_FP_MASK* mainMask = &(def_kn_fp_mask[base]);
 	icMain = Skin_GetIconByHandle(mainMask->hIcolibItem);
@@ -536,16 +375,16 @@ HICON FASTCALL CreateIconFromIndexes(short base, short overlay, short overlay2, 
 		KN_FP_MASK* overlayMask = (overlay != -1) ? &(def_kn_fp_overlays_mask[overlay]) : NULL;
 		KN_FP_MASK* overlay2Mask = (overlay2 != -1) ? &(def_kn_fp_overlays2_mask[overlay2]) : NULL;
 		KN_FP_MASK* overlay3Mask = (overlay3 != -1) ? &(def_kn_fp_overlays3_mask[overlay3]) : NULL;
+		KN_FP_MASK* overlay4Mask = (overlay4 != -1) ? &(def_kn_fp_overlays4_mask[overlay4]) : NULL;
 		icOverlay = (overlayMask == NULL) ? NULL : Skin_GetIconByHandle(overlayMask->hIcolibItem);
 		icOverlay2 = (overlay2Mask == NULL) ? NULL : Skin_GetIconByHandle(overlay2Mask->hIcolibItem);
 		icOverlay3 = (overlay3Mask == NULL) ? NULL : Skin_GetIconByHandle(overlay3Mask->hIcolibItem);
+		icOverlay4 = (overlay4Mask == NULL) ? NULL : Skin_GetIconByHandle(overlay4Mask->hIcolibItem);
 
 		hIcon = icMain;
 
-		if (overlayMask) {
-			hIcon = CreateJoinedIcon(hIcon, icOverlay);
-			hTmp = hIcon;
-		}
+		if (overlayMask)
+			hTmp = hIcon = CreateJoinedIcon(hIcon, icOverlay);
 
 		if (overlay2Mask) {
 			hIcon = CreateJoinedIcon(hIcon, icOverlay2);
@@ -555,6 +394,12 @@ HICON FASTCALL CreateIconFromIndexes(short base, short overlay, short overlay2, 
 
 		if (overlay3Mask) {
 			hIcon = CreateJoinedIcon(hIcon, icOverlay3);
+			if (hTmp) DestroyIcon(hTmp);
+			hTmp = hIcon;
+		}
+
+		if (overlay4Mask) {
+			hIcon = CreateJoinedIcon(hIcon, icOverlay4);
 			if (hTmp) DestroyIcon(hTmp);
 		}
 	}
@@ -566,189 +411,8 @@ HICON FASTCALL CreateIconFromIndexes(short base, short overlay, short overlay2, 
 	Skin_ReleaseIcon(icOverlay);
 	Skin_ReleaseIcon(icOverlay2);
 	Skin_ReleaseIcon(icOverlay3);
+	Skin_ReleaseIcon(icOverlay4);
 	return hIcon;
-}
-
-/*
-*	ServiceGetClientIconA
-*	MS_FP_GETCLIENTICON service implementation.
-*	wParam - char * MirVer value to get client for.
-*	lParam - int noCopy - if wParam is equal to "1"	will return icon handler without copiing icon.
-*	ICON IS ALWAYS COPIED!!!
-*/
-
-INT_PTR ServiceGetClientIconA(WPARAM wParam, LPARAM lParam)
-{
-	LPSTR szMirVer = (LPSTR)wParam;			// MirVer value to get client for.
-	if (szMirVer == NULL)
-		return 0;
-
-	HICON hIcon = NULL;			// returned HICON
-	int NoCopy = (int)lParam;	// noCopy
-	short base, overlay, overlay2, overlay3;
-
-	GetIconsIndexesA(szMirVer, &base, &overlay, &overlay2, &overlay3);
-	if (base != -1)
-		hIcon = CreateIconFromIndexes(base, overlay, overlay2, overlay3);
-	return (INT_PTR)hIcon;
-}
-
-/*
- *	 ServiceSameClientA
- *	 MS_FP_SAMECLIENTS service implementation.
- *	 wParam - char * first MirVer value
- *	 lParam - char * second MirVer value
- *	 return pointer to char string - client desription (do not destroy) if clients are same
- */
-
-INT_PTR ServiceSameClientsA(WPARAM wParam, LPARAM lParam)
-{
-	LPSTR szMirVerFirst = (LPSTR)wParam;	// MirVer value to get client for.
-	LPSTR szMirVerSecond = (LPSTR)lParam;	// MirVer value to get client for.
-	int firstIndex, secondIndex;
-	BOOL Result = FALSE;
-
-	firstIndex = secondIndex = 0;
-	if (!szMirVerFirst || !szMirVerSecond)
-		return (INT_PTR)NULL;	//one of its is not null
-
-	{
-		LPTSTR tszMirVerFirstUp, tszMirVerSecondUp;
-		int iMirVerFirstUpLen, iMirVerSecondUpLen;
-
-		iMirVerFirstUpLen = MultiByteToWideChar(g_LPCodePage, 0, szMirVerFirst, -1, NULL, 0);
-		iMirVerSecondUpLen = MultiByteToWideChar(g_LPCodePage, 0, szMirVerSecond, -1, NULL, 0);
-
-		tszMirVerFirstUp = (LPTSTR)mir_alloc(iMirVerFirstUpLen * sizeof(TCHAR));
-		tszMirVerSecondUp = (LPTSTR)mir_alloc(iMirVerSecondUpLen * sizeof(TCHAR));
-
-		MultiByteToWideChar(g_LPCodePage, 0, szMirVerFirst, -1, tszMirVerFirstUp, iMirVerFirstUpLen);
-		MultiByteToWideChar(g_LPCodePage, 0, szMirVerSecond, -1, tszMirVerSecondUp, iMirVerSecondUpLen);
-
-		_tcsupr_s(tszMirVerFirstUp, iMirVerFirstUpLen);
-		_tcsupr_s(tszMirVerSecondUp, iMirVerSecondUpLen);
-
-		if (_tcscmp(tszMirVerFirstUp, _T("?")) == 0)
-			firstIndex = UNKNOWN_MASK_NUMBER;
-		else
-			while(firstIndex < DEFAULT_KN_FP_MASK_COUNT) {
-				if (WildCompare(tszMirVerFirstUp, def_kn_fp_mask[firstIndex].szMaskUpper))
-					break;
-				firstIndex++;
-			}
-
-		if (_tcscmp(tszMirVerSecondUp, _T("?")) == 0)
-			secondIndex = UNKNOWN_MASK_NUMBER;
-		else
-			while(secondIndex < DEFAULT_KN_FP_MASK_COUNT) {
-				if (WildCompare(tszMirVerSecondUp, def_kn_fp_mask[secondIndex].szMaskUpper))
-					break;
-	 			secondIndex++;
-			}
-
-		mir_free(tszMirVerFirstUp);
-		mir_free(tszMirVerSecondUp);
-
-		if (firstIndex == secondIndex && firstIndex < DEFAULT_KN_FP_MASK_COUNT)
-		{
-			int iClientDescriptionLen = WideCharToMultiByte(g_LPCodePage, 0, def_kn_fp_mask[firstIndex].szClientDescription, -1, NULL, 0, NULL, NULL);
-			if (iClientDescriptionLen > 0)
-				g_szClientDescription = (LPSTR)mir_realloc(g_szClientDescription, iClientDescriptionLen * sizeof(CHAR));
-			else
-				return (INT_PTR)NULL;
-
-			WideCharToMultiByte(g_LPCodePage, 0, def_kn_fp_mask[firstIndex].szClientDescription, -1, g_szClientDescription, iClientDescriptionLen, NULL, NULL);
-			return (INT_PTR)g_szClientDescription;
-
-		}
-	}
-	return (INT_PTR)NULL;
-}
-
-/*
-*	ServiceGetClientIconW
-*	MS_FP_GETCLIENTICONW service implementation.
-*	wParam - LPWSTR MirVer value to get client for.
-*	lParam - int noCopy - if wParam is equal to "1"	will return icon handler without copiing icon.
-*	ICON IS ALWAYS COPIED!!!
-*/
-
-INT_PTR ServiceGetClientIconW(WPARAM wParam, LPARAM lParam)
-{
-	LPWSTR wszMirVer = (LPWSTR)wParam;			// MirVer value to get client for.
-	if (wszMirVer == NULL)
-		return 0;
-
-	short base, overlay, overlay2, overlay3;
-	GetIconsIndexesW(wszMirVer, &base, &overlay, &overlay2, &overlay3);
-
-	HICON hIcon = NULL;			// returned HICON
-	if (base != -1)
-		hIcon = CreateIconFromIndexes(base, overlay, overlay2, overlay3);
-
-	return (INT_PTR)hIcon;
-}
-
-/*
- *	 ServiceSameClientW
- *	 MS_FP_SAMECLIENTSW service implementation.
- *	 wParam - LPWSTR first MirVer value
- *	 lParam - LPWSTR second MirVer value
- *	 return pointer to char string - client desription (do not destroy) if clients are same
- */
-INT_PTR ServiceSameClientsW(WPARAM wParam, LPARAM lParam)
-{
-	LPWSTR wszMirVerFirst = (LPWSTR)wParam;	// MirVer value to get client for.
-	LPWSTR wszMirVerSecond = (LPWSTR)lParam;	// MirVer value to get client for.
-	int firstIndex, secondIndex;
-	BOOL Result = FALSE;
-
-	firstIndex = secondIndex = 0;
-	if (!wszMirVerFirst || !wszMirVerSecond) return (INT_PTR)NULL;	//one of its is not null
-
-	{
-		LPWSTR wszMirVerFirstUp, wszMirVerSecondUp;
-		size_t iMirVerFirstUpLen, iMirVerSecondUpLen;
-
-		iMirVerFirstUpLen = wcslen(wszMirVerFirst) + 1;
-		iMirVerSecondUpLen = wcslen(wszMirVerSecond) + 1;
-
-		wszMirVerFirstUp = (LPWSTR)mir_alloc(iMirVerFirstUpLen * sizeof(WCHAR));
-		wszMirVerSecondUp = (LPWSTR)mir_alloc(iMirVerSecondUpLen * sizeof(WCHAR));
-
-		wcscpy_s(wszMirVerFirstUp, iMirVerFirstUpLen, wszMirVerFirst);
-		wcscpy_s(wszMirVerSecondUp, iMirVerSecondUpLen, wszMirVerSecond);
-
-		_wcsupr_s(wszMirVerFirstUp, iMirVerFirstUpLen);
-		_wcsupr_s(wszMirVerSecondUp, iMirVerSecondUpLen);
-
-		if (wcscmp(wszMirVerFirstUp, L"?") == 0)
-			firstIndex = UNKNOWN_MASK_NUMBER;
-		else
-			while(firstIndex < DEFAULT_KN_FP_MASK_COUNT) {
-				if (WildCompareW(wszMirVerFirstUp, def_kn_fp_mask[firstIndex].szMaskUpper))
-					break;
-				firstIndex++;
-			}
-
-		if (wcscmp(wszMirVerSecondUp, L"?") == 0)
-			secondIndex = UNKNOWN_MASK_NUMBER;
-		else
-			while(secondIndex < DEFAULT_KN_FP_MASK_COUNT) {
-				if (WildCompareW(wszMirVerSecondUp, def_kn_fp_mask[secondIndex].szMaskUpper))
-					break;
-	 			secondIndex++;
-			}
-
-		mir_free(wszMirVerFirstUp);
-		mir_free(wszMirVerSecondUp);
-
-		if (firstIndex == secondIndex && firstIndex < DEFAULT_KN_FP_MASK_COUNT)
-		{
-			return (INT_PTR)def_kn_fp_mask[firstIndex].szClientDescription;
-		}
-	}
-	return (INT_PTR)NULL;
 }
 
 /******************************************************************************
@@ -768,7 +432,7 @@ HBITMAP __inline CreateBitmap32(int cx, int cy)
  *	CreateBitmap32 - Create DIB 32 bitmap with sizes cx*cy and put reference
  *				to new bitmap pixel image memory area to void ** bits
  */
-HBITMAP FASTCALL CreateBitmap32Point(int cx, int cy, LPVOID* bits)
+HBITMAP __fastcall CreateBitmap32Point(int cx, int cy, LPVOID* bits)
 {
 	BITMAPINFO bmpi = { 0 };
 	LPVOID ptPixels = NULL;
@@ -780,15 +444,10 @@ HBITMAP FASTCALL CreateBitmap32Point(int cx, int cy, LPVOID* bits)
 	bmpi.bmiHeader.biWidth = cx;
 	bmpi.bmiHeader.biHeight = cy;
 	bmpi.bmiHeader.biPlanes = 1;
-//	bmpi.bmiHeader.biCompression = BI_RGB;
 	bmpi.bmiHeader.biBitCount = 32;
+	DirectBitmap = CreateDIBSection(NULL, &bmpi, DIB_RGB_COLORS, &ptPixels, NULL, 0);
 
-	DirectBitmap = CreateDIBSection(NULL,
-					&bmpi,
-					DIB_RGB_COLORS,
-					&ptPixels,
-					NULL, 0);
- 	GdiFlush();
+	GdiFlush();
 	if (ptPixels) memset(ptPixels, 0, cx * cy * 4);
 	if (bits != NULL) *bits = ptPixels;
 
@@ -799,7 +458,7 @@ HBITMAP FASTCALL CreateBitmap32Point(int cx, int cy, LPVOID* bits)
 *	 checkHasAlfa - checks if image has at least one BYTE in alpha channel
 *				 that is not a 0. (is image real 32 bit or just 24 bit)
 */
-BOOL FASTCALL checkHasAlfa(LPBYTE from, int width, int height)
+BOOL __fastcall checkHasAlfa(LPBYTE from, int width, int height)
 {
 	LPDWORD pt = (LPDWORD)from;
 	LPDWORD lim = pt + width * height;
@@ -817,7 +476,7 @@ BOOL FASTCALL checkHasAlfa(LPBYTE from, int width, int height)
 *	 checkMaskUsed - checks if mask image has at least one that is not a 0.
 *	 Not sure is it required or not
 */
-BOOL FASTCALL checkMaskUsed(LPBYTE from)
+BOOL __fastcall checkMaskUsed(LPBYTE from)
 {
 	int i;
 	for (i=0; i < 16 * 16 / 8; i++)
@@ -839,7 +498,7 @@ BOOL __inline GetMaskBit(LPBYTE line, int x)
 *	blend	- alpha blend ARGB values of 2 pixels. X1 - underlaying,
 *	 X2 - overlaying points.
 */
-DWORD FASTCALL blend(DWORD X1,DWORD X2)
+DWORD __fastcall blend(DWORD X1,DWORD X2)
 {
 	RGBA* q1 = (RGBA*)&X1;
 	RGBA* q2 = (RGBA*)&X2;
@@ -868,7 +527,7 @@ DWORD FASTCALL blend(DWORD X1,DWORD X2)
 /*
 *	CreateJoinedIcon	- creates new icon by drawing hTop over hBottom.
 */
-HICON FASTCALL CreateJoinedIcon(HICON hBottom, HICON hTop)
+HICON __fastcall CreateJoinedIcon(HICON hBottom, HICON hTop)
 {
 	BOOL drawn = FALSE;
 	HDC tempDC, tempDC2, tempDC3;
@@ -1043,15 +702,15 @@ HICON FASTCALL CreateJoinedIcon(HICON hBottom, HICON hTop)
 	return res;
 }
 
-HANDLE FASTCALL GetIconIndexFromFI(LPTSTR szMirVer)
+HANDLE __fastcall GetIconIndexFromFI(LPTSTR szMirVer)
 {
-	short base, overlay, overlay2, overlay3;
-	GetIconsIndexes(szMirVer, &base, &overlay, &overlay2, &overlay3);
+	short base, overlay, overlay2, overlay3, overlay4;
+	GetIconsIndexes(szMirVer, &base, &overlay, &overlay2, &overlay3, &overlay4);
 	if (base == -1 || nFICount == 0xFFFF)
 		return INVALID_HANDLE_VALUE;
 
-	// MAX: 1024 + 256 + 128 + 128
-	DWORD val = (base << 22) | ((overlay & 0xFF) << 14) | ((overlay2 & 0x7F) << 7) | (overlay3 & 0x7F);
+	// MAX: 256 + 64 + 64 + 64 + 64
+	DWORD val = (base << 24) | ((overlay & 0x3F) << 18) | ((overlay2 & 0x3F) << 12) | ((overlay3 & 0x3F) << 6) | (overlay4 & 0x3F);
 
 	int i;
 	HANDLE hFoundImage = INVALID_HANDLE_VALUE;
@@ -1063,7 +722,7 @@ HANDLE FASTCALL GetIconIndexFromFI(LPTSTR szMirVer)
 	}
 
 	if (hFoundImage == INVALID_HANDLE_VALUE && i == nFICount) { //not found - then add
-		HICON hIcon = CreateIconFromIndexes(base, overlay, overlay2, overlay3);
+		HICON hIcon = CreateIconFromIndexes(base, overlay, overlay2, overlay3, overlay4);
 
 		fiList = (FOUNDINFO*)mir_realloc(fiList, sizeof(FOUNDINFO) * (nFICount + 1));
 		fiList[nFICount].dwArray = val;
@@ -1087,4 +746,221 @@ VOID ClearFI()
 		mir_free(fiList);
 	fiList = NULL;
 	nFICount = 0;
+}
+
+/****************************************************************************************
+*	ServiceGetClientIconW
+*	MS_FP_GETCLIENTICONW service implementation.
+*	wParam - LPWSTR MirVer value to get client for.
+*	lParam - int noCopy - if wParam is equal to "1"	will return icon handler without copiing icon.
+*	ICON IS ALWAYS COPIED!!!
+*/
+
+static INT_PTR ServiceGetClientIconW(WPARAM wParam, LPARAM lParam)
+{
+	LPWSTR wszMirVer = (LPWSTR)wParam;			// MirVer value to get client for.
+	if (wszMirVer == NULL)
+		return 0;
+
+	short base, overlay, overlay2, overlay3, overlay4;
+	GetIconsIndexesW(wszMirVer, &base, &overlay, &overlay2, &overlay3, &overlay4);
+
+	HICON hIcon = NULL;			// returned HICON
+	if (base != -1)
+		hIcon = CreateIconFromIndexes(base, overlay, overlay2, overlay3, overlay4);
+
+	return (INT_PTR)hIcon;
+}
+
+/****************************************************************************************
+ *	 ServiceGetClientDescrW
+ *	 MS_FP_GETCLIENTDESCRW service implementation.
+ *	 wParam - LPCWSTR MirVer value
+ *	 lParam - (NULL) unused
+ *	 returns LPCWSTR: client desription (do not destroy) or NULL
+ */
+
+static INT_PTR ServiceGetClientDescrW(WPARAM wParam, LPARAM lParam)
+{
+	LPWSTR wszMirVer = (LPWSTR)wParam;  // MirVer value to get client for.
+	if (wszMirVer == NULL)
+		return 0;
+
+	LPWSTR wszMirVerUp = NEWWSTR_ALLOCA(wszMirVer); _wcsupr(wszMirVerUp);
+	if (wcscmp(wszMirVerUp, L"?") == 0)
+		return (INT_PTR)def_kn_fp_mask[UNKNOWN_MASK_NUMBER].szClientDescription;
+
+	for (int index = 0; index < DEFAULT_KN_FP_MASK_COUNT; index++)
+		if (WildCompareW(wszMirVerUp, def_kn_fp_mask[index].szMaskUpper))
+			return (INT_PTR)def_kn_fp_mask[index].szClientDescription;
+
+	return NULL;
+}
+
+/****************************************************************************************
+ *	 ServiceSameClientW
+ *	 MS_FP_SAMECLIENTSW service implementation.
+ *	 wParam - LPWSTR first MirVer value
+ *	 lParam - LPWSTR second MirVer value
+ *	 returns LPCWSTR: client desñription (do not destroy) if clients are same or NULL
+ */
+
+static INT_PTR ServiceSameClientsW(WPARAM wParam, LPARAM lParam)
+{
+	if (!wParam || !lParam)
+		return NULL; //one of its is not null
+
+	INT_PTR res1 = ServiceGetClientDescrW(wParam, 0);
+	INT_PTR res2 = ServiceGetClientDescrW(lParam, 0);
+	return (res1 == res2 && res1 != 0) ? res1 : NULL;
+}
+
+/****************************************************************************************
+*	OnExtraIconListRebuild
+*	Set all registered indexes in array to EMPTY_EXTRA_ICON (unregistered icon)
+*/
+
+static int OnExtraIconListRebuild(WPARAM wParam, LPARAM lParam)
+{
+	ClearFI();
+	return 0;
+}
+
+/****************************************************************************************
+*	OnIconsChanged
+*/
+
+static int OnIconsChanged(WPARAM wParam, LPARAM lParam)
+{
+	ClearFI();
+	return 0;
+}
+
+/****************************************************************************************
+*	 OnExtraImageApply
+*	 Try to get MirVer value from db for contact and if success calls ApplyFingerprintImage
+*/
+
+int OnExtraImageApply(WPARAM wParam, LPARAM lParam)
+{
+	HANDLE hContact = (HANDLE)wParam;
+	if (hContact == NULL)
+		return 0;
+
+	char *szProto = GetContactProto(hContact);
+	if (szProto != NULL) {
+		DBVARIANT dbvMirVer;
+		if ( !db_get_ts(hContact, szProto, "MirVer", &dbvMirVer)) {
+			ApplyFingerprintImage(hContact, dbvMirVer.ptszVal);
+			db_free(&dbvMirVer);
+		}
+		else ApplyFingerprintImage(hContact, NULL);
+	}
+	else ApplyFingerprintImage(hContact, NULL);
+	return 0;
+}
+
+/****************************************************************************************
+*	 OnContactSettingChanged
+*	 if contact settings changed apply new image or remove it
+*/
+
+static int OnContactSettingChanged(WPARAM wParam, LPARAM lParam)
+{
+	HANDLE hContact = (HANDLE)wParam;
+	if (hContact == NULL)
+		return 0;
+
+	DBCONTACTWRITESETTING* cws = (DBCONTACTWRITESETTING*)lParam;
+	if (cws && cws->szSetting && !strcmp(cws->szSetting, "MirVer")) {
+		switch (cws->value.type) {
+		case DBVT_UTF8:
+			ApplyFingerprintImage(hContact, ptrT(mir_utf8decodeT(cws->value.pszVal)));
+			break;
+		case DBVT_ASCIIZ:
+			ApplyFingerprintImage(hContact, _A2T(cws->value.pszVal));
+			break;
+		case DBVT_WCHAR:
+			ApplyFingerprintImage(hContact, cws->value.pwszVal);
+			break;
+		default:
+			ApplyFingerprintImage(hContact, NULL);
+		}
+	}
+	return 0;
+}
+
+/****************************************************************************************
+*	OnSrmmWindowEvent
+*	Monitors SRMM window's creation to draw a statusbar icon
+*/
+
+static int OnSrmmWindowEvent(WPARAM wParam, LPARAM lParam)
+{
+	if ( !db_get_b(NULL, MODULENAME, "StatusBarIcon", 1))
+		return 0;
+
+	MessageWindowEventData *event = (MessageWindowEventData *)lParam;
+	if (event == NULL || event->cbSize < sizeof(MessageWindowEventData))
+		return 0;
+
+	if (event->uType == MSG_WINDOW_EVT_OPEN) {
+		ptrT ptszMirVer;
+		char *szProto = GetContactProto(event->hContact);
+		if (szProto != NULL)
+			ptszMirVer = db_get_tsa(event->hContact, szProto, "MirVer");
+		SetSrmmIcon(event->hContact, ptszMirVer);
+		arMonitoredWindows.insert(event->hContact);
+	}
+	else if (event->uType == MSG_WINDOW_EVT_CLOSE)
+		arMonitoredWindows.remove(event->hContact);
+
+	return 0;
+}
+
+/****************************************************************************************
+*	OnModulesLoaded
+*	Hook necessary events here
+*/
+
+int OnModulesLoaded(WPARAM wParam, LPARAM lParam)
+{
+	g_LPCodePage = CallService(MS_LANGPACK_GETCODEPAGE, 0, 0);
+
+	//Hook necessary events
+	HookEvent(ME_SKIN2_ICONSCHANGED, OnIconsChanged);
+	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, OnContactSettingChanged);
+	HookEvent(ME_OPT_INITIALISE, OnOptInitialise);
+	HookEvent(ME_MSG_WINDOWEVENT, OnSrmmWindowEvent);
+
+	PathToAbsoluteT(DEFAULT_SKIN_FOLDER, g_szSkinLib);
+
+	RegisterIcons();
+
+	hExtraIcon = ExtraIcon_Register("Client", LPGEN("Fingerprint"), "client_Miranda_Unknown",
+		OnExtraIconListRebuild,OnExtraImageApply,OnExtraIconClick);
+
+	if (db_get_b(NULL, MODULENAME, "StatusBarIcon", 1)) {
+		StatusIconData sid = { sizeof(sid) };
+		sid.szModule = MODULENAME;
+		sid.flags = MBF_HIDDEN;
+		sid.dwId = 1;
+		Srmm_AddIcon(&sid);
+	} 
+
+	return 0;
+}
+
+void InitFingerModule()
+{
+	HookEvent(ME_SYSTEM_MODULESLOADED, OnModulesLoaded);
+	
+	CreateServiceFunction(MS_FP_SAMECLIENTSW, ServiceSameClientsW);
+	CreateServiceFunction(MS_FP_GETCLIENTDESCRW, ServiceGetClientDescrW);
+	CreateServiceFunction(MS_FP_GETCLIENTICONW, ServiceGetClientIconW);
+}
+
+void UninitFingerModule()
+{
+	arMonitoredWindows.destroy();
 }

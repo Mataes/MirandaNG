@@ -5,6 +5,14 @@ interface
 
 uses windows,m_api;
 
+// for miranda services
+const
+  rtInt  = 1;
+  rtWide = 2;
+  rtAnsi = 3;
+  rtUTF8 = 4;
+
+
 // icons
 function SetButtonIcon(btn:HWND;name:PAnsiChar):HICON;
 function RegisterSingleIcon(resname,ilname,descr,group:PAnsiChar):int;
@@ -47,7 +55,6 @@ function  GetContactStatus(hContact:THANDLE):integer;
 function  IsContactActive(hContact:THANDLE;proto:pAnsiChar=nil):integer;
 
 function CreateGroupW(name:pWideChar;hContact:THANDLE):integer;
-function CreateGroup (name:pAnsiChar;hContact:THANDLE):integer;
 
 function MakeGroupMenu(idxfrom:integer=100):HMENU;
 function GetNewGroupName(parent:HWND):pWideChar;
@@ -68,11 +75,14 @@ function LoadImageURL(url:pAnsiChar;size:integer=0):HBITMAP;
 
 implementation
 
-uses Messages,dbsettings,common,io,freeimage,syswin;
+uses
+  Messages,
+  dbsettings,freeimage,
+  common,io,syswin;
 
 const
   clGroup = 'Group';
-// Save / Load contact 
+// Save / Load contact
 const
   opt_cproto   = 'cproto';
   opt_cuid     = 'cuid';
@@ -194,7 +204,7 @@ begin
     end;
     tmp:=pointer(CallService(MS_VARS_FORMATSTRING,wparam(@tfi),0));
     StrDup(result,tmp);
-    CallService(MS_VARS_FREEMEMORY,wparam(tmp),0);
+    mir_free(tmp);
   end
   else
   begin
@@ -233,7 +243,7 @@ begin
     end;
     tmp:=pointer(CallService(MS_VARS_FORMATSTRING,wparam(@tfi),0));
     StrDupW(result,tmp);
-    CallService(MS_VARS_FREEMEMORY,wparam(tmp),0);
+    mir_free(tmp);
   end
   else
   begin
@@ -266,6 +276,9 @@ procedure ShowPopupW(text:pWideChar;title:pWideChar=nil);
 var
   ppdu:TPOPUPDATAW;
 begin
+  if ServiceExists(MS_POPUP_ADDPOPUPW)=0 then
+    exit;
+
   FillChar(ppdu,SizeOf(TPOPUPDATAW),0);
   if CallService(MS_POPUP_ISSECONDLINESHOWN,0,0)<>0 then
   begin
@@ -410,7 +423,7 @@ var
   mwod:TMessageWindowOutputData;
 begin
   wnd:=GetParent(wnd); //!!
-  hContact:=CallService(MS_DB_CONTACT_FINDFIRST,0,0);
+  hContact:=db_find_first();
   with mwid do
   begin
     cbSize:=SizeOf(mwid);
@@ -428,7 +441,7 @@ begin
         exit;
       end
     end;
-    hContact:=CallService(MS_DB_CONTACT_FINDNEXT,hContact,0);
+    hContact:=db_find_next(hContact);
   end;
   result:=0;
 end;
@@ -588,7 +601,7 @@ begin
   gce.szText.w:=pszText;
   gce.dwFlags :=GCEF_ADDTOLOG+GC_UNICODE;
   gce.time    :=GetCurrentTime;
-  
+
   CallServiceSync(MS_GC_EVENT,0,lparam(@gce));
 end;
 
@@ -631,7 +644,7 @@ begin
     if uid=pAnsiChar(CALLSERVICE_NOTFOUND) then exit;
   end;
 
-  hContact:=CallService(MS_DB_CONTACT_FINDFIRST,0,0);
+  hContact:=db_find_first();
   while hContact<>0 do
   begin
     if is_chat then
@@ -671,7 +684,7 @@ begin
     end;
     // added 2011.04.20
     if result<>0 then break;
-    hContact:=CallService(MS_DB_CONTACT_FINDNEXT,hContact,0);
+    hContact:=db_find_next(hContact);
   end;
 end;
 
@@ -730,18 +743,16 @@ begin
     if proto<>nil then
       proto^:=#0;
   end;
- 
+
 end;
 
 // Import plugin function adaptation
 function CreateGroupW(name:pWideChar;hContact:THANDLE):integer;
 var
-  groupId:integer;
+  groupId, res:integer;
   groupIdStr:array [0..10] of AnsiChar;
-  dbv:TDBVARIANT;
-  cgs:TDBCONTACTGETSETTING;
   grbuf:array [0..127] of WideChar;
-  p:pWideChar;
+  p, pw:pWideChar;
 begin
   if (name=nil) or (name^=#0) then
   begin
@@ -754,25 +765,22 @@ begin
 
   // Check for duplicate & find unused id
   groupId:=0;
-  cgs.szModule:='CListGroups';
-  cgs.pValue  :=@dbv;
   repeat
-    dbv._type:=DBVT_WCHAR;
-    cgs.szSetting:=IntToStr(groupIdStr,groupId);
-    if CallService(MS_DB_CONTACT_GETSETTING_STR,0,lParam(@cgs))<>0 then
+    pw:=DBReadUnicode(0,'CListGroups',IntToStr(groupIdStr,groupId));
+    if pw=nil then
       break;
 
-    if StrCmpW(dbv.szVal.w+1,@grbuf[1])=0 then
+    res:=StrCmpW(pw+1,@grbuf[1]);
+    mFreeMem(pw);
+    if res=0 then
     begin
       if hContact<>0 then
         DBWriteUnicode(hContact,strCList,clGroup,@grbuf[1]);
 
-      DBFreeVariant(@dbv);
       result:=0;
       exit;
     end;
 
-    DBFreeVariant(@dbv);
     inc(groupId);
   until false;
 
@@ -786,63 +794,6 @@ begin
   begin
     p^:=#0;
     CreateGroupW(grbuf+1,0);
-  end;
-
-  result:=1;
-end;
-
-function CreateGroup(name:pAnsiChar;hContact:THANDLE):integer;
-var
-  groupId:integer;
-  groupIdStr:array [0..10] of AnsiChar;
-  dbv:TDBVARIANT;
-  cgs:TDBCONTACTGETSETTING;
-  grbuf:array [0..127] of AnsiChar;
-  p:pAnsiChar;
-begin
-  if (name=nil) or (name^=#0) then
-  begin
-    result:=0;
-    exit;
-  end;
-
-  StrCopy(@grbuf[1],name);
-  grbuf[0]:=CHAR(1 or GROUPF_EXPANDED);
-
-  // Check for duplicate & find unused id
-  groupId:=0;
-  cgs.szModule:='CListGroups';
-  cgs.pValue  :=@dbv;
-  repeat
-    dbv._type:=DBVT_ASCIIZ;
-    cgs.szSetting:=IntToStr(groupIdStr,groupId);
-    if CallService(MS_DB_CONTACT_GETSETTING_STR,0,lParam(@cgs))<>0 then
-      break;
-
-    if StrCmp(dbv.szVal.a+1,@grbuf[1])=0 then
-    begin
-      if hContact<>0 then
-      DBWriteString(hContact,strCList,clGroup,@grbuf[1]);
-
-      DBFreeVariant(@dbv);
-      result:=0;
-      exit;
-    end;
-
-    DBFreeVariant(@dbv);
-    inc(groupId);
-  until false;
-
-  DBWriteString(0,'CListGroups',groupIdStr,grbuf);
-
-  if hContact<>0 then
-    DBWriteString(hContact,strCList,clGroup,@grbuf[1]);
-
-  p:=StrRScan(grbuf,'\');
-  if p<>nil then
-  begin
-    p^:=#0;
-    CreateGroup(grbuf+1,0);
   end;
 
   result:=1;

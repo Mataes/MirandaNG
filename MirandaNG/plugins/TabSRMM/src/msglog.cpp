@@ -26,39 +26,29 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: msglog.cpp 13642 2011-05-27 10:26:12Z silvercircle $
- *
  * implements the richedit based message log and the template parser
  *
  */
 
 #include "commonheaders.h"
-#include <mbstring.h>
-
-#pragma hdrstop
-
-extern      void 	ReleaseRichEditOle(IRichEditOle *ole);
-extern      void 	ImageDataInsertBitmap(IRichEditOle *ole, HBITMAP hBm);
-extern 		int 	CacheIconToBMP(struct TLogIcon *theIcon, HICON hIcon, COLORREF backgroundColor, int sizeX, int sizeY);
-extern		void 	DeleteCachedIcon(struct TLogIcon *theIcon);
 
 struct TCpTable cpTable[] = {
-	{ 874,	_T("Thai")	 },
-	{ 932,	_T("Japanese") },
-	{ 936,	_T("Simplified Chinese") },
-	{ 949,	_T("Korean") },
-	{ 950,	_T("Traditional Chinese") },
-	{ 1250,	_T("Central European") },
-	{ 1251,	_T("Cyrillic") },
-	{ 20866,  _T("Cyrillic KOI8-R") },
-	{ 1252,	_T("Latin I") },
-	{ 1253,	_T("Greek") },
-	{ 1254,	_T("Turkish") },
-	{ 1255,	_T("Hebrew") },
-	{ 1256,	_T("Arabic") },
-	{ 1257,	_T("Baltic") },
-	{ 1258,	_T("Vietnamese") },
-	{ 1361,	_T("Korean (Johab)") },
+	{ 874,	LPGENT("Thai")	 },
+	{ 932,	LPGENT("Japanese") },
+	{ 936,	LPGENT("Simplified Chinese") },
+	{ 949,	LPGENT("Korean") },
+	{ 950,	LPGENT("Traditional Chinese") },
+	{ 1250,	LPGENT("Central European") },
+	{ 1251,	LPGENT("Cyrillic") },
+	{ 20866, LPGENT("Cyrillic KOI8-R") },
+	{ 1252,	LPGENT("Latin I") },
+	{ 1253,	LPGENT("Greek") },
+	{ 1254,	LPGENT("Turkish") },
+	{ 1255,	LPGENT("Hebrew") },
+	{ 1256,	LPGENT("Arabic") },
+	{ 1257,	LPGENT("Baltic") },
+	{ 1258,	LPGENT("Vietnamese") },
+	{ 1361,	LPGENT("Korean (Johab)") },
 	{   -1,     NULL}
 };
 
@@ -70,8 +60,8 @@ wchar_t* months[12] =
 	LPGENT("July"), LPGENT("August"), LPGENT("September"), LPGENT("October"), LPGENT("November"), LPGENT("December")
 };
 
-static TCHAR *Template_MakeRelativeDate(struct TWindowData *dat, HANDLE hTimeZone, time_t check, int groupBreak, TCHAR code);
-static void  ReplaceIcons(HWND hwndDlg, struct TWindowData *dat, LONG startAt, int fAppend, BOOL isSent);
+static TCHAR *Template_MakeRelativeDate(TWindowData *dat, HANDLE hTimeZone, time_t check, int groupBreak, TCHAR code);
+static void  ReplaceIcons(HWND hwndDlg, TWindowData *dat, LONG startAt, int fAppend, BOOL isSent);
 
 static time_t today;
 
@@ -81,7 +71,7 @@ static TCHAR *szYourName = NULL;
 
 static int logPixelSY;
 static TCHAR szToday[22], szYesterday[22];
-char rtfFontsGlobal[MSGDLGFONTCOUNT + 2][RTFCACHELINESIZE];
+char  rtfFontsGlobal[MSGDLGFONTCOUNT + 2][RTFCACHELINESIZE];
 char *rtfFonts;
 
 LOGFONTA logfonts[MSGDLGFONTCOUNT + 2];
@@ -110,7 +100,7 @@ struct LogStreamData {
 	int eventsToInsert;
 	int isEmpty;
 	int isAppend;
-	struct TWindowData *dlgDat;
+	TWindowData *dlgDat;
 	DBEVENTINFO *dbei;
 };
 
@@ -147,9 +137,9 @@ void TSAPI CacheLogFonts()
 	ZeroMemory((void*)logfonts, sizeof(LOGFONTA) * MSGDLGFONTCOUNT + 2);
 	for (i=0; i < MSGDLGFONTCOUNT; i++) {
 		LoadLogfont(i, &logfonts[i], &fontcolors[i], FONTMODULE);
-		wsprintfA(rtfFontsGlobal[i], "\\f%u\\cf%u\\b%d\\i%d\\ul%d\\fs%u", i, i, logfonts[i].lfWeight >= FW_BOLD ? 1 : 0, logfonts[i].lfItalic,logfonts[i].lfUnderline, 2 * abs(logfonts[i].lfHeight) * 74 / logPixelSY);
+		mir_snprintf(rtfFontsGlobal[i], SIZEOF(rtfFontsGlobal[i]), "\\f%u\\cf%u\\b%d\\i%d\\ul%d\\fs%u", i, i, logfonts[i].lfWeight >= FW_BOLD ? 1 : 0, logfonts[i].lfItalic,logfonts[i].lfUnderline, 2 * abs(logfonts[i].lfHeight) * 74 / logPixelSY);
 	}
-	wsprintfA(rtfFontsGlobal[MSGDLGFONTCOUNT], "\\f%u\\cf%u\\b%d\\i%d\\fs%u", MSGDLGFONTCOUNT, MSGDLGFONTCOUNT, 0, 0, 0);
+	mir_snprintf(rtfFontsGlobal[MSGDLGFONTCOUNT], SIZEOF(rtfFontsGlobal[MSGDLGFONTCOUNT]), "\\f%u\\cf%u\\b%d\\i%d\\fs%u", MSGDLGFONTCOUNT, MSGDLGFONTCOUNT, 0, 0, 0);
 
 	_tcsncpy(szToday, TranslateT("Today"), 20);
 	_tcsncpy(szYesterday, TranslateT("Yesterday"), 20);
@@ -187,11 +177,11 @@ void TSAPI CacheLogFonts()
 	ReleaseDC(PluginConfig.g_hwndHotkeyHandler, hdc);
 	PluginConfig.hFontCaption = CInfoPanel::m_ipConfig.hFonts[IPFONTCOUNT - 1];
 
-	PluginConfig.crIncoming = M->GetDword(FONTMODULE, "inbg", SRMSGDEFSET_BKGINCOLOUR);
-	PluginConfig.crOutgoing = M->GetDword(FONTMODULE, "outbg", SRMSGDEFSET_BKGOUTCOLOUR);
-	PluginConfig.crStatus = M->GetDword(FONTMODULE, "statbg", SRMSGDEFSET_BKGCOLOUR);
-	PluginConfig.crOldIncoming = M->GetDword(FONTMODULE, "oldinbg", SRMSGDEFSET_BKGINCOLOUR);
-	PluginConfig.crOldOutgoing = M->GetDword(FONTMODULE, "oldoutbg", SRMSGDEFSET_BKGOUTCOLOUR);
+	PluginConfig.crIncoming = M.GetDword(FONTMODULE, "inbg", SRMSGDEFSET_BKGINCOLOUR);
+	PluginConfig.crOutgoing = M.GetDword(FONTMODULE, "outbg", SRMSGDEFSET_BKGOUTCOLOUR);
+	PluginConfig.crStatus = M.GetDword(FONTMODULE, "statbg", SRMSGDEFSET_BKGCOLOUR);
+	PluginConfig.crOldIncoming = M.GetDword(FONTMODULE, "oldinbg", SRMSGDEFSET_BKGINCOLOUR);
+	PluginConfig.crOldOutgoing = M.GetDword(FONTMODULE, "oldoutbg", SRMSGDEFSET_BKGOUTCOLOUR);
 }
 
 void FreeLogFonts()
@@ -235,13 +225,13 @@ static void AppendToBuffer(char **buffer, int *cbBufferEnd, int *cbBufferAlloced
 		if (charsDone >= 0)
 			break;
 		*cbBufferAlloced += 1024;
-		*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+		*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 	}
 	va_end(va);
 	*cbBufferEnd += charsDone;
 }
 
-static int AppendUnicodeToBuffer(char **buffer, int *cbBufferEnd, int *cbBufferAlloced, TCHAR * line, int mode)
+static int AppendUnicodeToBuffer(char **buffer, int *cbBufferEnd, int *cbBufferAlloced, const TCHAR * line, int mode)
 {
 	DWORD textCharsCount = 0;
 	char *d;
@@ -249,7 +239,7 @@ static int AppendUnicodeToBuffer(char **buffer, int *cbBufferEnd, int *cbBufferA
 	int  lineLen = (int)(wcslen(line)) * 9 + 8;
 	if (*cbBufferEnd + lineLen > *cbBufferAlloced) {
 		cbBufferAlloced[0] += (lineLen + 1024UL - lineLen % 1024UL);
-		*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+		*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 	}
 
 	d = *buffer + *cbBufferEnd;
@@ -257,52 +247,50 @@ static int AppendUnicodeToBuffer(char **buffer, int *cbBufferEnd, int *cbBufferA
 	d += 6;
 
 	for (; *line; line++, textCharsCount++) {
-
-		if (1) {
-			if (*line == 127 && line[1] != 0) {
-				TCHAR code = line[2];
-				if (((code == '0' || code == '1') && line[3] == ' ') || (line[1] == 'c' && code == 'x')) {
-					int begin = (code == '1');
-					switch (line[1]) {
-						case 'b':
-							CopyMemory(d, begin ? "\\b " : "\\b0 ", begin ? 3 : 4);
-							d += (begin ? 3 : 4);
-							line += 3;
-							continue;
-						case 'i':
-							CopyMemory(d, begin ? "\\i " : "\\i0 ", begin ? 3 : 4);
-							d += (begin ? 3 : 4);
-							line += 3;
-							continue;
-						case 'u':
-							CopyMemory(d, begin ? "\\ul " : "\\ul0 ", begin ? 4 : 5);
-							d += (begin ? 4 : 5);
-							line += 3;
-							continue;
-						case 's':
-							CopyMemory(d, begin ? "\\strike " : "\\strike0 ", begin ? 8 : 9);
-							d += (begin ? 8 : 9);
-							line += 3;
-							continue;
-						case 'c':
-							begin = (code == 'x');
-							CopyMemory(d, "\\cf", 3);
-							if (begin) {
-								d[3] = (char)line[3];
-								d[4] = (char)line[4];
-								d[5] = ' ';
-							} else {
-								char szTemp[10];
-								int colindex = GetColorIndex(GetRTFFont(LOWORD(mode) ? (MSGFONTID_MYMSG + (HIWORD(mode) ? 8 : 0)) : (MSGFONTID_YOURMSG + (HIWORD(mode) ? 8 : 0))));
-								_snprintf(szTemp, 4, "%02d", colindex);
-								d[3] = szTemp[0];
-								d[4] = szTemp[1];
-								d[5] = ' ';
-							}
-							d += 6;
-							line += (begin ? 6 : 3);
-							continue;
+		if (*line == 127 && line[1] != 0) {
+			TCHAR code = line[2];
+			if (((code == '0' || code == '1') && line[3] == ' ') || (line[1] == 'c' && code == 'x')) {
+				int begin = (code == '1');
+				switch (line[1]) {
+				case 'b':
+					CopyMemory(d, begin ? "\\b " : "\\b0 ", begin ? 3 : 4);
+					d += (begin ? 3 : 4);
+					line += 3;
+					continue;
+				case 'i':
+					CopyMemory(d, begin ? "\\i " : "\\i0 ", begin ? 3 : 4);
+					d += (begin ? 3 : 4);
+					line += 3;
+					continue;
+				case 'u':
+					CopyMemory(d, begin ? "\\ul " : "\\ul0 ", begin ? 4 : 5);
+					d += (begin ? 4 : 5);
+					line += 3;
+					continue;
+				case 's':
+					CopyMemory(d, begin ? "\\strike " : "\\strike0 ", begin ? 8 : 9);
+					d += (begin ? 8 : 9);
+					line += 3;
+					continue;
+				case 'c':
+					begin = (code == 'x');
+					CopyMemory(d, "\\cf", 3);
+					if (begin) {
+						d[3] = (char)line[3];
+						d[4] = (char)line[4];
+						d[5] = ' ';
 					}
+					else {
+						char szTemp[10];
+						int colindex = GetColorIndex(GetRTFFont(LOWORD(mode) ? (MSGFONTID_MYMSG + (HIWORD(mode) ? 8 : 0)) : (MSGFONTID_YOURMSG + (HIWORD(mode) ? 8 : 0))));
+						mir_snprintf(szTemp, 4, "%02d", colindex);
+						d[3] = szTemp[0];
+						d[4] = szTemp[1];
+						d[5] = ' ';
+					}
+					d += 6;
+					line += (begin ? 6 : 3);
+					continue;
 				}
 			}
 		}
@@ -322,7 +310,7 @@ static int AppendUnicodeToBuffer(char **buffer, int *cbBufferEnd, int *cbBufferA
 		} else if (*line < 128) {
 			*d++ = (char) * line;
 		} else
-			d += sprintf(d, "\\u%d ?", *line);
+			d += sprintf(d, "\\u%d ?", *line); //!!!!!!!!!!!!!
 	}
 
 	strcpy(d, "}");
@@ -347,7 +335,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 		if (charsDone >= 0)
 			break;
 		*cbBufferAlloced += 1024;
-		*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+		*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 	}
 	va_end(va);
 	*cbBufferEnd += charsDone;
@@ -363,7 +351,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 
 					if (*cbBufferEnd + 5 > *cbBufferAlloced) {
 						*cbBufferAlloced += 1024;
-						*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+						*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 					}
 					switch (tag) {
 						case 'b':
@@ -379,7 +367,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 							continue;
 						case 's':
 							*cbBufferAlloced += 20;
-							*buffer = (char *)realloc(*buffer, *cbBufferAlloced);
+							*buffer = (char *)mir_realloc(*buffer, *cbBufferAlloced);
 							MoveMemory(*buffer + i + 6, *buffer + i + 1, (*cbBufferEnd - i) + 1);
 							CopyMemory(*buffer + i, begin ? "\\strike1 " : "\\strike0 ", begin ? 9 : 9);
 							*cbBufferEnd += 5;
@@ -391,7 +379,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 							} else {
 								char szTemp[10];
 								int colindex = GetColorIndex(GetRTFFont(LOWORD(mode) ? (MSGFONTID_MYMSG + (HIWORD(mode) ? 8 : 0)) : (MSGFONTID_YOURMSG + (HIWORD(mode) ? 8 : 0))));
-								_snprintf(szTemp, 4, "%02d", colindex);
+								mir_snprintf(szTemp, 4, "%02d", colindex);
 								(*buffer)[i + 3] = szTemp[0];
 								(*buffer)[i + 4] = szTemp[1];
 							}
@@ -404,7 +392,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 		if ((*buffer)[i] == '\r' && (*buffer)[i + 1] == '\n') {
 			if (*cbBufferEnd + 5 > *cbBufferAlloced) {
 				*cbBufferAlloced += 1024;
-				*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+				*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 			}
 			MoveMemory(*buffer + i + 6, *buffer + i + 2, *cbBufferEnd - i - 1);
 			CopyMemory(*buffer + i, "\\line ", 6);
@@ -412,7 +400,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 		} else if ((*buffer)[i] == '\n') {
 			if (*cbBufferEnd + 6 > *cbBufferAlloced) {
 				*cbBufferAlloced += 1024;
-				*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+				*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 			}
 			MoveMemory(*buffer + i + 6, *buffer + i + 1, *cbBufferEnd - i);
 			CopyMemory(*buffer + i, "\\line ", 6);
@@ -420,7 +408,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 		} else if ((*buffer)[i] == '\t') {
 			if (*cbBufferEnd + 5 > *cbBufferAlloced) {
 				*cbBufferAlloced += 1024;
-				*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+				*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 			}
 			MoveMemory(*buffer + i + 5, *buffer + i + 1, *cbBufferEnd - i);
 			CopyMemory(*buffer + i, "\\tab ", 5);
@@ -428,7 +416,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 		} else if ((*buffer)[i] == '\\' || (*buffer)[i] == '{' || (*buffer)[i] == '}') {
 			if (*cbBufferEnd + 2 > *cbBufferAlloced) {
 				*cbBufferAlloced += 1024;
-				*buffer = (char *) realloc(*buffer, *cbBufferAlloced);
+				*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
 			}
 			MoveMemory(*buffer + i + 1, *buffer + i, *cbBufferEnd - i + 1);
 			(*buffer)[i] = '\\';
@@ -439,7 +427,7 @@ static int AppendToBufferWithRTF(int mode, char **buffer, int *cbBufferEnd, int 
 	return (int)(_mbslen((unsigned char *)*buffer + *cbBufferEnd));
 }
 
-static void Build_RTF_Header(char **buffer, int *bufferEnd, int *bufferAlloced, struct TWindowData *dat)
+static void Build_RTF_Header(char **buffer, int *bufferEnd, int *bufferAlloced, TWindowData *dat)
 {
 	COLORREF 		colour;
 	int      		i;
@@ -486,7 +474,7 @@ static void Build_RTF_Header(char **buffer, int *bufferEnd, int *bufferAlloced, 
 	// custom template colors...
 
 	for (i = 1; i <= 5; i++) {
-		_snprintf(szTemp, 10, "cc%d", i);
+		mir_snprintf(szTemp, 10, "cc%d", i);
 		colour = theme->custom_colors[i - 1];
 		if (colour == 0)
 			colour = RGB(1, 1, 1);
@@ -513,15 +501,15 @@ static void Build_RTF_Header(char **buffer, int *bufferEnd, int *bufferAlloced, 
 }
 
 
-//free() the return value
-static char *CreateRTFHeader(struct TWindowData *dat)
+//mir_free() the return value
+static char *CreateRTFHeader(TWindowData *dat)
 {
 	char *buffer;
 	int bufferAlloced, bufferEnd;
 
 	bufferEnd = 0;
 	bufferAlloced = 1024;
-	buffer = (char *) malloc(bufferAlloced);
+	buffer = (char *) mir_alloc(bufferAlloced);
 	buffer[0] = '\0';
 
 	Build_RTF_Header(&buffer, &bufferEnd, &bufferAlloced, dat);
@@ -529,7 +517,7 @@ static char *CreateRTFHeader(struct TWindowData *dat)
 }
 
 static void AppendTimeStamp(TCHAR *szFinalTimestamp, int isSent, char **buffer, int *bufferEnd, int *bufferAlloced, int skipFont,
-							struct TWindowData *dat, int iFontIDOffset)
+							TWindowData *dat, int iFontIDOffset)
 {
 	if (skipFont)
 		AppendUnicodeToBuffer(buffer, bufferEnd, bufferAlloced, szFinalTimestamp, MAKELONG(isSent, dat->isHistory));
@@ -539,52 +527,44 @@ static void AppendTimeStamp(TCHAR *szFinalTimestamp, int isSent, char **buffer, 
 	}
 }
 
-//free() the return value
-static char *CreateRTFTail(struct TWindowData *dat)
+//mir_free() the return value
+static char *CreateRTFTail(TWindowData *dat)
 {
 	char *buffer;
 	int bufferAlloced, bufferEnd;
 
 	bufferEnd = 0;
 	bufferAlloced = 1024;
-	buffer = (char *) malloc(bufferAlloced);
+	buffer = (char *) mir_alloc(bufferAlloced);
 	buffer[0] = '\0';
 	AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "}");
 	return buffer;
 }
 
-int TSAPI DbEventIsShown(struct TWindowData *dat, DBEVENTINFO * dbei)
+int TSAPI DbEventIsShown(TWindowData *dat, DBEVENTINFO *dbei)
 {
-	switch (dbei->eventType) {
-	case EVENTTYPE_MESSAGE:
-		return 1;
-	case EVENTTYPE_FILE:
-		return(dat->dwFlagsEx & MWF_SHOW_FILEEVENTS);
-	}
-
-	if (IsStatusEvent(dbei->eventType))
+	if (!IsCustomEvent(dbei->eventType))
 		return 1;
 
-	int heFlags = HistoryEvents_GetFlags(dbei->eventType);
-	if (heFlags != -1)
-		return (heFlags & HISTORYEVENTS_FLAG_SHOW_IM_SRMM) == HISTORYEVENTS_FLAG_SHOW_IM_SRMM;
+	if (DbEventIsForMsgWindow(dbei))
+		return 1;
 
-	return 0;
+	return IsStatusEvent(dbei->eventType);
 }
 
-static int DbEventIsForMsgWindow(DBEVENTINFO *dbei)
+int DbEventIsForMsgWindow(DBEVENTINFO *dbei)
 {
-	DBEVENTTYPEDESCR* et = ( DBEVENTTYPEDESCR* )CallService( MS_DB_EVENT_GETTYPE, ( WPARAM )dbei->szModule, ( LPARAM )dbei->eventType );
+	DBEVENTTYPEDESCR* et = ( DBEVENTTYPEDESCR* )CallService(MS_DB_EVENT_GETTYPE, (WPARAM)dbei->szModule, (LPARAM)dbei->eventType);
 	return et && ( et->flags & DETF_MSGWINDOW );
 }
 
-static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hContact, HANDLE hDbEvent, int prefixParaBreak, struct LogStreamData *streamData)
+static char *Template_CreateRTFFromDbEvent(TWindowData *dat, HANDLE hContact, HANDLE hDbEvent, int prefixParaBreak, LogStreamData *streamData)
 {
 	char *buffer, c;
 	TCHAR ci, cc;
-	TCHAR 	*szFinalTimestamp;
-	int 	bufferAlloced, bufferEnd;
-	size_t 	iTemplateLen, i = 0;
+	TCHAR	*szFinalTimestamp;
+	int   bufferAlloced, bufferEnd;
+	size_t iTemplateLen, i = 0;
 	DBEVENTINFO dbei = { 0 };
 	int isSent = 0;
 	int iFontIDOffset = 0;
@@ -596,30 +576,29 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 	BOOL isBold = FALSE, isItalic = FALSE, isUnderline = FALSE;
 	DWORD dwEffectiveFlags;
 	DWORD dwFormattingParams = MAKELONG(PluginConfig.m_FormatWholeWordsOnly, 0);
-	BOOL  fIsStatusChangeEvent = FALSE;
+	BOOL  bIsStatusChangeEvent = FALSE;
 	TCHAR *msg, *formatted = NULL;
-	int heFlags = -1;
 	char *rtfMessage = NULL;
 
 	bufferEnd = 0;
 	bufferAlloced = 1024;
-	buffer = (char *) malloc(bufferAlloced);
+	buffer = (char *) mir_alloc(bufferAlloced);
 	buffer[0] = '\0';
 
 	if (streamData->dbei != 0)
 		dbei = *(streamData->dbei);
 	else {
 		dbei.cbSize = sizeof(dbei);
-		dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, (WPARAM) hDbEvent, 0);
+		dbei.cbBlob = db_event_getBlobSize(hDbEvent);
 		if (dbei.cbBlob == -1) {
-			free(buffer);
+			mir_free(buffer);
 			return NULL;
 		}
-		dbei.pBlob = (PBYTE) malloc(dbei.cbBlob);
-		CallService(MS_DB_EVENT_GET, (WPARAM) hDbEvent, (LPARAM) & dbei);
+		dbei.pBlob = (PBYTE) mir_alloc(dbei.cbBlob);
+		db_event_get(hDbEvent, &dbei);
 		if (!DbEventIsShown(dat, &dbei)) {
-			free(dbei.pBlob);
-			free(buffer);
+			mir_free(dbei.pBlob);
+			mir_free(buffer);
 			return NULL;
 		}
 	}
@@ -627,18 +606,11 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 	if (dbei.eventType == EVENTTYPE_MESSAGE && !(dbei.flags & (DBEF_SENT | DBEF_READ)))
 		dat->cache->updateStats(TSessionStats::SET_LAST_RCV, lstrlenA((char *) dbei.pBlob));
 
-	if (dbei.eventType != EVENTTYPE_MESSAGE && dbei.eventType != EVENTTYPE_FILE	&& !IsStatusEvent(dbei.eventType))
-		heFlags = HistoryEvents_GetFlags(dbei.eventType);
-	if (heFlags & HISTORYEVENTS_FLAG_DEFAULT)
-		heFlags = -1;
-
-	if (heFlags != -1)
-		rtfMessage = HistoryEvents_GetRichText(hDbEvent, &dbei);
 	if (rtfMessage == NULL) {
 		msg = DbGetEventTextT(&dbei, dat->codePage);
 		if (!msg) {
-			free(dbei.pBlob);
-			free(buffer);
+			mir_free(dbei.pBlob);
+			mir_free(buffer);
 			return NULL;
 		}
 		TrimMessage(msg);
@@ -646,7 +618,7 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 		mir_free(msg);
 	}
 
-	fIsStatusChangeEvent = (heFlags != -1 || IsStatusEvent(dbei.eventType));
+	bIsStatusChangeEvent = IsStatusEvent(dbei.eventType);
 
 	if (dat->isAutoRTL & 2) {                                     // means: last \\par was deleted to avoid new line at end of log
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\par");
@@ -665,8 +637,8 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 	iFontIDOffset = dat->isHistory ? 8 : 0;     // offset into the font table for either history (old) or new events... (# of fonts per configuration set)
 	isSent = (dbei.flags & DBEF_SENT);
 
-	if (!isSent && (fIsStatusChangeEvent || dbei.eventType == EVENTTYPE_MESSAGE || DbEventIsForMsgWindow(&dbei))) {
-		CallService(MS_DB_EVENT_MARKREAD, (WPARAM)hContact, (LPARAM)hDbEvent);
+	if (!isSent && (bIsStatusChangeEvent || dbei.eventType == EVENTTYPE_MESSAGE || DbEventIsForMsgWindow(&dbei))) {
+		db_event_markRead(hContact, hDbEvent);
 		CallService(MS_CLIST_REMOVEEVENT, (WPARAM)hContact, (LPARAM)hDbEvent);
 	}
 
@@ -682,9 +654,8 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 	}
 	if (dwEffectiveFlags & MWF_LOG_GROUPMODE && ((dbei.flags & (DBEF_SENT | DBEF_READ | DBEF_RTL)) == LOWORD(dat->iLastEventType)) && dbei.eventType == EVENTTYPE_MESSAGE && HIWORD(dat->iLastEventType) == EVENTTYPE_MESSAGE && (dbei.timestamp - dat->lastEventTime) < 86400) {
 		g_groupBreak = FALSE;
-		if ((time_t)dbei.timestamp > today && dat->lastEventTime < today) {
+		if ((time_t)dbei.timestamp > today && dat->lastEventTime < today)
 			g_groupBreak = TRUE;
-		}
 	}
 	if (!streamData->isEmpty && g_groupBreak && (dwEffectiveFlags & MWF_LOG_GRID))
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\sl-1\\slmult0\\highlight%d\\cf%d\\-\\par\\sl0", MSGDLGFONTCOUNT + 4, MSGDLGFONTCOUNT + 4);
@@ -695,7 +666,7 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\ltrpar");
 
 	/* OnO: highlight start */
-	if (fIsStatusChangeEvent)
+	if (bIsStatusChangeEvent)
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\highlight%d\\cf%d", MSGDLGFONTCOUNT + 7, MSGDLGFONTCOUNT + 7);
 	else
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\highlight%d\\cf%d", MSGDLGFONTCOUNT + (dat->isHistory?5:1) + ((isSent) ? 1 : 0), MSGDLGFONTCOUNT + (dat->isHistory?5:1) + ((isSent) ? 1 : 0));
@@ -720,7 +691,7 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 	}
 	this_templateset = dbei.flags & DBEF_RTL ? dat->pContainer->rtl_templates : dat->pContainer->ltr_templates;
 
-	if (fIsStatusChangeEvent)
+	if (bIsStatusChangeEvent)
 		szTemplate = this_templateset->szTemplates[TMPL_STATUSCHG];
 	else if (dbei.eventType == EVENTTYPE_ERRMSG)
 		szTemplate = this_templateset->szTemplates[TMPL_ERRMSG];
@@ -738,7 +709,7 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 
 	if (dat->hHistoryEvents) {
 		if (dat->curHistory == dat->maxHistory) {
-			MoveMemory(dat->hHistoryEvents, &dat->hHistoryEvents[1], sizeof(HANDLE) * (dat->maxHistory - 1));
+			MoveMemory(dat->hHistoryEvents, &dat->hHistoryEvents[1], sizeof(HANDLE)* (dat->maxHistory - 1));
 			dat->curHistory--;
 		}
 		dat->hHistoryEvents[dat->curHistory++] = hDbEvent;
@@ -813,17 +784,17 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 							icon = isSent ? LOGICON_OUT : LOGICON_IN;
 						else {
 							switch (dbei.eventType) {
-								case EVENTTYPE_FILE:
-									icon = LOGICON_FILE;
-									break;
-								case EVENTTYPE_ERRMSG:
-									icon = LOGICON_ERROR;
-									break;
-								default:
-									icon = LOGICON_MSG;
-									break;
+							case EVENTTYPE_FILE:
+								icon = LOGICON_FILE;
+								break;
+							case EVENTTYPE_ERRMSG:
+								icon = LOGICON_ERROR;
+								break;
+							default:
+								icon = LOGICON_MSG;
+								break;
 							}
-							if (fIsStatusChangeEvent)
+							if (bIsStatusChangeEvent)
 								icon = LOGICON_STATUS;
 						}
 						AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "%s\\fs1  #~#%01d%c%s ", GetRTFFont(MSGFONTID_SYMBOLS_IN), icon, isSent ? '>' : '<', GetRTFFont(isSent ? MSGFONTID_MYMSG + iFontIDOffset : MSGFONTID_YOURMSG + iFontIDOffset));
@@ -953,20 +924,20 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 							c = isSent ? 0x37 : 0x38;
 						else {
 							switch (dbei.eventType) {
-								case EVENTTYPE_MESSAGE:
-									c = (char)0xaa;
-									break;
-								case EVENTTYPE_FILE:
-									c = (char)0xcd;
-									break;
-								case EVENTTYPE_ERRMSG:
-									c = (char)0x72;;
-									break;
-								default:
-									c = (char)0xaa;
-									break;
+							case EVENTTYPE_MESSAGE:
+								c = (char)0xaa;
+								break;
+							case EVENTTYPE_FILE:
+								c = (char)0xcd;
+								break;
+							case EVENTTYPE_ERRMSG:
+								c = (char)0x72;;
+								break;
+							default:
+								c = (char)0xaa;
+								break;
 							}
-							if (fIsStatusChangeEvent)
+							if (bIsStatusChangeEvent)
 								c = 0x4e;
 						}
 						if (skipFont)
@@ -983,10 +954,7 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 				case 'l':           // soft line break
 					AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\line");
 					break;
-				case 'N': {         // nickname
-					if (heFlags != -1 && !(heFlags & HISTORYEVENTS_FLAG_EXPECT_CONTACT_NAME_BEFORE))
-						break;
-
+				case 'N':           // nickname
 					if (!skipFont)
 						AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "%s ", GetRTFFont(isSent ? MSGFONTID_MYNAME + iFontIDOffset : MSGFONTID_YOURNAME + iFontIDOffset));
 					if (isSent)
@@ -994,37 +962,36 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 					else
 						AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, szYourName, MAKELONG(isSent, dat->isHistory));
 					break;
-				}
 				case 'U':            // UIN
 					if (!skipFont)
 						AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "%s ", GetRTFFont(isSent ? MSGFONTID_MYNAME + iFontIDOffset : MSGFONTID_YOURNAME + iFontIDOffset));
 					if (!isSent)
-						AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, (wchar_t *)dat->cache->getUIN(), MAKELONG(isSent, dat->isHistory));
+						AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, dat->cache->getUIN(), MAKELONG(isSent, dat->isHistory));
 					else
-						AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, (wchar_t *)dat->myUin, MAKELONG(isSent, dat->isHistory));
+						AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, dat->myUin, MAKELONG(isSent, dat->isHistory));
 					break;
 				case 'e':           // error message
 					AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "%s ", GetRTFFont(MSGFONTID_ERROR));
 					AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, (wchar_t *)dbei.szModule, MAKELONG(isSent, dat->isHistory));
 					break;
-				case 'M': {         // message
-					if (fIsStatusChangeEvent)
+				case 'M':           // message
+					if (bIsStatusChangeEvent)
 						dbei.eventType = EVENTTYPE_STATUSCHANGE;
 					switch (dbei.eventType) {
 						case EVENTTYPE_MESSAGE:
 						case EVENTTYPE_ERRMSG:
 						case EVENTTYPE_STATUSCHANGE: {
-							if (fIsStatusChangeEvent || dbei.eventType == EVENTTYPE_ERRMSG) {
+							if (bIsStatusChangeEvent || dbei.eventType == EVENTTYPE_ERRMSG) {
 								if (dbei.eventType == EVENTTYPE_ERRMSG && dbei.cbBlob == 0)
 									break;
 								if (dbei.eventType == EVENTTYPE_ERRMSG) {
 									if (!skipFont)
-										AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\line%s ", GetRTFFont(fIsStatusChangeEvent ? H_MSGFONTID_STATUSCHANGES : MSGFONTID_MYMSG));
+										AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\line%s ", GetRTFFont(bIsStatusChangeEvent ? H_MSGFONTID_STATUSCHANGES : MSGFONTID_MYMSG));
 									else
 										AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\line ");
 								} else  {
 									if (!skipFont)
-										AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "%s ", GetRTFFont(fIsStatusChangeEvent ? H_MSGFONTID_STATUSCHANGES : MSGFONTID_MYMSG));
+										AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "%s ", GetRTFFont(bIsStatusChangeEvent ? H_MSGFONTID_STATUSCHANGES : MSGFONTID_MYMSG));
 								}
 							} else {
 								if (!skipFont)
@@ -1049,9 +1016,9 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 								if ( *szDescr != 0 ) {
 									TCHAR* tszDescr = DbGetEventStringT( &dbei, szDescr );
 									TCHAR buf[1000];
-									mir_sntprintf( buf, SIZEOF(buf), _T("%s (%s)"), tszFileName, tszDescr );
+									mir_sntprintf(buf, SIZEOF(buf), _T("%s (%s)"), tszFileName, tszDescr);
 									AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, buf, 0 );
-									mir_free( tszDescr );
+									mir_free(tszDescr);
 								}
 								else {
 									AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, tszFileName, 0 );
@@ -1059,9 +1026,14 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 								mir_free( tszFileName );
 							}
 							break;
+						default:
+							if (IsCustomEvent(dbei.eventType)) {
+								TCHAR* tszText = DbGetEventTextT(&dbei, CP_ACP);
+								AppendUnicodeToBuffer(&buffer, &bufferEnd, &bufferAlloced, tszText, 0);
+							}
+							break;
 					}
 					break;
-				}
 				case '*':       // bold
 					AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, isBold ? "\\b0 " : "\\b ");
 					isBold = !isBold;
@@ -1178,8 +1150,7 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 	AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\par");
 
 	if (streamData->dbei == 0)
-		free(dbei.pBlob);
-	HistoryEvents_ReleaseText(rtfMessage);
+		mir_free(dbei.pBlob);
 
 	dat->iLastEventType = MAKELONG((dbei.flags & (DBEF_SENT | DBEF_READ | DBEF_RTL)), dbei.eventType);
 	dat->lastEventTime = dbei.timestamp;
@@ -1188,24 +1159,24 @@ static char *Template_CreateRTFFromDbEvent(struct TWindowData *dat, HANDLE hCont
 
 static DWORD CALLBACK LogStreamInEvents(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG * pcb)
 {
-	struct LogStreamData *dat = (struct LogStreamData *) dwCookie;
+	LogStreamData *dat = (LogStreamData *) dwCookie;
 
 	if (dat->buffer == NULL) {
 		dat->bufferOffset = 0;
 		switch (dat->stage) {
 			case STREAMSTAGE_HEADER:
-				if (dat->buffer) free(dat->buffer);
+				if (dat->buffer) mir_free(dat->buffer);
 				dat->buffer = CreateRTFHeader(dat->dlgDat);
 				dat->stage = STREAMSTAGE_EVENTS;
 				break;
 			case STREAMSTAGE_EVENTS:
 				if (dat->eventsToInsert) {
 					do {
-						if (dat->buffer) free(dat->buffer);
+						if (dat->buffer) mir_free(dat->buffer);
 						dat->buffer = Template_CreateRTFFromDbEvent(dat->dlgDat, dat->hContact, dat->hDbEvent, !dat->isEmpty, dat);
 						if (dat->buffer)
 							dat->hDbEventLast = dat->hDbEvent;
-						dat->hDbEvent = (HANDLE) CallService(MS_DB_EVENT_FINDNEXT, (WPARAM) dat->hDbEvent, 0);
+						dat->hDbEvent = db_event_next(dat->hDbEvent);
 						if (--dat->eventsToInsert == 0)
 							break;
 					} while (dat->buffer == NULL && dat->hDbEvent);
@@ -1217,7 +1188,7 @@ static DWORD CALLBACK LogStreamInEvents(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG 
 				dat->stage = STREAMSTAGE_TAIL;
 				//fall through
 			case STREAMSTAGE_TAIL: {
-				if (dat->buffer) free(dat->buffer);
+				if (dat->buffer) mir_free(dat->buffer);
 				dat->buffer = CreateRTFTail(dat->dlgDat);
 				dat->stage = STREAMSTAGE_STOP;
 				break;
@@ -1232,13 +1203,13 @@ static DWORD CALLBACK LogStreamInEvents(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG 
 	CopyMemory(pbBuff, dat->buffer + dat->bufferOffset, *pcb);
 	dat->bufferOffset += *pcb;
 	if (dat->bufferOffset == dat->bufferLen) {
-		free(dat->buffer);
+		mir_free(dat->buffer);
 		dat->buffer = NULL;
 	}
 	return 0;
 }
 
-static void SetupLogFormatting(struct TWindowData *dat)
+static void SetupLogFormatting(TWindowData *dat)
 {
 	if (dat->hHistoryEvents) {
 		mir_snprintf(dat->szMicroLf, sizeof(dat->szMicroLf), "%s", "\\v\\cf%d \\ ~-+%d+-~\\v0 ");
@@ -1250,8 +1221,8 @@ static void SetupLogFormatting(struct TWindowData *dat)
 void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAppend, DBEVENTINFO *dbei_s)
 {
 	EDITSTREAM stream = { 0 };
-	struct LogStreamData streamData = {	0 };
-	struct TWindowData *dat = (struct TWindowData *) GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+	LogStreamData streamData = { 0 };
+	TWindowData *dat = (TWindowData*) GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
 	CHARRANGE oldSel, sel;
 	HWND hwndrtf;
 	LONG startAt = 0;
@@ -1275,7 +1246,7 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 	if (IsWindow(hwndrtf)) {
 		si.fMask = SIF_PAGE | SIF_RANGE | SIF_POS;;
 		GetScrollInfo(hwndrtf, SB_VERT, &si);
-		SendMessage(hwndrtf, EM_GETSCROLLPOS, 0, (LPARAM) &pt);
+		SendMessage(hwndrtf, EM_GETSCROLLPOS, 0, (LPARAM)&pt);
 
 		if (GetWindowLongPtr(hwndrtf, GWL_STYLE) & WS_VSCROLL)
 			psi = &si;
@@ -1318,7 +1289,7 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 		if (fAppend)
 			dat->hDbEventLast = hDbEventFirst;
 		else
-			dat->hDbEventLast = (HANDLE)CallService(MS_DB_EVENT_FINDLAST, (WPARAM)dat->hContact, 0);
+			dat->hDbEventLast = db_event_last(dat->hContact);
 		return;
 	}
 	if (dat->hwndHPP != 0) {
@@ -1346,7 +1317,7 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 		if (fAppend)
 			dat->hDbEventLast = hDbEventFirst;
 		else
-			dat->hDbEventLast = (HANDLE)CallService(MS_DB_EVENT_FINDLAST, (WPARAM)dat->hContact, 0);
+			dat->hDbEventLast = db_event_last(dat->hContact);
 		return;
 	}
 
@@ -1361,7 +1332,7 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 	szMyName = dat->szMyNickname;
 
 	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_HIDESELECTION, TRUE, 0);
-	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXGETSEL, 0, (LPARAM) & oldSel);
+	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXGETSEL, 0, (LPARAM)&oldSel);
 	streamData.hContact = dat->hContact;
 	streamData.hDbEvent = hDbEventFirst;
 	streamData.dlgDat = dat;
@@ -1376,14 +1347,14 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 		GETTEXTLENGTHEX gtxl = {0};
 		gtxl.codepage = 1200;
 		gtxl.flags = GTL_DEFAULT | GTL_PRECISE | GTL_NUMCHARS;
-		fi.chrg.cpMin = SendDlgItemMessage(hwndDlg, IDC_LOG, EM_GETTEXTLENGTHEX, (WPARAM) & gtxl, 0);
+		fi.chrg.cpMin = SendDlgItemMessage(hwndDlg, IDC_LOG, EM_GETTEXTLENGTHEX, (WPARAM)& gtxl, 0);
 		sel.cpMin = sel.cpMax = GetWindowTextLength(GetDlgItem(hwndDlg, IDC_LOG));
-		SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM) & sel);
+		SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM)&sel);
 	} else {
 		SetDlgItemText(hwndDlg, IDC_LOG, _T(""));
 		sel.cpMin = 0;
 		sel.cpMax = GetWindowTextLength(hwndrtf);
-		SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM) &sel);
+		SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM)&sel);
 		fi.chrg.cpMin = 0;
 		dat->isAutoRTL = 0;
 	}
@@ -1391,9 +1362,9 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 
 	SendMessage(hwndrtf, WM_SETREDRAW, FALSE, 0);
 
-	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_STREAMIN, fAppend ? SFF_SELECTION | SF_RTF : SFF_SELECTION |  SF_RTF, (LPARAM) & stream);
-	//SendDlgItemMessage(hwndDlg, IDC_LOG, EM_STREAMIN, fAppend ? SFF_SELECTION | SF_RTF : SF_RTF, (LPARAM) & stream);
-	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM) & oldSel);
+	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_STREAMIN, fAppend ? SFF_SELECTION | SF_RTF : SFF_SELECTION |  SF_RTF, (LPARAM)&stream);
+	//SendDlgItemMessage(hwndDlg, IDC_LOG, EM_STREAMIN, fAppend ? SFF_SELECTION | SF_RTF : SF_RTF, (LPARAM)&stream);
+	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM)&oldSel);
 	SendDlgItemMessage(hwndDlg, IDC_LOG, EM_HIDESELECTION, FALSE, 0);
 	dat->hDbEventLast = streamData.hDbEventLast;
 
@@ -1409,9 +1380,9 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 		gtxl.codepage = 1200;
 		gtxl.flags = GTL_DEFAULT | GTL_PRECISE | GTL_NUMCHARS;
 		ZeroMemory(&pf2, sizeof(PARAFORMAT2));
-		sel.cpMax = SendDlgItemMessage(hwndDlg, IDC_LOG, EM_GETTEXTLENGTHEX, (WPARAM) & gtxl, 0);
+		sel.cpMax = SendDlgItemMessage(hwndDlg, IDC_LOG, EM_GETTEXTLENGTHEX, (WPARAM)& gtxl, 0);
 		sel.cpMin = sel.cpMax - 1;
-		SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM) & sel);
+		SendDlgItemMessage(hwndDlg, IDC_LOG, EM_EXSETSEL, 0, (LPARAM)&sel);
 		SendDlgItemMessage(hwndDlg, IDC_LOG, EM_REPLACESEL, FALSE, (LPARAM)_T(""));
 		dat->isAutoRTL |= 2;
 	}
@@ -1419,9 +1390,8 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 	if (streamData.dbei != 0)
 		isSent = (streamData.dbei->flags & DBEF_SENT) != 0;
 	else {
-		DBEVENTINFO dbei = {0};
-		dbei.cbSize = sizeof(dbei);
-		CallService(MS_DB_EVENT_GET, (WPARAM) hDbEventFirst, (LPARAM)&dbei);
+		DBEVENTINFO dbei = { sizeof(dbei) };
+		db_event_get(hDbEventFirst, &dbei);
 		isSent = (dbei.flags & DBEF_SENT) != 0;
 	}
 
@@ -1432,10 +1402,10 @@ void TSAPI StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAp
 	SendDlgItemMessage(hwndDlg, IDC_LOG, WM_SETREDRAW, TRUE, 0);
 	InvalidateRect(GetDlgItem(hwndDlg, IDC_LOG), NULL, FALSE);
 	EnableWindow(GetDlgItem(hwndDlg, IDC_QUOTE), dat->hDbEventLast != NULL);
-	if (streamData.buffer) free(streamData.buffer);
+	if (streamData.buffer) mir_free(streamData.buffer);
 }
 
-static void ReplaceIcons(HWND hwndDlg, struct TWindowData *dat, LONG startAt, int fAppend, BOOL isSent)
+static void ReplaceIcons(HWND hwndDlg, TWindowData *dat, LONG startAt, int fAppend, BOOL isSent)
 {
 	FINDTEXTEXA fi;
 	CHARFORMAT2 cf2;
@@ -1443,9 +1413,9 @@ static void ReplaceIcons(HWND hwndDlg, struct TWindowData *dat, LONG startAt, in
 	IRichEditOle *ole;
 	TEXTRANGEA tr;
 	COLORREF crDefault;
-	struct TLogIcon theIcon;
+	TLogIcon theIcon;
 	char trbuffer[40];
-	DWORD dwScale = M->GetDword("iconscale", 0);
+	DWORD dwScale = M.GetDword("iconscale", 0);
 	tr.lpstrText = trbuffer;
 
 	hwndrtf = GetDlgItem(hwndDlg, IDC_LOG);
@@ -1560,7 +1530,7 @@ static void ReplaceIcons(HWND hwndDlg, struct TWindowData *dat, LONG startAt, in
 		char szPattern[50];
 		FINDTEXTEXA fi;
 
-		_snprintf(szPattern, 40, "~-+%d+-~", (INT_PTR)dat->hHistoryEvents[0]);
+		mir_snprintf(szPattern, 40, "~-+%d+-~", (INT_PTR)dat->hHistoryEvents[0]);
 		fi.lpstrText = szPattern;
 		fi.chrg.cpMin = 0;
 		fi.chrg.cpMax = -1;
@@ -1600,7 +1570,7 @@ void TSAPI BuildCodePageList()
 	EnumSystemCodePages(LangAddCallback, CP_INSTALLED);
 }
 
-static TCHAR *Template_MakeRelativeDate(struct TWindowData *dat, HANDLE hTimeZone, time_t check, int groupBreak, TCHAR code)
+static TCHAR *Template_MakeRelativeDate(TWindowData *dat, HANDLE hTimeZone, time_t check, int groupBreak, TCHAR code)
 {
 	static TCHAR szResult[100];
 	const TCHAR *szFormat;
@@ -1619,7 +1589,7 @@ static TCHAR *Template_MakeRelativeDate(struct TWindowData *dat, HANDLE hTimeZon
 		else
 			szFormat = _T("d");
 
-		tmi.printTimeStamp(hTimeZone, check, szFormat, szResult, safe_sizeof(szResult), 0);
+		tmi.printTimeStamp(hTimeZone, check, szFormat, szResult, SIZEOF(szResult), 0);
 	}
 	return szResult;
 }

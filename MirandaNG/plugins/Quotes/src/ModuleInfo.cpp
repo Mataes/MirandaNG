@@ -1,11 +1,4 @@
 #include "StdAfx.h"
-#include "ModuleInfo.h"
-#include "QuotesProviders.h"
-#include "HTMLParserMS.h"
-#include "LightMutex.h"
-#include "WinCtrlHelper.h"
-#include "EconomicRateInfo.h"
-#include "XMLEngineMI.h"
 
 namespace
 {
@@ -15,7 +8,7 @@ namespace
 }
 
 CModuleInfo::CModuleInfo() 
-			: m_bExtendedStatusInfo(1 == DBGetContactSettingByte(NULL,QUOTES_MODULE_NAME,"ExtendedStatus",false))
+			: m_bExtendedStatusInfo(1 == db_get_b(NULL,QUOTES_MODULE_NAME,"ExtendedStatus",false))
 {
 }
 

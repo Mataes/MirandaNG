@@ -1,22 +1,18 @@
 #include "headers.h"
 
-// {A8A417EF-07AA-4f37-869F-7BFD74886534}
-#define MIID_DBEDITOR {0xa8a417ef, 0x7aa, 0x4f37, { 0x86, 0x9f, 0x7b, 0xfd, 0x74, 0x88, 0x65, 0x34}}
-
-
 HINSTANCE hInst = NULL;
 
 HANDLE hTTBButt = NULL;
 BOOL bServiceMode = FALSE;
-BOOL usePopUps;
+BOOL usePopups;
 HWND hwnd2watchedVarsWindow;
 int hLangpack;
 BYTE nameOrder[NAMEORDERCOUNT];
-HANDLE hUserMenu;
-HANDLE hRestore;
+HGENMENU hUserMenu;
 WatchListArrayStruct WatchListArray;
+HANDLE hRestore;
 HANDLE sMenuCommand, sRegisterModule, sRegisterSingleModule, sImport, sServicemodeLaunch;
-HANDLE hModulesLoadedHook = NULL, hSettingsChangedHook=NULL, hOptInitHook=NULL, hPreShutdownHook=NULL, hTTBHook = NULL;
+HANDLE hModulesLoadedHook = NULL, hSettingsChangedHook=NULL, hOptInitHook=NULL, hPreShutdownHook=NULL;
 
 //========================
 //  MirandaPluginInfo
@@ -31,7 +27,8 @@ PLUGININFOEX pluginInfoEx={
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,
-	MIID_DBEDITOR
+	// {A8A417EF-07AA-4F37-869F-7BFD74886534}
+	{0xa8a417ef, 0x7aa, 0x4f37, {0x86, 0x9f, 0x7b, 0xfd, 0x74, 0x88, 0x65, 0x34}}
 };
 
 extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
@@ -45,9 +42,9 @@ extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_SERVICE
 //========================
 //  WINAPI DllMain
 //========================
-BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
-	hInst=hinstDLL;
+	hInst = hinstDLL;
 	return TRUE;
 }
 
@@ -88,7 +85,7 @@ int DBSettingChanged(WPARAM wParam,LPARAM lParam)
 		}
 	}
 	// watch list
-	if (!hwnd2watchedVarsWindow && !usePopUps) return 0;
+	if (!hwnd2watchedVarsWindow && !usePopups) return 0;
 
 	for (i=0; i<WatchListArray.count; i++)
 	{
@@ -98,7 +95,7 @@ int DBSettingChanged(WPARAM wParam,LPARAM lParam)
 			{
 				if (!WatchListArray.item[i].setting || !mir_strcmp(cws->szSetting, WatchListArray.item[i].setting))
 				{
-					if (usePopUps)
+					if (usePopups)
 						popupWatchedVar(hContact, cws->szModule, cws->szSetting);
 					if (hwnd2watchedVarsWindow)
 						PopulateWatchedWindow(GetDlgItem(hwnd2watchedVarsWindow, IDC_VARS));
@@ -144,17 +141,15 @@ BOOL IsCP_UTF8(void)
 
 static int OnTTBLoaded(WPARAM wParam,LPARAM lParam)
 {
-	TTBButton ttbb = {0};
 	HICON ico = LoadIcon(hInst, MAKEINTRESOURCE(ICO_DBE_BUTT));
-	UnhookEvent(hTTBHook);
 
-	ttbb.cbSize = sizeof(ttbb);
-	ttbb.dwFlags = TTBBF_VISIBLE | TTBBF_SHOWTOOLTIP;
-	ttbb.pszService = "DBEditorpp/MenuCommand";
-	ttbb.name = LPGEN("Database Editor++");
-	ttbb.hIconUp = ico;
-	ttbb.pszTooltipUp = LPGEN("Open Database Editor");
-	hTTBButt = TopToolbar_AddButton(&ttbb);
+	TTBButton ttb = { sizeof(ttb) };
+	ttb.dwFlags = TTBBF_VISIBLE | TTBBF_SHOWTOOLTIP;
+	ttb.pszService = "DBEditorpp/MenuCommand";
+	ttb.name = LPGEN("Database Editor++");
+	ttb.hIconUp = ico;
+	ttb.pszTooltipUp = LPGEN("Open Database Editor");
+	hTTBButt = TopToolbar_AddButton(&ttb);
 	return 0;
 }
 
@@ -171,15 +166,14 @@ int ModulesLoaded(WPARAM wParam,LPARAM lParam)
 	ZeroMemory(&mi, sizeof(mi));
 	mi.cbSize = sizeof(mi);
 	mi.position = 1900000001;
-	mi.flags = DBGetContactSettingByte(NULL,modname,"UserMenuItem",0)?0:CMIF_HIDDEN;
+	mi.flags = db_get_b(NULL,modname,"UserMenuItem",0) ? 0 : CMIF_HIDDEN;
 	mi.hIcon = LoadIcon(hInst, MAKEINTRESOURCE(ICO_REGUSER));
 	mi.pszName = LPGEN("Open user tree in DBE++");
 	mi.pszService = "DBEditorpp/MenuCommand";
 	hUserMenu = Menu_AddContactMenuItem(&mi);
 
 	// Register hotkeys
-	HOTKEYDESC hkd = {0};
-	hkd.cbSize = sizeof(hkd);
+	HOTKEYDESC hkd = { sizeof(hkd) };
 	hkd.pszName = "hk_dbepp_open";
 	hkd.pszService = "DBEditorpp/MenuCommand";
 	hkd.ptszDescription = LPGEN("Open Database Editor");
@@ -193,10 +187,10 @@ int ModulesLoaded(WPARAM wParam,LPARAM lParam)
 	char mod[64] = "";
 	TCHAR szModuleFileName[MAX_PATH];
 	int i=0, len;
-	if (!DBGetContactSetting(NULL,modname,"CoreModules",&dbv) && dbv.type == DBVT_ASCIIZ)
+	if (!db_get(NULL,modname,"CoreModules",&dbv) && dbv.type == DBVT_ASCIIZ)
 		mods = dbv.pszVal;
 	else {
-		DBWriteContactSettingString(NULL,modname,"CoreModules",coreMods);
+		db_set_s(NULL,modname,"CoreModules",coreMods);
 		mods = coreMods;
 	}
 
@@ -224,21 +218,21 @@ int ModulesLoaded(WPARAM wParam,LPARAM lParam)
 	if (GetModuleFileName(hInst, szModuleFileName, MAX_PATH))
 		addIcons(szModuleFileName);
 
-	DBFreeVariant(&dbv);
+	db_free(&dbv);
 	UnhookEvent(hModulesLoadedHook);
 
-	usePopUps = DBGetContactSettingByte(NULL,modname,"UsePopUps",0);
+	usePopups = db_get_b(NULL,modname,"UsePopUps",0);
 
 	// Load the name order
 	for(i=0; i < NAMEORDERCOUNT; i++)
 		nameOrder[i] = i;
 
-	if (!DBGetContactSetting(NULL,"Contact","NameOrder",&dbv)) {
+	if (!db_get(NULL,"Contact","NameOrder",&dbv)) {
 		CopyMemory(nameOrder,dbv.pbVal,dbv.cpbVal);
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 	}
 
-	hTTBHook = HookEvent(ME_TTB_MODULELOADED, OnTTBLoaded);
+	HookEvent(ME_TTB_MODULELOADED, OnTTBLoaded);
 
 	if ( bServiceMode )
 		CallService("DBEditorpp/MenuCommand",0,0);
@@ -317,21 +311,21 @@ extern "C" __declspec(dllexport) int Unload(void)
 
 
 //=======================================================
-//DBGetContactSettingString (prob shouldnt use this unless u know how big the string is gonna be..)
+//db_get_s (prob shouldnt use this unless u know how big the string is gonna be..)
 //=======================================================
 
 int DBGetContactSettingStringStatic(HANDLE hContact, char* szModule, char* szSetting, char* value, int maxLength)
 {
 	DBVARIANT dbv;
-	if (!DBGetContactSetting(hContact, szModule, szSetting, &dbv))
+	if (!db_get(hContact, szModule, szSetting, &dbv))
 	{
 		strncpy(value, dbv.pszVal, maxLength);
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		return 1;
 	}
 	else
 	{
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		return 0;
 	}
 
@@ -369,7 +363,7 @@ int WriteBlobFromString(HANDLE hContact,const char *szModule,const char *szSetti
 	}
 
 	if (i)
-		return DBWriteContactSettingBlob(hContact,szModule,szSetting, data, (WORD)i);
+		return db_set_blob(hContact,szModule,szSetting, data, (WORD)i);
 
 	return 0;
 }
@@ -377,12 +371,7 @@ int WriteBlobFromString(HANDLE hContact,const char *szModule,const char *szSetti
 
 int GetSetting(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv)
 {
-	DBCONTACTGETSETTING cgs;
-	cgs.szModule = szModule;
-	cgs.szSetting = szSetting;
-	cgs.pValue = dbv;
-	dbv->type = 0;
-	return CallService(MS_DB_CONTACT_GETSETTING_STR,(WPARAM)hContact,(LPARAM)&cgs);
+	return db_get_s(hContact, szModule, szSetting, dbv, 0);
 }
 
 int GetValue(HANDLE hContact, const char* szModule, const char* szSetting, char* Value, int length)
@@ -413,7 +402,7 @@ int GetValue(HANDLE hContact, const char* szModule, const char* szSetting, char*
 			break;
 		}
 
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 
         Value[length-1] = 0;
 		return 1;
@@ -463,7 +452,7 @@ int GetValueW(HANDLE hContact, const char* szModule, const char* szSetting, WCHA
 			break;
 		}
 
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 
 		Value[length-1] = 0;
 		return 1;
@@ -500,20 +489,6 @@ wchar_t *a2u( char* src , wchar_t *buffer, int len )
 	result[ len - 1 ] = 0;
 
 	return result;
-}
-
-int mir_snwprintf(WCHAR *buffer, size_t count, const WCHAR* fmt, ...)
-{
-	va_list va;
-	int len;
-
-	va_start(va, fmt);
-	len = _vsnwprintf(buffer, count-1, fmt, va);
-	va_end(va);
-
-	buffer[count-1] = 0;
-
-	return len;
 }
 
 int GetDatabaseString(HANDLE hContact, const char *szModule, const char* szSetting, WCHAR *Value, int length, BOOL unicode)

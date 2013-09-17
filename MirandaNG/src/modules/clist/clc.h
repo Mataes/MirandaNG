@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -146,6 +146,7 @@ int   fnGetImlIconIndex(HICON hIcon);
 int   fnRemoveEvent(HANDLE hContact, HANDLE dbEvent);
 
 /* clistmod.c */
+int    fnGetContactIcon(HANDLE hContact);
 int    fnIconFromStatusMode(const char *szProto, int status, HANDLE hContact);
 int    fnShowHide(WPARAM wParam, LPARAM lParam);
 HICON  fnGetIconFromStatusMode(HANDLE hContact, const char *szProto, int status);
@@ -171,6 +172,7 @@ void   fnTrayIconSetToBase (char *szPreferredProto);
 void   fnTrayIconTaskbarCreated(HWND hwnd);
 int    fnTrayIconUpdate(HICON hNewIcon, const TCHAR *szNewTip, const char *szPreferredProto, int isBase);
 void   fnTrayIconUpdateBase (const char *szChangedProto);
+int    fnTrayCalcChanged(const char *szChangedProto, int averageMode, int netProtoCount);
 void   fnTrayIconUpdateWithImageList (int iImage, const TCHAR *szNewTip, char *szPreferredProto);
 
 VOID CALLBACK fnTrayCycleTimerProc(HWND hwnd, UINT message, UINT_PTR idEvent, DWORD dwTime);

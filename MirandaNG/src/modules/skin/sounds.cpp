@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -93,7 +93,7 @@ static INT_PTR ServiceSkinAddNewSound(WPARAM wParam, LPARAM lParam)
 
 	if (ptszDefaultFile) {
 		DBVARIANT dbv;
-		if (DBGetContactSettingString(NULL, "SkinSounds", item->name, &dbv))
+		if (db_get_s(NULL, "SkinSounds", item->name, &dbv))
 			db_set_ts(NULL, "SkinSounds", item->name, ptszDefaultFile);
 		else
 			db_free(&dbv);
@@ -112,6 +112,18 @@ static int SkinPlaySoundDefault(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+static INT_PTR ServiceSkinPlaySoundFile(WPARAM, LPARAM lParam)
+{
+	TCHAR *ptszFileName = (TCHAR*)lParam;
+	if (ptszFileName == NULL)
+		return 1;
+
+	TCHAR tszFull[MAX_PATH];
+	PathToAbsoluteT(ptszFileName, tszFull);
+	NotifyEventHooks(hPlayEvent, 0, (LPARAM)tszFull);
+	return 0;
+}
+
 static INT_PTR ServiceSkinPlaySound(WPARAM, LPARAM lParam)
 {
 	char* pszSoundName = (char*)lParam;
@@ -123,14 +135,14 @@ static INT_PTR ServiceSkinPlaySound(WPARAM, LPARAM lParam)
 	if (idx == -1)
 		return 1;
 
-	if ( db_get_b(NULL, "SkinSoundsOff", pszSoundName, 0) == 0) {
-		DBVARIANT dbv;
-		if ( DBGetContactSettingTString(NULL, "SkinSounds", pszSoundName, &dbv) == 0) {
-			TCHAR szFull[MAX_PATH];
-			PathToAbsoluteT(dbv.ptszVal, szFull, NULL);
-			NotifyEventHooks(hPlayEvent, 0, (LPARAM)szFull);
-			db_free(&dbv);
-		}
+	if ( db_get_b(NULL, "SkinSoundsOff", pszSoundName, 0))
+		return 1;
+
+	DBVARIANT dbv;
+	if ( db_get_ts(NULL, "SkinSounds", pszSoundName, &dbv) == 0) {
+		ServiceSkinPlaySoundFile(0, (LPARAM)dbv.ptszVal);
+		db_free(&dbv);
+		return 0;
 	}
 	return 1;
 }
@@ -249,9 +261,9 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 				NotifyEventHooks(hPlayEvent, 1, (LPARAM)arSounds[tvi.lParam].ptszTempFile);
 			else {
 				DBVARIANT dbv;
-				if ( !DBGetContactSettingTString(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
+				if ( !db_get_ts(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
 					TCHAR szPathFull[MAX_PATH];
-					PathToAbsoluteT(dbv.ptszVal, szPathFull, NULL);
+					PathToAbsoluteT(dbv.ptszVal, szPathFull);
 					NotifyEventHooks(hPlayEvent, 1, (LPARAM)szPathFull);
 					db_free(&dbv);
 				}
@@ -280,17 +292,20 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 			else {
 				if (db_get_b(NULL, "SkinSoundsOff", snd.name, 0) == 0) {
 					DBVARIANT dbv;
-					if (DBGetContactSettingTString(NULL, "SkinSounds", snd.name, &dbv) == 0) {
-						PathToAbsoluteT(dbv.ptszVal, strdir, NULL);
+					if (db_get_ts(NULL, "SkinSounds", snd.name, &dbv) == 0) {
+						PathToAbsoluteT(dbv.ptszVal, strdir);
 						db_free(&dbv);
 			}	}	}
 
 			mir_sntprintf(strFull, SIZEOF(strFull), _T("%s"), snd.ptszTempFile ? snd.ptszTempFile : _T(""));
-			PathToAbsoluteT(strFull, strdir, NULL);
+			PathToAbsoluteT(strFull, strdir);
 
 			OPENFILENAME ofn;
 			ZeroMemory(&ofn, sizeof(ofn));
-			mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.wav; *.mp3; *.ogg; *.flac)%c*.WAV; *.MP3; *.OGG; *.FLAC%c%s (*)%c*%c"), TranslateT("Sound Files"), 0, 0, TranslateT("All Files"), 0, 0);
+			if (GetModuleHandle(_T("bass_interface.dll")))
+				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.wav, *.mp3, *.ogg)%c*.wav;*.mp3;*.ogg%c%s (*)%c*%c"), TranslateT("Sound Files"), 0, 0, TranslateT("All Files"), 0, 0);
+			else
+				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.wav)%c*.wav%c%s (*)%c*%c"), TranslateT("WAV Files"), 0, 0, TranslateT("All Files"), 0, 0);
 			ofn.lStructSize = OPENFILENAME_SIZE_VERSION_400;
 			ofn.hwndOwner = GetParent(hwndDlg);
 			ofn.hInstance = NULL;
@@ -311,7 +326,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 			if ( !GetOpenFileName(&ofn))
 				break;
 
-			CallService(MS_UTILS_PATHTORELATIVET, (WPARAM)str, (LPARAM)strFull);
+			PathToRelativeT(str, strFull);
 			snd.ptszTempFile = mir_tstrdup(strFull);
 			SetDlgItemText(hwndDlg, IDC_LOCATION, strFull);
 		}
@@ -345,13 +360,10 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 						while (tvic.hItem != NULL) {
 							tvic.mask = TVIF_PARAM | TVIF_HANDLE | TVIF_STATE;
 							TreeView_GetItem(hwndTree, &tvic);
-							if (((tvic.state & TVIS_STATEIMAGEMASK) >> 12 == 2)) {
-								DBCONTACTGETSETTING cgs;
-								cgs.szModule = "SkinSoundsOff";
-								cgs.szSetting = arSounds[tvic.lParam].name;
-								CallService(MS_DB_CONTACT_DELETESETTING, (WPARAM)(HANDLE)NULL, (LPARAM)&cgs);
-							}
-							else db_set_b(NULL, "SkinSoundsOff", arSounds[tvic.lParam].name, 1);
+							if (((tvic.state & TVIS_STATEIMAGEMASK) >> 12 == 2))
+								db_unset(NULL, "SkinSoundsOff", arSounds[tvic.lParam].name);
+							else
+								db_set_b(NULL, "SkinSoundsOff", arSounds[tvic.lParam].name, 1);
 							tvic.hItem = TreeView_GetNextSibling(hwndTree, tvic.hItem);
 					}	}
 
@@ -379,7 +391,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 							SetDlgItemText(hwndDlg, IDC_LOCATION, arSounds[tvi.lParam].ptszTempFile);
 						else {
 							DBVARIANT dbv;
-							if ( !DBGetContactSettingTString(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
+							if ( !db_get_ts(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
 								SetDlgItemText(hwndDlg, IDC_LOCATION, dbv.ptszVal);
 								db_free(&dbv);
 							}
@@ -426,7 +438,6 @@ static int SkinOptionsInit(WPARAM wParam, LPARAM)
 	odp.position = -200000000;
 	odp.hInstance = hInst;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_SOUND);
-	odp.pszGroup = LPGEN("Customize");
 	odp.pszTitle = LPGEN("Sounds");
 	odp.pfnDlgProc = DlgProcSoundOpts;
 	odp.flags = ODPF_BOLDGROUPS;
@@ -446,6 +457,7 @@ int LoadSkinSounds(void)
 
 	CreateServiceFunction("Skin/Sounds/AddNew", ServiceSkinAddNewSound);
 	CreateServiceFunction(MS_SKIN_PLAYSOUND, ServiceSkinPlaySound);
+	CreateServiceFunction(MS_SKIN_PLAYSOUNDFILE, ServiceSkinPlaySoundFile);
 	HookEvent(ME_SYSTEM_MODULESLOADED, SkinSystemModulesLoaded);
 	hPlayEvent = CreateHookableEvent(ME_SKIN_PLAYINGSOUND);
 	SetHookDefaultForHookableEvent(hPlayEvent, SkinPlaySoundDefault);

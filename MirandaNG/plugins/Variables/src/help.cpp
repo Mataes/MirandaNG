@@ -16,13 +16,8 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
-#include "variables.h"
-#include "contact.h"
-#include <commctrl.h>
-#include <m_clui.h>
-#include <m_clc.h>
 
-extern BOOL (WINAPI *pfnEnableThemeDialogTexture)(HANDLE, DWORD);
+#include "variables.h"
 
 struct HELPDLGDATA
 {
@@ -37,7 +32,6 @@ static INT_PTR CALLBACK inputDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM 
 extern HINSTANCE hInst;
 
 extern HCURSOR hCurSplitNS;
-static WNDPROC OldSplitterProc;
 
 static HWND hwndHelpDialog = NULL;
 
@@ -108,7 +102,7 @@ void ResetCList(HWND hwndDlg) {
 
 	int i;
 
-	if ((CallService(MS_CLUI_GETCAPS, 0, 0) & CLUIF_DISABLEGROUPS && !DBGetContactSettingByte(NULL, "CList", "UseGroups", SETTING_USEGROUPS_DEFAULT)) || !(GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_CLIST), GWL_STYLE)&CLS_USEGROUPS))
+	if ((CallService(MS_CLUI_GETCAPS, 0, 0) & CLUIF_DISABLEGROUPS && !db_get_b(NULL, "CList", "UseGroups", SETTING_USEGROUPS_DEFAULT)) || !(GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_CLIST), GWL_STYLE)&CLS_USEGROUPS))
 		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETUSEGROUPS, (WPARAM) FALSE, 0);
 	else
 		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETUSEGROUPS, (WPARAM) TRUE, 0);
@@ -263,9 +257,9 @@ static TCHAR *getTokenCategory(TOKENREGISTEREX *tr) {
 		return NULL;
 	}
 	cur = helpText;
-	while (*cur != _T('\0')) {
-		if (*cur == _T('\t')) {
-			*cur = _T('\0');
+	while (*cur != 0) {
+		if (*cur == '\t') {
+			*cur = 0;
 			helpText = ( char* )mir_realloc(helpText, strlen(helpText)+1);
 
 			res = mir_a2t(helpText);
@@ -289,7 +283,7 @@ static TCHAR *getHelpDescription(TOKENREGISTEREX *tr)
 
 	char *cur = tr->szHelpText + strlen(tr->szHelpText);
 	while (cur > tr->szHelpText) {
-		if (*cur == _T('\t')) {
+		if (*cur == '\t') {
 
 			cur = mir_strdup(cur+1);
 			TCHAR *res = mir_a2t(cur);
@@ -306,26 +300,24 @@ static TCHAR *getHelpDescription(TOKENREGISTEREX *tr)
 
 static TCHAR *getTokenDescription(TOKENREGISTEREX *tr)
 {
-	int len;
-	char *args, *helpText, *cur, *first, *second;
-	TCHAR *desc, *tArgs;
+	char *args, *first, *second;
 
 	if (tr == NULL)
 		return NULL;
 
 	args = NULL;
-	tArgs = NULL;
+	TCHAR *tArgs = NULL;
 	if (tr->szHelpText == NULL)
 		return mir_tstrdup(tr->tszTokenString);
 
-	helpText = mir_strdup(tr->szHelpText);
+	char *helpText = mir_strdup(tr->szHelpText);
 	if (helpText == NULL)
 		return NULL;
 
-	cur = helpText;
+	char *cur = helpText;
 	first = second = NULL;
-	while (*cur != _T('\0')) {
-		if (*cur == _T('\t')) {
+	while (*cur != 0) {
+		if (*cur == '\t') {
 			if (first == NULL)
 				first = cur;
 			else if (second == NULL)
@@ -335,24 +327,23 @@ static TCHAR *getTokenDescription(TOKENREGISTEREX *tr)
 	}
 
 	if ((first != NULL) && (second != NULL)) {
-		*second = _T('\0');
+		*second = 0;
 		args = first+1;
 	}
 	else args = NULL;
 
-	len = _tcslen(tr->tszTokenString) + (args!=NULL?strlen(args):0) + 3;
-	desc = (TCHAR*)mir_calloc(len * sizeof(TCHAR));
+	size_t len = _tcslen(tr->tszTokenString) + (args!=NULL?strlen(args):0) + 3;
+	TCHAR *desc = (TCHAR*)mir_calloc(len * sizeof(TCHAR));
 	if (desc == NULL)
 		return NULL;
 
 	if (tr->flags&TRF_FIELD)
-		mir_sntprintf(desc, len, _T("%c%s%c"), _T(FIELD_CHAR), tr->szTokenString, _T(FIELD_CHAR));
+		mir_sntprintf(desc, len, _T("%c%s%c"), FIELD_CHAR, tr->szTokenString, FIELD_CHAR);
 	else {
 		if (args != NULL)
-
 			tArgs = mir_a2t(args);
 
-		mir_sntprintf(desc, len, _T("%c%s%s"), _T(FUNC_CHAR), tr->tszTokenString, (tArgs!=NULL?tArgs:_T("")));
+		mir_sntprintf(desc, len, _T("%c%s%s"), FUNC_CHAR, tr->tszTokenString, (tArgs!=NULL?tArgs:_T("")));
 	}
 	if (tArgs != NULL)
 		mir_free(tArgs);
@@ -442,7 +433,7 @@ static BOOL CALLBACK processTokenListMessage(HWND hwndDlg,UINT msg,WPARAM wParam
 
 					}
 				}
-				if (!_tcscmp(tr->tszTokenString, _T(EXTRATEXT))) {
+				if (!_tcscmp(tr->tszTokenString, _T(MIR_EXTRATEXT))) {
 					if (hdd->vhs->flags&VHF_HIDEEXTRATEXTTOKEN) {
 						continue;
 					}
@@ -521,18 +512,14 @@ static BOOL CALLBACK processTokenListMessage(HWND hwndDlg,UINT msg,WPARAM wParam
 
 	case WM_NOTIFY:
 		if ((((NMHDR*)lParam)->idFrom == IDC_TOKENLIST) && (((NMHDR*)lParam)->code == NM_DBLCLK)) {
-			HWND hList, hwndInputDlg;
-			LVITEM lvItem;
-			int len, item;
-			TCHAR *tokenString;
-			TOKENREGISTER *tr;
-
-			hwndInputDlg = (HWND)SendMessage(GetParent(hwndDlg), VARM_GETDIALOG, (WPARAM)VHF_INPUT, 0);
+			HWND hwndInputDlg = (HWND)SendMessage(GetParent(hwndDlg), VARM_GETDIALOG, (WPARAM)VHF_INPUT, 0);
 			if (hwndInputDlg == NULL) {
 				break;
 			}
-			hList = GetDlgItem(hwndDlg, IDC_TOKENLIST);
-			item = ListView_GetNextItem(hList, -1, LVNI_SELECTED|LVNI_FOCUSED);
+			HWND hList = GetDlgItem(hwndDlg, IDC_TOKENLIST);
+			int item = ListView_GetNextItem(hList, -1, LVNI_SELECTED|LVNI_FOCUSED);
+
+			LVITEM lvItem;
 			ZeroMemory(&lvItem, sizeof(lvItem));
 			lvItem.mask = LVIF_PARAM;
 			lvItem.iSubItem = 0;
@@ -540,20 +527,20 @@ static BOOL CALLBACK processTokenListMessage(HWND hwndDlg,UINT msg,WPARAM wParam
 			if (ListView_GetItem(hList, &lvItem) == FALSE) {
 				break;
 			}
-			tr = (TOKENREGISTER *)lvItem.lParam;
+			TOKENREGISTER *tr = (TOKENREGISTER *)lvItem.lParam;
 			if (tr == NULL) {
 				break;
 			}
-			len = _tcslen(tr->tszTokenString) + 2;
+			size_t len = _tcslen(tr->tszTokenString) + 2;
 			if (len < 0) {
 				break;
 			}
-			tokenString = (TCHAR*)mir_alloc((len+1)*sizeof(TCHAR));
+			TCHAR *tokenString = (TCHAR*)mir_alloc((len+1)*sizeof(TCHAR));
 			if (tokenString == NULL) {
 				break;
 			}
 			ZeroMemory(tokenString, (len+1)*sizeof(TCHAR));
-			wsprintf(tokenString, _T("%c%s%c"), (tr->flags&TRF_FIELD?_T(FIELD_CHAR):_T(FUNC_CHAR)), tr->tszTokenString, (tr->flags&TRF_FIELD?_T(FIELD_CHAR):_T('(')));
+			mir_sntprintf(tokenString, len + 1, _T("%c%s%c"), (tr->flags & TRF_FIELD) ? FIELD_CHAR : FUNC_CHAR, tr->tszTokenString, (tr->flags & TRF_FIELD) ? FIELD_CHAR : '(');
 			SendDlgItemMessage(hwndInputDlg, IDC_TESTSTRING, EM_REPLACESEL, (WPARAM)TRUE, (LPARAM)tokenString);
 			mir_free(tokenString);
 			SetFocus(GetDlgItem(hwndInputDlg, IDC_TESTSTRING));
@@ -625,7 +612,7 @@ static LRESULT CALLBACK SplitterSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
 		ReleaseCapture();
 		return 0;
 	}
-	return CallWindowProc(OldSplitterProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, SplitterSubclassProc, msg, wParam, lParam);
 }
 
 struct INPUTDLGDATA
@@ -690,7 +677,7 @@ static INT_PTR CALLBACK inputDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM 
 				dat->splitterPos = dat->originalSplitterPos;
 
 			GetWindowRect(GetDlgItem(hwndDlg, IDC_SHOWHELP), &rc);
-			OldSplitterProc = (WNDPROC) SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_SPLITTER), GWLP_WNDPROC, (LONG_PTR) SplitterSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg, IDC_SPLITTER), SplitterSubclassProc);
 
 			GetWindowRect(GetDlgItem(hwndDlg, IDC_TESTSTRING), &rc);
 			dat->minInputSize.x = rc.right - rc.left;
@@ -816,7 +803,6 @@ static INT_PTR CALLBACK inputDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM 
 	case WM_DESTROY:
 		KillTimer(hwndDlg, IDT_PARSE);
 		db_set_dw(NULL, MODULENAME, SETTING_SPLITTERPOS, dat->splitterPos);
-		SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_SPLITTER), GWLP_WNDPROC, (LONG_PTR) OldSplitterProc);
 		if (dat != NULL) {
 			mir_free(dat);
 			dat = NULL;
@@ -832,8 +818,8 @@ static INT_PTR CALLBACK helpInfoDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPAR
 {
 	switch(msg) {
 	case WM_INITDIALOG:
-		SetDlgItemTextA(hwndDlg, IDC_HELPDESC, \
-"--- Special characters ---\r\n\r\n\
+		SetDlgItemText(hwndDlg, IDC_HELPDESC, \
+LPGENT("--- Special characters ---\r\n\r\n\
 The following characters have a special meaning in a formatting string:\r\n\r\n\
 ?<function>(<arguments>)\r\n\
 This will parse the function given the arguments, the result will be parsed again. Example: Today is ?cdate(yyyy/MM/dd).\r\n\r\n\
@@ -853,7 +839,7 @@ Whenever a functions requires a contact as an argument, you can specify it in tw
 A contact will be searched which will have value x for its property y, y can be one of the following:\r\n\
 first, last, nick, email, id or display\r\n\r\n\
 For example: ?contact(miranda@hotmail.com,email) or ?contact(Miranda,nick). The contact function will return either a unique contact according to the arguments or nothing if none or multiple contacts exists with the given property.\
-");
+"));
 		TranslateDialogDefault(hwndDlg);
 		break;
 

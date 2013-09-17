@@ -2,35 +2,28 @@
 
 #include <windows.h>
 #include <commctrl.h>
-#include <memory.h>
 #include <time.h>
 #include <richedit.h>
-#include <stdio.h>
-#include <WinSock.h>
-#include <mmsystem.h>
 
-#include "win2k.h"
-#include "newpluginapi.h"
-#include "m_system.h" 
-#include "m_database.h"
-#include "m_clist.h"
-#include "m_langpack.h"
-#include "m_options.h" 
-#include "m_skin.h"
-#include "m_fontservice.h"
-#include "m_hotkeys.h"
-#include "m_icolib.h"
+#include <win2k.h>
+#include <newpluginapi.h>
+#include <m_database.h>
+#include <m_clist.h>
+#include <m_langpack.h>
+#include <m_options.h>
+#include <m_skin.h>
+#include <m_fontservice.h>
+#include <m_hotkeys.h>
+#include <m_icolib.h>
 
-#include "m_toptoolbar.h"
+#include <m_toptoolbar.h>
 
 #include "miscutils.h"
 #include "resource.h"
-
-// {842A6668-F9DA-4968-BFD7-D2BD9DF848EE}
-#define MIID_NNR {0x842a6668, 0xf9da, 0x4968, {0xbf, 0xd7, 0xd2, 0xbd, 0x9d, 0xf8, 0x48, 0xee}}
+#include "Version.h"
 
 #define MODULENAME	"StickyNotes"
-#define SECTIONNAME	"Notes & Reminders"
+#define SECTIONNAME	LPGEN("Notes & Reminders")
 
 // normal timer interval for reminder update processing
 #define REMINDER_UPDATE_INTERVAL		10000

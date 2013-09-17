@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -118,7 +118,7 @@ IconSourceFile* IconSourceFile_Get(const TCHAR* file, bool isPath)
 		return NULL;
 
 	if (isPath)
-		PathToAbsoluteT(file, fileFull, NULL);
+		PathToAbsoluteT(file, fileFull);
 	/// TODO: convert path to long - eliminate duplicate items
 	else
 		_tcscpy(fileFull, file);
@@ -449,23 +449,22 @@ static void IcoLib_RemoveSection(SectionItem* section)
 
 IcolibItem* IcoLib_FindIcon(const char* pszIconName)
 {
-	int indx;
-	IcolibItem key = { (char*)pszIconName };
-	if ((indx = iconList.getIndex(&key)) != -1)
-		return iconList[ indx ];
-
-	return NULL;
+	int indx = iconList.getIndex((IcolibItem*)&pszIconName);
+	return (indx != -1) ? iconList[ indx ] : 0;
 }
 
 IcolibItem* IcoLib_FindHIcon(HICON hIcon, bool &big)
 {
+	if (hIcon == NULL)
+		return NULL;
+
 	for (int i = 0; i < iconList.getCount(); i++) {
 		IcolibItem *p = iconList[i];
 		if ((void*)p == hIcon) {
 			big = (p->source_small == NULL);
 			return p;
 		}
-		if (p->source_small  && p->source_small->icon == hIcon) {
+		if (p->source_small && p->source_small->icon == hIcon) {
 			big = false;
 			return p;
 		}
@@ -539,9 +538,9 @@ HANDLE IcoLib_AddNewIcon(int hLangpack, SKINICONDESC* sid)
 	if (sid->pszDefaultFile) {
 		WCHAR fileFull[ MAX_PATH ];
 		if (utf_path)
-			PathToAbsoluteT(sid->pwszDefaultFile, fileFull, NULL);
+			PathToAbsoluteT(sid->pwszDefaultFile, fileFull);
 		else
-			PathToAbsoluteT( StrConvT(sid->pszDefaultFile), fileFull, NULL);
+			PathToAbsoluteT( StrConvT(sid->pszDefaultFile), fileFull);
 		item->default_file = mir_wstrdup(fileFull);
 	}
 	item->default_indx = sid->iDefaultIndex;
@@ -575,20 +574,31 @@ HANDLE IcoLib_AddNewIcon(int hLangpack, SKINICONDESC* sid)
 /////////////////////////////////////////////////////////////////////////////////////////
 // IcoLib_RemoveIcon
 
-static INT_PTR IcoLib_RemoveIcon(WPARAM, LPARAM lParam)
+static int IcoLib_RemoveIcon_Internal(int i)
 {
+	IcolibItem *item = iconList[ i ];
+	IcoLib_FreeIcon(item);
+	iconList.remove(i);
+	SAFE_FREE((void**)&item);
+	return 0;
+}
+
+static INT_PTR IcoLib_RemoveIcon(WPARAM wParam, LPARAM lParam)
+{
+	if (wParam) {
+		mir_cslock lck(csIconList);
+
+		int i = iconList.indexOf((IcolibItem*)wParam);
+		if (i != -1)
+			return IcoLib_RemoveIcon_Internal(i);
+	}
+
 	if (lParam) {
 		mir_cslock lck(csIconList);
 
-		int i;
-		if ((i = iconList.getIndex((IcolibItem*)&lParam)) != -1) {
-			IcolibItem *item = iconList[ i ];
-			IcoLib_FreeIcon(item);
-			iconList.remove(i);
-			SAFE_FREE((void**)&item);
-		}
-
-		return (i == -1) ? 1 : 0;
+		int i = iconList.getIndex((IcolibItem*)&lParam);
+		if (i != -1)
+			return IcoLib_RemoveIcon_Internal(i);
 	}
 	return 1; // Failed
 }
@@ -668,9 +678,9 @@ HICON IconItem_GetIcon(IcolibItem* item, bool big)
 	big = big && !item->cx;
 	IconSourceItem* &source = big ? item->source_big : item->source_small;
 
-	if ( !source && !DBGetContactSettingTString(NULL, "SkinIcons", item->name, &dbv)) {
+	if ( !source && !db_get_ts(NULL, "SkinIcons", item->name, &dbv)) {
 		TCHAR tszFullPath[MAX_PATH];
-		PathToAbsoluteT(dbv.ptszVal, tszFullPath, NULL);
+		PathToAbsoluteT(dbv.ptszVal, tszFullPath);
 		int cx = item->cx ? item->cx : GetSystemMetrics(big ? SM_CXICON : SM_CXSMICON);
 		int cy = item->cy ? item->cy : GetSystemMetrics(big ? SM_CYICON : SM_CYSMICON);
 		source = GetIconSourceItemFromPath(tszFullPath, cx, cy);
@@ -827,18 +837,18 @@ int LoadIcoLibModule(void)
 	hIconBlank = LoadIconEx(NULL, MAKEINTRESOURCE(IDI_BLANK), 0);
 
 	InitializeCriticalSection(&csIconList);
-	hIcoLib_AddNewIcon = CreateServiceFunction("Skin2/Icons/AddIcon",     sttIcoLib_AddNewIcon);
-	hIcoLib_RemoveIcon = CreateServiceFunction(MS_SKIN2_REMOVEICON,       IcoLib_RemoveIcon);
-	hIcoLib_GetIcon = CreateServiceFunction(MS_SKIN2_GETICON,             sttIcoLib_GetIcon);
-	hIcoLib_GetIconHandle = CreateServiceFunction(MS_SKIN2_GETICONHANDLE, sttIcoLib_GetIconHandle);
-	hIcoLib_GetIcon2 = CreateServiceFunction(MS_SKIN2_GETICONBYHANDLE,    sttIcoLib_GetIconByHandle);
-	hIcoLib_IsManaged = CreateServiceFunction(MS_SKIN2_ISMANAGEDICON,     sttIcoLib_IsManaged);
-	hIcoLib_AddRef = CreateServiceFunction(MS_SKIN2_ADDREFICON,           IcoLib_AddRef);
-	hIcoLib_ReleaseIcon = CreateServiceFunction(MS_SKIN2_RELEASEICON,     sttIcoLib_ReleaseIcon);
-	hIcoLib_ReleaseIcon = CreateServiceFunction(MS_SKIN2_RELEASEICONBIG,  sttIcoLib_ReleaseIconBig);
+	hIcoLib_AddNewIcon    = CreateServiceFunction("Skin2/Icons/AddIcon",    sttIcoLib_AddNewIcon);
+	hIcoLib_RemoveIcon    = CreateServiceFunction(MS_SKIN2_REMOVEICON,      IcoLib_RemoveIcon);
+	hIcoLib_GetIcon       = CreateServiceFunction(MS_SKIN2_GETICON,         sttIcoLib_GetIcon);
+	hIcoLib_GetIconHandle = CreateServiceFunction(MS_SKIN2_GETICONHANDLE,   sttIcoLib_GetIconHandle);
+	hIcoLib_GetIcon2      = CreateServiceFunction(MS_SKIN2_GETICONBYHANDLE, sttIcoLib_GetIconByHandle);
+	hIcoLib_IsManaged     = CreateServiceFunction(MS_SKIN2_ISMANAGEDICON,   sttIcoLib_IsManaged);
+	hIcoLib_AddRef        = CreateServiceFunction(MS_SKIN2_ADDREFICON,      IcoLib_AddRef);
+	hIcoLib_ReleaseIcon   = CreateServiceFunction(MS_SKIN2_RELEASEICON,     sttIcoLib_ReleaseIcon);
+	hIcoLib_ReleaseIcon   = CreateServiceFunction(MS_SKIN2_RELEASEICONBIG,  sttIcoLib_ReleaseIconBig);
 
 	hIcons2ChangedEvent = CreateHookableEvent(ME_SKIN2_ICONSCHANGED);
-	hIconsChangedEvent = CreateHookableEvent(ME_SKIN_ICONSCHANGED);
+	hIconsChangedEvent  = CreateHookableEvent(ME_SKIN_ICONSCHANGED);
 
 	HookEvent(ME_SYSTEM_MODULESLOADED, SkinSystemModulesLoaded);
 

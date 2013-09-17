@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -274,7 +274,7 @@ static INT_PTR CALLBACK DlgProcDetails(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 
 			LPTSTR ptszLastTab;
 			DBVARIANT dbv;
-			if ( !DBGetContactSettingTString(NULL, "UserInfo", "LastTab", &dbv)) {
+			if ( !db_get_ts(NULL, "UserInfo", "LastTab", &dbv)) {
 				ptszLastTab = NEWTSTR_ALLOCA(dbv.ptszVal);
 				db_free(&dbv);
 			}
@@ -594,7 +594,7 @@ static INT_PTR CALLBACK DlgProcDetails(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 		tvi.pszText = name;
 		tvi.cchTextMax = SIZEOF(name);
 		TreeView_GetItem(GetDlgItem(hwndDlg, IDC_PAGETREE), &tvi);
-		DBWriteContactSettingTString(NULL, "UserInfo", "LastTab", name);
+		db_set_ts(NULL, "UserInfo", "LastTab", name);
 
 		Window_FreeIcon_IcoLib(hwndDlg);
 		SendDlgItemMessage(hwndDlg, IDC_NAME, WM_SETFONT, SendDlgItemMessage(hwndDlg, IDC_WHITERECT, WM_GETFONT, 0, 0), 0);
@@ -636,7 +636,6 @@ int LoadUserInfoModule(void)
 	HookEvent(ME_SYSTEM_PRESHUTDOWN, ShutdownUserInfo);
 
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_ICONFROMICOLIB;
 	mi.position = 1000050000;
 	mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_USERDETAILS);
 	mi.pszName = LPGEN("User &Details");

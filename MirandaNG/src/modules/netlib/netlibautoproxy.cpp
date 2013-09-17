@@ -1,7 +1,7 @@
 /*
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2010-2011 Miranda ICQ/IM project, 
+Copyright 2010-2011 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -10,7 +10,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -19,18 +19,20 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "netlib.h"
 
 #include <wininet.h>
+
 /*
 /////////////////////////////////////////////////////////////////////
 //  ResolveHostName                               (a helper function)
 /////////////////////////////////////////////////////////////////////
-DWORD __stdcall ResolveHostName(LPSTR lpszHostName, 
+DWORD __stdcall ResolveHostName(LPSTR lpszHostName,
 	LPSTR lpszIPAddress, LPDWORD lpdwIPAddressSize)
 {
-	if (*lpdwIPAddressSize < 17 || lpszIPAddress == NULL) 
+	if (*lpdwIPAddressSize < 17 || lpszIPAddress == NULL)
 	{
 		*lpdwIPAddressSize = 17;
 		return ERROR_INSUFFICIENT_BUFFER;
@@ -46,7 +48,7 @@ DWORD __stdcall ResolveHostName(LPSTR lpszHostName,
 		else
 			return SOCKET_ERROR;
 	}
-	mir_snprintf(lpszIPAddress, *lpdwIPAddressSize, "%u.%u.%u.%u", 
+	mir_snprintf(lpszIPAddress, *lpdwIPAddressSize, "%u.%u.%u.%u",
 		ip.s_net, ip.s_host, ip.s_lh, ip.s_impno);
 
 	return 0;
@@ -90,22 +92,22 @@ BOOL __stdcall IsInNet(LPSTR lpszIPAddress, LPSTR lpszDest, LPSTR lpszMask)
 	dwDest = inet_addr(lpszDest);
 	dwMask = inet_addr(lpszMask);
 
-	if ((dwDest == INADDR_NONE)  || 
+	if ((dwDest == INADDR_NONE)  ||
 		(dwIpAddr == INADDR_NONE) || ((dwIpAddr & dwMask) != dwDest))
 		return (FALSE);
 
 	return (TRUE);
 }
 
-static const AutoProxyHelperVtbl OurVtbl = 
+static const AutoProxyHelperVtbl OurVtbl =
 {
-	IsResolvable, 
-	GetIPAddress, 
-	ResolveHostName, 
-	IsInNet, 
-	NULL, 
-	NULL, 
-	NULL, 
+	IsResolvable,
+	GetIPAddress,
+	ResolveHostName,
+	IsInNet,
+	NULL,
+	NULL,
+	NULL,
 	NULL
 };
 
@@ -162,7 +164,7 @@ bool NetlibGetIeProxyConn(NetlibConnection *nlc, bool forceHttps)
 	bool usingSsl = false;
 	char szUrl[256] = "";
 
-	if ((nlc->nloc.flags & (NLOCF_HTTP | NLOCF_HTTPGATEWAY) && nlc->nloc.flags & NLOCF_SSL) || 
+	if ((nlc->nloc.flags & (NLOCF_HTTP | NLOCF_HTTPGATEWAY) && nlc->nloc.flags & NLOCF_SSL) ||
 		nlc->nloc.wPort == 443 || forceHttps)
 	{
 		mir_snprintf(szUrl, sizeof(szUrl), "https://%s", nlc->nloc.szHost);
@@ -219,7 +221,7 @@ bool NetlibGetIeProxyConn(NetlibConnection *nlc, bool forceHttps)
 		nlc->wProxyPort = p ? atol(p) : 1080;
 		nlc->szProxyServer = mir_strdup(h);
 	}
-	else 
+	else
 		return false;
 
 	return true;
@@ -261,16 +263,15 @@ struct IeProxyParam
 {
 	char *szUrl;
 	char *szHost;
-	char *szProxy; 
+	char *szProxy;
 };
 
-static unsigned __stdcall NetlibIeProxyThread(void * arg)
+static void NetlibIeProxyThread(void *arg)
 {
 	IeProxyParam *param = (IeProxyParam*)arg;
 	param->szProxy = NULL;
 
-	if ( !bAutoProxyInit)
-	{
+	if ( !bAutoProxyInit) {
 		WaitForSingleObject(hIeProxyMutex, INFINITE);
 		NetlibInitAutoProxy();
 		ReleaseMutex(hIeProxyMutex);
@@ -278,14 +279,12 @@ static unsigned __stdcall NetlibIeProxyThread(void * arg)
 
 	BOOL res;
 	char *loc = strstr(szAutoUrlStr, "file://");
-	if (loc || strstr(szAutoUrlStr, "://") == NULL)
-	{
+	if (loc || strstr(szAutoUrlStr, "://") == NULL) {
 		NetlibLogf(NULL, "Autoproxy Init file: %s", loc);
 		loc = loc ? loc + 7 : szAutoUrlStr;
 		res = pInternetInitializeAutoProxyDll(0, loc, NULL, NULL /*&HelperFunctions*/, NULL);
 	}
-	else
-	{
+	else {
 		NetlibLogf(NULL, "Autoproxy Init %d", abuf.dwScriptBufferSize);
 		if (abuf.dwScriptBufferSize)
 			res = pInternetInitializeAutoProxyDll(0, NULL, NULL, NULL /*&HelperFunctions*/, &abuf);
@@ -293,23 +292,19 @@ static unsigned __stdcall NetlibIeProxyThread(void * arg)
 			res = false;
 	}
 
-	if (res)
-	{
+	if (res) {
 		char proxyBuffer[1024];
 		char *proxy = proxyBuffer;
 		DWORD dwProxyLen = sizeof(proxyBuffer);
 
-		if (pInternetGetProxyInfo(param->szUrl, (DWORD)strlen(param->szUrl), 
+		if (pInternetGetProxyInfo(param->szUrl, (DWORD)strlen(param->szUrl),
 			param->szHost, (DWORD)strlen(param->szHost), &proxy, &dwProxyLen))
 			param->szProxy = mir_strdup(lrtrim(proxy));
 
 		NetlibLogf(NULL, "Autoproxy got response %s, Param: %s %s", param->szProxy, param->szUrl, param->szHost);
 		pInternetDeInitializeAutoProxyDll(NULL, 0);
 	}
-	else
-		NetlibLogf(NULL, "Autoproxy init failed");
-
-	return 0;
+	else NetlibLogf(NULL, "Autoproxy init failed");
 }
 
 char* NetlibGetIeProxy(char *szUrl)
@@ -337,7 +332,7 @@ char* NetlibGetIeProxy(char *szUrl)
 		int ind = -1;
 		if (strstr(szUrl, "http://"))
 			ind = szProxyHost[0] ? 0 : 2;
-		else if (strstr(szUrl, "https://")) 
+		else if (strstr(szUrl, "https://"))
 			ind = bOneProxy ? 0 : (szProxyHost[1] ? 1 : 2);
 		else
 			ind = szProxyHost[2] ? 2 : (bOneProxy ? 0 : (szProxyHost[1] ? 1 : 2));
@@ -350,13 +345,10 @@ char* NetlibGetIeProxy(char *szUrl)
 		return res;
 	}
 
-	if (szAutoUrlStr[0])
-	{
-		unsigned dwThreadId;
+	if (szAutoUrlStr[0]) {
 		IeProxyParam param = { szUrl, szHost, NULL };
-		HANDLE hThread = (HANDLE)mir_forkthreadex(NetlibIeProxyThread, &param, &dwThreadId);
+		HANDLE hThread = mir_forkthread(NetlibIeProxyThread, &param);
 		WaitForSingleObject(hThread, INFINITE);
-		CloseHandle(hThread);
 		res = param.szProxy;
 	}
 	return res;
@@ -365,7 +357,7 @@ char* NetlibGetIeProxy(char *szUrl)
 void NetlibLoadIeProxy(void)
 {
 	HKEY hSettings;
-	if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings", 
+	if (RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings",
 		0, KEY_QUERY_VALUE, &hSettings))
 		return;
 
@@ -393,7 +385,7 @@ void NetlibLoadIeProxy(void)
 		char* szProxy = ltrim(szHostStr);
 		if (szProxy[0] == 0) { enabled = false; return; }
 
-		for (;;)
+		while(true)
 		{
 			char *szProxyEnd = strchr(szProxy, ';');
 			if (szProxyEnd) *szProxyEnd = 0;
@@ -425,7 +417,7 @@ void NetlibLoadIeProxy(void)
 		}
 
 		char* szProxyBypass = szProxyBypassStr;
-		for (;;)
+		while(true)
 		{
 			char *szProxyBypassEnd = strchr(szProxyBypass, ';');
 			if (szProxyBypassEnd) *szProxyBypassEnd = 0;

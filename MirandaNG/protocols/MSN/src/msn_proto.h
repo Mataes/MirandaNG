@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2009-2012 Boris Krasnovskiy.
 
 This program is free software; you can redistribute it and/or
@@ -19,16 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef _MSN_PROTO_H_
 #define _MSN_PROTO_H_
 
-#include <m_stdhdr.h>
 #include <m_protoint.h>
 
-struct CMsnProto;
-typedef void    (__cdecl CMsnProto::*MsnThreadFunc)(void*);
-typedef int     (__cdecl CMsnProto::*MsnEventFunc)(WPARAM, LPARAM);
-typedef INT_PTR (__cdecl CMsnProto::*MsnServiceFunc)(WPARAM, LPARAM);
-typedef INT_PTR (__cdecl CMsnProto::*MsnServiceFuncParam)(WPARAM, LPARAM, LPARAM);
-
-struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
+struct CMsnProto : public PROTO<CMsnProto>
 {
 	CMsnProto(const char*, const TCHAR*);
 	~CMsnProto();
@@ -53,7 +48,6 @@ struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
 	virtual	int       __cdecl FileResume(HANDLE hTransfer, int* action, const PROTOCHAR** szFilename);
 
 	virtual	DWORD_PTR __cdecl GetCaps(int type, HANDLE hContact = NULL);
-	virtual	HICON     __cdecl GetIcon(int iconIndex);
 	virtual	int       __cdecl GetInfo(HANDLE hContact, int infoType);
 
 	virtual	HANDLE    __cdecl SearchBasic(const PROTOCHAR* id);
@@ -146,7 +140,11 @@ struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
 
 	CRITICAL_SECTION csMsgQueue;
 	int msgQueueSeq;
-	OBJLIST<MsgQueueEntry> msgQueueList;
+	OBJLIST<MsgQueueEntry> lsMessageQueue;
+
+	CRITICAL_SECTION csAvatarQueue;
+	LIST<AvatarQueueEntry> lsAvatarQueue;
+	HANDLE hevAvatarQueue;
 
 	LONG sttChatID;
 
@@ -164,34 +162,34 @@ struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
 	bool        usingGateway;
 
 	char*       msnExternalIP;
-	char*		msnPreviousUUX;
-	char*		msnLastStatusMsg;
+	char*       msnPreviousUUX;
+	char*       msnLastStatusMsg;
 
-	char*	    mailsoundname;
-	char*	    alertsoundname;
+	char*       mailsoundname;
+	char*       alertsoundname;
 
-	unsigned	langpref;
+	unsigned    langpref;
 	unsigned    emailEnabled;
 	unsigned    abchMigrated;
 	unsigned    myFlags;
 
-	unsigned	msnOtherContactsBlocked;
+	unsigned    msnOtherContactsBlocked;
 	int			mUnreadMessages;
 	int			mUnreadJunkEmails;
 	clock_t		mHttpsTS;
 	clock_t		mStatusMsgTS;
 
 	HANDLE		msnSearchId;
-	HANDLE		hNetlibUser;
-	HANDLE		hNetlibUserHttps;
+	HANDLE		hNetlibUser, hNetlibUserHttps;
 	HANDLE		hHttpsConnection;
 	HANDLE		hMSNNudge;
+	HANDLE      hPopupError, hPopupHotmail, hPopupNotify;
 
 	HANDLE		hMSNAvatarsFolder;
 	HANDLE		hCustomSmileyFolder;
-	bool		InitCstFldRan;
-	bool		isConnectSuccess;
-	bool		isIdle;
+	bool        InitCstFldRan;
+	bool        isConnectSuccess;
+	bool        isIdle;
 
 	void        InitCustomFolders(void);
 
@@ -201,42 +199,40 @@ struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
 	bool        getMyAvatarFile(char *url, TCHAR *fname);
 
 	void        MSN_GoOffline(void);
-	void        MSN_GetAvatarFileName(HANDLE hContact, TCHAR* pszDest, size_t cbLen, const TCHAR *ext);
-	int         MSN_SetMyAvatar(const TCHAR* szFname, void* pData, size_t cbLen);
 	void        MSN_GetCustomSmileyFileName(HANDLE hContact, TCHAR* pszDest, size_t cbLen, const char* SmileyName, int Type);
 
 	const char*	MirandaStatusToMSN(int status);
-	WORD		MSNStatusToMiranda(const char *status);
+	WORD        MSNStatusToMiranda(const char *status);
 	char**		GetStatusMsgLoc(int status);
 
 	void        MSN_SendStatusMessage(const char* msg);
 	void        MSN_SetServerStatus(int newStatus);
-	void		MSN_StartStopTyping(ThreadData* info, bool start);
-	void		MSN_SendTyping(ThreadData* info, const char* email, int netId );
+	void        MSN_StartStopTyping(ThreadData* info, bool start);
+	void        MSN_SendTyping(ThreadData* info, const char* email, int netId );
 
-	void		MSN_InitSB(ThreadData* info, const char* szEmail);
-	void		MSN_ReceiveMessage(ThreadData* info, char* cmdString, char* params);
+	void        MSN_InitSB(ThreadData* info, const char* szEmail);
+	void        MSN_ReceiveMessage(ThreadData* info, char* cmdString, char* params);
 	int			MSN_HandleCommands(ThreadData* info, char* cmdString);
 	int			MSN_HandleErrors(ThreadData* info, char* cmdString);
-	void		sttProcessNotificationMessage(char* buf, unsigned len);
-	void		sttProcessStatusMessage(char* buf, unsigned len, const char* wlid);
-	void		sttProcessPage(char* buf, unsigned len);
-	void		sttProcessRemove(char* buf, size_t len);
-	void		sttProcessAdd(char* buf, size_t len);
-	void		sttProcessYFind(char* buf, size_t len);
-	void		sttCustomSmiley(const char* msgBody, char* email, char* nick, int iSmileyType);
-	void		sttInviteMessage(ThreadData* info, char* msgBody, char* email, char* nick);
-	void		sttSetMirVer(HANDLE hContact, DWORD dwValue, bool always);
+	void        sttProcessNotificationMessage(char* buf, unsigned len);
+	void        sttProcessStatusMessage(char* buf, unsigned len, const char* wlid);
+	void        sttProcessPage(char* buf, unsigned len);
+	void        sttProcessRemove(char* buf, size_t len);
+	void        sttProcessAdd(char* buf, size_t len);
+	void        sttProcessYFind(char* buf, size_t len);
+	void        sttCustomSmiley(const char* msgBody, char* email, char* nick, int iSmileyType);
+	void        sttInviteMessage(ThreadData* info, char* msgBody, char* email, char* nick);
+	void        sttSetMirVer(HANDLE hContact, DWORD dwValue, bool always);
 
 	void        LoadOptions(void);
 
-	void		InitPopups(void);
-	void		MSN_ShowPopup(const TCHAR* nickname, const TCHAR* msg, int flags, const char* url, HANDLE hContact = NULL);
-	void		MSN_ShowPopup(const HANDLE hContact, const TCHAR* msg, int flags);
-	void		MSN_ShowError(const char* msgtext, ...);
+	void        InitPopups(void);
+	void        MSN_ShowPopup(const TCHAR* nickname, const TCHAR* msg, int flags, const char* url, HANDLE hContact = NULL);
+	void        MSN_ShowPopup(const HANDLE hContact, const TCHAR* msg, int flags);
+	void        MSN_ShowError(const char* msgtext, ...);
 
-	void		MSN_SetNicknameUtf(const char* nickname);
-	void		MSN_SendNicknameUtf(const char* nickname);
+	void        MSN_SetNicknameUtf(const char* nickname);
+	void        MSN_SendNicknameUtf(const char* nickname);
 
 	typedef struct { TCHAR *szName; const char *szMimeType; unsigned char *data; size_t dataSize; } StoreAvatarData;
 	void __cdecl msn_storeAvatarThread(void* arg);
@@ -296,7 +292,6 @@ struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
 
 	void         Threads_Uninit(void);
 	void         MSN_CloseConnections(void);
-	void         MSN_CloseThreads(void);
 	void         MSN_InitThreads(void);
 	int          MSN_GetChatThreads(ThreadData** parResult);
 	int          MSN_GetActiveThreads(ThreadData**);
@@ -483,10 +478,24 @@ struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//	MSN Authentication
 
-	int   MSN_GetPassportAuth(void);
-	char*	GenerateLoginBlob(char* challenge);
-	char*	HotmailLogin(const char* url);
-	void	FreeAuthTokens(void);
+	int    MSN_GetPassportAuth(void);
+	char*	 GenerateLoginBlob(char* challenge);
+	char*	 HotmailLogin(const char* url);
+	void	 FreeAuthTokens(void);
+
+	/////////////////////////////////////////////////////////////////////////////////////////
+	//	MSN avatars support
+
+	void   AvatarQueue_Init(void);
+	void   AvatarQueue_Uninit(void);
+
+	void   MSN_GetAvatarFileName(HANDLE hContact, TCHAR* pszDest, size_t cbLen, const TCHAR *ext);
+	int    MSN_SetMyAvatar(const TCHAR* szFname, void* pData, size_t cbLen);
+
+	void   __cdecl MSN_AvatarsThread(void*);
+
+	void   pushAvatarRequest(HANDLE hContact, LPCSTR pszUrl);
+	bool   loadHttpAvatar(AvatarQueueEntry *p);
 
 	/////////////////////////////////////////////////////////////////////////////////////////
 	//	MSN Mail & Offline messaging support
@@ -555,41 +564,12 @@ struct CMsnProto : public PROTO_INTERFACE, public MZeroedObject
 
 	//////////////////////////////////////////////////////////////////////////////////////
 
-	HANDLE CreateProtoEvent(const char* szEvent);
-	void   CreateProtoService(const char* szService, MsnServiceFunc serviceProc);
-	void   CreateProtoServiceParam(const char* szService, MsnServiceFuncParam serviceProc, LPARAM lParam);
-	void   HookProtoEvent(const char* szEvent, MsnEventFunc pFunc);
-	void   ForkThread(MsnThreadFunc pFunc, void* param);
-
-	int    SendBroadcast(HANDLE hContact, int type, int result, HANDLE hProcess, LPARAM lParam);
 	TCHAR* GetContactNameT(HANDLE hContact);
-	void   deleteSetting(HANDLE hContact, const char* valueName);
 
-	int    getByte(const char* name, BYTE defaultValue);
-	int    getByte(HANDLE hContact, const char* name, BYTE defaultValue);
-	int    getDword(const char* name, DWORD defaultValue);
-	int    getDword(HANDLE hContact, const char* name, DWORD defaultValue);
 	int    getStaticString(HANDLE hContact, const char* valueName, char* dest, unsigned dest_len);
-	int    getString(const char* name, DBVARIANT*);
-	int    getString(HANDLE hContact, const char* name, DBVARIANT*);
-	int    getTString(const char* name, DBVARIANT*);
-	int    getTString(HANDLE hContact, const char* name, DBVARIANT*);
 	int    getStringUtf(HANDLE hContact, const char* name, DBVARIANT* result);
 	int    getStringUtf(const char* name, DBVARIANT* result);
-	WORD   getWord(const char* name, WORD defaultValue);
-	WORD   getWord(HANDLE hContact, const char* name, WORD defaultValue);
-
-	void   setByte(const char* name, BYTE value);
-	void   setByte(HANDLE hContact, const char* name, BYTE value);
-	void   setDword(const char* name, DWORD value);
-	void   setDword(HANDLE hContact, const char* name, DWORD value);
-	void   setString(const char* name, const char* value);
-	void   setString(HANDLE hContact, const char* name, const char* value);
 	void   setStringUtf(HANDLE hContact, const char* name, const char* value);
-	void   setTString(const char* name, const TCHAR* value);
-	void   setTString(HANDLE hContact, const char* name, const TCHAR* value);
-	void   setWord(const char* name, WORD value);
-	void   setWord(HANDLE hContact, const char* name, WORD value);
 };
 
 extern OBJLIST<CMsnProto> g_Instances;

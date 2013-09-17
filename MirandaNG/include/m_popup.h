@@ -1,12 +1,12 @@
 /*
  ============================================================================== = 
-                                PopUp plugin
-Plugin Name: PopUp
+                                Popup plugin
+Plugin Name: Popup
 Plugin authors: Luca Santarelli aka hrk (hrk@users.sourceforge.net)
                 Victor Pavlychko aka zazoo (nullbie@gmail.com)
  ============================================================================== = 
 The purpose of this plugin is to give developers a common "platform/interface"
-to show PopUps. It is born from the source code of NewStatusNotify, another
+to show Popups. It is born from the source code of NewStatusNotify, another
 plugin I've made.
 
 Remember that users *must* have this plugin enabled, or they won't get any
@@ -19,36 +19,15 @@ them!
 #define M_POPUP_H
 
 /*
-NOTE! Since Popup 1.0.1.2 there is a main meun group called "PopUps" where I
+NOTE! Since Popup 1.0.1.2 there is a main meun group called "Popups" where I
 have put a "Enable/Disable" item. You can add your own "enable/disable" items
 by adding these lines before you call MS_CLIST_ADDMAINMENUITEM:
-mi.pszPopUpName = Translate("PopUps");
+mi.pszPopupName = Translate("Popups");
 mi.position = 0; //You don't need it and it's better if you put it to zero.
 */
 
 #define MAX_CONTACTNAME 2048
 #define MAX_SECONDLINE  2048
-
-// This is the basic data you'll need to fill and pass to the service function.
-typedef struct
-{
-	HANDLE lchContact;							// Handle to the contact, can be NULL (main contact).
-	HICON lchIcon;								// Handle to a icon to be shown. Cannot be NULL.
-	union
-	{
-		char lptzContactName[MAX_CONTACTNAME];	// This is the contact name or the first line in the plugin. Cannot be NULL.
-		char lpzContactName[MAX_CONTACTNAME];
-	};
-	union
-	{
-		char lptzText[MAX_SECONDLINE];			// This is the second line text. Users can choose to hide it. Cannot be NULL.
-		char lpzText[MAX_SECONDLINE];
-	};
-	COLORREF colorBack;							// COLORREF to be used for the background. Can be NULL, default will be used.
-	COLORREF colorText;							// COLORREF to be used for the text. Can be NULL, default will be used.
-	WNDPROC PluginWindowProc;					// Read below. Can be NULL; default will be used.
-	void * PluginData;							// Read below. Can be NULL.
-} POPUPDATA, * LPPOPUPDATA;
 
 // Extended popup data
 typedef struct
@@ -68,12 +47,12 @@ typedef struct
 	COLORREF colorBack;
 	COLORREF colorText;
 	WNDPROC PluginWindowProc;
-	void * PluginData;
+	void *PluginData;
 	int iSeconds;								// Custom delay time in seconds. -1 means "forever", 0 means "default time".
 	char cZero[16];								// Some unused bytes which may come useful in the future.
-} POPUPDATAEX, *LPPOPUPDATAEX;
+} POPUPDATA, *LPPOPUPDATA;
 
-// Unicode version of POPUPDATAEX
+// Unicode version of POPUPDATA
 typedef struct
 {
 	HANDLE lchContact;
@@ -91,27 +70,27 @@ typedef struct
 	COLORREF colorBack;
 	COLORREF colorText;
 	WNDPROC PluginWindowProc;
-	void * PluginData;
+	void *PluginData;
 	int iSeconds;
 	char cZero[16];
 } POPUPDATAW, *LPPOPUPDATAW;
 
 #if defined(_UNICODE) || defined(UNICODE)
-	typedef POPUPDATAW		POPUPDATAT;
+	typedef POPUPDATAW   POPUPDATAT;
 	typedef LPPOPUPDATAW	LPPOPUPDATAT;
 #else
-	typedef POPUPDATAEX		POPUPDATAT;
-	typedef LPPOPUPDATAEX	LPPOPUPDATAT;
+	typedef POPUPDATA    POPUPDATAT;
+	typedef LPPOPUPDATA  LPPOPUPDATAT;
 #endif
 
-/* PopUp/AddPopup
+/* Popup/AddPopup
 Creates, adds and shows a popup, given a (valid) POPUPDATA structure pointer.
 
-wParam = (WPARAM)(*POPUPDATA)PopUpDataAddress
+wParam = (WPARAM)(*POPUPDATA)PopupDataAddress
 lParam = 0
 
-Returns: > 0 on success, 0 if creation went bad, -1 if the PopUpData contained unacceptable values.
-NOTE: it returns -1 if the PopUpData was not valid, if there were already too many popups, if the module was disabled.
+Returns: > 0 on success, 0 if creation went bad, -1 if the PopupData contained unacceptable values.
+NOTE: it returns -1 if the PopupData was not valid, if there were already too many popups, if the module was disabled.
 Otherwise, it can return anything else...
 
 Popup Plus 2.0.4.0+
@@ -123,47 +102,42 @@ You may pass additional creation flags via lParam:
 #define APF_RETURN_HWND  0x1
 #define APF_CUSTOM_POPUP 0x2
 
-#define MS_POPUP_ADDPOPUP "PopUp/AddPopUp"
-static INT_PTR __inline PUAddPopUp(POPUPDATA* ppdp) {
+#define MS_POPUP_ADDPOPUP "Popup/AddPopupEx"
+static INT_PTR __inline PUAddPopup(POPUPDATA* ppdp) {
 	return CallService(MS_POPUP_ADDPOPUP, (WPARAM)ppdp, 0);
 }
 
-#define MS_POPUP_ADDPOPUPEX "PopUp/AddPopUpEx"
-static INT_PTR __inline PUAddPopUpEx(POPUPDATAEX* ppdp) {
-	return CallService(MS_POPUP_ADDPOPUPEX, (WPARAM)ppdp, 0);
-}
-
-#define MS_POPUP_ADDPOPUPW "PopUp/AddPopUpW"
-static INT_PTR __inline PUAddPopUpW(POPUPDATAW* ppdp) {
+#define MS_POPUP_ADDPOPUPW "Popup/AddPopupW"
+static INT_PTR __inline PUAddPopupW(POPUPDATAW* ppdp) {
 	return CallService(MS_POPUP_ADDPOPUPW, (WPARAM)ppdp, 0);
 }
 
 #if defined(_UNICODE) || defined(UNICODE)
 	#define MS_POPUP_ADDPOPUPT	MS_POPUP_ADDPOPUPW
-	#define PUAddPopUpT			PUAddPopUpW
+	#define PUAddPopupT			PUAddPopupW
 #else
-	#define MS_POPUP_ADDPOPUPT	MS_POPUP_ADDPOPUPEX
-	#define PUAddPopUpT			PUAddPopUpEx
+	#define MS_POPUP_ADDPOPUPT	MS_POPUP_ADDPOPUP
+	#define PUAddPopupT			PUAddPopup
 #endif
 
 
-/* PopUp/GetContact
-Returns the handle to the contact associated to the specified PopUpWindow.
+/* Popup/GetContact
+Returns the handle to the contact associated to the specified PopupWindow.
 
-wParam = (WPARAM)(HWND)hPopUpWindow
+wParam = (WPARAM)(HWND)hPopupWindow
 lParam = 0;
 
 Returns: the HANDLE of the contact. Can return NULL, meaning it's the main contact. -1 means failure.
 */
-#define MS_POPUP_GETCONTACT "PopUp/GetContact"
-static HANDLE __inline PUGetContact(HWND hPopUpWindow) {
-	return (HANDLE)CallService(MS_POPUP_GETCONTACT, (WPARAM)hPopUpWindow, 0);
+#define MS_POPUP_GETCONTACT "Popup/GetContact"
+static HANDLE __inline PUGetContact(HWND hPopupWindow) {
+	return (HANDLE)CallService(MS_POPUP_GETCONTACT, (WPARAM)hPopupWindow, 0);
 }
 
-/* PopUp/GetPluginData
+/* Popup/GetPluginData
 Returns custom plugin date associated with popup
 
-wParam = (WPARAM)(HWND)hPopUpWindow
+wParam = (WPARAM)(HWND)hPopupWindow
 lParam = (LPARAM)(PLUGINDATA*)PluginDataAddress;
 
 Returns: the address of the PLUGINDATA structure. Can return NULL, meaning nothing was given. -1 means failure.
@@ -173,16 +147,16 @@ CallService(..., (LPARAM)aPointerToAStruct);
 and then use that struct.
 Do this, instead:
 aPointerToStruct = CallService(..., (LPARAM)aPointerToAStruct);
-and it will work. Just look at the example I've written above (PopUpDlgProc).
+and it will work. Just look at the example I've written above (PopupDlgProc).
 
 */
-#define MS_POPUP_GETPLUGINDATA "PopUp/GetPluginData"
-static void __inline * PUGetPluginData(HWND hPopUpWindow) {
+#define MS_POPUP_GETPLUGINDATA "Popup/GetPluginData"
+static void __inline * PUGetPluginData(HWND hPopupWindow) {
 	long * uselessPointer = NULL;
-	return (void*)CallService(MS_POPUP_GETPLUGINDATA, (WPARAM)hPopUpWindow, (LPARAM)uselessPointer);
+	return (void*)CallService(MS_POPUP_GETPLUGINDATA, (WPARAM)hPopupWindow, (LPARAM)uselessPointer);
 }
 
-/* PopUp/IsSecondLineShown
+/* Popup/IsSecondLineShown
 Checks if second line is enable
 
 wParam = 0
@@ -190,14 +164,14 @@ lParam = 0
 
 Returns: 0 if the user has chosen not to have the second line, 1 if he choose to have the second line.
 */
-#define MS_POPUP_ISSECONDLINESHOWN "PopUp/IsSecondLineShown"
+#define MS_POPUP_ISSECONDLINESHOWN "Popup/IsSecondLineShown"
 static BOOL __inline PUIsSecondLineShown() {
 	return (BOOL)CallService(MS_POPUP_ISSECONDLINESHOWN, 0, 0);
 }
 
-/* PopUp/Query
+/* Popup/Query
 
-Requests an action or an answer from PopUp module.
+Requests an action or an answer from Popup module.
 
 wParam = (WPARAM)wpQuery
 
@@ -208,7 +182,7 @@ returns 0 on success, -1 on error, 1 on stupid calls ;-)
 #define PUQS_DISABLEPOPUPS	2	// " "
 #define PUQS_GETSTATUS		3	//Returns 1 (TRUE) if popups are enabled, 0 (FALSE) if popups are disabled.
 
-#define MS_POPUP_QUERY "PopUp/Query"
+#define MS_POPUP_QUERY "Popup/Query"
 
 /* UM_FREEPLUGINDATA
 Process this message if you have allocated your own memory. (i.e.: POPUPDATA.PluginData != NULL)
@@ -225,69 +199,55 @@ wParam = 0
 lParam = 0
 */
 #define UM_DESTROYPOPUP          (WM_USER + 0x0201)
-static int __inline PUDeletePopUp(HWND hWndPopUp) {
-	return (int)SendMessage(hWndPopUp, UM_DESTROYPOPUP, 0, 0);
+static int __inline PUDeletePopup(HWND hWndPopup) {
+	return (int)SendMessage(hWndPopup, UM_DESTROYPOPUP, 0, 0);
 }
 
 /* UM_INITPOPUP
-This message is sent to the PopUp when its creation has been finished, so POPUPDATA (and thus your PluginData) is reachable.
+This message is sent to the Popup when its creation has been finished, so POPUPDATA (and thus your PluginData) is reachable.
 Catch it if you needed to catch WM_CREATE or WM_INITDIALOG, which you'll never ever get in your entire popup-life.
 Return value: if you process this message, return 0. If you don't process it, return 0. Do whatever you like ;-)
 
-wParam = (WPARAM)(HWND)hPopUpWindow (this is useless, you get message inside your popup window)
+wParam = (WPARAM)(HWND)hPopupWindow (this is useless, you get message inside your popup window)
 lParam = 0
 */
 #define UM_INITPOPUP             (WM_USER + 0x0202)
 
-/* PopUp/Changetext
+/* Popup/Changetext
 Changes the text displayed in the second line of the popup.
 
-wParam = (WPARAM)(HWND)hPopUpWindow
+wParam = (WPARAM)(HWND)hPopupWindow
 lParam = (LPARAM)(char*)lpzNewText
 
 returns: > 0 for success, -1 for failure, 0 if the failure is due to second line not being shown. (but you could call
 PUIsSecondLineShown() before changing the text...)
 */
-#define MS_POPUP_CHANGETEXT "PopUp/Changetext"
-static int __inline PUChangeText(HWND hWndPopUp, LPCTSTR lpzNewText) {
-	return (int)CallService(MS_POPUP_CHANGETEXT, (WPARAM)hWndPopUp, (LPARAM)lpzNewText);
-}
 
-#define MS_POPUP_CHANGETEXTW "PopUp/ChangetextW"
-static int __inline PUChangeTextW(HWND hWndPopUp, LPCWSTR lpwzNewText) {
-	return (int)CallService(MS_POPUP_CHANGETEXTW, (WPARAM)hWndPopUp, (LPARAM)lpwzNewText);
+#define MS_POPUP_CHANGETEXTW "Popup/ChangetextW"
+static int __inline PUChangeTextW(HWND hWndPopup, LPCWSTR lpwzNewText) {
+	return (int)CallService(MS_POPUP_CHANGETEXTW, (WPARAM)hWndPopup, (LPARAM)lpwzNewText);
 }
 
 #if defined(_UNICODE) || defined(UNICODE)
 	#define MS_POPUP_CHANGETEXTT	MS_POPUP_CHANGETEXTW
 	#define PUChangeTextT			PUChangeTextW
-#else
-	#define MS_POPUP_CHANGETEXTT	MS_POPUP_CHANGETEXT
-	#define PUChangeTextT			PUChangeText
 #endif
 
-/* PopUp/Change
+/* Popup/Change
 Changes the entire popup
 
-wParam = (WPARAM)(HWND)hPopUpWindow
-lParam = (LPARAM)(POPUPDATAEX*)newData
+wParam = (WPARAM)(HWND)hPopupWindow
+lParam = (LPARAM)(POPUPDATA*)newData
 */
-#define MS_POPUP_CHANGE "PopUp/Change"
-static int __inline PUChange(HWND hWndPopUp, POPUPDATAEX *newData) {
-	return (int)CallService(MS_POPUP_CHANGE, (WPARAM)hWndPopUp, (LPARAM)newData);
-}
 
-#define MS_POPUP_CHANGEW "PopUp/ChangeW"
-static int __inline PUChangeW(HWND hWndPopUp, POPUPDATAW *newData) {
-	return (int)CallService(MS_POPUP_CHANGEW, (WPARAM)hWndPopUp, (LPARAM)newData);
+#define MS_POPUP_CHANGEW "Popup/ChangeW"
+static int __inline PUChangeW(HWND hWndPopup, POPUPDATAW *newData) {
+	return (int)CallService(MS_POPUP_CHANGEW, (WPARAM)hWndPopup, (LPARAM)newData);
 }
 
 #if defined(_UNICODE) || defined(UNICODE)
-	#define MS_POPUP_CHANGET	MS_POPUP_CHANGEW
-	#define PUChangeT			PUChangeW
-#else
-	#define MS_POPUP_CHANGET	MS_POPUP_CHANGE
-	#define PUChangeT			PUChange
+	#define MS_POPUP_CHANGET MS_POPUP_CHANGEW
+	#define PUChangeT        PUChangeW
 #endif
 
 /* UM_CHANGEPOPUP
@@ -297,29 +257,23 @@ wParam = Modification type
 lParam = value of type defined by wParam
 */
 
-#define CPT_TEXT	1 // lParam = (char *)text
-#define CPT_TEXTW	2 // lParam = (WCHAR *)text
-#define CPT_TITLE	3 // lParam = (char *)title
-#define CPT_TITLEW	4 // lParam = (WCHAR *)title
-#define CPT_DATA	5 // lParam = (POPUPDATA *)data
-#define CPT_DATAEX	6 // lParam = (POPUPDATAEX *)data
-#define CPT_DATAW	7 // lParam = (POPUPDATAW *)data
+#define CPT_TEXT	 1 // lParam = (char *)text
+#define CPT_TEXTW	 2 // lParam = (WCHAR *)text
+#define CPT_TITLE	 3 // lParam = (char *)title
+#define CPT_TITLEW 4 // lParam = (WCHAR *)title
+#define CPT_DATAW	 7 // lParam = (POPUPDATAW *)data
 
 #define UM_CHANGEPOPUP			(WM_USER + 0x0203)
 
 #if defined(_UNICODE) || defined(UNICODE)
-	#define CPT_TEXTT	CPT_TEXTW
-	#define CPT_TITLET	CPT_TITLEW
-	#define CPT_DATAT	CPT_DATAW
-#else
-	#define CPT_TEXTT	CPT_TEXT
-	#define CPT_TITLET	CPT_TITLE
-	#define CPT_DATAT	CPT_DATA
+	#define CPT_TEXTT  CPT_TEXTW
+	#define CPT_TITLET CPT_TITLEW
+	#define CPT_DATAT  CPT_DATAW
 #endif
 
-/* PopUp/ShowMessage
+/* Popup/ShowMessage
 This is mainly for developers.
-Shows a warning message in a PopUp. It's useful if you need a "MessageBox" like function, but you don't want a modal
+Shows a warning message in a Popup. It's useful if you need a "MessageBox" like function, but you don't want a modal
 window (which will interfere with a DialogProcedure. MessageBox steals focus and control, this one not.
 
 wParam = (char *)lpzMessage
@@ -329,8 +283,8 @@ Returns: 0 if the popup was shown, -1 in case of failure.
 */
 #define SM_WARNING	0x01	//Triangle icon.
 #define SM_NOTIFY	0x02	//Exclamation mark icon.
-#define MS_POPUP_SHOWMESSAGE "PopUp/ShowMessage"
-#define MS_POPUP_SHOWMESSAGEW "PopUp/ShowMessageW"
+#define MS_POPUP_SHOWMESSAGE "Popup/ShowMessage"
+#define MS_POPUP_SHOWMESSAGEW "Popup/ShowMessageW"
 
 static int __inline PUShowMessage(char *lpzText, DWORD kind) {
 	return (int)CallService(MS_POPUP_SHOWMESSAGE, (WPARAM)lpzText, (LPARAM)kind);
@@ -378,7 +332,22 @@ typedef struct {
 
 // wParam = 0
 // lParam = (POPUPCLASS *)&pc
-#define MS_POPUP_REGISTERCLASS	"PopUp/RegisterClass"
+#define MS_POPUP_REGISTERCLASS   "Popup/RegisterClass"
+
+HANDLE __forceinline Popup_RegisterClass(POPUPCLASS *pc)
+{
+	if ( !ServiceExists(MS_POPUP_REGISTERCLASS))
+		return NULL;
+	return (HANDLE)CallService(MS_POPUP_REGISTERCLASS, 0, LPARAM(pc));
+}
+
+#define MS_POPUP_UNREGISTERCLASS "Popup/UnregisterClass"
+
+void __forceinline Popup_UnregisterClass(HANDLE ppc)
+{
+	if (ppc)
+		CallService(MS_POPUP_UNREGISTERCLASS, 0, LPARAM(ppc));
+}
 
 typedef struct {
 	int cbSize;
@@ -399,7 +368,7 @@ typedef struct {
 
 // wParam = 0
 // lParam = (POPUPDATACLASS *)&pdc
-#define MS_POPUP_ADDPOPUPCLASS	"PopUp/AddPopupClass"
+#define MS_POPUP_ADDPOPUPCLASS	"Popup/AddPopupClass"
 
 static INT_PTR __inline ShowClassPopup(char *name, char *title, char *text) {
 	POPUPDATACLASS d = {sizeof(d), name};

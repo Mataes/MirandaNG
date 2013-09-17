@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2005 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -22,12 +22,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #define  _CRT_SECURE_NO_WARNINGS
-#define MIRANDA_VER 0x0A00
 
 #define _WIN32_WINNT 0x0600
 #define _WIN32_IE 0x0501
-
-#include "m_stdhdr.h"
 
 #include <windows.h>
 #include <vssym32.h>
@@ -55,8 +52,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <m_utils.h>
 #include <m_skin.h>
 #include <m_contacts.h>
-#include <m_file.h>
-#include <m_addcontact.h>
 #include <m_icolib.h>
 #include <m_extraicons.h>
 
@@ -71,7 +66,7 @@ extern HINSTANCE g_hInst;
  all the bad free()'s to good ones, however it's still incorrect code. The reasons for not
  changing them include:
 
-  * DBFreeVariant has a CallService() lookup
+  * db_free has a CallService() lookup
   * free() is executed in some large loops to do with clist creation of group data
   * easy search and replace
 

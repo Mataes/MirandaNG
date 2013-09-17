@@ -18,9 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "general.h"
-#include "smileyroutines.h"
-#include "services.h"
-#include "options.h"
 
 //***************************************************//
 //              DISCLAIMER!!!
@@ -37,13 +34,11 @@ msgData;
 //              DISCLAIMER!!!
 //***************************************************//
 
-extern HINSTANCE g_hInst;
-
 static HHOOK g_hMessageHookPre = NULL;
 static HANDLE g_hMutex = NULL;
 static HANDLE g_hHookMsgWnd = NULL;
 
-static LRESULT CALLBACK MessageDlgSubclas(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+static LRESULT CALLBACK MessageDlgSubclass(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 
 //type definitions 
@@ -61,7 +56,6 @@ public:
 	mutable HBITMAP hSmlBmp;
 	mutable HICON hSmlIco;
 	int idxLastChar;
-	WNDPROC wpOrigWndProc;
 	HANDLE hContact;
 	bool doSmileyReplace;
 	bool doSmileyButton;
@@ -87,7 +81,6 @@ public:
 		OldButtonPlace = false;
 		isSplit = false;
 		isSend = false;
-		wpOrigWndProc = NULL;
 	}
 
 	MsgWndData(const MsgWndData &dsb)
@@ -121,7 +114,7 @@ public:
 
 		if (OldButtonPlace)
 		{
-			if (isSplit && DBGetContactSettingByte(NULL, "SRMsg", "ShowQuote", FALSE))
+			if (isSplit && db_get_b(NULL, "SRMsg", "ShowQuote", FALSE))
 			{
 				GetWindowRect(QuoteB, &rect);
 				pt.x = rect.right + 12;
@@ -206,17 +199,17 @@ public:
 		bool showButtonLine;
 		if (IsOldSrmm())
 		{
-			isSplit = DBGetContactSettingByte(NULL,"SRMsg","Split", TRUE) != 0;
+			isSplit = db_get_b(NULL,"SRMsg","Split", TRUE) != 0;
 
 			doSmileyReplace = (isSplit || !isSend);
 			doSmileyButton &= isSplit ||  isSend;
-			showButtonLine = DBGetContactSettingByte(NULL, "SRMsg", "ShowButtonLine", TRUE) != 0;
+			showButtonLine = db_get_b(NULL, "SRMsg", "ShowButtonLine", TRUE) != 0;
 		}
 		else
 		{
 			doSmileyReplace = true;
 			OldButtonPlace = false;
-			showButtonLine = DBGetContactSettingByte(NULL, "SRMM", "ShowButtonLine", TRUE) != 0;
+			showButtonLine = db_get_b(NULL, "SRMM", "ShowButtonLine", TRUE) != 0;
 		}
 
 		doSmileyButton &= OldButtonPlace || showButtonLine;
@@ -282,10 +275,8 @@ bool IsOldSrmm(void)
 int UpdateSrmmDlg(WPARAM wParam, LPARAM /* lParam */)
 {
 	WaitForSingleObject(g_hMutex, 2000);
-	for (int i=0; i<g_MsgWndList.getCount(); ++i)
-	{
-		if (wParam == 0 || g_MsgWndList[i]->hContact == (HANDLE)wParam)
-		{
+	for (int i=0; i < g_MsgWndList.getCount(); ++i) {
+		if (wParam == 0 || g_MsgWndList[i]->hContact == (HANDLE)wParam) {
 			SendMessage(g_MsgWndList[i]->hwnd, WM_SETREDRAW, FALSE, 0);
 			SendMessage(g_MsgWndList[i]->hwnd, DM_OPTIONSAPPLIED, 0, 0);
 			SendMessage(g_MsgWndList[i]->hwnd, WM_SETREDRAW, TRUE, 0);
@@ -333,8 +324,7 @@ static void MsgWndDetect(HWND hwndDlg, HANDLE hContact, msgData* datm)
 		WaitForSingleObject(g_hMutex, 2000);
 
 		MsgWndData* msgwnd = g_MsgWndList.find((MsgWndData*)&hwndDlg);
-		if (msgwnd == NULL)
-		{
+		if (msgwnd == NULL) {
 			msgwnd = new MsgWndData(dat);
 			g_MsgWndList.insert(msgwnd);
 		}
@@ -342,18 +332,18 @@ static void MsgWndDetect(HWND hwndDlg, HANDLE hContact, msgData* datm)
 			msgwnd = NULL;
 		ReleaseMutex(g_hMutex);
 
-		if (msgwnd != NULL)
-		{
-			msgwnd->wpOrigWndProc = (WNDPROC)SetWindowLongPtr(hwndDlg, GWLP_WNDPROC, (LONG_PTR)MessageDlgSubclas);
+		if (msgwnd != NULL) {
+			mir_subclassWindow(hwndDlg, MessageDlgSubclass);
 			msgwnd->CreateSmileyButton();
-			if (hContact == NULL) SetRichCallback(msgwnd->REdit, msgwnd->hContact, true, true);
+			if (hContact == NULL)
+				SetRichCallback(msgwnd->REdit, msgwnd->hContact, true, true);
 		}
 	}
 }
 
 
 //global subclass function for all dialogs
-static LRESULT CALLBACK MessageDlgSubclas(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK MessageDlgSubclass(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	MsgWndData* dat = IsMsgWnd(hwnd);
 	if (dat == NULL) return 0;
@@ -377,19 +367,16 @@ static LRESULT CALLBACK MessageDlgSubclas(HWND hwnd, UINT uMsg, WPARAM wParam, L
 		break;
 	}
 
-	LRESULT result = CallWindowProc(dat->wpOrigWndProc, hwnd, uMsg, wParam, lParam); 
+	LRESULT result = mir_callNextSubclass(hwnd, MessageDlgSubclass, uMsg, wParam, lParam); 
+	if (!opt.PluginSupportEnabled)
+		return result;
 
-	if (!opt.PluginSupportEnabled) return result;
-
-	switch(uMsg) 
-	{
+	switch(uMsg) {
 	case WM_DESTROY:
 		WaitForSingleObject(g_hMutex, 2000);
-		SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)dat->wpOrigWndProc);
 		{
 			int ind = g_MsgWndList.getIndex((MsgWndData*)&hwnd);
-			if ( ind != -1 ) 
-			{
+			if ( ind != -1 ) {
 				delete g_MsgWndList[ind];
 				g_MsgWndList.remove(ind);
 			}
@@ -512,8 +499,8 @@ static int MsgDlgHook(WPARAM, LPARAM lParam)
 	case MSG_WINDOW_EVT_CLOSE:
 		if (wndEvtData->cbSize >= sizeof(MessageWindowEventData) && wndEvtData->hwndLog)
 		{
-			CloseRichCallback(wndEvtData->hwndLog, true);
-			CloseRichOwnerCallback(wndEvtData->hwndWindow, true);
+			CloseRichCallback(wndEvtData->hwndLog);
+			CloseRichOwnerCallback(wndEvtData->hwndWindow);
 		}
 		break;
 	}
@@ -552,7 +539,7 @@ void RemoveDialogBoxHook(void)
 	if (g_hMessageHookPre) UnhookWindowsHookEx(g_hMessageHookPre);
 
 	WaitForSingleObject(g_hMutex, 2000);
-	for (int i=0; i<g_MsgWndList.getCount(); ++i) 
+	for (int i=0; i<g_MsgWndList.getCount(); i++) 
 		delete g_MsgWndList[i];
 	g_MsgWndList.destroy();
 	ReleaseMutex(g_hMutex);

@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/history.cpp $
-Revision       : $Revision: 1631 $
-Last change on : $Date: 2010-07-08 08:22:12 +0300 (Чт, 08 июл 2010) $
-Last change by : $Author: MPK $
-
-===============================================================================
 */
 
 #include "headers.h"
@@ -54,7 +45,7 @@ static void FreeHistoryItem(POPUPDATA2 *ppd)
 
 void PopupHistoryResize()
 {
-	popupHistoryBuffer = PopUpOptions.HistorySize;
+	popupHistoryBuffer = PopupOptions.HistorySize;
 
 	mir_cslock lck(csPopupHistory);
 	while (arPopupHistory.getCount() > popupHistoryBuffer) {
@@ -66,7 +57,7 @@ void PopupHistoryResize()
 void PopupHistoryLoad()
 {
 	InitializeCriticalSection(&csPopupHistory);
-	popupHistoryBuffer = DBGetContactSettingWord(NULL, MODULNAME, "HistorySize", SETTING_HISTORYSIZE_DEFAULT);
+	popupHistoryBuffer = db_get_w(NULL, MODULNAME, "HistorySize", SETTING_HISTORYSIZE_DEFAULT);
 }
 
 void PopupHistoryUnload()
@@ -80,7 +71,7 @@ void PopupHistoryUnload()
 
 void PopupHistoryAdd(POPUPDATA2 *ppdNew)
 {
-	if (!PopUpOptions.EnableHistory)
+	if (!PopupOptions.EnableHistory)
 		return;
 
 	POPUPDATA2 *ppd = (POPUPDATA2*)mir_alloc( sizeof(POPUPDATA2));
@@ -109,7 +100,7 @@ void PopupHistoryAdd(POPUPDATA2 *ppdNew)
 
 void PopupHistoryShow()
 {
-	if (!PopUpOptions.EnableHistory) {
+	if (!PopupOptions.EnableHistory) {
 		MessageBox(NULL, TranslateT("Popup History is disabled"), TranslateT("Popup History message"), MB_OK);
 		return;
 	}
@@ -144,7 +135,7 @@ static INT_PTR CALLBACK HistoryDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 			SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)IcoLib_GetIcon(ICO_HISTORY,0));
 			SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)IcoLib_GetIcon(ICO_HISTORY,1));
 
-			if (gbHppInstalled && PopUpOptions.UseHppHistoryLog) {
+			if (gbHppInstalled && PopupOptions.UseHppHistoryLog) {
 				logType = LOG_HPP;
 				ShowWindow(GetDlgItem(hwnd, IDC_POPUP_LIST), SW_HIDE);
 
@@ -255,7 +246,7 @@ static INT_PTR CALLBACK HistoryDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 				if (rc.right - rc.left <= 30)
 					return FALSE;
 
-				POPUPOPTIONS customOptions = PopUpOptions;
+				POPUPOPTIONS customOptions = PopupOptions;
 				customOptions.DynamicResize = FALSE;
 				customOptions.MinimumWidth = customOptions.MaximumWidth = rc.right-rc.left-30;
 
@@ -397,7 +388,7 @@ static INT_PTR CALLBACK HistoryDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 			ieData.next = NULL;
 			CallService(MS_HPP_EG_EVENT, 0, (WPARAM)&ieEvent);
 		}
-		else if(logType == LOG_DEFAULT) {
+		else if (logType == LOG_DEFAULT) {
 			if (arPopupHistory.getCount() <= ListBox_GetCount(hwndLog)) {
 				loadItem = 0;
 				PostMessage(hwnd, UM_RESIZELIST, 0, 0);

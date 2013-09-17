@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Artem Shpynov
+Copyright (C) 2012-13  Miranda NG Project
 
 Module implements a search according to XEP-0055: Jabber Search
 http://www.xmpp.org/extensions/xep-0055.html
@@ -34,7 +35,7 @@ typedef struct _tagJabberSearchFieldsInfo
 
 typedef struct _tagJabberSearchData
 {
-	struct CJabberProto* ppro;
+	struct CJabberProto *ppro;
 	JabberSearchFieldsInfo *  pJSInf;
 	HXML xNode;
 	int nJSInfCount;
@@ -44,7 +45,7 @@ typedef struct _tagJabberSearchData
 	int frameHeight;
 	RECT frameRect;
 	BOOL fSearchRequestIsXForm;
-	
+
 }JabberSearchData;
 
 typedef struct tag_Data

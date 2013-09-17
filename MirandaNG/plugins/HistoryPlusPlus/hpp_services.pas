@@ -54,12 +54,6 @@ uses
   HistoryForm, PassForm, PassCheckForm;
 
 var
-  hAllHistoryRichEditProcess,
-  hHppShowHistory,
-  hHppEmptyHistory,
-  hHppGetVersion,
-  hHppShowGlobalSearch,
-  hHppOpenHistoryEvent,
   hHppRichEditItemProcess: THandle;
   HstWindowList: TList;
   PassFm: TfmPass;
@@ -197,12 +191,12 @@ begin
   if Assigned(POpenEventParams(wParam)) then
   begin
     oep := POpenEventParams(wParam)^;
-    hDbEvent := CallService(MS_DB_EVENT_FINDLAST, oep.hContact, 0);
+    hDbEvent := db_event_last(oep.hContact);
     item := 0;
     sel := -1;
     while (hDbEvent <> oep.hDbEvent) and (hDbEvent <> 0) do
     begin
-      hDbEvent := CallService(MS_DB_EVENT_FINDPREV, hDbEvent, 0);
+      hDbEvent := db_event_prev(hDbEvent);
       Inc(item);
     end;
     if hDbEvent = oep.hDbEvent then
@@ -236,27 +230,20 @@ procedure hppRegisterServices;
 begin
   HstWindowList := TList.Create;
 
-  hHppShowHistory := CreateServiceFunction(MS_HISTORY_SHOWCONTACTHISTORY,HppShowHistory);
-  hHppEmptyHistory := CreateServiceFunction(MS_HPP_EMPTYHISTORY, HppEmptyHistory);
-  hHppGetVersion := CreateServiceFunction(MS_HPP_GETVERSION, HppGetVersion);
-  hHppShowGlobalSearch := CreateServiceFunction(MS_HPP_SHOWGLOBALSEARCH,HppShowGlobalSearch);
-  hHppOpenHistoryEvent := CreateServiceFunction(MS_HPP_OPENHISTORYEVENT,HppOpenHistoryEvent);
+  CreateServiceFunction(MS_HISTORY_SHOWCONTACTHISTORY,@HppShowHistory);
+  CreateServiceFunction(MS_HPP_EMPTYHISTORY, @HppEmptyHistory);
+  CreateServiceFunction(MS_HPP_GETVERSION, @HppGetVersion);
+  CreateServiceFunction(MS_HPP_SHOWGLOBALSEARCH,@HppShowGlobalSearch);
+  CreateServiceFunction(MS_HPP_OPENHISTORYEVENT,@HppOpenHistoryEvent);
 
   hHppRichEditItemProcess := CreateHookableEvent(ME_HPP_RICHEDIT_ITEMPROCESS);
-  hAllHistoryRichEditProcess := HookEvent(ME_HPP_RICHEDIT_ITEMPROCESS,AllHistoryRichEditProcess);
+  HookEvent(ME_HPP_RICHEDIT_ITEMPROCESS,AllHistoryRichEditProcess);
 end;
 
 procedure hppUnregisterServices;
 begin
   CloseHistoryWindows;
   CloseGlobalSearchWindow;
-  UnhookEvent(hAllHistoryRichEditProcess);
-  DestroyServiceFunction(hHppShowHistory);
-  DestroyServiceFunction(hHppEmptyHistory);
-  DestroyServiceFunction(hHppGetVersion);
-  DestroyServiceFunction(hHppShowGlobalSearch);
-  DestroyServiceFunction(hHppOpenHistoryEvent);
-  DestroyServiceFunction(hHppEmptyHistory);
   DestroyHookableEvent(hHppRichEditItemProcess);
   HstWindowList.Free;
 end;

@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2011-12 Robert Pösel
+Copyright © 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,10 +45,6 @@ void FacebookProto::UpdateChat(const char *chat_id, const char *id, const char *
 	mir_free(const_cast<TCHAR*>(gce.ptszNick));
 	mir_free(const_cast<TCHAR*>(gce.ptszText));
 	mir_free(const_cast<TCHAR*>(gcd.ptszID));
-
-	
-	// Close chat window, if set
-	ForkThread( &FacebookProto::MessagingWorker, this, new send_messaging(chat_id, FACEBOOK_SEND_MESSAGE ));
 }
 
 int FacebookProto::OnChatOutgoing(WPARAM wParam,LPARAM lParam)
@@ -75,7 +71,7 @@ int FacebookProto::OnChatOutgoing(WPARAM wParam,LPARAM lParam)
 	
 		if (isOnline()) {
 			LOG("**Chat - Outgoing message: %s", text);
-			ForkThread(&FacebookProto::SendChatMsgWorker, this, new send_chat(chat_id, msg));
+			ForkThread(&FacebookProto::SendChatMsgWorker, new send_chat(chat_id, msg));
 		}
 	
 		break;
@@ -198,9 +194,9 @@ void FacebookProto::AddChat(const char *id, const char *name)
 	// Create a user statuses
 	gcd.iType = GC_EVENT_ADDGROUP;
 	gce.ptszStatus = _T("Admin");
-	CallServiceSync( MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
+	CallServiceSync(MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
 	gce.ptszStatus = _T("Normal");
-	CallServiceSync( MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
+	CallServiceSync(MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
 	
 	// Finish initialization
 	gcd.iType = GC_EVENT_CONTROL;
@@ -232,7 +228,7 @@ void FacebookProto::AddChat(const char *id, const char *name)
 }
 */
 
-int FacebookProto::OnJoinChat(WPARAM,LPARAM suppress)
+INT_PTR FacebookProto::OnJoinChat(WPARAM,LPARAM suppress)
 {	
 /*	GCSESSION gcw = {sizeof(gcw)};
 
@@ -258,10 +254,10 @@ int FacebookProto::OnJoinChat(WPARAM,LPARAM suppress)
 	gcd.iType = GC_EVENT_ADDGROUP;
 
 	gce.ptszStatus = _T("Admin");
-	CallServiceSync( MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
+	CallServiceSync(MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
 	
 	gce.ptszStatus = _T("Normal");
-	CallServiceSync( MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
+	CallServiceSync(MS_GC_EVENT, NULL, reinterpret_cast<LPARAM>(&gce));
 
 	SetTopic("Omegle is a great way of meeting new friends!");
 
@@ -272,7 +268,7 @@ int FacebookProto::OnJoinChat(WPARAM,LPARAM suppress)
 	return 0;
 }
 
-int FacebookProto::OnLeaveChat(WPARAM,LPARAM)
+INT_PTR FacebookProto::OnLeaveChat(WPARAM,LPARAM)
 {
 	GCDEST gcd = { m_szModuleName };
 	gcd.ptszID = NULL;

@@ -428,6 +428,7 @@ typedef struct {
 #define GC_SSE_ONLYLISTED     0x0001  // processes only listed contacts, resets all contacts otherwise
 #define GC_SSE_ONLINE         0x0002  // displays a contact online, otherwise away
 #define GC_SSE_TABDELIMITED   0x0004  // use tabs as delimiters
+#define GC_SSE_OFFLINE        0x0008  // displays a contact offline, otherwise away
 
 #define GC_EVENT_SETSTATUSEX	0x1009
 
@@ -499,7 +500,7 @@ typedef struct {
 	};
                                     // IRC use it to display a hostmask for JOIN, PART (and more) events.
 	BOOL  bIsMe;                    // Is this event from the Miranda user?
-	DWORD dwFlags;						// event flags: GCEF_ADDTOLOG, GC_UNICODE
+	DWORD dwFlags;						// event flags: GCEF_ADDTOLOG, GCEF_NOTNOTIFY, GC_UNICODE
 
                                     // FALSE any other time than when initializing the window (before sending SESSION_INITDONE)
 	DWORD_PTR dwItemData;           // User specified data.
@@ -511,6 +512,8 @@ typedef struct {
 
 #define GCEF_ADDTOLOG       0x0001
 #define GCEF_REMOVECONTACT  0x0002
+// Added in Miranda NG 0.94.4+
+#define GCEF_NOTNOTIFY      0x0004
 
 // OK! That was about everything that you need to know about for operating Chat in a basic way.
 // There are however some more things you will need to know about. Some you may use and some you may not need,

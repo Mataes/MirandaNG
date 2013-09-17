@@ -483,22 +483,14 @@ VOID SwitchLayout(BOOL lastword)
 					if (smileyPrs != NULL)
 						CallService(MS_SMILEYADD_BATCHFREE, 0, (LPARAM)smileyPrs);
 					
-					POPUPDATAT_V2 pd;
-					ZeroMemory(&pd, sizeof(pd));
-					pd.cbSize = sizeof(POPUPDATAT_V2);
-					pd.lchContact = NULL; //(HANDLE)wParam;
+					POPUPDATAT pd = { 0 };
 					pd.lchIcon = Skin_GetIcon("Switch Layout and Send");
 					lstrcpyn(pd.lptzText, buf, SIZEOF(pd.lptzText));
 					lstrcpyn(pd.lptzContactName, TranslateT("TranslitSwitcher"), SIZEOF(pd.lptzContactName));
-					pd.colorBack = pd.colorText = 0;
-					pd.iSeconds = 0;
-					CallService(MS_POPUP_ADDPOPUPT, (WPARAM) &pd, 0);
-
-					//PUShowMessageT(buf, SM_NOTIFY);
+					PUAddPopupT(&pd);
 				}
 			}
-			else
-			if(lstrcmp(szClassName, _T("RichEdit20W")) == 0)
+			else if(lstrcmp(szClassName, _T("RichEdit20W")) == 0)
 			{
 				DWORD dwStart, dwEnd;
 				int i, slen, start = 0, end = 0;
@@ -814,10 +806,10 @@ int OnButtonPressed(WPARAM wParam, LPARAM lParam)
 				CallService(MS_SMILEYADD_BATCHFREE, 0, (LPARAM)smileyPrs);
 
 			DBVARIANT dbv = {0};
-			DBGetContactSettingTString(NULL, "TranslitSwitcher", "ResendSymbol", &dbv);
+			db_get_ts(NULL, "TranslitSwitcher", "ResendSymbol", &dbv);
 			if (lstrcmp(dbv.ptszVal, NULL) == 0)
 			{
-				DBFreeVariant(&dbv);
+				db_free(&dbv);
 				SendMessage(hEdit, WM_SETTEXT, 0, (LPARAM)sel);
 				SendMessage(hEdit, EM_SETSEL, 0, slen);
 				SendMessage(cbcd->hwndFrom, WM_COMMAND, IDOK, 0);
@@ -863,10 +855,10 @@ int OnButtonPressed(WPARAM wParam, LPARAM lParam)
 		if (slen != 0)
 			Transliterate(sel);
 		DBVARIANT dbv = {0};
-		DBGetContactSettingTString(NULL, "TranslitSwitcher", "ResendSymbol", &dbv);
+		db_get_ts(NULL, "TranslitSwitcher", "ResendSymbol", &dbv);
 		if (lstrcmp(dbv.ptszVal, NULL) == 0)
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			SendMessage(hEdit, WM_SETTEXT, 0, (LPARAM)sel);
 			SendMessage(hEdit, EM_SETSEL, 0, slen);
 			SendMessage(cbcd->hwndFrom, WM_COMMAND, IDOK, 0);
@@ -911,10 +903,10 @@ int OnButtonPressed(WPARAM wParam, LPARAM lParam)
 		if (slen != 0)
 			Invert(sel);
 		DBVARIANT dbv = {0};
-		DBGetContactSettingTString(NULL, "TranslitSwitcher", "ResendSymbol", &dbv);
+		db_get_ts(NULL, "TranslitSwitcher", "ResendSymbol", &dbv);
 		if (lstrcmp(dbv.ptszVal, NULL) == 0)
 		{
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			SendMessage(hEdit, WM_SETTEXT, 0, (LPARAM)sel);
 			SendMessage(hEdit, EM_SETSEL, 0, slen);
 			SendMessage(cbcd->hwndFrom, WM_COMMAND, IDOK, 0);

@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,16 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "jabber.h"
 #include "jabber_caps.h"
-
-#include <m_genmenu.h>
-#include <m_icolib.h>
-#include <m_fontservice.h>
-
-#include <m_cluiframes.h>
-
-#include "m_proto_listeningto.h"
-#include "m_skin_eng.h"
-#include "m_extraicons.h"
 
 static CIconPool g_MoodIcons, g_ActivityIcons;
 
@@ -76,7 +67,7 @@ void CJabberDlgPepBase::OnInitDialog()
 	SetTimer(m_hwnd, 1, 1000, NULL);
 
 	TCHAR buf[128];
-	mir_sntprintf(buf, SIZEOF(buf), _T("%s (%d)"), TranslateT("OK"), m_time);
+	mir_sntprintf(buf, SIZEOF(buf), TranslateT("OK (%d)"), m_time);
 	m_btnOk.SetText(buf);
 }
 
@@ -97,7 +88,7 @@ INT_PTR CJabberDlgPepBase::DlgProc(UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_TIMER:
 		if (wParam == 1) {
 			TCHAR buf[128];
-			mir_sntprintf(buf, SIZEOF(buf), _T("%s (%d)"), TranslateT("OK"), --m_time);
+			mir_sntprintf(buf, SIZEOF(buf), TranslateT("OK (%d)"), --m_time);
 			m_btnOk.SetText(buf);
 
 			if (m_time < 0) {
@@ -235,7 +226,7 @@ void CJabberDlgPepSimple::OnInitDialog()
 	SetWindowText(m_hwnd, m_title);
 
 	m_txtDescription.Enable(false);
-	for (int i = 0; i < m_modes.getCount(); ++i) {
+	for (int i = 0; i < m_modes.getCount(); i++) {
 		int idx = m_cbModes.AddString(m_modes[i].m_title, i);
 		if ((m_modes[i].m_id == m_active) || !idx) {
 			m_prevSelected = idx;
@@ -284,7 +275,7 @@ void CJabberDlgPepSimple::cbModes_OnChange(CCtrlData *)
 	if ((m_prevSelected >= 0) && (m_modes[m_cbModes.GetItemData(m_prevSelected)].m_id >= 0)) {
 		TCHAR *txt = m_txtDescription.GetText();
 		mir_snprintf(szSetting, SIZEOF(szSetting), "PepMsg_%s", m_modes[m_cbModes.GetItemData(m_prevSelected)].m_name);
-		m_proto->JSetStringT(NULL, szSetting, txt);
+		m_proto->setTString(szSetting, txt);
 		mir_free(txt);
 	}
 
@@ -293,7 +284,7 @@ void CJabberDlgPepSimple::cbModes_OnChange(CCtrlData *)
 		mir_snprintf(szSetting, SIZEOF(szSetting), "PepMsg_%s", m_modes[m_cbModes.GetItemData(m_prevSelected)].m_name);
 
 		DBVARIANT dbv;
-		if ( !m_proto->JGetStringT(NULL, szSetting, &dbv)) {
+		if ( !m_proto->getTString(szSetting, &dbv)) {
 			m_txtDescription.SetText(dbv.ptszVal);
 			db_free(&dbv);
 		}
@@ -398,7 +389,7 @@ void CPepService::Publish()
 {
 	XmlNodeIq iq(_T("set"), m_proto->SerialNext());
 	CreateData(
-		iq << XCHILDNS(_T("pubsub"), _T(JABBER_FEAT_PUBSUB))
+		iq << XCHILDNS(_T("pubsub"), JABBER_FEAT_PUBSUB)
 			<< XCHILD(_T("publish")) << XATTR(_T("node"), m_node)
 				<< XCHILD(_T("item")) << XATTR(_T("id"), _T("current")));
 	m_proto->m_ThreadInfo->send(iq);
@@ -408,12 +399,12 @@ void CPepService::Publish()
 
 void CPepService::Retract()
 {
-	TCHAR* tempName = mir_a2t(m_name);
+	TCHAR *tempName = mir_a2t(m_name);
 	_tcslwr(tempName);
 
 	m_proto->m_ThreadInfo->send(
 		XmlNodeIq(_T("set"), m_proto->SerialNext())
-			<< XCHILDNS(_T("pubsub"), _T(JABBER_FEAT_PUBSUB))
+			<< XCHILDNS(_T("pubsub"), JABBER_FEAT_PUBSUB)
 				<< XCHILD(_T("publish")) << XATTR(_T("node"), m_node)
 					<< XCHILD(_T("item"))
 						<< XCHILDNS(tempName, m_node));
@@ -479,8 +470,7 @@ void CPepGuiService::RebuildMenu()
 	mi.hParentMenu = hJabberRoot;
 	mi.pszService = szService;
 	mi.position = 200010;
-	mi.flags = CMIF_TCHAR | CMIF_ICONFROMICOLIB | CMIF_HIDDEN | CMIF_ROOTHANDLE;
-
+	mi.flags = CMIF_TCHAR | CMIF_HIDDEN | CMIF_ROOTHANDLE;
 	mi.icolibItem = m_hIcolibItem;
 	mi.ptszName = m_szText ? m_szText : _T("<advanced status slot>");
 	m_hMenuItem = Menu_AddProtoMenuItem(&mi);
@@ -506,10 +496,10 @@ void CPepGuiService::UpdateMenuItem(HANDLE hIcolibIcon, TCHAR *text)
 	if ( !m_hMenuItem) return;
 
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_TCHAR | CMIF_ICONFROMICOLIB | CMIM_ICON | CMIM_NAME;
+	mi.flags = CMIF_TCHAR | CMIM_ICON | CMIM_NAME;
 	mi.icolibItem = m_hIcolibItem;
 	mi.ptszName = m_szText ? m_szText : _T("<advanced status slot>");
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)m_hMenuItem, (LPARAM)&mi);
+	Menu_ModifyItem(m_hMenuItem, &mi);
 }
 
 int CPepGuiService::OnMenuItemClick(WPARAM, LPARAM)
@@ -616,7 +606,7 @@ static g_arrMoods[] =
 };
 
 CPepMood::CPepMood(CJabberProto *proto) :
-	CPepGuiService(proto, "Mood", _T(JABBER_FEAT_USER_MOOD)),
+	CPepGuiService(proto, "Mood", JABBER_FEAT_USER_MOOD),
 	m_text(NULL),
 	m_mode(-1)
 {
@@ -644,7 +634,7 @@ void CPepMood::ProcessItems(const TCHAR *from, HXML itemsNode)
 		return;
 	}
 
-	HXML n, moodNode = XPath(itemsNode, _T("item/mood[@xmlns='") _T(JABBER_FEAT_USER_MOOD) _T("']"));
+	HXML n, moodNode = XPath(itemsNode, _T("item/mood[@xmlns='") JABBER_FEAT_USER_MOOD _T("']"));
 	if ( !moodNode) return;
 
 	LPCTSTR moodType = NULL, moodText = NULL;
@@ -667,7 +657,7 @@ void CPepMood::ProcessItems(const TCHAR *from, HXML itemsNode)
 
 void CPepMood::CreateData(HXML n)
 {
-	HXML moodNode = n << XCHILDNS(_T("mood"), _T(JABBER_FEAT_USER_MOOD));
+	HXML moodNode = n << XCHILDNS(_T("mood"), JABBER_FEAT_USER_MOOD);
 	moodNode << XCHILD(_A2T(g_arrMoods[m_mode].szTag));
 	if (m_text)
 		moodNode << XCHILD(_T("text"), m_text);
@@ -691,7 +681,7 @@ void CPepMood::SetMood(HANDLE hContact, const TCHAR *szMood, const TCHAR *szText
 	if (szMood) {
 		char* p = mir_t2a(szMood);
 
-		for (int i = 1; i < SIZEOF(g_arrMoods); ++i)
+		for (int i = 1; i < SIZEOF(g_arrMoods); i++)
 			if ( !lstrcmpA(g_arrMoods[i].szTag, p)) {
 				mood = i;
 				break;
@@ -726,19 +716,19 @@ void CPepMood::SetMood(HANDLE hContact, const TCHAR *szMood, const TCHAR *szText
 	else SetExtraIcon(hContact, mood < 0 ? NULL : g_arrMoods[mood].szTag);
 
 	if (szMood) {
-		m_proto->JSetByte(hContact, DBSETTING_XSTATUSID, mood);
-		m_proto->JSetStringT(hContact, DBSETTING_XSTATUSNAME, TranslateTS(g_arrMoods[mood].szName));
+		m_proto->setByte(hContact, DBSETTING_XSTATUSID, mood);
+		m_proto->setTString(hContact, DBSETTING_XSTATUSNAME, TranslateTS(g_arrMoods[mood].szName));
 		if (szText)
-			m_proto->JSetStringT(hContact, DBSETTING_XSTATUSMSG, szText);
+			m_proto->setTString(hContact, DBSETTING_XSTATUSMSG, szText);
 		else
-			m_proto->JDeleteSetting(hContact, DBSETTING_XSTATUSMSG);
+			m_proto->delSetting(hContact, DBSETTING_XSTATUSMSG);
 
 		m_proto->WriteAdvStatus(hContact, ADVSTATUS_MOOD, szMood, g_MoodIcons.GetIcolibName(g_arrMoods[mood].szTag), TranslateTS(g_arrMoods[mood].szName), szText);
 	}
 	else {
-		m_proto->JDeleteSetting(hContact, DBSETTING_XSTATUSID);
-		m_proto->JDeleteSetting(hContact, DBSETTING_XSTATUSNAME);
-		m_proto->JDeleteSetting(hContact, DBSETTING_XSTATUSMSG);
+		m_proto->delSetting(hContact, DBSETTING_XSTATUSID);
+		m_proto->delSetting(hContact, DBSETTING_XSTATUSNAME);
+		m_proto->delSetting(hContact, DBSETTING_XSTATUSMSG);
 
 		m_proto->ResetAdvStatus(hContact, ADVSTATUS_MOOD);
 	}
@@ -750,7 +740,7 @@ void CPepMood::ShowSetDialog(BYTE bQuiet)
 {
 	if ( !bQuiet) {
 		CJabberDlgPepSimple dlg(m_proto, TranslateT("Set Mood"));
-		for (int i = 1; i < SIZEOF(g_arrMoods); ++i)
+		for (int i = 1; i < SIZEOF(g_arrMoods); i++)
 			dlg.AddStatusMode(i, g_arrMoods[i].szTag, g_MoodIcons.GetIcon(g_arrMoods[i].szTag), TranslateTS(g_arrMoods[i].szName));
 
 		dlg.SetActiveStatus(m_mode, m_text);
@@ -791,84 +781,84 @@ struct
 }
 static g_arrActivities[] =
 {
-	{ "doing_chores", NULL,       _T("Doing chores"),       ACTIVITY_ICON(0,  0) },
-	{ NULL, "buying_groceries",   _T("buying groceries"),   ACTIVITY_ICON(0,  1) },
-	{ NULL, "cleaning",           _T("cleaning"),           ACTIVITY_ICON(0,  2) },
-	{ NULL, "cooking",            _T("cooking"),            ACTIVITY_ICON(0,  3) },
-	{ NULL, "doing_maintenance",  _T("doing maintenance"),  ACTIVITY_ICON(0,  4) },
-	{ NULL, "doing_the_dishes",   _T("doing the dishes"),   ACTIVITY_ICON(0,  5) },
-	{ NULL, "doing_the_laundry",  _T("doing the laundry"),  ACTIVITY_ICON(0,  6) },
-	{ NULL, "gardening",          _T("gardening"),          ACTIVITY_ICON(0,  7) },
-	{ NULL, "running_an_errand",  _T("running an errand"),  ACTIVITY_ICON(0,  8) },
-	{ NULL, "walking_the_dog",    _T("walking the dog"),    ACTIVITY_ICON(0,  9) },
-	{ "drinking", NULL,           _T("Drinking"),           ACTIVITY_ICON(1,  0) },
-	{ NULL, "having_a_beer",      _T("having a beer"),      ACTIVITY_ICON(1,  1) },
-	{ NULL, "having_coffee",      _T("having coffee"),      ACTIVITY_ICON(1,  2) },
-	{ NULL, "having_tea",         _T("having tea"),         ACTIVITY_ICON(1,  3) },
-	{ "eating", NULL,             _T("Eating"),             ACTIVITY_ICON(2,  0) },
-	{ NULL, "having_a_snack",     _T("having a snack"),     ACTIVITY_ICON(2,  1) },
-	{ NULL, "having_breakfast",   _T("having breakfast"),   ACTIVITY_ICON(2,  2) },
-	{ NULL, "having_dinner",      _T("having dinner"),      ACTIVITY_ICON(2,  3) },
-	{ NULL, "having_lunch",       _T("having lunch"),       ACTIVITY_ICON(2,  4) },
-	{ "exercising", NULL,         _T("Exercising"),         ACTIVITY_ICON(3,  0) },
-	{ NULL, "cycling",            _T("cycling"),            ACTIVITY_ICON(3,  1) },
-	{ NULL, "dancing",            _T("dancing"),            ACTIVITY_ICON(3,  2) },
-	{ NULL, "hiking",             _T("hiking"),             ACTIVITY_ICON(3,  3) },
-	{ NULL, "jogging",            _T("jogging"),            ACTIVITY_ICON(3,  4) },
-	{ NULL, "playing_sports",     _T("playing sports"),     ACTIVITY_ICON(3,  5) },
-	{ NULL, "running",            _T("running"),            ACTIVITY_ICON(3,  6) },
-	{ NULL, "skiing",             _T("skiing"),             ACTIVITY_ICON(3,  7) },
-	{ NULL, "swimming",           _T("swimming"),           ACTIVITY_ICON(3,  8) },
-	{ NULL, "working_out",        _T("working out"),        ACTIVITY_ICON(3,  9) },
-	{ "grooming", NULL,           _T("Grooming"),           ACTIVITY_ICON(4,  0) },
-	{ NULL, "at_the_spa",         _T("at the spa"),         ACTIVITY_ICON(4,  1) },
-	{ NULL, "brushing_teeth",     _T("brushing teeth"),     ACTIVITY_ICON(4,  2) },
-	{ NULL, "getting_a_haircut",  _T("getting a haircut"),  ACTIVITY_ICON(4,  3) },
-	{ NULL, "shaving",            _T("shaving"),            ACTIVITY_ICON(4,  4) },
-	{ NULL, "taking_a_bath",      _T("taking a bath"),      ACTIVITY_ICON(4,  5) },
-	{ NULL, "taking_a_shower",    _T("taking a shower"),    ACTIVITY_ICON(4,  6) },
-	{ "having_appointment", NULL, _T("Having appointment"), ACTIVITY_ICON(5,  0) },
-	{ "inactive", NULL,           _T("Inactive"),           ACTIVITY_ICON(6,  0) },
-	{ NULL, "day_off",            _T("day off"),            ACTIVITY_ICON(6,  1) },
-	{ NULL, "hanging_out",        _T("hanging out"),        ACTIVITY_ICON(6,  2) },
-	{ NULL, "hiding",             _T("hiding"),             ACTIVITY_ICON(6,  3) },
-	{ NULL, "on_vacation",        _T("on vacation"),        ACTIVITY_ICON(6,  4) },
-	{ NULL, "praying",            _T("praying"),            ACTIVITY_ICON(6,  5) },
-	{ NULL, "scheduled_holiday",  _T("scheduled holiday"),  ACTIVITY_ICON(6,  6) },
-	{ NULL, "sleeping",           _T("sleeping"),           ACTIVITY_ICON(6,  7) },
-	{ NULL, "thinking",           _T("thinking"),           ACTIVITY_ICON(6,  8) },
-	{ "relaxing", NULL,           _T("Relaxing"),           ACTIVITY_ICON(7,  0) },
-	{ NULL, "fishing",            _T("fishing"),            ACTIVITY_ICON(7,  1) },
-	{ NULL, "gaming",             _T("gaming"),             ACTIVITY_ICON(7,  2) },
-	{ NULL, "going_out",          _T("going out"),          ACTIVITY_ICON(7,  3) },
-	{ NULL, "partying",           _T("partying"),           ACTIVITY_ICON(7,  4) },
-	{ NULL, "reading",            _T("reading"),            ACTIVITY_ICON(7,  5) },
-	{ NULL, "rehearsing",         _T("rehearsing"),         ACTIVITY_ICON(7,  6) },
-	{ NULL, "shopping",           _T("shopping"),           ACTIVITY_ICON(7,  7) },
-	{ NULL, "smoking",            _T("smoking"),            ACTIVITY_ICON(7,  8) },
-	{ NULL, "socializing",        _T("socializing"),        ACTIVITY_ICON(7,  9) },
-	{ NULL, "sunbathing",         _T("sunbathing"),         ACTIVITY_ICON(7,  10) },
-	{ NULL, "watching_tv",        _T("watching TV"),        ACTIVITY_ICON(7,  11) },
-	{ NULL, "watching_a_movie",   _T("watching a movie"),   ACTIVITY_ICON(7,  12) },
-	{ "talking", NULL,            _T("Talking"),            ACTIVITY_ICON(8,  0) },
-	{ NULL, "in_real_life",       _T("in real life"),       ACTIVITY_ICON(8,  1) },
-	{ NULL, "on_the_phone",       _T("on the phone"),       ACTIVITY_ICON(8,  2) },
-	{ NULL, "on_video_phone",     _T("on video phone"),     ACTIVITY_ICON(8,  3) },
-	{ "traveling", NULL,          _T("Traveling"),          ACTIVITY_ICON(9,  0) },
-	{ NULL, "commuting",          _T("commuting"),          ACTIVITY_ICON(9,  1) },
-	{ NULL, "cycling",            _T("cycling"),            ACTIVITY_ICON(9,  2) },
-	{ NULL, "driving",            _T("driving"),            ACTIVITY_ICON(9,  3) },
-	{ NULL, "in_a_car",           _T("in a car"),           ACTIVITY_ICON(9,  4) },
-	{ NULL, "on_a_bus",           _T("on a bus"),           ACTIVITY_ICON(9,  5) },
-	{ NULL, "on_a_plane",         _T("on a plane"),         ACTIVITY_ICON(9,  6) },
-	{ NULL, "on_a_train",         _T("on a train"),         ACTIVITY_ICON(9,  7) },
-	{ NULL, "on_a_trip",          _T("on a trip"),          ACTIVITY_ICON(9,  8) },
-	{ NULL, "walking",            _T("walking"),            ACTIVITY_ICON(9,  9) },
-	{ "working", NULL,            _T("Working"),            ACTIVITY_ICON(10,  0) },
-	{ NULL, "coding",             _T("coding"),             ACTIVITY_ICON(10,  1) },
-	{ NULL, "in_a_meeting",       _T("in a meeting"),       ACTIVITY_ICON(10,  2) },
-	{ NULL, "studying",           _T("studying"),           ACTIVITY_ICON(10,  3) },
-	{ NULL, "writing",            _T("writing"),            ACTIVITY_ICON(10,  4) },
+	{ "doing_chores", NULL,       LPGENT("Doing chores"),       ACTIVITY_ICON(0,  0) },
+	{ NULL, "buying_groceries",   LPGENT("buying groceries"),   ACTIVITY_ICON(0,  1) },
+	{ NULL, "cleaning",           LPGENT("cleaning"),           ACTIVITY_ICON(0,  2) },
+	{ NULL, "cooking",            LPGENT("cooking"),            ACTIVITY_ICON(0,  3) },
+	{ NULL, "doing_maintenance",  LPGENT("doing maintenance"),  ACTIVITY_ICON(0,  4) },
+	{ NULL, "doing_the_dishes",   LPGENT("doing the dishes"),   ACTIVITY_ICON(0,  5) },
+	{ NULL, "doing_the_laundry",  LPGENT("doing the laundry"),  ACTIVITY_ICON(0,  6) },
+	{ NULL, "gardening",          LPGENT("gardening"),          ACTIVITY_ICON(0,  7) },
+	{ NULL, "running_an_errand",  LPGENT("running an errand"),  ACTIVITY_ICON(0,  8) },
+	{ NULL, "walking_the_dog",    LPGENT("walking the dog"),    ACTIVITY_ICON(0,  9) },
+	{ "drinking", NULL,           LPGENT("Drinking"),           ACTIVITY_ICON(1,  0) },
+	{ NULL, "having_a_beer",      LPGENT("having a beer"),      ACTIVITY_ICON(1,  1) },
+	{ NULL, "having_coffee",      LPGENT("having coffee"),      ACTIVITY_ICON(1,  2) },
+	{ NULL, "having_tea",         LPGENT("having tea"),         ACTIVITY_ICON(1,  3) },
+	{ "eating", NULL,             LPGENT("Eating"),             ACTIVITY_ICON(2,  0) },
+	{ NULL, "having_a_snack",     LPGENT("having a snack"),     ACTIVITY_ICON(2,  1) },
+	{ NULL, "having_breakfast",   LPGENT("having breakfast"),   ACTIVITY_ICON(2,  2) },
+	{ NULL, "having_dinner",      LPGENT("having dinner"),      ACTIVITY_ICON(2,  3) },
+	{ NULL, "having_lunch",       LPGENT("having lunch"),       ACTIVITY_ICON(2,  4) },
+	{ "exercising", NULL,         LPGENT("Exercising"),         ACTIVITY_ICON(3,  0) },
+	{ NULL, "cycling",            LPGENT("cycling"),            ACTIVITY_ICON(3,  1) },
+	{ NULL, "dancing",            LPGENT("dancing"),            ACTIVITY_ICON(3,  2) },
+	{ NULL, "hiking",             LPGENT("hiking"),             ACTIVITY_ICON(3,  3) },
+	{ NULL, "jogging",            LPGENT("jogging"),            ACTIVITY_ICON(3,  4) },
+	{ NULL, "playing_sports",     LPGENT("playing sports"),     ACTIVITY_ICON(3,  5) },
+	{ NULL, "running",            LPGENT("running"),            ACTIVITY_ICON(3,  6) },
+	{ NULL, "skiing",             LPGENT("skiing"),             ACTIVITY_ICON(3,  7) },
+	{ NULL, "swimming",           LPGENT("swimming"),           ACTIVITY_ICON(3,  8) },
+	{ NULL, "working_out",        LPGENT("working out"),        ACTIVITY_ICON(3,  9) },
+	{ "grooming", NULL,           LPGENT("Grooming"),           ACTIVITY_ICON(4,  0) },
+	{ NULL, "at_the_spa",         LPGENT("at the spa"),         ACTIVITY_ICON(4,  1) },
+	{ NULL, "brushing_teeth",     LPGENT("brushing teeth"),     ACTIVITY_ICON(4,  2) },
+	{ NULL, "getting_a_haircut",  LPGENT("getting a haircut"),  ACTIVITY_ICON(4,  3) },
+	{ NULL, "shaving",            LPGENT("shaving"),            ACTIVITY_ICON(4,  4) },
+	{ NULL, "taking_a_bath",      LPGENT("taking a bath"),      ACTIVITY_ICON(4,  5) },
+	{ NULL, "taking_a_shower",    LPGENT("taking a shower"),    ACTIVITY_ICON(4,  6) },
+	{ "having_appointment", NULL, LPGENT("Having appointment"), ACTIVITY_ICON(5,  0) },
+	{ "inactive", NULL,           LPGENT("Inactive"),           ACTIVITY_ICON(6,  0) },
+	{ NULL, "day_off",            LPGENT("day off"),            ACTIVITY_ICON(6,  1) },
+	{ NULL, "hanging_out",        LPGENT("hanging out"),        ACTIVITY_ICON(6,  2) },
+	{ NULL, "hiding",             LPGENT("hiding"),             ACTIVITY_ICON(6,  3) },
+	{ NULL, "on_vacation",        LPGENT("on vacation"),        ACTIVITY_ICON(6,  4) },
+	{ NULL, "praying",            LPGENT("praying"),            ACTIVITY_ICON(6,  5) },
+	{ NULL, "scheduled_holiday",  LPGENT("scheduled holiday"),  ACTIVITY_ICON(6,  6) },
+	{ NULL, "sleeping",           LPGENT("sleeping"),           ACTIVITY_ICON(6,  7) },
+	{ NULL, "thinking",           LPGENT("thinking"),           ACTIVITY_ICON(6,  8) },
+	{ "relaxing", NULL,           LPGENT("Relaxing"),           ACTIVITY_ICON(7,  0) },
+	{ NULL, "fishing",            LPGENT("fishing"),            ACTIVITY_ICON(7,  1) },
+	{ NULL, "gaming",             LPGENT("gaming"),             ACTIVITY_ICON(7,  2) },
+	{ NULL, "going_out",          LPGENT("going out"),          ACTIVITY_ICON(7,  3) },
+	{ NULL, "partying",           LPGENT("partying"),           ACTIVITY_ICON(7,  4) },
+	{ NULL, "reading",            LPGENT("reading"),            ACTIVITY_ICON(7,  5) },
+	{ NULL, "rehearsing",         LPGENT("rehearsing"),         ACTIVITY_ICON(7,  6) },
+	{ NULL, "shopping",           LPGENT("shopping"),           ACTIVITY_ICON(7,  7) },
+	{ NULL, "smoking",            LPGENT("smoking"),            ACTIVITY_ICON(7,  8) },
+	{ NULL, "socializing",        LPGENT("socializing"),        ACTIVITY_ICON(7,  9) },
+	{ NULL, "sunbathing",         LPGENT("sunbathing"),         ACTIVITY_ICON(7,  10) },
+	{ NULL, "watching_tv",        LPGENT("watching TV"),        ACTIVITY_ICON(7,  11) },
+	{ NULL, "watching_a_movie",   LPGENT("watching a movie"),   ACTIVITY_ICON(7,  12) },
+	{ "talking", NULL,            LPGENT("Talking"),            ACTIVITY_ICON(8,  0) },
+	{ NULL, "in_real_life",       LPGENT("in real life"),       ACTIVITY_ICON(8,  1) },
+	{ NULL, "on_the_phone",       LPGENT("on the phone"),       ACTIVITY_ICON(8,  2) },
+	{ NULL, "on_video_phone",     LPGENT("on video phone"),     ACTIVITY_ICON(8,  3) },
+	{ "traveling", NULL,          LPGENT("Traveling"),          ACTIVITY_ICON(9,  0) },
+	{ NULL, "commuting",          LPGENT("commuting"),          ACTIVITY_ICON(9,  1) },
+	{ NULL, "cycling",            LPGENT("cycling"),            ACTIVITY_ICON(9,  2) },
+	{ NULL, "driving",            LPGENT("driving"),            ACTIVITY_ICON(9,  3) },
+	{ NULL, "in_a_car",           LPGENT("in a car"),           ACTIVITY_ICON(9,  4) },
+	{ NULL, "on_a_bus",           LPGENT("on a bus"),           ACTIVITY_ICON(9,  5) },
+	{ NULL, "on_a_plane",         LPGENT("on a plane"),         ACTIVITY_ICON(9,  6) },
+	{ NULL, "on_a_train",         LPGENT("on a train"),         ACTIVITY_ICON(9,  7) },
+	{ NULL, "on_a_trip",          LPGENT("on a trip"),          ACTIVITY_ICON(9,  8) },
+	{ NULL, "walking",            LPGENT("walking"),            ACTIVITY_ICON(9,  9) },
+	{ "working", NULL,            LPGENT("Working"),            ACTIVITY_ICON(10,  0) },
+	{ NULL, "coding",             LPGENT("coding"),             ACTIVITY_ICON(10,  1) },
+	{ NULL, "in_a_meeting",       LPGENT("in a meeting"),       ACTIVITY_ICON(10,  2) },
+	{ NULL, "studying",           LPGENT("studying"),           ACTIVITY_ICON(10,  3) },
+	{ NULL, "writing",            LPGENT("writing"),            ACTIVITY_ICON(10,  4) },
 	{ NULL, NULL, NULL } // the end, don't delete this
 };
 
@@ -994,7 +984,7 @@ void ActivityBuildTitle(int id, TCHAR *buf, int size)
 }
 
 CPepActivity::CPepActivity(CJabberProto *proto):
-	CPepGuiService(proto, "Activity", _T(JABBER_FEAT_USER_ACTIVITY)),
+	CPepGuiService(proto, "Activity", JABBER_FEAT_USER_ACTIVITY),
 	m_text(NULL),
 	m_mode(-1)
 {
@@ -1022,7 +1012,7 @@ void CPepActivity::ProcessItems(const TCHAR *from, HXML itemsNode)
 		return;
 	}
 
-	HXML actNode = XPath(itemsNode, _T("item/activity[@xmlns='") _T(JABBER_FEAT_USER_ACTIVITY) _T("']"));
+	HXML actNode = XPath(itemsNode, _T("item/activity[@xmlns='") JABBER_FEAT_USER_ACTIVITY _T("']"));
 	if ( !actNode)
 		return;
 
@@ -1055,7 +1045,7 @@ void CPepActivity::CreateData(HXML n)
 	char *szFirstNode = ActivityGetFirst(m_mode);
 	char *szSecondNode = ActivityGetSecond(m_mode);
 
-	HXML activityNode = n << XCHILDNS(_T("activity"), _T(JABBER_FEAT_USER_ACTIVITY));
+	HXML activityNode = n << XCHILDNS(_T("activity"), JABBER_FEAT_USER_ACTIVITY);
 	HXML firstNode = activityNode << XCHILD(_A2T(szFirstNode));
 
 	if (firstNode && szSecondNode)
@@ -1112,7 +1102,7 @@ void CPepActivity::SetActivity(HANDLE hContact, LPCTSTR szFirst, LPCTSTR szSecon
 	else SetExtraIcon(hContact, activity < 0 ? NULL : returnActivity(activity));
 
 	if (activity >= 0) {
-		TCHAR* p = mir_a2t(ActivityGetId(activity));
+		TCHAR *p = mir_a2t(ActivityGetId(activity));
 		m_proto->WriteAdvStatus(hContact, ADVSTATUS_ACTIVITY, p, g_ActivityIcons.GetIcolibName(returnActivity(activity)), activityTitle, szText);
 		mir_free(p);
 	}
@@ -1122,7 +1112,7 @@ void CPepActivity::SetActivity(HANDLE hContact, LPCTSTR szFirst, LPCTSTR szSecon
 void CPepActivity::ShowSetDialog(BYTE bQuiet)
 {
 	CJabberDlgPepSimple dlg(m_proto, TranslateT("Set Activity"));
-	for (int i = 0; i < SIZEOF(g_arrActivities); ++i)
+	for (int i = 0; i < SIZEOF(g_arrActivities); i++)
 		if (g_arrActivities[i].szFirst || g_arrActivities[i].szSecond)
 			dlg.AddStatusMode(i, ActivityGetId(i), g_ActivityIcons.GetIcon(returnActivity(i)), TranslateTS(g_arrActivities[i].szTitle), (g_arrActivities[i].szSecond != NULL));
 
@@ -1153,7 +1143,7 @@ void CPepActivity::ShowSetDialog(BYTE bQuiet)
 
 HICON CJabberProto::GetXStatusIcon(int bStatus, UINT flags)
 {
-	CPepMood *pepMood = (CPepMood*)m_pepServices.Find(_T(JABBER_FEAT_USER_MOOD));
+	CPepMood *pepMood = (CPepMood*)m_pepServices.Find(JABBER_FEAT_USER_MOOD);
 	HICON icon = g_MoodIcons.GetIcon(g_arrMoods[bStatus].szTag, (flags & LR_BIGICON) != 0);
 	return (flags & LR_SHARED) ? icon : CopyIcon(icon);
 }
@@ -1170,7 +1160,7 @@ INT_PTR __cdecl CJabberProto::OnGetXStatusIcon(WPARAM wParam, LPARAM lParam)
 		return 0;
 
 	if ( !wParam)
-		wParam = ((CPepMood*)m_pepServices.Find(_T(JABBER_FEAT_USER_MOOD)))->m_mode;
+		wParam = ((CPepMood*)m_pepServices.Find(JABBER_FEAT_USER_MOOD))->m_mode;
 
 	if (wParam < 1 || wParam >= SIZEOF(g_arrMoods))
 		return 0;
@@ -1191,9 +1181,9 @@ BOOL CJabberProto::SendPepTune(TCHAR* szArtist, TCHAR* szLength, TCHAR* szSource
 		return FALSE;
 
 	XmlNodeIq iq(_T("set"), SerialNext());
-	HXML tuneNode = iq << XCHILDNS(_T("pubsub"), _T(JABBER_FEAT_PUBSUB))
-							<< XCHILD(_T("publish")) << XATTR(_T("node"), _T(JABBER_FEAT_USER_TUNE))
-							<< XCHILD(_T("item")) << XCHILDNS(_T("tune"), _T(JABBER_FEAT_USER_TUNE));
+	HXML tuneNode = iq << XCHILDNS(_T("pubsub"), JABBER_FEAT_PUBSUB)
+							<< XCHILD(_T("publish")) << XATTR(_T("node"), JABBER_FEAT_USER_TUNE)
+							<< XCHILD(_T("item")) << XCHILDNS(_T("tune"), JABBER_FEAT_USER_TUNE);
 
 	if (szArtist || szLength || szSource || szTitle || szUri) {
 		if (szArtist) tuneNode << XCHILD(_T("artist"), szArtist);
@@ -1211,7 +1201,7 @@ BOOL CJabberProto::SendPepTune(TCHAR* szArtist, TCHAR* szLength, TCHAR* szSource
 void CJabberProto::SetContactTune(HANDLE hContact, LPCTSTR szArtist, LPCTSTR szLength, LPCTSTR szSource, LPCTSTR szTitle, LPCTSTR szTrack)
 {
 	if ( !szArtist && !szTitle) {
-		JDeleteSetting(hContact, "ListeningTo");
+		delSetting(hContact, "ListeningTo");
 		ResetAdvStatus(hContact, ADVSTATUS_TUNE);
 		return;
 	}
@@ -1234,7 +1224,7 @@ void CJabberProto::SetContactTune(HANDLE hContact, LPCTSTR szArtist, LPCTSTR szL
 		mir_sntprintf(szListeningTo, 2047, _T("%s - %s"), szTitle ? szTitle : _T(""), szArtist ? szArtist : _T(""));
 	}
 
-	JSetStringT(hContact, "ListeningTo", szListeningTo);
+	setTString(hContact, "ListeningTo", szListeningTo);
 
 	char tuneIcon[128];
 	mir_snprintf(tuneIcon, SIZEOF(tuneIcon), "%s_%s", m_szModuleName, "main");
@@ -1269,7 +1259,7 @@ INT_PTR __cdecl CJabberProto::OnSetListeningTo(WPARAM, LPARAM lParam)
 	LISTENINGTOINFO *cm = (LISTENINGTOINFO *)lParam;
 	if ( !cm || cm->cbSize != sizeof(LISTENINGTOINFO)) {
 		SendPepTune(NULL, NULL, NULL, NULL, NULL, NULL);
-		JDeleteSetting(NULL, "ListeningTo");
+		delSetting("ListeningTo");
 	}
 	else {
 		TCHAR *szArtist = NULL, *szLength = NULL, *szSource = NULL;
@@ -1322,12 +1312,12 @@ INT_PTR __cdecl CJabberProto::OnSetListeningTo(WPARAM, LPARAM lParam)
 
 void CJabberProto::InfoFrame_OnUserMood(CJabberInfoFrame_Event*)
 {
-	m_pepServices.Find(_T(JABBER_FEAT_USER_MOOD))->LaunchSetGui();
+	((CPepGuiService *)m_pepServices.Find(JABBER_FEAT_USER_MOOD))->LaunchSetGui(0);
 }
 
 void CJabberProto::InfoFrame_OnUserActivity(CJabberInfoFrame_Event*)
 {
-	m_pepServices.Find(_T(JABBER_FEAT_USER_ACTIVITY))->LaunchSetGui();
+	((CPepGuiService *)m_pepServices.Find(JABBER_FEAT_USER_ACTIVITY))->LaunchSetGui(0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -1352,7 +1342,7 @@ INT_PTR __cdecl CJabberProto::OnGetXStatusEx(WPARAM wParam, LPARAM lParam)
 	if (pData->cbSize < sizeof(CUSTOM_STATUS))
 		return 1;
 
-	CPepMood *pepMood = (CPepMood*)m_pepServices.Find(_T(JABBER_FEAT_USER_MOOD));
+	CPepMood *pepMood = (CPepMood*)m_pepServices.Find(JABBER_FEAT_USER_MOOD);
 	if (pepMood == NULL)
 		return 1;
 
@@ -1383,12 +1373,12 @@ INT_PTR __cdecl CJabberProto::OnGetXStatusEx(WPARAM wParam, LPARAM lParam)
 		else {
 			*pData->ptszName = 0;
 			if (pData->flags & CSSF_UNICODE) {
-				mir_ptr<TCHAR> title( ReadAdvStatusT(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TITLE));
+				ptrT title( ReadAdvStatusT(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TITLE));
 				if (title)
 					_tcsncpy(pData->ptszName, title, STATUS_TITLE_MAX);
 			}
 			else {
-				mir_ptr<char> title( ReadAdvStatusA(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TITLE));
+				ptrA title( ReadAdvStatusA(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TITLE));
 				if (title)
 					strncpy(pData->pszName, title, STATUS_TITLE_MAX);
 			}
@@ -1399,12 +1389,12 @@ INT_PTR __cdecl CJabberProto::OnGetXStatusEx(WPARAM wParam, LPARAM lParam)
 	if (pData->flags & CSSF_MASK_MESSAGE) {
 		*pData->pszMessage = 0;
 		if (pData->flags & CSSF_UNICODE) {
-			mir_ptr<TCHAR> title( ReadAdvStatusT(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TEXT));
+			ptrT title( ReadAdvStatusT(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TEXT));
 			if (title)
 				_tcsncpy(pData->ptszMessage, title, STATUS_TITLE_MAX);
 		}
 		else {
-			mir_ptr<char> title( ReadAdvStatusA(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TEXT));
+			ptrA title( ReadAdvStatusA(hContact, ADVSTATUS_MOOD, ADVSTATUS_VAL_TEXT));
 			if (title)
 				strncpy(pData->pszMessage, title, STATUS_TITLE_MAX);
 		}
@@ -1434,16 +1424,16 @@ INT_PTR __cdecl CJabberProto::OnSetXStatusEx(WPARAM wParam, LPARAM lParam)
 	if (pData->cbSize < sizeof(CUSTOM_STATUS))
 		return 1;
 
-	CPepMood *pepMood = (CPepMood*)m_pepServices.Find(_T(JABBER_FEAT_USER_MOOD));
+	CPepMood *pepMood = (CPepMood*)m_pepServices.Find(JABBER_FEAT_USER_MOOD);
 
-	int status = *pData->status;
+	int status = (pData->flags & CSSF_MASK_STATUS) ? *pData->status : pepMood->m_mode;
 	if (status >= 0 && status < SIZEOF(g_arrMoods)) {
 		pepMood->m_mode = status;
-		pepMood->m_text = JabberStrFixLines(pData->ptszMessage);
+		pepMood->m_text = (pData->flags & CSSF_MASK_MESSAGE) ? JabberStrFixLines(pData->ptszMessage) : _T("");
 		pepMood->LaunchSetGui(1);
 		return 0;
 	}
-	
+
 	return 1;
 }
 
@@ -1458,14 +1448,11 @@ INT_PTR __cdecl CJabberProto::OnSetXStatusEx(WPARAM wParam, LPARAM lParam)
 void CJabberProto::RegisterAdvStatusSlot(const char *pszSlot)
 {
 	char szSetting[256];
-	mir_snprintf(szSetting, SIZEOF(szSetting), "AdvStatus/%s/%s/id", m_szModuleName, pszSlot);
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)szSetting);
-	mir_snprintf(szSetting, SIZEOF(szSetting), "AdvStatus/%s/%s/icon", m_szModuleName, pszSlot);
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)szSetting);
-	mir_snprintf(szSetting, SIZEOF(szSetting), "AdvStatus/%s/%s/title", m_szModuleName, pszSlot);
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)szSetting);
-	mir_snprintf(szSetting, SIZEOF(szSetting), "AdvStatus/%s/%s/text", m_szModuleName, pszSlot);
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)szSetting);
+	mir_snprintf(szSetting, SIZEOF(szSetting), "AdvStatus/%s/%s", m_szModuleName, pszSlot);
+	db_set_resident(szSetting, "id");
+	db_set_resident(szSetting, "icon");
+	db_set_resident(szSetting, "title");
+	db_set_resident(szSetting, "text");
 }
 
 void CJabberProto::ResetAdvStatus(HANDLE hContact, const char *pszSlot)
@@ -1513,7 +1500,7 @@ char *CJabberProto::ReadAdvStatusA(HANDLE hContact, const char *pszSlot, const c
 	mir_snprintf(szSetting, SIZEOF(szSetting), "%s/%s/%s", m_szModuleName, pszSlot, pszValue);
 
 	DBVARIANT dbv;
-	if ( DBGetContactSettingString(hContact, "AdvStatus", szSetting, &dbv))
+	if ( db_get_s(hContact, "AdvStatus", szSetting, &dbv))
 		return NULL;
 
 	char *res = mir_strdup(dbv.pszVal);
@@ -1527,7 +1514,7 @@ TCHAR *CJabberProto::ReadAdvStatusT(HANDLE hContact, const char *pszSlot, const 
 	mir_snprintf(szSetting, SIZEOF(szSetting), "%s/%s/%s", m_szModuleName, pszSlot, pszValue);
 
 	DBVARIANT dbv;
-	if ( DBGetContactSettingTString(hContact, "AdvStatus", szSetting, &dbv))
+	if ( db_get_ts(hContact, "AdvStatus", szSetting, &dbv))
 		return NULL;
 
 	TCHAR *res = mir_tstrdup(dbv.ptszVal);
@@ -1546,12 +1533,12 @@ void g_XstatusIconsInit()
 		_tcscpy(p+1, _T("..\\Icons\\xstatus_jabber.dll"));
 
 	TCHAR szSection[100];
-	_tcscpy(szSection, _T("Protocols/Jabber/Moods"));
+	_tcscpy(szSection, _T("Protocols/Jabber/")LPGENT("Moods"));
 
 	for (int i = 1; i < SIZEOF(g_arrMoods); i++)
 		g_MoodIcons.RegisterIcon(g_arrMoods[i].szTag, szFile, -(200+i), szSection, TranslateTS(g_arrMoods[i].szName));
 
-	_tcscpy(szSection, _T("Protocols/Jabber/Activities"));
+_tcscpy(szSection, _T("Protocols/Jabber/")LPGENT("Activities"));
 	for (int k = 0; k < SIZEOF(g_arrActivities); k++) {
 		if (g_arrActivities[k].szFirst)
 			g_ActivityIcons.RegisterIcon(g_arrActivities[k].szFirst, szFile, g_arrActivities[k].iconid, szSection, TranslateTS(g_arrActivities[k].szTitle));

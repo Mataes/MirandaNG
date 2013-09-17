@@ -21,7 +21,7 @@ Boston, MA 02111-1307, USA.
 
 extern "C"
 {
-	#include "Minizip\unzip.h"
+	#include "..\zlib\src\unzip.h"
 
 	void fill_fopen64_filefunc(zlib_filefunc64_def *pzlib_filefunc_def);
 }
@@ -37,12 +37,8 @@ static void PrepareFileName(TCHAR *dest, size_t destSize, const TCHAR *ptszPath,
 
 void BackupFile(TCHAR *ptszSrcFileName, TCHAR *ptszBackFileName)
 {
-	CreatePathToFileT(ptszBackFileName);
-	DeleteFile(ptszBackFileName);
-	if ( MoveFile(ptszSrcFileName, ptszBackFileName) == 0) { // use copy on error
-		CopyFile(ptszSrcFileName, ptszBackFileName, FALSE);
-		DeleteFile(ptszSrcFileName);
-	}
+	SafeCreateFilePath(ptszBackFileName);
+	SafeMoveFile(ptszSrcFileName, ptszBackFileName);
 }
 
 bool extractCurrentFile(unzFile uf, TCHAR *ptszDestPath, TCHAR *ptszBackPath)
@@ -56,7 +52,10 @@ bool extractCurrentFile(unzFile uf, TCHAR *ptszDestPath, TCHAR *ptszBackPath)
 	if (err != UNZ_OK)
 		return false;
 
-	if (!opts.bUpdateIcons && !_strnicmp(filename, "Icons/", 6))
+	for (char *p = strchr(filename, '/'); p; p = strchr(p+1, '/'))
+		*p = '\\';
+
+	if (!db_get_b(NULL, MODNAME "Files", StrToLower(ptrA(mir_strdup(filename))), true))
 		return true;
 
 	TCHAR tszDestFile[MAX_PATH], tszBackFile[MAX_PATH];
@@ -69,38 +68,52 @@ bool extractCurrentFile(unzFile uf, TCHAR *ptszDestPath, TCHAR *ptszBackPath)
 		if (err != UNZ_OK)
 			return false;
 
-		PrepareFileName(tszDestFile, SIZEOF(tszDestFile), ptszDestPath, ptszNewName);
-		PrepareFileName(tszBackFile, SIZEOF(tszBackFile), ptszBackPath, ptszNewName);
-		BackupFile(tszDestFile, tszBackFile);
-
-		PrepareFileName(tszDestFile, SIZEOF(tszDestFile), ptszDestPath, ptszNewName);
-		CreatePathToFileT(tszDestFile);
-		
-		HANDLE hFile = CreateFile(tszDestFile, GENERIC_WRITE, FILE_SHARE_WRITE, 0, 
-			CREATE_ALWAYS, file_info.external_fa, 0);
-
-		if (hFile != INVALID_HANDLE_VALUE) {
-			while (true) {
-				err = unzReadCurrentFile(uf, buf, sizeof(buf));
-				if (err <= 0)
-					break;
-
-				DWORD bytes;
-				if (!WriteFile(hFile, buf, err, &bytes, FALSE)) {
-					err = UNZ_ERRNO;
-					break;
-				}
-			}
-
-			FILETIME ftLocal, ftCreate, ftLastAcc, ftLastWrite;
-			GetFileTime(hFile, &ftCreate, &ftLastAcc, &ftLastWrite);
-			DosDateTimeToFileTime(HIWORD(file_info.dosDate), LOWORD(file_info.dosDate), &ftLocal);
-			LocalFileTimeToFileTime(&ftLocal, &ftLastWrite);
-			SetFileTime(hFile, &ftCreate, &ftLastAcc, &ftLastWrite);
-
-			CloseHandle(hFile);
-			unzCloseCurrentFile(uf); /* don't lose the error */
+		if (ptszBackPath != NULL) {
+			PrepareFileName(tszDestFile, SIZEOF(tszDestFile), ptszDestPath, ptszNewName);
+			PrepareFileName(tszBackFile, SIZEOF(tszBackFile), ptszBackPath, ptszNewName);
+			BackupFile(tszDestFile, tszBackFile);
 		}
+
+		PrepareFileName(tszDestFile, SIZEOF(tszDestFile), ptszDestPath, ptszNewName);
+		SafeCreateFilePath(tszDestFile);
+
+		TCHAR *ptszFile2unzip;
+		if (hPipe == NULL) // direct mode
+			ptszFile2unzip = tszDestFile;
+		else {
+			TCHAR tszTempPath[MAX_PATH];
+			GetTempPath( SIZEOF(tszTempPath), tszTempPath);
+			GetTempFileName(tszTempPath, _T("PUtemp"), GetCurrentProcessId(), tszBackFile);
+			ptszFile2unzip = tszBackFile;
+		}
+
+		HANDLE hFile = CreateFile(ptszFile2unzip, GENERIC_WRITE, FILE_SHARE_WRITE, 0, CREATE_ALWAYS, file_info.external_fa, 0);
+		if (hFile == INVALID_HANDLE_VALUE)
+			return false;
+			
+		while (true) {
+			err = unzReadCurrentFile(uf, buf, sizeof(buf));
+			if (err <= 0)
+				break;
+
+			DWORD bytes;
+			if (!WriteFile(hFile, buf, err, &bytes, FALSE)) {
+				err = UNZ_ERRNO;
+				break;
+			}
+		}
+
+		FILETIME ftLocal, ftCreate, ftLastAcc, ftLastWrite;
+		GetFileTime(hFile, &ftCreate, &ftLastAcc, &ftLastWrite);
+		DosDateTimeToFileTime(HIWORD(file_info.dosDate), LOWORD(file_info.dosDate), &ftLocal);
+		LocalFileTimeToFileTime(&ftLocal, &ftLastWrite);
+		SetFileTime(hFile, &ftCreate, &ftLastAcc, &ftLastWrite);
+
+		CloseHandle(hFile);
+		unzCloseCurrentFile(uf); /* don't lose the error */
+
+		if (hPipe)
+			SafeMoveFile(ptszFile2unzip, tszDestFile);
 	}
 	mir_free(ptszNewName);
 	return true;

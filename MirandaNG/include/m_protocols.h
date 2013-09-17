@@ -26,6 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef M_PROTOCOLS_H__
 #define M_PROTOCOLS_H__ 1
 
+struct PROTO_INTERFACE;
+
 #include "statusmodes.h"
 
 //send a general request through the protocol chain for a contact
@@ -173,13 +175,13 @@ PROTOFILETRANSFERSTATUS;
 #define PROTOCOLDESCRIPTOR_V3_SIZE (sizeof(size_t)+sizeof(INT_PTR)+sizeof(char*))
 
  // initializes an empty account
-typedef struct tagPROTO_INTERFACE* (*pfnInitProto)(const char* szModuleName, const TCHAR* szUserName);
+typedef struct PROTO_INTERFACE* (*pfnInitProto)(const char* szModuleName, const TCHAR* szUserName);
 
 // deallocates an account instance
-typedef int (*pfnUninitProto)(struct tagPROTO_INTERFACE*);
+typedef int (*pfnUninitProto)(PROTO_INTERFACE*);
 
 // removes an account from the database
-typedef int (*pfnDestroyProto)(struct tagPROTO_INTERFACE*);
+typedef int (*pfnDestroyProto)(PROTO_INTERFACE*);
 
 typedef struct {
 	size_t cbSize;
@@ -282,7 +284,7 @@ typedef struct tagACCOUNT
 	int    bIsVisible;      // is account visible?
 	int    iOrder;          // account order in various menus & lists
 	BOOL   bOldProto;       // old-styled account (one instance per dll)
-	struct tagPROTO_INTERFACE* ppro;  // pointer to the underlying object
+	PROTO_INTERFACE *ppro;  // pointer to the underlying object
 
 	HWND   hwndAccMgrUI;
 	BOOL   bAccMgrUIChanged;
@@ -390,14 +392,14 @@ ProtoBroadcastAck(), listeners must hook ME_PROTO_ACK, note that lParam = ACKDAT
 
 */
 
-#define PA_FORMAT_UNKNOWN	0	// the protocol can not determine much about the "bitmap"
-#define PA_FORMAT_PNG		1	// the image is PNG
-#define PA_FORMAT_JPEG		2
-#define PA_FORMAT_ICON		3
-#define PA_FORMAT_BMP		4
-#define PA_FORMAT_GIF       5
-#define PA_FORMAT_SWF       6
-#define PA_FORMAT_XML       7
+#define PA_FORMAT_UNKNOWN  0	// the protocol can not determine much about the "bitmap"
+#define PA_FORMAT_PNG      1	// the image is PNG
+#define PA_FORMAT_JPEG     2
+#define PA_FORMAT_ICON     3
+#define PA_FORMAT_BMP      4
+#define PA_FORMAT_GIF      5
+#define PA_FORMAT_SWF      6
+#define PA_FORMAT_XML      7
 
 typedef struct {
 	int cbSize;                // sizeof()

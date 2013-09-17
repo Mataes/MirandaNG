@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,10 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "jabber.h"
 #include "jabber_list.h"
-
 #include "jabber_caps.h"
 #include "jabber_opttree.h"
-#include "m_modernopt.h"
 
 static BOOL (WINAPI *pfnEnableThemeDialogTexture)(HANDLE, DWORD) = 0;
 
@@ -36,191 +35,191 @@ static BOOL (WINAPI *pfnEnableThemeDialogTexture)(HANDLE, DWORD) = 0;
 #define STR_FORMAT _T("%s %s@%S:%d?")
 
 struct { TCHAR *szCode; TCHAR *szDescription; } g_LanguageCodes[] = {
-	{	_T("aa"),	_T("Afar")	},
-	{	_T("ab"),	_T("Abkhazian")	},
-	{	_T("af"),	_T("Afrikaans")	},
-	{	_T("ak"),	_T("Akan")	},
-	{	_T("sq"),	_T("Albanian")	},
-	{	_T("am"),	_T("Amharic")	},
-	{	_T("ar"),	_T("Arabic")	},
-	{	_T("an"),	_T("Aragonese")	},
-	{	_T("hy"),	_T("Armenian")	},
-	{	_T("as"),	_T("Assamese")	},
-	{	_T("av"),	_T("Avaric")	},
-	{	_T("ae"),	_T("Avestan")	},
-	{	_T("ay"),	_T("Aymara")	},
-	{	_T("az"),	_T("Azerbaijani")	},
-	{	_T("ba"),	_T("Bashkir")	},
-	{	_T("bm"),	_T("Bambara")	},
-	{	_T("eu"),	_T("Basque")	},
-	{	_T("be"),	_T("Belarusian")	},
-	{	_T("bn"),	_T("Bengali")	},
-	{	_T("bh"),	_T("Bihari")	},
-	{	_T("bi"),	_T("Bislama")	},
-	{	_T("bs"),	_T("Bosnian")	},
-	{	_T("br"),	_T("Breton")	},
-	{	_T("bg"),	_T("Bulgarian")	},
-	{	_T("my"),	_T("Burmese")	},
-	{	_T("ca"),	_T("Catalan; Valencian")	},
-	{	_T("ch"),	_T("Chamorro")	},
-	{	_T("ce"),	_T("Chechen")	},
-	{	_T("zh"),	_T("Chinese")	},
-	{	_T("cu"),	_T("Church Slavic; Old Slavonic")	},
-	{	_T("cv"),	_T("Chuvash")	},
-	{	_T("kw"),	_T("Cornish")	},
-	{	_T("co"),	_T("Corsican")	},
-	{	_T("cr"),	_T("Cree")	},
-	{	_T("cs"),	_T("Czech")	},
-	{	_T("da"),	_T("Danish")	},
-	{	_T("dv"),	_T("Divehi; Dhivehi; Maldivian")	},
-	{	_T("nl"),	_T("Dutch; Flemish")	},
-	{	_T("dz"),	_T("Dzongkha")	},
-	{	_T("en"),	_T("English")	},
-	{	_T("eo"),	_T("Esperanto")	},
-	{	_T("et"),	_T("Estonian")	},
-	{	_T("ee"),	_T("Ewe")	},
-	{	_T("fo"),	_T("Faroese")	},
-	{	_T("fj"),	_T("Fijian")	},
-	{	_T("fi"),	_T("Finnish")	},
-	{	_T("fr"),	_T("French")	},
-	{	_T("fy"),	_T("Western Frisian")	},
-	{	_T("ff"),	_T("Fulah")	},
-	{	_T("ka"),	_T("Georgian")	},
-	{	_T("de"),	_T("German")	},
-	{	_T("gd"),	_T("Gaelic; Scottish Gaelic")	},
-	{	_T("ga"),	_T("Irish")	},
-	{	_T("gl"),	_T("Galician")	},
-	{	_T("gv"),	_T("Manx")	},
-	{	_T("el"),	_T("Greek, Modern (1453-)")	},
-	{	_T("gn"),	_T("Guarani")	},
-	{	_T("gu"),	_T("Gujarati")	},
-	{	_T("ht"),	_T("Haitian; Haitian Creole")	},
-	{	_T("ha"),	_T("Hausa")	},
-	{	_T("he"),	_T("Hebrew")	},
-	{	_T("hz"),	_T("Herero")	},
-	{	_T("hi"),	_T("Hindi")	},
-	{	_T("ho"),	_T("Hiri Motu")	},
-	{	_T("hu"),	_T("Hungarian")	},
-	{	_T("ig"),	_T("Igbo")	},
-	{	_T("is"),	_T("Icelandic")	},
-	{	_T("io"),	_T("Ido")	},
-	{	_T("ii"),	_T("Sichuan Yi")	},
-	{	_T("iu"),	_T("Inuktitut")	},
-	{	_T("ie"),	_T("Interlingue")	},
-	{	_T("ia"),	_T("Interlingua (International Auxiliary Language Association)")	},
-	{	_T("id"),	_T("Indonesian")	},
-	{	_T("ik"),	_T("Inupiaq")	},
-	{	_T("it"),	_T("Italian")	},
-	{	_T("jv"),	_T("Javanese")	},
-	{	_T("ja"),	_T("Japanese")	},
-	{	_T("kl"),	_T("Kalaallisut; Greenlandic")	},
-	{	_T("kn"),	_T("Kannada")	},
-	{	_T("ks"),	_T("Kashmiri")	},
-	{	_T("kr"),	_T("Kanuri")	},
-	{	_T("kk"),	_T("Kazakh")	},
-	{	_T("km"),	_T("Central Khmer")	},
-	{	_T("ki"),	_T("Kikuyu; Gikuyu")	},
-	{	_T("rw"),	_T("Kinyarwanda")	},
-	{	_T("ky"),	_T("Kirghiz; Kyrgyz")	},
-	{	_T("kv"),	_T("Komi")	},
-	{	_T("kg"),	_T("Kongo")	},
-	{	_T("ko"),	_T("Korean")	},
-	{	_T("kj"),	_T("Kuanyama; Kwanyama")	},
-	{	_T("ku"),	_T("Kurdish")	},
-	{	_T("lo"),	_T("Lao")	},
-	{	_T("la"),	_T("Latin")	},
-	{	_T("lv"),	_T("Latvian")	},
-	{	_T("li"),	_T("Limburgan; Limburger; Limburgish")	},
-	{	_T("ln"),	_T("Lingala")	},
-	{	_T("lt"),	_T("Lithuanian")	},
-	{	_T("lb"),	_T("Luxembourgish; Letzeburgesch")	},
-	{	_T("lu"),	_T("Luba-Katanga")	},
-	{	_T("lg"),	_T("Ganda")	},
-	{	_T("mk"),	_T("Macedonian")	},
-	{	_T("mh"),	_T("Marshallese")	},
-	{	_T("ml"),	_T("Malayalam")	},
-	{	_T("mi"),	_T("Maori")	},
-	{	_T("mr"),	_T("Marathi")	},
-	{	_T("ms"),	_T("Malay")	},
-	{	_T("mg"),	_T("Malagasy")	},
-	{	_T("mt"),	_T("Maltese")	},
-	{	_T("mo"),	_T("Moldavian")	},
-	{	_T("mn"),	_T("Mongolian")	},
-	{	_T("na"),	_T("Nauru")	},
-	{	_T("nv"),	_T("Navajo; Navaho")	},
-	{	_T("nr"),	_T("Ndebele, South; South Ndebele")	},
-	{	_T("nd"),	_T("Ndebele, North; North Ndebele")	},
-	{	_T("ng"),	_T("Ndonga")	},
-	{	_T("ne"),	_T("Nepali")	},
-	{	_T("nn"),	_T("Norwegian Nynorsk; Nynorsk, Norwegian")	},
-	{	_T("nb"),	_T("Bokmaal, Norwegian; Norwegian Bokmaal")	},
-	{	_T("no"),	_T("Norwegian")	},
-	{	_T("ny"),	_T("Chichewa; Chewa; Nyanja")	},
-	{	_T("oc"),	_T("Occitan (post 1500); Provencal")	},
-	{	_T("oj"),	_T("Ojibwa")	},
-	{	_T("or"),	_T("Oriya")	},
-	{	_T("om"),	_T("Oromo")	},
-	{	_T("os"),	_T("Ossetian; Ossetic")	},
-	{	_T("pa"),	_T("Panjabi; Punjabi")	},
-	{	_T("fa"),	_T("Persian")	},
-	{	_T("pi"),	_T("Pali")	},
-	{	_T("pl"),	_T("Polish")	},
-	{	_T("pt"),	_T("Portuguese")	},
-	{	_T("ps"),	_T("Pushto")	},
-	{	_T("qu"),	_T("Quechua")	},
-	{	_T("rm"),	_T("Romansh")	},
-	{	_T("ro"),	_T("Romanian")	},
-	{	_T("rn"),	_T("Rundi")	},
-	{	_T("ru"),	_T("Russian")	},
-	{	_T("sg"),	_T("Sango")	},
-	{	_T("sa"),	_T("Sanskrit")	},
-	{	_T("sr"),	_T("Serbian")	},
-	{	_T("hr"),	_T("Croatian")	},
-	{	_T("si"),	_T("Sinhala; Sinhalese")	},
-	{	_T("sk"),	_T("Slovak")	},
-	{	_T("sl"),	_T("Slovenian")	},
-	{	_T("se"),	_T("Northern Sami")	},
-	{	_T("sm"),	_T("Samoan")	},
-	{	_T("sn"),	_T("Shona")	},
-	{	_T("sd"),	_T("Sindhi")	},
-	{	_T("so"),	_T("Somali")	},
-	{	_T("st"),	_T("Sotho, Southern")	},
-	{	_T("es"),	_T("Spanish; Castilian")	},
-	{	_T("sc"),	_T("Sardinian")	},
-	{	_T("ss"),	_T("Swati")	},
-	{	_T("su"),	_T("Sundanese")	},
-	{	_T("sw"),	_T("Swahili")	},
-	{	_T("sv"),	_T("Swedish")	},
-	{	_T("ty"),	_T("Tahitian")	},
-	{	_T("ta"),	_T("Tamil")	},
-	{	_T("tt"),	_T("Tatar")	},
-	{	_T("te"),	_T("Telugu")	},
-	{	_T("tg"),	_T("Tajik")	},
-	{	_T("tl"),	_T("Tagalog")	},
-	{	_T("th"),	_T("Thai")	},
-	{	_T("bo"),	_T("Tibetan")	},
-	{	_T("ti"),	_T("Tigrinya")	},
-	{	_T("to"),	_T("Tonga (Tonga Islands)")	},
-	{	_T("tn"),	_T("Tswana")	},
-	{	_T("ts"),	_T("Tsonga")	},
-	{	_T("tk"),	_T("Turkmen")	},
-	{	_T("tr"),	_T("Turkish")	},
-	{	_T("tw"),	_T("Twi")	},
-	{	_T("ug"),	_T("Uighur; Uyghur")	},
-	{	_T("uk"),	_T("Ukrainian")	},
-	{	_T("ur"),	_T("Urdu")	},
-	{	_T("uz"),	_T("Uzbek")	},
-	{	_T("ve"),	_T("Venda")	},
-	{	_T("vi"),	_T("Vietnamese")	},
-	{	_T("vo"),	_T("Volapuk")	},
-	{	_T("cy"),	_T("Welsh")	},
-	{	_T("wa"),	_T("Walloon")	},
-	{	_T("wo"),	_T("Wolof")	},
-	{	_T("xh"),	_T("Xhosa")	},
-	{	_T("yi"),	_T("Yiddish")	},
-	{	_T("yo"),	_T("Yoruba")	},
-	{	_T("za"),	_T("Zhuang; Chuang")	},
-	{	_T("zu"),	_T("Zulu")	},
+	{	_T("aa"),	LPGENT("Afar")	},
+	{	_T("ab"),	LPGENT("Abkhazian")	},
+	{	_T("af"),	LPGENT("Afrikaans")	},
+	{	_T("ak"),	LPGENT("Akan")	},
+	{	_T("sq"),	LPGENT("Albanian")	},
+	{	_T("am"),	LPGENT("Amharic")	},
+	{	_T("ar"),	LPGENT("Arabic")	},
+	{	_T("an"),	LPGENT("Aragonese")	},
+	{	_T("hy"),	LPGENT("Armenian")	},
+	{	_T("as"),	LPGENT("Assamese")	},
+	{	_T("av"),	LPGENT("Avaric")	},
+	{	_T("ae"),	LPGENT("Avestan")	},
+	{	_T("ay"),	LPGENT("Aymara")	},
+	{	_T("az"),	LPGENT("Azerbaijani")	},
+	{	_T("ba"),	LPGENT("Bashkir")	},
+	{	_T("bm"),	LPGENT("Bambara")	},
+	{	_T("eu"),	LPGENT("Basque")	},
+	{	_T("be"),	LPGENT("Belarusian")	},
+	{	_T("bn"),	LPGENT("Bengali")	},
+	{	_T("bh"),	LPGENT("Bihari")	},
+	{	_T("bi"),	LPGENT("Bislama")	},
+	{	_T("bs"),	LPGENT("Bosnian")	},
+	{	_T("br"),	LPGENT("Breton")	},
+	{	_T("bg"),	LPGENT("Bulgarian")	},
+	{	_T("my"),	LPGENT("Burmese")	},
+	{	_T("ca"),	LPGENT("Catalan; Valencian")	},
+	{	_T("ch"),	LPGENT("Chamorro")	},
+	{	_T("ce"),	LPGENT("Chechen")	},
+	{	_T("zh"),	LPGENT("Chinese")	},
+	{	_T("cu"),	LPGENT("Church Slavic; Old Slavonic")	},
+	{	_T("cv"),	LPGENT("Chuvash")	},
+	{	_T("kw"),	LPGENT("Cornish")	},
+	{	_T("co"),	LPGENT("Corsican")	},
+	{	_T("cr"),	LPGENT("Cree")	},
+	{	_T("cs"),	LPGENT("Czech")	},
+	{	_T("da"),	LPGENT("Danish")	},
+	{	_T("dv"),	LPGENT("Divehi; Dhivehi; Maldivian")	},
+	{	_T("nl"),	LPGENT("Dutch; Flemish")	},
+	{	_T("dz"),	LPGENT("Dzongkha")	},
+	{	_T("en"),	LPGENT("English")	},
+	{	_T("eo"),	LPGENT("Esperanto")	},
+	{	_T("et"),	LPGENT("Estonian")	},
+	{	_T("ee"),	LPGENT("Ewe")	},
+	{	_T("fo"),	LPGENT("Faroese")	},
+	{	_T("fj"),	LPGENT("Fijian")	},
+	{	_T("fi"),	LPGENT("Finnish")	},
+	{	_T("fr"),	LPGENT("French")	},
+	{	_T("fy"),	LPGENT("Western Frisian")	},
+	{	_T("ff"),	LPGENT("Fulah")	},
+	{	_T("ka"),	LPGENT("Georgian")	},
+	{	_T("de"),	LPGENT("German")	},
+	{	_T("gd"),	LPGENT("Gaelic; Scottish Gaelic")	},
+	{	_T("ga"),	LPGENT("Irish")	},
+	{	_T("gl"),	LPGENT("Galician")	},
+	{	_T("gv"),	LPGENT("Manx")	},
+	{	_T("el"),	LPGENT("Greek, Modern (1453-)")	},
+	{	_T("gn"),	LPGENT("Guarani")	},
+	{	_T("gu"),	LPGENT("Gujarati")	},
+	{	_T("ht"),	LPGENT("Haitian; Haitian Creole")	},
+	{	_T("ha"),	LPGENT("Hausa")	},
+	{	_T("he"),	LPGENT("Hebrew")	},
+	{	_T("hz"),	LPGENT("Herero")	},
+	{	_T("hi"),	LPGENT("Hindi")	},
+	{	_T("ho"),	LPGENT("Hiri Motu")	},
+	{	_T("hu"),	LPGENT("Hungarian")	},
+	{	_T("ig"),	LPGENT("Igbo")	},
+	{	_T("is"),	LPGENT("Icelandic")	},
+	{	_T("io"),	LPGENT("Ido")	},
+	{	_T("ii"),	LPGENT("Sichuan Yi")	},
+	{	_T("iu"),	LPGENT("Inuktitut")	},
+	{	_T("ie"),	LPGENT("Interlingue")	},
+	{	_T("ia"),	LPGENT("Interlingua (International Auxiliary Language Association)")	},
+	{	_T("id"),	LPGENT("Indonesian")	},
+	{	_T("ik"),	LPGENT("Inupiaq")	},
+	{	_T("it"),	LPGENT("Italian")	},
+	{	_T("jv"),	LPGENT("Javanese")	},
+	{	_T("ja"),	LPGENT("Japanese")	},
+	{	_T("kl"),	LPGENT("Kalaallisut; Greenlandic")	},
+	{	_T("kn"),	LPGENT("Kannada")	},
+	{	_T("ks"),	LPGENT("Kashmiri")	},
+	{	_T("kr"),	LPGENT("Kanuri")	},
+	{	_T("kk"),	LPGENT("Kazakh")	},
+	{	_T("km"),	LPGENT("Central Khmer")	},
+	{	_T("ki"),	LPGENT("Kikuyu; Gikuyu")	},
+	{	_T("rw"),	LPGENT("Kinyarwanda")	},
+	{	_T("ky"),	LPGENT("Kirghiz; Kyrgyz")	},
+	{	_T("kv"),	LPGENT("Komi")	},
+	{	_T("kg"),	LPGENT("Kongo")	},
+	{	_T("ko"),	LPGENT("Korean")	},
+	{	_T("kj"),	LPGENT("Kuanyama; Kwanyama")	},
+	{	_T("ku"),	LPGENT("Kurdish")	},
+	{	_T("lo"),	LPGENT("Lao")	},
+	{	_T("la"),	LPGENT("Latin")	},
+	{	_T("lv"),	LPGENT("Latvian")	},
+	{	_T("li"),	LPGENT("Limburgan; Limburger; Limburgish")	},
+	{	_T("ln"),	LPGENT("Lingala")	},
+	{	_T("lt"),	LPGENT("Lithuanian")	},
+	{	_T("lb"),	LPGENT("Luxembourgish; Letzeburgesch")	},
+	{	_T("lu"),	LPGENT("Luba-Katanga")	},
+	{	_T("lg"),	LPGENT("Ganda")	},
+	{	_T("mk"),	LPGENT("Macedonian")	},
+	{	_T("mh"),	LPGENT("Marshallese")	},
+	{	_T("ml"),	LPGENT("Malayalam")	},
+	{	_T("mi"),	LPGENT("Maori")	},
+	{	_T("mr"),	LPGENT("Marathi")	},
+	{	_T("ms"),	LPGENT("Malay")	},
+	{	_T("mg"),	LPGENT("Malagasy")	},
+	{	_T("mt"),	LPGENT("Maltese")	},
+	{	_T("mo"),	LPGENT("Moldavian")	},
+	{	_T("mn"),	LPGENT("Mongolian")	},
+	{	_T("na"),	LPGENT("Nauru")	},
+	{	_T("nv"),	LPGENT("Navajo; Navaho")	},
+	{	_T("nr"),	LPGENT("Ndebele, South; South Ndebele")	},
+	{	_T("nd"),	LPGENT("Ndebele, North; North Ndebele")	},
+	{	_T("ng"),	LPGENT("Ndonga")	},
+	{	_T("ne"),	LPGENT("Nepali")	},
+	{	_T("nn"),	LPGENT("Norwegian Nynorsk; Nynorsk, Norwegian")	},
+	{	_T("nb"),	LPGENT("Bokmaal, Norwegian; Norwegian Bokmaal")	},
+	{	_T("no"),	LPGENT("Norwegian")	},
+	{	_T("ny"),	LPGENT("Chichewa; Chewa; Nyanja")	},
+	{	_T("oc"),	LPGENT("Occitan (post 1500); Provencal")	},
+	{	_T("oj"),	LPGENT("Ojibwa")	},
+	{	_T("or"),	LPGENT("Oriya")	},
+	{	_T("om"),	LPGENT("Oromo")	},
+	{	_T("os"),	LPGENT("Ossetian; Ossetic")	},
+	{	_T("pa"),	LPGENT("Panjabi; Punjabi")	},
+	{	_T("fa"),	LPGENT("Persian")	},
+	{	_T("pi"),	LPGENT("Pali")	},
+	{	_T("pl"),	LPGENT("Polish")	},
+	{	_T("pt"),	LPGENT("Portuguese")	},
+	{	_T("ps"),	LPGENT("Pushto")	},
+	{	_T("qu"),	LPGENT("Quechua")	},
+	{	_T("rm"),	LPGENT("Romansh")	},
+	{	_T("ro"),	LPGENT("Romanian")	},
+	{	_T("rn"),	LPGENT("Rundi")	},
+	{	_T("ru"),	LPGENT("Russian")	},
+	{	_T("sg"),	LPGENT("Sango")	},
+	{	_T("sa"),	LPGENT("Sanskrit")	},
+	{	_T("sr"),	LPGENT("Serbian")	},
+	{	_T("hr"),	LPGENT("Croatian")	},
+	{	_T("si"),	LPGENT("Sinhala; Sinhalese")	},
+	{	_T("sk"),	LPGENT("Slovak")	},
+	{	_T("sl"),	LPGENT("Slovenian")	},
+	{	_T("se"),	LPGENT("Northern Sami")	},
+	{	_T("sm"),	LPGENT("Samoan")	},
+	{	_T("sn"),	LPGENT("Shona")	},
+	{	_T("sd"),	LPGENT("Sindhi")	},
+	{	_T("so"),	LPGENT("Somali")	},
+	{	_T("st"),	LPGENT("Sotho, Southern")	},
+	{	_T("es"),	LPGENT("Spanish; Castilian")	},
+	{	_T("sc"),	LPGENT("Sardinian")	},
+	{	_T("ss"),	LPGENT("Swati")	},
+	{	_T("su"),	LPGENT("Sundanese")	},
+	{	_T("sw"),	LPGENT("Swahili")	},
+	{	_T("sv"),	LPGENT("Swedish")	},
+	{	_T("ty"),	LPGENT("Tahitian")	},
+	{	_T("ta"),	LPGENT("Tamil")	},
+	{	_T("tt"),	LPGENT("Tatar")	},
+	{	_T("te"),	LPGENT("Telugu")	},
+	{	_T("tg"),	LPGENT("Tajik")	},
+	{	_T("tl"),	LPGENT("Tagalog")	},
+	{	_T("th"),	LPGENT("Thai")	},
+	{	_T("bo"),	LPGENT("Tibetan")	},
+	{	_T("ti"),	LPGENT("Tigrinya")	},
+	{	_T("to"),	LPGENT("Tonga (Tonga Islands)")	},
+	{	_T("tn"),	LPGENT("Tswana")	},
+	{	_T("ts"),	LPGENT("Tsonga")	},
+	{	_T("tk"),	LPGENT("Turkmen")	},
+	{	_T("tr"),	LPGENT("Turkish")	},
+	{	_T("tw"),	LPGENT("Twi")	},
+	{	_T("ug"),	LPGENT("Uighur; Uyghur")	},
+	{	_T("uk"),	LPGENT("Ukrainian")	},
+	{	_T("ur"),	LPGENT("Urdu")	},
+	{	_T("uz"),	LPGENT("Uzbek")	},
+	{	_T("ve"),	LPGENT("Venda")	},
+	{	_T("vi"),	LPGENT("Vietnamese")	},
+	{	_T("vo"),	LPGENT("Volapuk")	},
+	{	_T("cy"),	LPGENT("Welsh")	},
+	{	_T("wa"),	LPGENT("Walloon")	},
+	{	_T("wo"),	LPGENT("Wolof")	},
+	{	_T("xh"),	LPGENT("Xhosa")	},
+	{	_T("yi"),	LPGENT("Yiddish")	},
+	{	_T("yo"),	LPGENT("Yoruba")	},
+	{	_T("za"),	LPGENT("Zhuang; Chuang")	},
+	{	_T("zu"),	LPGENT("Zulu")	},
 	{	NULL,	NULL	}
 };
 
@@ -290,8 +289,8 @@ private:
 		strncpy(thread->manualHost, m_regInfo->manualHost, SIZEOF(thread->manualHost));
 		thread->port = m_regInfo->port;
 		thread->useSSL = m_regInfo->useSSL;
-		thread->reg_hwndDlg= m_hwnd;
-		m_proto->JForkThread((JThreadFunc)&CJabberProto::ServerThread, thread);
+		thread->reg_hwndDlg = m_hwnd;
+		m_proto->ForkThread((CJabberProto::MyThreadFunc)&CJabberProto::ServerThread, thread);
 
 		m_btnOk.SetText(TranslateT("Cancel"));
 		m_bProcessStarted = true;
@@ -345,7 +344,7 @@ static void sttStoreJidFromUI(CJabberProto *ppro, CCtrlEdit &txtUsername, CCtrlC
 	int len = lstrlen(user) + lstrlen(server) + 2;
 	TCHAR *jid = (TCHAR *)mir_alloc(len * sizeof(TCHAR));
 	mir_sntprintf(jid, len, _T("%s@%s"), user, server);
-	ppro->JSetStringT(NULL, "jid", jid);
+	ppro->setTString("jid", jid);
 	mir_free(jid);
 	mir_free(server);
 	mir_free(user);
@@ -450,8 +449,7 @@ protected:
 		SendDlgItemMessage(m_hwnd, IDC_PRIORITY_SPIN, UDM_SETRANGE, 0, (LPARAM)MAKELONG(127, -128));
 
 		TCHAR *passw = m_proto->JGetStringCrypt(NULL, "LoginPassword");
-		if (passw)
-		{
+		if (passw) {
 			m_txtPassword.SetText(passw);
 			mir_free(passw);
 		}
@@ -459,8 +457,8 @@ protected:
 		m_cbServer.AddString(TranslateT("Loading..."));
 
 		// fill predefined resources
-		TCHAR* szResources[] = { _T("Home"), _T("Work"), _T("Office"), _T("MataesPack") };
-		for (i = 0; i < SIZEOF(szResources); ++i)
+		TCHAR *szResources[] = { _T("Home"), _T("Work"), _T("Office"), _T("MataesPack") };
+		for (i = 0; i < SIZEOF(szResources); i++)
 			m_cbResource.AddString(szResources[i]);
 
 		// append computer name to the resource list
@@ -469,8 +467,7 @@ protected:
 		if (GetComputerName(szCompName, &dwCompNameLength))
 			m_cbResource.AddString(szCompName);
 
-		if ( !DBGetContactSettingTString(NULL, m_proto->m_szModuleName, "Resource", &dbv))
-		{
+		if ( !m_proto->getTString("Resource", &dbv)) {
 			if (CB_ERR == m_cbResource.FindString(dbv.ptszVal, -1, true))
 				m_cbResource.AddString(dbv.ptszVal);
 
@@ -479,7 +476,7 @@ protected:
 		}
 		else m_cbResource.SetText(_T("MataesPack"));
 
-		for (i = 0; g_LanguageCodes[i].szCode; ++i)
+		for (i = 0; g_LanguageCodes[i].szCode; i++)
 		{
 			int iItem = m_cbLocale.AddString(TranslateTS(g_LanguageCodes[i].szDescription), (LPARAM)g_LanguageCodes[i].szCode);
 			if ( !_tcscmp(m_proto->m_tszSelectedLang, g_LanguageCodes[i].szCode))
@@ -518,14 +515,14 @@ protected:
 			m_proto->JSetStringCrypt(NULL, "LoginPassword", text);
 			mir_free(text);
 		}
-		else m_proto->JDeleteSetting(NULL, "LoginPassword");
+		else m_proto->delSetting("LoginPassword");
 
 		int index = m_cbLocale.GetCurSel();
 		if (index >= 0)
 		{
 			TCHAR *szLanguageCode = (TCHAR *)m_cbLocale.GetItemData(index);
 			if (szLanguageCode) {
-				m_proto->JSetStringT(NULL, "XmlLang", szLanguageCode);
+				m_proto->setTString("XmlLang", szLanguageCode);
 
 				mir_free(m_proto->m_tszSelectedLang);
 				m_proto->m_tszSelectedLang = mir_tstrdup(szLanguageCode);
@@ -580,43 +577,44 @@ private:
 			return;
 
 		m_txtPassword.GetText(pass, SIZEOF(pass));
-		if (lstrcmp(buf, pass))
-		{
+		if (lstrcmp(buf, pass)) {
 			MessageBox(m_hwnd, TranslateT("Passwords do not match."), _T("Miranda NG"), MB_ICONSTOP|MB_OK);
 			return;
 		}
+
+		PSHNOTIFY pshn = {0};
+		pshn.hdr.code = PSN_APPLY;
+		pshn.hdr.hwndFrom = m_hwnd;
+		SendMessage(m_hwnd, WM_NOTIFY, 0, (LPARAM)&pshn);
 
 		ThreadData regInfo(m_proto, JABBER_SESSION_NORMAL);
 		m_txtUsername.GetText(regInfo.username, SIZEOF(regInfo.username));
 		m_txtPassword.GetText(regInfo.password, SIZEOF(regInfo.password));
 		m_cbServer.GetTextA(regInfo.server, SIZEOF(regInfo.server));
-		if (m_chkManualHost.GetState() == BST_CHECKED)
-		{
+		if (m_chkManualHost.GetState() == BST_CHECKED) {
 			regInfo.port = (WORD)m_txtManualPort.GetInt();
 			m_txtManualHost.GetTextA(regInfo.manualHost, SIZEOF(regInfo.manualHost));
-		} else
-		{
+		}
+		else {
 			regInfo.port = (WORD)m_txtPort.GetInt();
 			regInfo.manualHost[0] = '\0';
 		}
 
-		if (regInfo.username[0] && regInfo.password[0] && regInfo.server[0] && regInfo.port>0 && ((m_chkManualHost.GetState() != BST_CHECKED) || regInfo.manualHost[0]))
-		{
+		if (regInfo.username[0] && regInfo.password[0] && regInfo.server[0] && regInfo.port>0 && ((m_chkManualHost.GetState() != BST_CHECKED) || regInfo.manualHost[0])) {
 			CJabberDlgRegister dlg(m_proto, m_hwnd, &regInfo);
 			dlg.DoModal();
-//			DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_OPT_REGISTER), m_hwnd, JabberRegisterDlgProc, (LPARAM)&regInfo);
 		}
 	}
 
 	void btnUnregister_OnClick(CCtrlButton *)
 	{
 		int res = MessageBox(NULL,
-			TranslateT("This operation will kill your account, roster and all another information stored at the server. Are you ready to do that?"),
+			TranslateT("This operation will kill your account, roster and all other information stored at the server. Are you ready to do that?"),
 			TranslateT("Account removal warning"), MB_YESNOCANCEL);
 
 		if (res == IDYES)
 			m_proto->m_ThreadInfo->send(
-				XmlNodeIq(_T("set"), m_proto->SerialNext(), m_proto->m_szJabberJID) << XQUERY(_T(JABBER_FEAT_REGISTER))
+				XmlNodeIq(_T("set"), m_proto->SerialNext(), m_proto->m_szJabberJID) << XQUERY(JABBER_FEAT_REGISTER)
 					<< XCHILD(_T("remove")));
 	}
 
@@ -642,13 +640,12 @@ private:
 	{
 		CCtrlCheck *chk = (CCtrlCheck *)sender;
 
-		if (chk->GetState() == BST_CHECKED)
-		{
+		if (chk->GetState() == BST_CHECKED) {
 			m_txtManualHost.Enable();
 			m_txtManualPort.Enable();
 			m_txtPort.Disable();
-		} else
-		{
+		}
+		else {
 			m_txtManualHost.Disable();
 			m_txtManualPort.Disable();
 			m_txtPort.Enable();
@@ -740,7 +737,7 @@ private:
 
 		m_cbServer.ResetContent();
 		if (node) {
-			for (int i = 0; ; ++i) {
+			for (int i = 0; ; i++) {
 				HXML n = xmlGetChild(node, i);
 				if ( !n)
 					break;
@@ -775,7 +772,7 @@ private:
 		NETLIBHTTPREQUEST *result = (NETLIBHTTPREQUEST *)CallService(MS_NETLIB_HTTPTRANSACTION, (WPARAM)wnd->GetProto()->m_hNetlibUser, (LPARAM)&request);
 		if (result) {
 			if (result->resultCode == 200 && result->dataLength && result->pData) {
-				TCHAR* buf = mir_a2t(result->pData);
+				TCHAR *buf = mir_a2t(result->pData);
 				XmlNode node(buf, NULL, NULL);
 				if (node) {
 					HXML queryNode = xmlGetChild(node, _T("query"));
@@ -783,7 +780,7 @@ private:
 					bIsError = false;
 				}
 				mir_free(buf);
-			}	
+			}
 			CallService(MS_NETLIB_FREEHTTPREQUESTSTRUCT, 0, (LPARAM)result);
 		}
 
@@ -836,6 +833,7 @@ public:
 		m_otvOptions.AddOption(LPGENT("Messaging") _T("/") LPGENT("Enable user activity receiving"), m_proto->m_options.EnableUserActivity);
 		m_otvOptions.AddOption(LPGENT("Messaging") _T("/") LPGENT("Receive notes"), m_proto->m_options.AcceptNotes);
 		m_otvOptions.AddOption(LPGENT("Messaging") _T("/") LPGENT("Automatically save received notes"), m_proto->m_options.AutosaveNotes);
+		m_otvOptions.AddOption(LPGENT("Messaging") _T("/") LPGENT("Enable server-side history"), m_proto->m_options.EnableMsgArchive);
 
 		m_otvOptions.AddOption(LPGENT("Server options") _T("/") LPGENT("Disable SASL authentication (for old servers)"), m_proto->m_options.Disable3920auth);
 		m_otvOptions.AddOption(LPGENT("Server options") _T("/") LPGENT("Enable stream compression (if possible)"), m_proto->m_options.EnableZlib);
@@ -868,17 +866,17 @@ public:
 		BOOL bChecked = m_proto->m_options.ShowTransport;
 		LISTFOREACH(index, m_proto, LIST_ROSTER)
 		{
-			JABBER_LIST_ITEM* item = m_proto->ListGetItemPtrFromIndex(index);
+			JABBER_LIST_ITEM *item = m_proto->ListGetItemPtrFromIndex(index);
 			if (item != NULL) {
 				if (_tcschr(item->jid, '@') == NULL) {
 					HANDLE hContact = m_proto->HContactFromJID(item->jid);
 					if (hContact != NULL) {
 						if (bChecked) {
-							if (item->itemResource.status != m_proto->JGetWord(hContact, "Status", ID_STATUS_OFFLINE)) {
-								m_proto->JSetWord(hContact, "Status", (WORD)item->itemResource.status);
+							if (item->itemResource.status != m_proto->getWord(hContact, "Status", ID_STATUS_OFFLINE)) {
+								m_proto->setWord(hContact, "Status", (WORD)item->itemResource.status);
 						}	}
-						else if (m_proto->JGetWord(hContact, "Status", ID_STATUS_OFFLINE) != ID_STATUS_OFFLINE)
-							m_proto->JSetWord(hContact, "Status", ID_STATUS_OFFLINE);
+						else if (m_proto->getWord(hContact, "Status", ID_STATUS_OFFLINE) != ID_STATUS_OFFLINE)
+							m_proto->setWord(hContact, "Status", ID_STATUS_OFFLINE);
 			}	}	}
 		}
 
@@ -947,7 +945,7 @@ public:
 		m_otvOptions.AddOption(LPGENT("Log events") _T("/") LPGENT("Affiliation changes"),                  m_proto->m_options.GcLogAffiliations);
 		m_otvOptions.AddOption(LPGENT("Log events") _T("/") LPGENT("Role changes"),                         m_proto->m_options.GcLogRoles);
 		m_otvOptions.AddOption(LPGENT("Log events") _T("/") LPGENT("Status changes"),                       m_proto->m_options.GcLogStatuses);
-		m_otvOptions.AddOption(LPGENT("Log events") _T("/") LPGENT("Filter history messages"),              m_proto->m_options.GcLogChatHistory);
+		m_otvOptions.AddOption(LPGENT("Log events") _T("/") LPGENT("Don't notify history messages"),        m_proto->m_options.GcLogChatHistory);
 	}
 
 	static CDlgBase *Create(void *param) { return new CDlgOptGc((CJabberProto *)param); }
@@ -967,14 +965,12 @@ enum {
 	RRA_SYNCDONE
 };
 
-typedef struct _tag_RosterhEditDat{
-	WNDPROC OldEditProc;
+struct ROSTEREDITDAT
+{
 	HWND hList;
 	int index;
 	int subindex;
-} ROSTEREDITDAT;
-
-static WNDPROC _RosterOldListProc=NULL;
+};
 
 static int	_RosterInsertListItem(HWND hList, const TCHAR * jid, const TCHAR * nick, const TCHAR * group, const TCHAR * subscr, BOOL bChecked)
 {
@@ -1054,53 +1050,41 @@ void CJabberProto::_RosterHandleGetRequest(HXML node)
 
 			const TCHAR *name = xmlGetAttrValue(item, _T("name"));
 			const TCHAR *subscription = xmlGetAttrValue(item, _T("subscription"));
-			const TCHAR *group = NULL;
-			HXML groupNode = xmlGetChild(item , "group");
-			if (groupNode)
-				group = xmlGetText(groupNode);
+			const TCHAR *group = xmlGetText( xmlGetChild(item, "group"));
 			_RosterInsertListItem(hList, jid, name, group, subscription, TRUE);
 		}
+
 		// now it is require to process whole contact list to add not in roster contacts
-		{
-			HANDLE hContact = (HANDLE)db_find_first();
-			while (hContact != NULL)
-			{
-				char* str = GetContactProto(hContact);
-				if (str != NULL && !strcmp(str, m_szModuleName))
-				{
-					DBVARIANT dbv;
-					if ( !JGetStringT(hContact, "jid", &dbv))
-					{
-						LVFINDINFO lvfi={0};
-						lvfi.flags = LVFI_STRING;
-						lvfi.psz = dbv.ptszVal;
-						TCHAR *p = _tcschr(dbv.ptszVal,_T('@'));
-						if (p) {
-							p = _tcschr(dbv.ptszVal, _T('/'));
-							if (p) *p = _T('\0');
-						}
-						if (ListView_FindItem(hList, -1, &lvfi) == -1) {
-							TCHAR *jid = mir_tstrdup(dbv.ptszVal);
-							TCHAR *name = NULL;
-							TCHAR *group = NULL;
-							DBVARIANT dbvtemp;
-							if ( !DBGetContactSettingTString(hContact, "CList", "MyHandle", &dbvtemp)) {
-								name = mir_tstrdup(dbvtemp.ptszVal);
-								db_free(&dbvtemp);
-							}
-							if ( !DBGetContactSettingTString(hContact, "CList", "Group", &dbvtemp)) {
-								group = mir_tstrdup(dbvtemp.ptszVal);
-								db_free(&dbvtemp);
-							}
-							_RosterInsertListItem(hList, jid, name, group, NULL, FALSE);
-							if (jid) mir_free(jid);
-							if (name) mir_free(name);
-							if (group) mir_free(group);
-						}
-						db_free(&dbv);
-					}
+		for (HANDLE hContact = db_find_first(m_szModuleName); hContact; hContact = db_find_next(hContact, m_szModuleName)) {
+			DBVARIANT dbv;
+			if ( !getTString(hContact, "jid", &dbv)) {
+				LVFINDINFO lvfi={0};
+				lvfi.flags = LVFI_STRING;
+				lvfi.psz = dbv.ptszVal;
+				TCHAR *p = _tcschr(dbv.ptszVal,_T('@'));
+				if (p) {
+					p = _tcschr(dbv.ptszVal, _T('/'));
+					if (p) *p = _T('\0');
 				}
-				hContact = db_find_next(hContact);
+				if (ListView_FindItem(hList, -1, &lvfi) == -1) {
+					TCHAR *jid = mir_tstrdup(dbv.ptszVal);
+					TCHAR *name = NULL;
+					TCHAR *group = NULL;
+					DBVARIANT dbvtemp;
+					if ( !db_get_ts(hContact, "CList", "MyHandle", &dbvtemp)) {
+						name = mir_tstrdup(dbvtemp.ptszVal);
+						db_free(&dbvtemp);
+					}
+					if ( !db_get_ts(hContact, "CList", "Group", &dbvtemp)) {
+						group = mir_tstrdup(dbvtemp.ptszVal);
+						db_free(&dbvtemp);
+					}
+					_RosterInsertListItem(hList, jid, name, group, NULL, FALSE);
+					if (jid) mir_free(jid);
+					if (name) mir_free(name);
+					if (group) mir_free(group);
+				}
+				db_free(&dbv);
 			}
 		}
 		rrud.bReadyToDownload = FALSE;
@@ -1124,7 +1108,7 @@ void CJabberProto::_RosterHandleGetRequest(HXML node)
 		xmlAddAttr(iq, _T("type"), _T("set"));
 		iq << XATTRID(iqId);
 
-		HXML query = iq << XCHILDNS(_T("query"), _T(JABBER_FEAT_IQ_ROSTER));
+		HXML query = iq << XCHILDNS(_T("query"), JABBER_FEAT_IQ_ROSTER);
 
 		int itemCount=0;
 		int ListItemCount=ListView_GetItemCount(hList);
@@ -1151,19 +1135,16 @@ void CJabberProto::_RosterHandleGetRequest(HXML node)
 				BOOL bPushed = itemRoster ? TRUE : FALSE;
 				if ( !bPushed) {
 					const TCHAR *rosterName = xmlGetAttrValue(itemRoster, _T("name"));
-					if ((rosterName!=NULL || name[0]!=_T('\0')) && lstrcmpi(rosterName,name))
+					if ((rosterName != NULL || name[0]!=_T('\0')) && lstrcmpi(rosterName,name))
 						bPushed=TRUE;
 					if ( !bPushed) {
 						rosterName = xmlGetAttrValue(itemRoster, _T("subscription"));
-						if ((rosterName!=NULL || subscr[0]!=_T('\0')) && lstrcmpi(rosterName,subscr))
+						if ((rosterName != NULL || subscr[0]!=_T('\0')) && lstrcmpi(rosterName,subscr))
 							bPushed=TRUE;
 					}
 					if ( !bPushed) {
-						HXML groupNode = xmlGetChild(itemRoster , "group");
-						const TCHAR *rosterGroup=NULL;
-						if (groupNode != NULL)
-							rosterGroup = xmlGetText(groupNode);
-						if ((rosterGroup!=NULL || group[0]!=_T('\0')) && lstrcmpi(rosterGroup,group))
+						const TCHAR *rosterGroup = xmlGetText( xmlGetChild(itemRoster, "group"));
+						if ((rosterGroup != NULL || group[0]!=_T('\0')) && lstrcmpi(rosterGroup,group))
 							bPushed=TRUE;
 					}
 				}
@@ -1203,7 +1184,7 @@ void CJabberProto::_RosterSendRequest(HWND hwndDlg, BYTE rrAction)
 
 	int iqId = SerialNext();
 	IqAdd(iqId, IQ_PROC_NONE, &CJabberProto::_RosterHandleGetRequest);
-	m_ThreadInfo->send(XmlNode(_T("iq")) << XATTR(_T("type"), _T("get")) << XATTRID(iqId) << XCHILDNS(_T("query"), _T(JABBER_FEAT_IQ_ROSTER)));
+	m_ThreadInfo->send(XmlNode(_T("iq")) << XATTR(_T("type"), _T("get")) << XATTRID(iqId) << XCHILDNS(_T("query"), JABBER_FEAT_IQ_ROSTER));
 }
 
 static void _RosterItemEditEnd(HWND hEditor, ROSTEREDITDAT * edat, BOOL bCancel)
@@ -1221,16 +1202,13 @@ static void _RosterItemEditEnd(HWND hEditor, ROSTEREDITDAT * edat, BOOL bCancel)
 	DestroyWindow(hEditor);
 }
 
-static BOOL CALLBACK _RosterItemNewEditProc(HWND hEditor, UINT msg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK _RosterItemNewEditProc(HWND hEditor, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	ROSTEREDITDAT * edat = (ROSTEREDITDAT *) GetWindowLongPtr(hEditor,GWLP_USERDATA);
 	if ( !edat) return 0;
-	switch(msg)
-	{
-
+	switch(msg) {
 	case WM_KEYDOWN:
-		switch(wParam)
-		{
+		switch(wParam) {
 		case VK_RETURN:
 			_RosterItemEditEnd(hEditor, edat, FALSE);
 			return 0;
@@ -1239,6 +1217,7 @@ static BOOL CALLBACK _RosterItemNewEditProc(HWND hEditor, UINT msg, WPARAM wPara
 			return 0;
 		}
 		break;
+
 	case WM_GETDLGCODE:
 		if (lParam) {
 			MSG *msg2 = (MSG*)lParam;
@@ -1246,22 +1225,19 @@ static BOOL CALLBACK _RosterItemNewEditProc(HWND hEditor, UINT msg, WPARAM wPara
 			if (msg2->message==WM_CHAR && msg2->wParam=='\t') return 0;
 		}
 		return DLGC_WANTMESSAGE;
+
 	case WM_KILLFOCUS:
 		_RosterItemEditEnd(hEditor, edat, FALSE);
 		return 0;
-	}
 
-	if (msg==WM_DESTROY)
-	{
-		SetWindowLongPtr(hEditor, GWLP_WNDPROC, (LONG_PTR) edat->OldEditProc);
+	case WM_DESTROY:
 		SetWindowLongPtr(hEditor, GWLP_USERDATA, (LONG_PTR) 0);
 		free(edat);
 		return 0;
 	}
-	else return CallWindowProc(edat->OldEditProc, hEditor, msg, wParam, lParam);
+	
+	return mir_callNextSubclass(hEditor, _RosterItemNewEditProc, msg, wParam, lParam);
 }
-
-
 
 void CJabberProto::_RosterExportToFile(HWND hwndDlg)
 {
@@ -1361,7 +1337,7 @@ void CJabberProto::_RosterImportFromFile(HWND hwndDlg)
 	fclose(fp);
 	_RosterListClear(hwndDlg);
 
-	TCHAR* newBuf = mir_utf8decodeT(buffer);
+	TCHAR *newBuf = mir_utf8decodeT(buffer);
 	mir_free(buffer);
 
 	int nBytesProcessed = 0;
@@ -1424,12 +1400,10 @@ void CJabberProto::_RosterImportFromFile(HWND hwndDlg)
 	SendMessage(hwndDlg, JM_STATUSCHANGED, 0, 0);
 }
 
-static BOOL CALLBACK _RosterNewListProc(HWND hList, UINT msg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK _RosterNewListProc(HWND hList, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	if (msg==WM_MOUSEWHEEL || msg==WM_NCLBUTTONDOWN || msg==WM_NCRBUTTONDOWN)
-	{
 		SetFocus(hList);
-	}
 
 	if (msg==WM_LBUTTONDOWN)
 	{
@@ -1456,15 +1430,14 @@ static BOOL CALLBACK _RosterNewListProc(HWND hList, UINT msg, WPARAM wParam, LPA
 			mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
 
 			ROSTEREDITDAT * edat=(ROSTEREDITDAT *)malloc(sizeof(ROSTEREDITDAT));
-			edat->OldEditProc=(WNDPROC)GetWindowLongPtr(hEditor, GWLP_WNDPROC);
-			SetWindowLongPtr(hEditor,GWLP_WNDPROC,(LONG_PTR)_RosterItemNewEditProc);
+			mir_subclassWindow(hEditor, _RosterItemNewEditProc);
 			edat->hList=hList;
 			edat->index=lvhti.iItem;
 			edat->subindex=lvhti.iSubItem;
 			SetWindowLongPtr(hEditor,GWLP_USERDATA,(LONG_PTR)edat);
 		}
 	}
-	return CallWindowProc(_RosterOldListProc, hList, msg, wParam, lParam);
+	return mir_callNextSubclass(hList, _RosterNewListProc, msg, wParam, lParam);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -1484,15 +1457,13 @@ static int sttRosterEditorResizer(HWND /*hwndDlg*/, LPARAM, UTILRESIZECONTROL *u
 	case IDC_EXPORT:
 	case IDC_IMPORT:
 		return RD_ANCHORX_RIGHT|RD_ANCHORY_BOTTOM;
-//	case IDC_STATUSBAR:
-//		return RD_ANCHORX_LEFT|RD_ANCHORX_WIDTH|RD_ANCHORY_BOTTOM;
 	}
 	return RD_ANCHORX_LEFT|RD_ANCHORY_TOP;
 }
 
 static INT_PTR CALLBACK JabberRosterOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	CJabberProto* ppro = (CJabberProto*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+	CJabberProto *ppro = (CJabberProto*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
 
 	switch (msg) {
 	case JM_STATUSCHANGED:
@@ -1526,16 +1497,15 @@ static INT_PTR CALLBACK JabberRosterOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wP
 			Utils_RestoreWindowPosition(hwndDlg, NULL, ppro->m_szModuleName, "rosterCtrlWnd_");
 
 			ListView_SetExtendedListViewStyle(GetDlgItem(hwndDlg,IDC_ROSTER),  LVS_EX_CHECKBOXES | LVS_EX_BORDERSELECT /*| LVS_EX_FULLROWSELECT*/ | LVS_EX_GRIDLINES /*| LVS_EX_HEADERDRAGDROP*/);
-			_RosterOldListProc=(WNDPROC) GetWindowLongPtr(GetDlgItem(hwndDlg,IDC_ROSTER), GWLP_WNDPROC);
-			SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_ROSTER), GWLP_WNDPROC, (LONG_PTR) _RosterNewListProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_ROSTER), _RosterNewListProc);
 			_RosterListClear(hwndDlg);
 			ppro->rrud.hwndDlg = hwndDlg;
 			ppro->rrud.bReadyToDownload = TRUE;
 			ppro->rrud.bReadyToUpload = FALSE;
 			SendMessage(hwndDlg, JM_STATUSCHANGED, 0, 0);
-
-			return TRUE;
 		}
+		return TRUE;
+
 	case WM_GETMINMAXINFO:
 		{
 			LPMINMAXINFO lpmmi = (LPMINMAXINFO)lParam;
@@ -1543,17 +1513,19 @@ static INT_PTR CALLBACK JabberRosterOptDlgProc(HWND hwndDlg, UINT msg, WPARAM wP
 			lpmmi->ptMinTrackSize.y = 390;
 			return 0;
 		}
+
 	case WM_SIZE:
-	{
-		UTILRESIZEDIALOG urd = {0};
-		urd.cbSize = sizeof(urd);
-		urd.hInstance = hInst;
-		urd.hwndDlg = hwndDlg;
-		urd.lpTemplate = MAKEINTRESOURCEA(IDD_OPT_JABBER3);
-		urd.pfnResizer = sttRosterEditorResizer;
-		CallService(MS_UTILS_RESIZEDIALOG, 0, (LPARAM)&urd);
+		{
+			UTILRESIZEDIALOG urd = {0};
+			urd.cbSize = sizeof(urd);
+			urd.hInstance = hInst;
+			urd.hwndDlg = hwndDlg;
+			urd.lpTemplate = MAKEINTRESOURCEA(IDD_OPT_JABBER3);
+			urd.pfnResizer = sttRosterEditorResizer;
+			CallService(MS_UTILS_RESIZEDIALOG, 0, (LPARAM)&urd);
+		}
 		break;
-	}
+
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_DOWNLOAD:
@@ -1684,7 +1656,7 @@ public:
 	}
 
 protected:
-	enum { ACC_PUBLIC, ACC_TLS, ACC_SSL, ACC_GTALK, ACC_LJTALK, ACC_FBOOK, ACC_VK, ACC_SMS };
+	enum { ACC_PUBLIC, ACC_TLS, ACC_SSL, ACC_GTALK, ACC_LJTALK, ACC_FBOOK, ACC_OK, ACC_SMS };
 
 	void OnInitDialog()
 	{
@@ -1706,8 +1678,8 @@ protected:
 		m_cbServer.AddString(TranslateT("Loading..."));
 
 		// fill predefined resources
-		TCHAR* szResources[] = { _T("Home"), _T("Work"), _T("Office"), _T("MataesPack") };
-		for (i = 0; i < SIZEOF(szResources); ++i)
+		TCHAR *szResources[] = { _T("Home"), _T("Work"), _T("Office"), _T("MataesPack") };
+		for (i = 0; i < SIZEOF(szResources); i++)
 			m_cbResource.AddString(szResources[i]);
 
 		// append computer name to the resource list
@@ -1716,17 +1688,14 @@ protected:
 		if (GetComputerName(szCompName, &dwCompNameLength))
 			m_cbResource.AddString(szCompName);
 
-		if ( !DBGetContactSettingTString(NULL, m_proto->m_szModuleName, "Resource", &dbv))
-		{
+		if ( !m_proto->getTString("Resource", &dbv)) {
 			if (CB_ERR == m_cbResource.FindString(dbv.ptszVal, -1, true))
 				m_cbResource.AddString(dbv.ptszVal);
 
 			m_cbResource.SetText(dbv.ptszVal);
 			db_free(&dbv);
-		} else
-		{
-			m_cbResource.SetText(_T("MataesPack"));
 		}
+		else m_cbResource.SetText(_T("MataesPack"));
 
 		m_cbType.AddString(TranslateT("Public XMPP Network"), ACC_PUBLIC);
 		m_cbType.AddString(TranslateT("Secure XMPP Network"), ACC_TLS);
@@ -1734,39 +1703,33 @@ protected:
 		m_cbType.AddString(TranslateT("Google Talk!"), ACC_GTALK);
 		m_cbType.AddString(TranslateT("LiveJournal Talk"), ACC_LJTALK);
 		m_cbType.AddString(TranslateT("Facebook Chat"), ACC_FBOOK);
-		m_cbType.AddString(TranslateT("Vkontakte"), ACC_VK);
+		m_cbType.AddString(TranslateT("Odnoklassniki"), ACC_OK);
 		m_cbType.AddString(TranslateT("S.ms"), ACC_SMS);
 
 		m_cbServer.GetTextA(server, SIZEOF(server));
-		if ( !DBGetContactSettingString(NULL, m_proto->m_szModuleName, "ManualHost", &dbv))
-		{
+		if ( !db_get_s(NULL, m_proto->m_szModuleName, "ManualHost", &dbv)) {
 			lstrcpynA(manualServer, dbv.pszVal, SIZEOF(manualServer));
 			db_free(&dbv);
 		}
 
 		m_canregister = true;
-		if ( !lstrcmpA(manualServer, "talk.google.com"))
-		{
+		if ( !lstrcmpA(manualServer, "talk.google.com")) {
 			m_cbType.SetCurSel(ACC_GTALK);
 			m_canregister = false;
 		}
-		else if ( !lstrcmpA(server, "livejournal.com"))
-		{
+		else if ( !lstrcmpA(server, "livejournal.com")) {
 			m_cbType.SetCurSel(ACC_LJTALK);
 			m_canregister = false;
 		}
-		else if ( !lstrcmpA(server, "chat.facebook.com"))
-		{
+		else if ( !lstrcmpA(server, "chat.facebook.com")) {
 			m_cbType.SetCurSel(ACC_FBOOK);
 			m_canregister = false;
 		}
-		else if ( !lstrcmpA(server, "vk.com"))
-		{
-			m_cbType.SetCurSel(ACC_VK);
+		else if ( !lstrcmpA(manualServer, "xmpp.odnoklassniki.ru")) {
+			m_cbType.SetCurSel(ACC_OK);
 			m_canregister = false;
 		}
-		else if ( !lstrcmpA(server, "S.ms"))
-		{
+		else if ( !lstrcmpA(server, "S.ms")) {
 			m_cbType.SetCurSel(ACC_SMS);
 			m_canregister = false;
 		}
@@ -1776,40 +1739,34 @@ protected:
 			m_cbType.SetCurSel(ACC_TLS);
 			m_txtPort.SetInt(5222);
 		}
-		else
-			m_cbType.SetCurSel(ACC_PUBLIC);
-		//cbType_OnChange(&m_cbType);
+		else m_cbType.SetCurSel(ACC_PUBLIC);
 
-		if (m_chkManualHost.Enabled())
-		{
-			if (m_proto->m_options.ManualConnect)
-			{
+		if (m_chkManualHost.Enabled()) {
+			if (m_proto->m_options.ManualConnect) {
 				m_chkManualHost.SetState(BST_CHECKED);
 				m_txtManualHost.Enable();
 				m_txtPort.Enable();
 
-				if ( !DBGetContactSettingTString(NULL, m_proto->m_szModuleName, "ManualHost", &dbv))
-				{
+				if ( !m_proto->getTString("ManualHost", &dbv)) {
 					m_txtManualHost.SetText(dbv.ptszVal);
 					db_free(&dbv);
 				}
 
-				m_txtPort.SetInt(m_proto->JGetWord(NULL, "ManualPort", m_txtPort.GetInt()));
-			} else
-			{
+				m_txtPort.SetInt(m_proto->getWord("ManualPort", m_txtPort.GetInt()));
+			}
+			else {
 				int defPort = m_txtPort.GetInt();
-				int port = m_proto->JGetWord(NULL, "Port", defPort);
+				int port = m_proto->getWord("Port", defPort);
 
-				if (port != defPort)
-				{
+				if (port != defPort) {
 					m_chkManualHost.SetState(BST_CHECKED);
 					m_txtManualHost.Enable();
 					m_txtPort.Enable();
 
 					m_txtManualHost.SetTextA(server);
 					m_txtPort.SetInt(port);
-				} else
-				{
+				}
+				else {
 					m_chkManualHost.SetState(BST_UNCHECKED);
 					m_txtManualHost.Disable();
 					m_txtPort.Disable();
@@ -1831,50 +1788,45 @@ protected:
 		BOOL bUseHostnameAsResource = FALSE;
 		TCHAR szCompName[MAX_COMPUTERNAME_LENGTH + 1], szResource[MAX_COMPUTERNAME_LENGTH + 1];
 		DWORD dwCompNameLength = MAX_COMPUTERNAME_LENGTH;
-		if (GetComputerName(szCompName, &dwCompNameLength))
-		{
+		if (GetComputerName(szCompName, &dwCompNameLength)) {
 			m_cbResource.GetText(szResource, SIZEOF(szResource));
 			if ( !lstrcmp(szCompName, szResource))
 				bUseHostnameAsResource = TRUE;
 		}
 		m_proto->m_options.HostNameAsResource = bUseHostnameAsResource;
 
-		if (m_chkSavePassword.GetState() == BST_CHECKED)
-		{
+		if (m_chkSavePassword.GetState() == BST_CHECKED) {
 			TCHAR *text = m_txtPassword.GetText();
 			m_proto->JSetStringCrypt(NULL, "LoginPassword", text);
 			mir_free(text);
-		} else
-		{
-			m_proto->JDeleteSetting(NULL, "LoginPassword");
 		}
+		else m_proto->delSetting("LoginPassword");
 
-		switch (m_cbType.GetItemData(m_cbType.GetCurSel()))
-		{
-		case ACC_FBOOK:
+		switch (m_cbType.GetItemData(m_cbType.GetCurSel())) {
+		case ACC_OK:
 			m_proto->m_options.IgnoreRosterGroups = TRUE;
 
-		case ACC_VK:
 		case ACC_PUBLIC:
 			m_proto->m_options.UseSSL = m_proto->m_options.UseTLS = FALSE;
 			break;
 
 		case ACC_GTALK:
-			m_proto->JSetWord(NULL, "Priority", 24);
+			m_proto->setWord("Priority", 24);
 			{
 				int port = m_txtPort.GetInt();
-				if (port == 443 || port == 5223)
-				{
+				if (port == 443 || port == 5223) {
 					m_proto->m_options.UseSSL = TRUE;
 					m_proto->m_options.UseTLS = FALSE;
 				}
-				else if (port == 5222)
-				{
+				else if (port == 5222) {
 					m_proto->m_options.UseSSL = FALSE;
 					m_proto->m_options.UseTLS = TRUE;
 				}
 			}
 			break;
+
+		case ACC_FBOOK:
+			m_proto->m_options.IgnoreRosterGroups = TRUE;
 
 		case ACC_TLS:
 		case ACC_LJTALK:
@@ -1895,24 +1847,22 @@ protected:
 		m_cbServer.GetTextA(server, SIZEOF(server));
 		m_txtManualHost.GetTextA(manualServer, SIZEOF(manualServer));
 
-		if ((m_chkManualHost.GetState() == BST_CHECKED) && lstrcmpA(server, manualServer))
-		{
+		if ((m_chkManualHost.GetState() == BST_CHECKED) && lstrcmpA(server, manualServer)) {
 			m_proto->m_options.ManualConnect = TRUE;
-			m_proto->JSetString(NULL, "ManualHost", manualServer);
-			m_proto->JSetWord(NULL, "ManualPort", m_txtPort.GetInt());
-			m_proto->JSetWord(NULL, "Port", m_txtPort.GetInt());
-		} else
-		{
+			m_proto->setString("ManualHost", manualServer);
+			m_proto->setWord("ManualPort", m_txtPort.GetInt());
+			m_proto->setWord("Port", m_txtPort.GetInt());
+		}
+		else {
 			m_proto->m_options.ManualConnect = FALSE;
-			m_proto->JDeleteSetting(NULL, "ManualHost");
-			m_proto->JDeleteSetting(NULL, "ManualPort");
-			m_proto->JSetWord(NULL, "Port", m_txtPort.GetInt());
+			m_proto->delSetting("ManualHost");
+			m_proto->delSetting("ManualPort");
+			m_proto->setWord("Port", m_txtPort.GetInt());
 		}
 
 		sttStoreJidFromUI(m_proto, m_txtUsername, m_cbServer);
 
-		if (m_proto->m_bJabberOnline)
-		{
+		if (m_proto->m_bJabberOnline) {
 			if (m_cbType.IsChanged() || m_txtPassword.IsChanged() || m_cbResource.IsChanged() ||
 				m_cbServer.IsChanged() || m_txtPort.IsChanged() || m_txtManualHost.IsChanged())
 			{
@@ -1952,11 +1902,15 @@ private:
 			return;
 
 		m_txtPassword.GetText(pass, SIZEOF(pass));
-		if (lstrcmp(buf, pass))
-		{
+		if (lstrcmp(buf, pass)) {
 			MessageBox(m_hwnd, TranslateT("Passwords do not match."), _T("Miranda NG"), MB_ICONSTOP|MB_OK);
 			return;
 		}
+
+		PSHNOTIFY pshn = {0};
+		pshn.hdr.code = PSN_APPLY;
+		pshn.hdr.hwndFrom = m_hwnd;
+		SendMessage(m_hwnd, WM_NOTIFY, 0, (LPARAM)&pshn);
 
 		ThreadData regInfo(m_proto, JABBER_SESSION_NORMAL);
 		m_txtUsername.GetText(regInfo.username, SIZEOF(regInfo.username));
@@ -2036,6 +1990,7 @@ private:
 	void setupLJ();
 	void setupFB();
 	void setupVK();
+	void setupOK();
 	void setupSMS();
 	void RefreshServers(HXML node);
 	static void QueryServerListThread(void *arg);
@@ -2073,7 +2028,7 @@ void CJabberDlgAccMgrUI::setupConnection(int type)
 		case ACC_GTALK: setupGoogle(); break;
 		case ACC_LJTALK: setupLJ(); break;
 		case ACC_FBOOK: setupFB(); break;
-		case ACC_VK: setupVK(); break;
+		case ACC_OK: setupOK(); break;
 		case ACC_SMS: setupSMS(); break;
 	}
 }
@@ -2196,6 +2151,24 @@ void CJabberDlgAccMgrUI::setupVK()
 	m_btnRegister.Disable();
 }
 
+void CJabberDlgAccMgrUI::setupOK()
+{
+	m_canregister = false;
+	m_gotservers = true;
+	m_cbServer.ResetContent();
+	m_cbServer.SetTextA("odnoklassniki.ru");
+	m_cbServer.AddStringA("odnoklassniki.ru");
+	m_chkManualHost.SetState(BST_CHECKED);
+	m_txtManualHost.SetTextA("xmpp.odnoklassniki.ru");
+	m_txtPort.SetInt(5222);
+
+	m_cbServer.Disable();
+	m_chkManualHost.Disable();
+	m_txtManualHost.Disable();
+	m_txtPort.Disable();
+	m_btnRegister.Disable();
+}
+
 void CJabberDlgAccMgrUI::setupSMS()
 {
 	m_canregister = false;
@@ -2226,7 +2199,7 @@ void CJabberDlgAccMgrUI::RefreshServers(HXML node)
 	m_cbServer.ResetContent();
 	if (node)
 	{
-		for (int i = 0; ; ++i) {
+		for (int i = 0; ; i++) {
 			HXML n = xmlGetChild(node, i);
 			if ( !n)
 				break;
@@ -2259,7 +2232,7 @@ void CJabberDlgAccMgrUI::QueryServerListThread(void *arg)
 	NETLIBHTTPREQUEST *result = (NETLIBHTTPREQUEST *)CallService(MS_NETLIB_HTTPTRANSACTION, (WPARAM)wnd->GetProto()->m_hNetlibUser, (LPARAM)&request);
 	if (result && IsWindow(hwnd)) {
 		if ((result->resultCode == 200) && result->dataLength && result->pData) {
-			TCHAR* ptszText = mir_a2t(result->pData);
+			TCHAR *ptszText = mir_a2t(result->pData);
 			XmlNode node(ptszText, NULL, NULL);
 			if (node) {
 				HXML queryNode = xmlGetChild(node, _T("query"));

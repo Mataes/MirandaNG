@@ -54,7 +54,7 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_BORDER
 FONT 8, "MS Shell Dlg"
 BEGIN
     LTEXT           "",IDC_STATIC,0,0,201,124
-    LTEXT           "  Show these events",IDC_TEXTO,1,0,91,13,SS_CENTERIMAGE
+    LTEXT           "Show these events",IDC_TEXTO,3,0,91,13,SS_CENTERIMAGE
     CONTROL         "Actions",IDC_1,"Button",BS_AUTO3STATE | WS_TABSTOP,3,13,114,10
     CONTROL         "Messages",IDC_2,"Button",BS_AUTO3STATE | WS_TABSTOP,3,23,114,10
     CONTROL         "Nick changes",IDC_3,"Button",BS_AUTO3STATE | WS_TABSTOP,3,33,114,10
@@ -99,7 +99,7 @@ FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     GROUPBOX        "Options",IDC_STATIC,3,0,300,229
     CONTROL         "",IDC_CHECKBOXES,"SysTreeView32",TVS_HASBUTTONS | TVS_DISABLEDRAGDROP | TVS_FULLROWSELECT | WS_BORDER | WS_HSCROLL | WS_TABSTOP,6,9,286,192
-    LTEXT           "Add new rooms to group:",IDC_STATIC_ADD,10,208,133,8
+    LTEXT           "Add new rooms to group:",IDC_STATIC_ADD,10,209,133,10
     EDITTEXT        IDC_GROUP,152,208,142,14,ES_AUTOHSCROLL
     LTEXT           "Chat integration is disabled. You can enable it here, and then you to NEED RESTART Miranda after making this change.\n\nYou MUST disable the standard chat plugin when you enable the group chat support here. Otherwise no group chat at all may work.",IDC_STATIC_MESSAGE,21,52,256,74
 END
@@ -290,16 +290,6 @@ BEGIN
 END
 #endif    // APSTUDIO_INVOKED
 
-#endif    // Neutral resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-// Swedish (Sweden) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_SVE)
-LANGUAGE LANG_SWEDISH, SUBLANG_SWEDISH
-#pragma code_page(1252)
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -359,7 +349,7 @@ BEGIN
     MENUITEM "",                            65535
     POPUP "Message"
     BEGIN
-        MENUITEM "Undo  ",                      ID_MESSAGE_UNDO, GRAYED
+        MENUITEM "Undo",                      ID_MESSAGE_UNDO, GRAYED
         MENUITEM "Redo",                        ID_MESSAGE_REDO, GRAYED
         MENUITEM SEPARATOR
         MENUITEM "Copy",                        ID_MESSAGE_COPY, GRAYED
@@ -378,7 +368,7 @@ BEGIN
     END
 END
 
-#endif    // Swedish (Sweden) resources
+#endif    // Neutral resources
 /////////////////////////////////////////////////////////////////////////////
 
 

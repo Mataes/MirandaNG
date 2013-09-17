@@ -12,28 +12,6 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Russian resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_RUS)
-#ifdef _WIN32
-LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
-#pragma code_page(1251)
-#endif //_WIN32
-
-#endif	// Russian resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
-#endif //_WIN32
-
-/////////////////////////////////////////////////////////////////////////////
 //
 // Icon
 //
@@ -218,6 +196,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 	IDI_VIRTUS				ICON	"multi-protocol\\Virtus.ico"
 	IDI_VBUZZER				ICON	"multi-protocol\\vBuzzer.ico"
 	IDI_WEECHAT				ICON	"multi-protocol\\WeeChat.ico"
+	IDI_WINDOWS_PHONE		ICON	"multi-protocol\\Windows Phone.ico"
 	IDI_WIPPIEN				ICON	"multi-protocol\\Wippien.ico"
 	IDI_YAMIGO				ICON	"multi-protocol\\Yamigo.ico"
 	IDI_YEIGO				ICON	"multi-protocol\\Yeigo.ico"
@@ -640,7 +619,9 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 	IDI_FACEBOOK			ICON	"others\\Facebook.ico"
 	IDI_SKYPE				ICON	"others\\Skype.ico"
 	IDI_TWITTER				ICON	"others\\Twitter.ico"
-	IDI_XFIRE				ICON	"others\\xfire.ico"
+	IDI_XFIRE				ICON	"others\\xFire.ico"
+	IDI_HANGOUTS			ICON	"others\\Google+ Hangouts.ico"
+	IDI_WHATSAPP			ICON	"others\\WhatsApp.ico"
 
 //##############################################################################################################
 //##################################### Miranda client overlays ################################################
@@ -687,24 +668,11 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 	IDI_PLATFORM_X32		ICON	"overlays\\overlay_platform_x32.ico"
 	IDI_PLATFORM_X64		ICON	"overlays\\overlay_platform_x64.ico"
 
-	IDI_SECUREIM_OVERLAY	ICON	"overlays\\overlay_SecureIM.ico"
+	IDI_SECUREIM_OVERLAY	ICON	"overlays\\overlay_security_SecureIM.ico"
+	IDI_NEWGPG_OVERLAY		ICON	"overlays\\overlay_security_NewGPG.ico"
+	IDI_MIROTR_OVERLAY		ICON	"overlays\\overlay_security_MirOTR.ico"
 
 	IDI_UNICODE_CLIENT		ICON	"overlays\\overlay_Unicode.ico"
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
-
-STRINGTABLE 
-BEGIN
-	IDS_IDENTIFY			"# Finger Icons #"
-END
-
-#endif	// English (U.S.) resources
-/////////////////////////////////////////////////////////////////////////////
-
-
 
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////

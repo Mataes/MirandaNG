@@ -19,18 +19,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/opttree.cpp $
-Revision       : $Revision: 1610 $
-Last change on : $Date: 2010-06-23 00:55:13 +0300 (Ср, 23 июн 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #include "headers.h"
+
+enum { IMG_GROUP, IMG_CHECK, IMG_NOCHECK, IMG_RCHECK, IMG_NORCHECK, IMG_GRPOPEN, IMG_GRPCLOSED };
 
 static void OptTree_TranslateItem(HWND hwndTree, HTREEITEM hItem)
 {
@@ -169,10 +162,8 @@ HTREEITEM OptTree_AddItem(HWND hwndTree, LPTSTR name, LPARAM lParam, int iconInd
 	return result;
 }
 
-BOOL  OptTree_ProcessMessage(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, int *result, int idcTree, OPTTREE_OPTION *options, int optionCount)
+BOOL OptTree_ProcessMessage(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, int *result, int idcTree, OPTTREE_OPTION *options, int optionCount)
 {
-	enum { IMG_GROUP, IMG_CHECK, IMG_NOCHECK, IMG_RCHECK, IMG_NORCHECK, IMG_GRPOPEN, IMG_GRPCLOSED };
-
 	HWND hwndTree = GetDlgItem(hwnd, idcTree);
 	switch (msg)
 	{
@@ -187,21 +178,10 @@ BOOL  OptTree_ProcessMessage(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, 
 
 			hImgLst = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), ILC_COLOR|ILC_COLOR32|ILC_MASK, 5, 1);
 			ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_POPUP), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR|LR_SHARED));
-			if (g_popup.MirVer >= PLUGIN_MAKE_VERSION(0,7,0,2))
-			{
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_TICK));
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_NOTICK));
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_TICK));
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_NOTICK));
-			} else
-			{
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_OPT_CHECK_ON), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR|LR_SHARED)); // check buttons
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_OPT_CHECK_OFF), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR|LR_SHARED)); // check buttons
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_OPT_CHECK_ON), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR|LR_SHARED)); // check buttons
-				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_OPT_CHECK_OFF), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR|LR_SHARED)); // check buttons
-//				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_OPT_RADIO_ON), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR|LR_SHARED)); // radio buttons
-//				ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_OPT_RADIO_OFF), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR|LR_SHARED)); // radio buttons
-			}
+			ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_TICK));
+			ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_NOTICK));
+			ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_TICK));
+			ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_NOTICK));
 			ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_GROUPOPEN));
 			ImageList_ReplaceIcon(hImgLst, -1, (HICON)LoadSkinnedIcon(SKINICON_OTHER_GROUPSHUT));
 			TreeView_SetImageList(hwndTree, hImgLst, TVSIL_NORMAL);
@@ -292,9 +272,9 @@ BOOL  OptTree_ProcessMessage(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, 
 					hti.pt.x=(short)LOWORD(GetMessagePos());
 					hti.pt.y=(short)HIWORD(GetMessagePos());
 					ScreenToClient(lpnmhdr->hwndFrom,&hti.pt);
-					if(TreeView_HitTest(lpnmhdr->hwndFrom,&hti))
+					if (TreeView_HitTest(lpnmhdr->hwndFrom,&hti))
 					{
-						if(hti.flags&TVHT_ONITEMICON)
+						if (hti.flags&TVHT_ONITEMICON)
 						{
 							TVITEM tvi;
 							tvi.mask=TVIF_HANDLE|TVIF_PARAM|TVIF_IMAGE|TVIF_SELECTEDIMAGE;
@@ -368,8 +348,6 @@ BOOL  OptTree_ProcessMessage(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, 
 
 DWORD OptTree_GetOptions(HWND hwnd, int idcTree, OPTTREE_OPTION *options, int optionCount, LPTSTR pszSettingName)
 {
-	enum { IMG_GROUP, IMG_CHECK, IMG_NOCHECK, IMG_RCHECK, IMG_NORCHECK, IMG_GRPOPEN, IMG_GRPCLOSED };
-
 	HWND hwndTree = GetDlgItem(hwnd, idcTree);
 	DWORD result = 0;
 	int i;
@@ -378,7 +356,7 @@ DWORD OptTree_GetOptions(HWND hwnd, int idcTree, OPTTREE_OPTION *options, int op
 		if ((!options[i].pszSettingName && !pszSettingName) ||
 			(options[i].pszSettingName && pszSettingName && !lstrcmp(options[i].pszSettingName, pszSettingName)))
 		{
-			TVITEM tvi;
+			TVITEM tvi = { 0 };
 			tvi.mask = TVIF_HANDLE|TVIF_IMAGE;
 			tvi.hItem = options[i].hItem;
 			TreeView_GetItem(hwndTree, &tvi);
@@ -391,11 +369,8 @@ DWORD OptTree_GetOptions(HWND hwnd, int idcTree, OPTTREE_OPTION *options, int op
 
 void OptTree_SetOptions(HWND hwnd, int idcTree, OPTTREE_OPTION *options, int optionCount, DWORD dwOptions, LPTSTR pszSettingName)
 {
-	enum { IMG_GROUP, IMG_CHECK, IMG_NOCHECK, IMG_RCHECK, IMG_NORCHECK, IMG_GRPOPEN, IMG_GRPCLOSED };
-
 	HWND hwndTree = GetDlgItem(hwnd, idcTree);
-	int i;
-	for (i = 0; i < optionCount; ++i)
+	for (int i = 0; i < optionCount; ++i)
 	{
 		if ((!options[i].pszSettingName && !pszSettingName) ||
 			(options[i].pszSettingName && pszSettingName && !lstrcmp(options[i].pszSettingName, pszSettingName)))
@@ -404,12 +379,10 @@ void OptTree_SetOptions(HWND hwnd, int idcTree, OPTTREE_OPTION *options, int opt
 			tvi.mask = TVIF_HANDLE|TVIF_IMAGE|TVIF_SELECTEDIMAGE;
 			tvi.hItem = options[i].hItem;
 			if (options[i].groupId == OPTTREE_CHECK)
-			{
 				tvi.iImage = tvi.iSelectedImage = (dwOptions & options[i].dwFlag) ? IMG_CHECK : IMG_NOCHECK;
-			} else
-			{
+			else
 				tvi.iImage = tvi.iSelectedImage = (dwOptions & options[i].dwFlag) ? IMG_RCHECK : IMG_NORCHECK;
-			}
+
 			TreeView_SetItem(hwndTree, &tvi);
 		}
 	}

@@ -23,41 +23,24 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define _CRT_SECURE_NO_WARNINGS
 
-#define MIRANDA_VER 0x0A00
-
 #define _WIN32_WINNT 0x0501
-#include "m_stdhdr.h"
-
-//windows headers
 
 #include <windows.h>
 #include <shlobj.h>
-#include <commctrl.h>
-
-#include <stdio.h>
-#include <string.h>
 #include <time.h>
-#include <stddef.h>
 #include <process.h>
-#include <io.h>
-#include <string.h>
-#include <direct.h>
-#include <crtdbg.h>
 #include <memory>
 
-//miranda headers
 #include <newpluginapi.h>
 #include <win2k.h>
-#include <m_system.h>
 #include <m_system_cpp.h>
 #include <m_database.h>
-#include <m_db_int.h>
+#include <m_genmenu.h>
 #include <m_langpack.h>
-#include <m_utils.h>
 #include <m_options.h>
+#include <m_skin.h>
 
-//non-official miranda-plugins sdk
-#include "m_folders.h"
+#include <m_folders.h>
 
 //own headers
 #include "dbintf_sa.h"
@@ -66,7 +49,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "version.h"
 
 extern HINSTANCE g_hInst;
-extern HANDLE hSetPwdMenu;
+extern HGENMENU hSetPwdMenu;
 
 #ifdef __GNUC__
 #define mir_i64(x) (x##LL)
@@ -81,17 +64,28 @@ void DecodeCopyMemory(void * dst, void * src, size_t size );
 void EncodeDBWrite(DWORD ofs, void * src, size_t size);
 void DecodeDBWrite(DWORD ofs, void * src, size_t size);
 
+struct DlgStdInProcParam
+{
+	CDbxMmapSA *p_Db;
+	const TCHAR *pStr;
+};
 INT_PTR CALLBACK DlgStdInProc(HWND hDlg, UINT uMsg,WPARAM wParam,LPARAM lParam);
-INT_PTR CALLBACK DlgStdNewPass(HWND hDlg, UINT uMsg,WPARAM wParam,LPARAM lParam);
+
+struct DlgChangePassParam
+{
+	CDbxMmapSA *p_Db;
+	char *pszNewPass;
+};
 INT_PTR CALLBACK DlgChangePass(HWND hDlg, UINT uMsg,WPARAM wParam,LPARAM lParam);
-void xModifyMenu(HANDLE hMenu,long flags,const TCHAR* name, HICON hIcon);
+
+INT_PTR CALLBACK DlgStdNewPass(HWND hDlg, UINT uMsg,WPARAM wParam,LPARAM lParam);
+INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+
+void xModifyMenu(HGENMENU hMenu,long flags,const TCHAR* name, HICON hIcon);
 
 extern DBSignature dbSignature, dbSignatureSecured, dbSignatureNonSecured;
 
-extern LIST<CDdxMmapSA> g_Dbs;
-
-int InitPreset();
-void UninitPreset();
+extern LIST<CDbxMmapSA> g_Dbs;
 
 typedef struct{
 	void* (__stdcall *GenerateKey)(char* pwd);

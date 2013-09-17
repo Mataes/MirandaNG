@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2006-2011 Boris Krasnovskiy.
 Copyright (c) 2003-2005 George Hazan.
 Copyright (c) 2002-2003 Richard Hughes (original version).
@@ -18,15 +20,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// this plugin is for Miranda 0.9 or later
-#define MIRANDA_VER 0x0A00
-
-#include <m_stdhdr.h>
-
 #include <windows.h>
 #include <commctrl.h>
 
 #include <ctype.h>
+#include <malloc.h>
 #include <process.h>
 #include <stdio.h>
 #include <time.h>
@@ -38,7 +36,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <newpluginapi.h>
 
-#include <m_clc.h>
 #include <m_clist.h>
 #include <m_clistint.h>
 #include <m_clui.h>
@@ -65,6 +62,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <m_avatars.h>
 #include <m_timezones.h>
 #include <m_extraicons.h>
+#include <m_nudge.h>
 
 #include "m_proto_listeningto.h"
 #include "m_folders.h"
@@ -135,7 +133,6 @@ const char MSN_USER_AGENT[] =           "Mozilla/4.0 (compatible; MSIE 8.0; Wind
 #define MSN_INVITE       "/InviteCommand"
 #define MSN_NETMEETING   "/NetMeeting"
 #define MSN_VIEW_PROFILE "/ViewProfile"
-#define MSN_SEND_NUDGE	 "/SendNudge"
 
 #define MS_GOTO_INBOX		"/GotoInbox"
 #define MS_EDIT_PROFILE		"/EditProfile"
@@ -164,7 +161,6 @@ void		stripBBCode(char* src);
 void		stripColorCode(char* src);
 void		parseWLID(char* wlid, char** net, char** email, char** inst);
 
-char*		MSN_Base64Decode(const char* str);
 char*		GetGlobalIp(void);
 
 template <class chartype> void UrlDecode(chartype* str);
@@ -173,15 +169,11 @@ void     	UrlEncode(const char* src, char* dest, size_t cbDest);
 
 void		__cdecl MSN_ConnectionProc(HANDLE hNewConnection, DWORD dwRemoteIP, void*);
 
-char*		MSN_GetAvatarHash(char* szContext);
-int			MSN_GetImageFormat(void* buf, const TCHAR** ext);
-int			MSN_GetImageFormat(const TCHAR* file);
+char*		MSN_GetAvatarHash(char* szContext, char** pszUrl = NULL);
 bool		MSN_MsgWndExist(HANDLE hContact);
 
 #define		MSN_SendNickname(a) MSN_SendNicknameUtf(UTF8(a))
 
-void		MSN_FreeVariant(DBVARIANT* dbv);
-char*       MSN_Translate(const char* str);
 unsigned    MSN_GenRandom(void);
 
 void        MSN_InitContactMenu(void);
@@ -602,6 +594,23 @@ struct MsgQueueEntry
 	int            flags;
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////
+//	Avatars' queue
+
+struct AvatarQueueEntry
+{
+	HANDLE  hContact;
+	char*   pszUrl;
+
+	__forceinline AvatarQueueEntry(HANDLE _contact, LPCSTR _url) :
+		hContact(_contact),
+		pszUrl( mir_strdup(_url))
+	{}
+
+	__forceinline ~AvatarQueueEntry()
+	{	mir_free(pszUrl);
+	}
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //	User lists

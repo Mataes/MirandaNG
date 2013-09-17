@@ -2,7 +2,7 @@
 
 Standard away message processing module for Myranda IM
 
-Copyright (C) 2012 George Hazan
+Copyright (C) 2012-13 George Hazan
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -57,8 +57,7 @@ extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = { MIID_SRAWAY
 extern "C" int __declspec(dllexport) Load(void)
 {
 	mir_getLP(&pluginInfo);
-
-	pcli = ( CLIST_INTERFACE* )CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)hInst);
+	mir_getCLI();
 
 	LoadAwayMsgModule();
 	return 0;

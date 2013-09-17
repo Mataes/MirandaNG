@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -37,13 +37,12 @@ struct {
 	int    toOutputDebugString;
 	int    toFile;
 	int    toLog;
-	TCHAR* szFile;
-	TCHAR* szUserFile;
+	TCHAR *szFile;
+	TCHAR *szUserFile;
 	int    timeFormat;
 	int    showUser;
 	int    dumpSent, dumpRecv, dumpProxy, dumpSsl;
 	int    textDumps, autoDetectText;
-	CRITICAL_SECTION cs;
 	int    save;
 } logOptions = {0};
 
@@ -55,13 +54,14 @@ typedef struct {
 static __int64 mirandaStartTime, perfCounterFreq;
 static int bIsActive = TRUE;
 static HANDLE hLogEvent = NULL;
+static HANDLE hLogger = NULL;
 
 static const TCHAR* szTimeFormats[] = 
 {
-	_T("No times"), 
-	_T("Standard hh:mm:ss times"), 
-	_T("Times in milliseconds"), 
-	_T("Times in microseconds")
+	LPGENT("No times"), 
+	LPGENT("Standard hh:mm:ss times"), 
+	LPGENT("Times in milliseconds"), 
+	LPGENT("Times in microseconds")
 };
 
 static INT_PTR CALLBACK LogOptionsDlgProc(HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -90,7 +90,7 @@ static INT_PTR CALLBACK LogOptionsDlgProc(HWND hwndDlg, UINT message, WPARAM wPa
 		CheckDlgButton(hwndDlg, IDC_SHOWTHISDLGATSTART, db_get_b(NULL, "Netlib", "ShowLogOptsAtStart", 0)?BST_CHECKED:BST_UNCHECKED);
 		{
 			DBVARIANT dbv;
-			if ( !DBGetContactSettingString(NULL, "Netlib", "RunAtStart", &dbv)) {
+			if ( !db_get_s(NULL, "Netlib", "RunAtStart", &dbv)) {
 				SetDlgItemTextA(hwndDlg, IDC_RUNATSTART, dbv.pszVal);
 				db_free(&dbv);
 			}
@@ -138,18 +138,15 @@ static INT_PTR CALLBACK LogOptionsDlgProc(HWND hwndDlg, UINT message, WPARAM wPa
 			break;
 */
 		case IDC_FILENAME:
-			if (HIWORD(wParam) != EN_CHANGE) break;
-			if ((HWND)lParam == GetFocus())
-				CheckDlgButton(hwndDlg, IDC_TOFILE, BST_CHECKED);
+			if (HIWORD(wParam) == EN_CHANGE) {
+				if ((HWND)lParam == GetFocus())
+					CheckDlgButton(hwndDlg, IDC_TOFILE, BST_CHECKED);
 
-			{
 				TCHAR path[MAX_PATH];
 				GetWindowText((HWND)lParam, path, MAX_PATH);
 
-				TCHAR *pszNewPath = Utils_ReplaceVarsT(path);
-				PathToAbsoluteT(pszNewPath, path, NULL);
+				PathToAbsoluteT( VARST(path), path);
 				SetDlgItemText(hwndDlg, IDC_PATH, path);
-				mir_free(pszNewPath);
 			}
 			break;
 		case IDC_FILENAMEBROWSE:
@@ -212,8 +209,6 @@ static INT_PTR CALLBACK LogOptionsDlgProc(HWND hwndDlg, UINT message, WPARAM wPa
 				GetDlgItemText(hwndDlg, IDC_RUNATSTART, str, MAX_PATH);
 				db_set_ts(NULL, "Netlib", "RunAtStart", str);
 				db_set_b(NULL, "Netlib", "ShowLogOptsAtStart", (BYTE)IsDlgButtonChecked(hwndDlg, IDC_SHOWTHISDLGATSTART));
-
-				mir_cslock lck(logOptions.cs);
 
 				mir_free(logOptions.szUserFile);
 				GetWindowText( GetDlgItem(hwndDlg, IDC_FILENAME), str, MAX_PATH);
@@ -312,8 +307,8 @@ static INT_PTR ShowOptions(WPARAM, LPARAM)
 
 static INT_PTR NetlibLog(WPARAM wParam, LPARAM lParam)
 {
-	struct NetlibUser *nlu = (struct NetlibUser*)wParam;
-	struct NetlibUser nludummy;
+	NetlibUser *nlu = (NetlibUser*)wParam;
+	NetlibUser nludummy;
 	const char *pszMsg = (const char*)lParam;
 	char szTime[32], szHead[128];
 	LARGE_INTEGER liTimeNow;
@@ -377,18 +372,8 @@ static INT_PTR NetlibLog(WPARAM wParam, LPARAM lParam)
 	}
 
 	if (logOptions.toFile && logOptions.szFile[0]) {
-		mir_cslock lck(logOptions.cs);
-
-		FILE *fp = _tfopen(logOptions.szFile, _T("ab"));
-		if ( !fp) {
-			CreatePathToFileT(logOptions.szFile);
-			fp = _tfopen(logOptions.szFile, _T("at"));
-		}
-		if (fp) {
-			size_t len = strlen(pszMsg);
-			fprintf(fp, "%s%s%s", szHead, pszMsg, pszMsg[len-1] == '\n' ? "" : "\r\n");
-			fclose(fp);
-		}
+		size_t len = strlen(pszMsg);
+		mir_writeLogA(hLogger, "%s%s%s", szHead, pszMsg, pszMsg[len-1] == '\n' ? "" : "\r\n");
 	}
 
 	LOGMSG logMsg = { szHead, pszMsg };
@@ -427,13 +412,13 @@ void NetlibLogf(NetlibUser* nlu, const char *fmt, ...)
 	NetlibLog((WPARAM)nlu, (LPARAM)szText);
 }
 
-void NetlibDumpData(struct NetlibConnection *nlc, PBYTE buf, int len, int sent, int flags)
+void NetlibDumpData(NetlibConnection *nlc, PBYTE buf, int len, int sent, int flags)
 {
 	int isText = 1;
 	char szTitleLine[128];
 	char *szBuf;
 	int titleLineLen;
-	struct NetlibUser *nlu;
+	NetlibUser *nlu;
 	bool useStack = false;
 
 	// This section checks a number of conditions and aborts
@@ -506,13 +491,13 @@ void NetlibDumpData(struct NetlibConnection *nlc, PBYTE buf, int len, int sent, 
 				PBYTE p = buf + line;
 				pszBuf += wsprintfA(
 					pszBuf, "%08X: %02X %02X %02X %02X-%02X %02X %02X %02X-%02X %02X %02X %02X-%02X %02X %02X %02X  ", 
-					line, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]);
+					line, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15]); //!!!!!!!!!!
 			}
 			else {
-				pszBuf += wsprintfA(pszBuf, "%08X: ", line);
+				pszBuf += wsprintfA(pszBuf, "%08X: ", line); //!!!!!!!!!!
 				// Dump data as hex
 				for (col = 0; col < colsInLine; col++)
-					pszBuf += wsprintfA(pszBuf, "%02X%c", buf[line + col], ((col&3) == 3 && col != 15)?'-':' ');
+					pszBuf += wsprintfA(pszBuf, "%02X%c", buf[line + col], ((col&3) == 3 && col != 15)?'-':' '); //!!!!!!!!!!
 				// Fill out last line with blanks
 				for (; col<16; col++) {
 					lstrcpyA(pszBuf, "   ");
@@ -553,7 +538,6 @@ void NetlibLogInit(void)
 	CreateServiceFunction(MS_NETLIB_LOGW, NetlibLogW);
 	hLogEvent = CreateHookableEvent(ME_NETLIB_FASTDUMP);
 
-	InitializeCriticalSection(&logOptions.cs);
 	logOptions.dumpRecv = db_get_b(NULL, "Netlib", "DumpRecv", 1);
 	logOptions.dumpSent = db_get_b(NULL, "Netlib", "DumpSent", 1);
 	logOptions.dumpProxy = db_get_b(NULL, "Netlib", "DumpProxy", 1);
@@ -566,15 +550,13 @@ void NetlibLogInit(void)
 	logOptions.toFile = db_get_b(NULL, "Netlib", "ToFile", 0);
 	logOptions.toLog = db_get_dw(NULL, "Netlib", "NLlog", 1);
 
-	if ( !DBGetContactSettingTString(NULL, "Netlib", "File", &dbv)) {
+	if ( !db_get_ts(NULL, "Netlib", "File", &dbv)) {
 		logOptions.szUserFile = mir_tstrdup(dbv.ptszVal);
-		TCHAR *pszNewPath = Utils_ReplaceVarsT(dbv.ptszVal);
 
 		TCHAR path[MAX_PATH];
-		PathToAbsoluteT(pszNewPath, path, NULL);
+		PathToAbsoluteT( VARST(dbv.ptszVal), path);
 		logOptions.szFile = mir_tstrdup(path);
 
-		mir_free(pszNewPath);
 		db_free(&dbv);
 	}
 	else {
@@ -582,17 +564,12 @@ void NetlibLogInit(void)
 		logOptions.szFile = Utils_ReplaceVarsT(logOptions.szUserFile);
 	}
 
-	if (logOptions.toFile && logOptions.szFile[0]) {
-		FILE *fp;
-		fp = _tfopen(logOptions.szFile, _T("wt"));
-		if (fp)
-			fclose(fp);
-	}
+	hLogger = mir_createLog("Netlib", LPGENT("Standard netlib log"), logOptions.szFile, 0);
 
 	if (db_get_b(NULL, "Netlib", "ShowLogOptsAtStart", 0))
 		NetlibLogShowOptions();
 
-	if ( !DBGetContactSettingTString(NULL, "Netlib", "RunAtStart", &dbv)) {
+	if ( !db_get_ts(NULL, "Netlib", "RunAtStart", &dbv)) {
 		STARTUPINFO si = { 0 };
 		PROCESS_INFORMATION pi;
 		si.cb = sizeof(si);
@@ -608,7 +585,6 @@ void NetlibLogShutdown(void)
 	DestroyHookableEvent(hLogEvent); hLogEvent = NULL;
 	if (IsWindow(logOptions.hwndOpts))
 		DestroyWindow(logOptions.hwndOpts);
-	DeleteCriticalSection(&logOptions.cs);
 	mir_free(logOptions.szFile);
 	mir_free(logOptions.szUserFile);
 }

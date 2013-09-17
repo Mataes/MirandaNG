@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -187,31 +187,42 @@ static INT_PTR CALLBACK WaitForProcessDlgProc(HWND hwnd, UINT msg, WPARAM wParam
 		break;
 
 	case WM_COMMAND:
-		if ( HIWORD(wParam) == IDCANCEL) {
+		if ( LOWORD(wParam) == IDCANCEL) {
 			SendDlgItemMessage(hwnd, IDC_PROGRESSBAR, PBM_SETPOS, MIRANDA_PROCESS_WAIT_STEPS, 0);
-			EndDialog(hwnd, 0);
+			EndDialog(hwnd, 1);
 		}
 		break;
 	}
 	return FALSE;
 }
 
-void CheckRestart()
+int CheckRestart()
 {
+	int result = 0;
 	LPCTSTR tszPID = CmdLine_GetOption( _T("restart"));
 	if (tszPID) {
 		HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, _ttol(tszPID));
 		if (hProcess) {
-			DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_WAITRESTART), NULL, WaitForProcessDlgProc, (LPARAM)hProcess);
+			result = DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_WAITRESTART), NULL, WaitForProcessDlgProc, (LPARAM)hProcess);
 			CloseHandle(hProcess);
 		}
 	}
+	return result;
+}
+
+static void crtErrorHandler(const wchar_t*, const wchar_t*, const wchar_t*, unsigned, uintptr_t)
+{
 }
 
 int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR cmdLine, int)
 {
 	hInst = hInstance;
 	hMainThreadId = GetCurrentThreadId();
+
+	_set_invalid_parameter_handler(&crtErrorHandler);
+	#ifdef _DEBUG
+		 _CrtSetReportMode(_CRT_ASSERT, 0);
+	#endif
 
 	CmdLine_Parse(cmdLine);
 	setlocale(LC_ALL, "");
@@ -292,6 +303,8 @@ int WINAPI _tWinMain(HINSTANCE hInstance, HINSTANCE, LPTSTR cmdLine, int)
 
 	int result = 0;
 	if ( LoadDefaultModules()) {
+		SetEvent(hMirandaShutdown);
+		NotifyEventHooks(hPreShutdownEvent, 0, 0);
 		NotifyEventHooks(hShutdownEvent, 0, 0);
 		UnloadDefaultModules();
 

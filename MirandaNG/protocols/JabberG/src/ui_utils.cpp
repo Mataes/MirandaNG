@@ -2,6 +2,7 @@
 
 Object UI extensions
 Copyright (C) 2008  Victor Pavlychko, George Hazan
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -260,7 +261,7 @@ void CDlgBase::AddControl(CCtrlBase *ctrl)
 
 void CDlgBase::NotifyControls(void (CCtrlBase::*fn)())
 {
-	for (int i = 0; i < m_controls.getCount(); ++i)
+	for (int i = 0; i < m_controls.getCount(); i++)
 		(m_controls[i]->*fn)();
 }
 
@@ -1463,7 +1464,7 @@ void CCtrlFilterListView::FilterHighlight(TCHAR *str)
 {
 	TCHAR buf[256];
 	int count = GetItemCount();
-	for (int i = 0; i < count; ++i)
+	for (int i = 0; i < count; i++)
 	{
 		bool found = false;
 
@@ -2229,7 +2230,7 @@ BOOL CCtrlPages::OnNotify(int /*idCtrl*/, NMHDR *pnmh)
 void CCtrlPages::OnDestroy()
 {
 	int count = TabCtrl_GetItemCount(m_hwnd);
-	for (int i = 0; i < count ; ++i)
+	for (int i = 0; i < count ; i++)
 	{
 		TCITEM tci = {0};
 		tci.mask = TCIF_PARAM;
@@ -2430,7 +2431,7 @@ void CDbLink::SaveInt(DWORD value)
 TCHAR* CDbLink::LoadText()
 {
 	if (dbv.type != DBVT_DELETED) db_free(&dbv);
-	if ( !DBGetContactSettingTString(NULL, m_szModule, m_szSetting, &dbv))
+	if ( !db_get_ts(NULL, m_szModule, m_szSetting, &dbv))
 	{
 		if (dbv.type == DBVT_TCHAR)
 			return dbv.ptszVal;

@@ -1,6 +1,6 @@
 /*
    Mobile State plugin for Miranda NG (www.miranda-ng.org)
-   (c) 2012 by Robert Pösel
+   (c) 2012-13 by Robert Pösel
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,8 +19,6 @@
 
 #pragma once
 
-#define MIRANDA_VER    0x0A00
-
 #include <windows.h>
 #include <malloc.h>
 
@@ -31,10 +29,10 @@
 #include <m_langpack.h>
 #include <m_icolib.h>
 #include <m_extraicons.h>
+#include <win2k.h>
 
 #include "resource.h"
 #include "Version.h"
+#include "clients.h"
 
 #define MODULENAME "MobileState"
-
-extern HINSTANCE g_hInst;

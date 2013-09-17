@@ -21,11 +21,7 @@
 #include "commonstatus.h"
 
 // handles for hooks and other Miranda thingies
-static HANDLE hShutdownHook;
-static HANDLE hCSSetStatusExService;
-static HANDLE hCSShowConfirmDlgExService;
 static HANDLE hCSStatusChangedExEvent;
-static HANDLE hCSGetProtoCountService;
 
 OBJLIST<PROTOCOLSETTINGEX>* protoList;
 
@@ -34,10 +30,8 @@ char *StatusModeToDbSetting(int status,const char *suffix);
 DWORD StatusModeToProtoFlag(int status);
 INT_PTR SetStatusEx(WPARAM wParam, LPARAM lParam);
 int InitCommonStatus();
-static int ModulesLoaded(WPARAM wParam, LPARAM lParam);
-static int CreateServices();
 int GetProtoCount();
-static int Exit(WPARAM wParam, LPARAM lParam);
+
 // extern
 extern INT_PTR ShowConfirmDialogEx(WPARAM wParam, LPARAM lParam);
 
@@ -126,7 +120,7 @@ TCHAR *GetDefaultStatusMessage(PROTOCOLSETTINGEX *ps, int newstatus)
 	}
 
 	if ( ServiceExists( MS_AWAYMSG_GETSTATUSMSGT )) {
-		TCHAR* tMsg = ( TCHAR* )CallService( MS_AWAYMSG_GETSTATUSMSGT, newstatus, (LPARAM)ps->szName );
+		TCHAR* tMsg = ( TCHAR* )CallService(MS_AWAYMSG_GETSTATUSMSGT, newstatus, (LPARAM)ps->szName );
 		log_debugA("CommonStatus: Status message retrieved from general awaysys (TCHAR)");
 		return tMsg;
 	}
@@ -179,7 +173,7 @@ static int equalsGlobalStatus(PROTOCOLSETTINGEX **ps) {
 		if (pstatus == 0)
 			pstatus = CallProtoService(protos[i]->szModuleName, PS_GETSTATUS, 0, 0);
 
-		if (DBGetContactSettingByte(NULL, protos[i]->szModuleName, "LockMainStatus", 0)) {
+		if ( db_get_b(NULL, protos[i]->szModuleName, "LockMainStatus", 0)) {
 			// if proto is locked, pstatus must be the current status
 			if (pstatus != CallProtoService(protos[i]->szModuleName, PS_GETSTATUS, 0, 0))
 				return 0;
@@ -248,7 +242,7 @@ INT_PTR SetStatusEx(WPARAM wParam, LPARAM lParam)
 		things get messy because SRAway hooks ME_CLIST_STATUSMODECHANGE, so the status messages of SRAway and
 		commonstatus will clash
 	*/
-	NotifyEventHooks( hCSStatusChangedExEvent, ( WPARAM )&protoSettings, 0 );
+	NotifyEventHooks(hCSStatusChangedExEvent, (WPARAM)&protoSettings, 0);
 
 	// set all status messages first
 	for (int i=0; i < protoList->getCount(); i++) {
@@ -337,35 +331,29 @@ int GetProtoCount()
 	return pCount;
 }
 
-int InitCommonStatus()
-{
-	if (!CreateServices())
-	  	hShutdownHook = HookEvent(ME_SYSTEM_OKTOEXIT, Exit);
-
-	return 0;
-}
-
 static int CreateServices()
 {
 	if (ServiceExists(MS_CS_SETSTATUSEX))
 		return -1;
 
-	hCSSetStatusExService = CreateServiceFunction(MS_CS_SETSTATUSEX, SetStatusEx);
-	hCSShowConfirmDlgExService = CreateServiceFunction(MS_CS_SHOWCONFIRMDLGEX, ShowConfirmDialogEx);
 	hCSStatusChangedExEvent = CreateHookableEvent(ME_CS_STATUSCHANGEEX);
-	hCSGetProtoCountService = CreateServiceFunction(MS_CS_GETPROTOCOUNT, GetProtocolCountService);
+
+	CreateServiceFunction(MS_CS_SETSTATUSEX, SetStatusEx);
+	CreateServiceFunction(MS_CS_SHOWCONFIRMDLGEX, ShowConfirmDialogEx);
+	CreateServiceFunction(MS_CS_GETPROTOCOUNT, GetProtocolCountService);
 	return 0;
 }
 
-static int Exit(WPARAM wParam, LPARAM lParam) {
+static int onShutdown(WPARAM wParam, LPARAM lParam)
+{
+	DestroyHookableEvent(hCSStatusChangedExEvent);
+	return 0;
+}
 
-	UnhookEvent(hShutdownHook);
-	if (hCSSetStatusExService != 0) {
-		DestroyHookableEvent(hCSStatusChangedExEvent);
-		DestroyServiceFunction(hCSSetStatusExService);
-		DestroyServiceFunction(hCSShowConfirmDlgExService);
-		DestroyServiceFunction(hCSGetProtoCountService);
-	}
+int InitCommonStatus()
+{
+	if (!CreateServices())
+	  	HookEvent(ME_SYSTEM_PRESHUTDOWN, onShutdown);
 
 	return 0;
 }

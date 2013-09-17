@@ -17,12 +17,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "general.h"
-#include "m_smileyadd.h"
-#include "m_folders.h"
 
-extern HANDLE hEvent1;
 HANDLE hNetlibUser;
-static HANDLE hFolder, hFolderHook;
+static HANDLE hFolder;
 
 struct QueueElem
 {
@@ -30,7 +27,7 @@ struct QueueElem
 	bkstring fname;
 	bool needext;
 
-	QueueElem(bkstring& purl, bkstring& pfname, bool ne) 
+	QueueElem(bkstring& purl, bkstring& pfname, bool ne)
 		: url(purl), fname(pfname), needext(ne) {}
 };
 
@@ -40,7 +37,7 @@ static OBJLIST<QueueElem> dlQueue(10);
 static TCHAR cachepath[MAX_PATH];
 static bool threadRunning;
 
-bool InternetDownloadFile(const char *szUrl, char* szDest, HANDLE &hHttpDwnl) 
+bool InternetDownloadFile(const char *szUrl, char* szDest, HANDLE &hHttpDwnl)
 {
 	int result = 0xBADBAD;
 	char* szRedirUrl  = NULL;
@@ -67,19 +64,19 @@ bool InternetDownloadFile(const char *szUrl, char* szDest, HANDLE &hHttpDwnl)
 		NETLIBHTTPREQUEST *nlhrReply = (NETLIBHTTPREQUEST*)CallService(MS_NETLIB_HTTPTRANSACTION,
 			(WPARAM)hNetlibUser,(LPARAM)&nlhr);
 
-		if (nlhrReply) 
+		if (nlhrReply)
 		{
 			hHttpDwnl = nlhrReply->nlc;
 			// if the recieved code is 200 OK
-			if(nlhrReply->resultCode == 200) 
+			if(nlhrReply->resultCode == 200)
 			{
 				char* delim = strrchr(szDest, '\\');
 				if (delim) *delim = '\0';
-				CallService(MS_UTILS_CREATEDIRTREE, 0, (LPARAM)szDest);
+				CreateDirectoryTree(szDest);
 				if (delim) *delim = '\\';
 				int res = -1;
 				int fh = _open(szDest, _O_BINARY | _O_WRONLY | _O_CREAT, _S_IREAD | _S_IWRITE);
-				if (fh != -1) 
+				if (fh != -1)
 				{
 					res = _write(fh, nlhrReply->pData, nlhrReply->dataLength);
 					_close(fh);
@@ -95,9 +92,9 @@ bool InternetDownloadFile(const char *szUrl, char* szDest, HANDLE &hHttpDwnl)
 			{
 				// get the url for the new location and save it to szInfo
 				// look for the reply header "Location"
-				for (int i=0; i<nlhrReply->headersCount; i++) 
+				for (int i=0; i<nlhrReply->headersCount; i++)
 				{
-					if (!strcmp(nlhrReply->headers[i].szName, "Location")) 
+					if (!strcmp(nlhrReply->headers[i].szName, "Location"))
 					{
 						size_t rlen = 0;
 						if (nlhrReply->headers[i].szValue[0] == '/')
@@ -106,24 +103,24 @@ bool InternetDownloadFile(const char *szUrl, char* szDest, HANDLE &hHttpDwnl)
 							const char* szPref = strstr(szUrl, "://");
 							szPref = szPref ? szPref + 3 : szUrl;
 							szPath = strchr(szPref, '/');
-							rlen = szPath != NULL ? szPath - szUrl : strlen(szUrl); 
+							rlen = szPath != NULL ? szPath - szUrl : strlen(szUrl);
 						}
 
-						szRedirUrl = (char*)mir_realloc(szRedirUrl, 
+						szRedirUrl = (char*)mir_realloc(szRedirUrl,
 							rlen + strlen(nlhrReply->headers[i].szValue)*3 + 1);
 
 						strncpy(szRedirUrl, szUrl, rlen);
-						strcpy(szRedirUrl+rlen, nlhrReply->headers[i].szValue); 
+						strcpy(szRedirUrl+rlen, nlhrReply->headers[i].szValue);
 
 						nlhr.szUrl = szRedirUrl;
 						break;
 					}
 				}
 			}
-			else 
+			else
 				result = 1;
 		}
-		else 
+		else
 		{
 			hHttpDwnl = NULL;
 			result = 1;
@@ -137,17 +134,14 @@ bool InternetDownloadFile(const char *szUrl, char* szDest, HANDLE &hHttpDwnl)
 	return result == 0;
 }
 
-
 void __cdecl SmileyDownloadThread(void*)
 {
 	bool needext = false;
 	HANDLE hHttpDwnl = NULL;
 	WaitForSingleObject(g_hDlMutex, 3000);
-	while (!Miranda_Terminated() && dlQueue.getCount())
-	{
+	while (!Miranda_Terminated() && dlQueue.getCount()) {
 		ReleaseMutex(g_hDlMutex);
-		if (_taccess(dlQueue[0].fname.c_str(), 0) != 0)
-		{
+		if (_taccess(dlQueue[0].fname.c_str(), 0) != 0) {
 			InternetDownloadFile(T2A_SM(dlQueue[0].url.c_str()), T2A_SM(dlQueue[0].fname.c_str()), hHttpDwnl);
 			WaitForSingleObject(g_hDlMutex, 3000);
 
@@ -155,8 +149,7 @@ void __cdecl SmileyDownloadThread(void*)
 			if (dlQueue[0].needext) { fname += GetImageExt(fname); needext = true; }
 			_trename(dlQueue[0].fname.c_str(), fname.c_str());
 		}
-		else
-			WaitForSingleObject(g_hDlMutex, 3000);
+		else WaitForSingleObject(g_hDlMutex, 3000);
 
 		dlQueue.remove(0);
 	}
@@ -173,7 +166,6 @@ void __cdecl SmileyDownloadThread(void*)
 			NotifyEventHooks(hEvent1, 0, 0);
 	}
 }
-
 
 bool GetSmileyFile(bkstring& url, const bkstring& packstr)
 {
@@ -195,7 +187,7 @@ bool GetSmileyFile(bkstring& url, const bkstring& packstr)
 
 	_tfinddata_t c_file;
 	INT_PTR hFile = _tfindfirst((TCHAR*)filename.c_str(), &c_file);
-	if (hFile > -1) 
+	if (hFile > -1)
 	{
 		_findclose(hFile);
 		filename.erase(pathpos);
@@ -227,11 +219,10 @@ int FolderChanged(WPARAM, LPARAM)
 
 void GetSmileyCacheFolder(void)
 {
-	if (ServiceExists(MS_FOLDERS_REGISTER_PATH))
-	{
-		hFolder = FoldersRegisterCustomPathT("SmileyAdd", "Smiley Cache", MIRANDA_USERDATAT);
+	hFolder = FoldersRegisterCustomPathT(LPGEN("SmileyAdd"), LPGEN("Smiley Cache"), MIRANDA_USERDATAT);
+	if (hFolder) {
 		FoldersGetCustomPathT(hFolder, cachepath, MAX_PATH, _T(""));
-		hFolderHook = HookEvent(ME_FOLDERS_PATH_CHANGED, FolderChanged);
+		HookEvent(ME_FOLDERS_PATH_CHANGED, FolderChanged);
 	}
 	else
 	{
@@ -241,7 +232,7 @@ void GetSmileyCacheFolder(void)
 	}
 }
 
-void DownloadInit(void) 
+void DownloadInit(void)
 {
 	NETLIBUSER nlu = {0};
 	nlu.cbSize = sizeof(nlu);
@@ -254,9 +245,8 @@ void DownloadInit(void)
 	g_hDlMutex = CreateMutex(NULL, FALSE, NULL);
 }
 
-void DownloadClose(void) 
+void DownloadClose(void)
 {
-	UnhookEvent(hFolderHook);
 	CloseHandle(g_hDlMutex);
 	Netlib_CloseHandle(hNetlibUser);
 }

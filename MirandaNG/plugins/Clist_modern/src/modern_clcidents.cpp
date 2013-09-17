@@ -21,7 +21,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "hdr/modern_commonheaders.h"
-#include "m_clc.h"
 #include "hdr/modern_clc.h"
 #include "hdr/modern_commonprototypes.h"
 
@@ -173,7 +172,7 @@ int FindItem(HWND hwnd,ClcData *dat,HANDLE hItem,ClcContact **contact,ClcGroup *
 					if (IsBadWritePtr(&group->cl.items[group->scanIndex]->subcontacts[i], sizeof(ClcContact)))
 					{
 						log1("FindIltem->IsBadWritePtr | 2o  [%08x]", &group->cl.items[group->scanIndex]->subcontacts[i]);
-						PostMessage(hwnd,CLM_AUTOREBUILD,0,0);
+						PostMessage(hwnd,CLM_AUTOREBUILD, 0, 0);
 						
 						return 0;
 					}
@@ -205,13 +204,13 @@ void ClearRowByIndexCache()
 {
 	if ( !CacheIndexClear) 
 	{
-		memset(CacheIndex,0,sizeof(CacheIndex));
+		memset(CacheIndex, 0, sizeof(CacheIndex));
 		CacheIndexClear = TRUE;
 	};
 }
 int cliGetRowByIndex(ClcData *dat,int testindex,ClcContact **contact,ClcGroup **subgroup)
 {
-	int index = 0,i;
+	int index = 0, i;
 	ClcGroup *group = &dat->list;
 
 	if (testindex < 0) return (-1);

@@ -1,5 +1,5 @@
 /*
-Splash Screen Plugin for Miranda-IM (www.miranda-im.org)
+Splash Screen Plugin for Miranda NG (www.miranda-ng.org)
 (c) 2004-2007 nullbie, (c) 2005-2007 Thief
 
 This program is free software; you can redistribute it and/or modify
@@ -15,12 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-File name      : $URL: http://svn.miranda.im/mainrepo/splashscreen/trunk/src/splash.cpp $
-Revision       : $Rev: 1585 $
-Last change on : $Date: 2010-04-09 13:13:29 +0400 (Пт, 09 апр 2010) $
-Last change by : $Author: ghazan $
-
 */
 
 #include "headers.h"
@@ -38,7 +32,6 @@ LRESULT CALLBACK SplashWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 				logMessage(_T("WM_LOADED"), _T("called"));
 			#endif
 
-			if (!MyUpdateLayeredWindow) ShowWindow(hwndSplash, SW_SHOWNORMAL);
 			if (!options.showtime) SetTimer(hwnd, 7, 2000, 0);
 
 			break;
@@ -97,29 +90,26 @@ LRESULT CALLBACK SplashWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 
 		case WM_CLOSE:
 		{
-			if (MyUpdateLayeredWindow) // Win 2000+
+			RECT rc; GetWindowRect(hwndSplash, &rc);
+			POINT ptDst = { rc.left, rc.top };
+			POINT ptSrc = { 0, 0 };
+			SIZE sz = { rc.right - rc.left, rc.bottom - rc.top };
+
+			BLENDFUNCTION blend;
+			blend.BlendOp =             AC_SRC_OVER;
+			blend.BlendFlags =          0;
+			blend.SourceConstantAlpha = 255;
+			blend.AlphaFormat =         AC_SRC_ALPHA;
+
+			// Fade Out
+			if (options.fadeout)
 			{
-				RECT rc; GetWindowRect(hwndSplash, &rc);
-				POINT ptDst = { rc.left, rc.top };
-				POINT ptSrc = { 0, 0 };
-				SIZE sz = { rc.right - rc.left, rc.bottom - rc.top };
-
-				BLENDFUNCTION blend;
-				blend.BlendOp =             AC_SRC_OVER;
-				blend.BlendFlags =          0;
-				blend.SourceConstantAlpha = 255;
-				blend.AlphaFormat =         AC_SRC_ALPHA;
-
-				// Fade Out
-				if (options.fadeout)
+				int i;
+				for (i = 255; i>=0; i -= options.fosteps)
 				{
-					int i;
-					for (i = 255; i>=0; i -= options.fosteps)
-					{
-						blend.SourceConstantAlpha = i;
-						MyUpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
-						Sleep(1);
-					}
+					blend.SourceConstantAlpha = i;
+					UpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
+					Sleep(1);
 				}
 			}
 			if (bserviceinvoked) bserviceinvoked = false;
@@ -144,24 +134,9 @@ LRESULT CALLBACK SplashWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 			break;
 		}
 
-		case WM_PAINT:
-		{
-			if (!MyUpdateLayeredWindow) // Win 9x
-			{
-				#ifdef _DEBUG
-					logMessage(_T("WM_PAINT"), _T("painting.."));
-				#endif
-				PAINTSTRUCT ps;
-				BeginPaint(hwndSplash, &ps);
-				BitBlt(ps.hdc, 0, 0, SplashBmp->getWidth(), SplashBmp->getHeight(), tmpBmp->getDC(), 0, 0, SRCCOPY);
-				EndPaint(hwndSplash, &ps);
-			}
-			break;
-		}
-
-	ShowWindow(hwndSplash, SW_HIDE);
-	DestroyWindow(hwndSplash);
-	break;
+		ShowWindow(hwndSplash, SW_HIDE);
+		DestroyWindow(hwndSplash);
+		break;
 	}
 
 	return DefWindowProc(hwnd, message, wParam, lParam);
@@ -169,14 +144,25 @@ LRESULT CALLBACK SplashWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 
 int SplashThread(void *arg)
 {
-	// Old code, doesn't support mp3 files
-	//if (options.playsnd) PlaySound(szSoundFile, NULL, SND_ASYNC | SND_FILENAME | SND_NOWAIT);
+    IGraphBuilder *pGraph = NULL;
+    IMediaControl *pControl = NULL;
+
 	if (options.playsnd)
 	{
-		TCHAR cmd[MAX_PATH];
-		mir_sntprintf(cmd, SIZEOF(cmd), _T("open \"%s\" type mpegvideo alias song1"), szSoundFile);
-		mciSendString(cmd, NULL, 0, 0);
-		mciSendString(_T("play song1"), NULL, 0, 0);
+		// Initialize the COM library.
+		CoInitialize(NULL);
+
+		// Create the filter graph manager and query for interfaces.
+		CoCreateInstance(CLSID_FilterGraph, NULL, CLSCTX_INPROC_SERVER, IID_IGraphBuilder, (void **)&pGraph);
+
+		// Get MediaControl Interface
+		pGraph->QueryInterface(IID_IMediaControl, (void **)&pControl);
+
+		// Build the graph. IMPORTANT: Change this string to a file on your system.
+		pGraph->RenderFile(szSoundFile, NULL);
+
+		// Run the graph.
+		pControl->Run();
 	}
 
 	WNDCLASSEX wcl;
@@ -293,57 +279,24 @@ int SplashThread(void *arg)
 			//free (ptr_verString);
 	}
 
-	if (MyUpdateLayeredWindow) // Win 2000+
+	SetWindowLongPtr(hwndSplash, GWL_EXSTYLE, GetWindowLongPtr(hwndSplash, GWL_EXSTYLE) | WS_EX_LAYERED);
+	UpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
+
+	ShowWindow(hwndSplash, SW_SHOWNORMAL);
+
+	if (options.fadein)
 	{
-		SetWindowLongPtr(hwndSplash, GWL_EXSTYLE, GetWindowLongPtr(hwndSplash, GWL_EXSTYLE) | WS_EX_LAYERED);
-		/*
-		if (splashWithMarkers)
+		// Fade in
+		int i;
+		for (i = 0; i < 255; i += options.fisteps)
 		{
-		++ptSrc.x;
-		++ptSrc.y;
+			blend.SourceConstantAlpha = i;
+			UpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
+			Sleep(1);
 		}
-		*/
-		MyUpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
-
-		ShowWindow(hwndSplash, SW_SHOWNORMAL);
 	}
-	else // Win 9x
-	{
-		tmpBmp = new MyBitmap(SplashBmp->getWidth(),SplashBmp->getHeight());
-		HDC dtDC = GetDC(GetDesktopWindow());
-
-		BitBlt(tmpBmp->getDC(),
-			0,
-			0,
-			SplashBmp->getWidth(),
-			SplashBmp->getHeight(),
-			dtDC,
-			(DesktopRect.left + DesktopRect.right - SplashBmp->getWidth()) / 2,
-			(DesktopRect.top + DesktopRect.bottom - SplashBmp->getHeight()) / 2,
-			SRCCOPY);
-
-		ReleaseDC(GetDesktopWindow(), dtDC);
-
-		tmpBmp->Blend(SplashBmp, (splashWithMarkers?-1:0), (splashWithMarkers?-1:0), SplashBmp->getWidth(), SplashBmp->getHeight());   
-
-	}
-
-	if (MyUpdateLayeredWindow) // Win 2000+
-	{
-		if (options.fadein)
-		{
-			// Fade in
-			int i;
-			for (i = 0; i < 255; i += options.fisteps)
-			{
-				blend.SourceConstantAlpha = i;
-				MyUpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
-				Sleep(1);
-			}
-		}
-		blend.SourceConstantAlpha = 255;
-		MyUpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
-	}
+	blend.SourceConstantAlpha = 255;
+	UpdateLayeredWindow(hwndSplash, NULL, &ptDst, &sz, SplashBmp->getDC(), &ptSrc, 0xffffffff, &blend, LWA_ALPHA);
 
 	if (DWORD(arg) > 0)
 	{
@@ -374,7 +327,11 @@ int SplashThread(void *arg)
 	}
 
 	if (options.playsnd)
-		mciSendString(_T("close song1"), NULL, 0, 0);
+	{
+		pControl->Release();
+		pGraph->Release();
+		CoUninitialize();
+	}
 
 	ExitThread(0);
 	return 1;

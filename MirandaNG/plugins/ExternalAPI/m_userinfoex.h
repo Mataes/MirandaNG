@@ -22,18 +22,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA	02111-1307, USA.
 #ifndef _M_USERINFOEX_H_
 #define _M_USERINFOEX_H_
 /*************************************************************
- * Interfaces Module
- */
-
-// {9C23A24B-E6AA-43c6-B0B8-D6C36D2F7B57}
-#define MIID_UIUSERINFOEX	{ 0x9c23a24b, 0xe6aa, 0x43c6, { 0xb0, 0xb8, 0xd6, 0xc3, 0x6d, 0x2f, 0x7b, 0x57 } }
-// {17DBD7C9-450E-4000-BFB4-908A7EF4CE72}
-#define MIID_CONTACTINFO	{ 0x17dbd7c9, 0x450e, 0x4000, { 0xbf, 0xb4, 0x90, 0x8a, 0x7e, 0xf4, 0xce, 0x72 } }
-// {02E890BD-278D-4890-918D-AB2CF5DC50BD}
-#define MIID_REMINDER		{ 0x2e890bd,  0x278d, 0x4890, { 0x91, 0x8d, 0xab, 0x2c, 0xf5, 0xdc, 0x50, 0xbd } }
-
-
-/*************************************************************
  * PropertySheetPage Module
  */
 
@@ -263,14 +251,14 @@ lParam = not used
 // button styles
 #define MBS_DEFBUTTON		0x00001000L			// default button
 #define MBS_PUSHBUTTON		0x00002000L			// toggle button
-#define MBS_FLAT			0x00004000L			// flat button
+#define MBS_FLAT           0x00004000L			// flat button
 #define MBS_DOWNARROW		0x00008000L			// has arrow on the right
 
-#define MBF_UNICODE			1
+#define MBBF_UNICODE			1
 #ifdef _UNICODE
- #define MBF_TCHAR			MBF_UNICODE
+ #define MBBF_TCHAR			MBBF_UNICODE
 #else
- #define MBF_TCHAR			0
+ #define MBBF_TCHAR			0
 #endif
 
 // BUTTONADDTOOLTIP
@@ -349,8 +337,7 @@ static FORCEINLINE INT_PTR
 		const char* pszProto,
 		const char* pszSetting,
 		DBVARIANT *dbv,
-		BYTE nType
-	)
+		BYTE nType)
 {
 	INT_PTR rc;
 	DBCONTACTGETSETTING cgs;
@@ -362,9 +349,8 @@ static FORCEINLINE INT_PTR
 
 	rc = CallService(MS_DB_CONTACT_GETSETTING_STR_EX, (WPARAM)hContact, (LPARAM)&cgs);
 	if (rc == CALLSERVICE_NOTFOUND)
-	{
-		rc = CallService(MS_DB_CONTACT_GETSETTING_STR, (WPARAM)hContact, (LPARAM)&cgs);
-	}
+		rc = db_get_s(hContact, pszProto, pszSetting, dbv, nType);
+
 	return rc;
 }
 

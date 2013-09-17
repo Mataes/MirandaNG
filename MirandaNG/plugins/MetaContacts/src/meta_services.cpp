@@ -84,7 +84,7 @@ INT_PTR Meta_GetCaps(WPARAM wParam,LPARAM lParam)
 		return PF2_ONLINE | PF2_INVISIBLE | PF2_SHORTAWAY | PF2_LONGAWAY | PF2_LIGHTDND | PF2_HEAVYDND | PF2_FREECHAT | PF2_OUTTOLUNCH | PF2_ONTHEPHONE;
 
 	case PFLAGNUM_4:
-		return PF4_SUPPORTTYPING | PF4_AVATARS;
+		return PF4_SUPPORTTYPING | PF4_AVATARS | PF4_IMSENDUTF;
 
 	case PFLAGNUM_5:
 		return PF2_INVISIBLE | PF2_SHORTAWAY | PF2_LONGAWAY | PF2_LIGHTDND | PF2_HEAVYDND | PF2_FREECHAT | PF2_OUTTOLUNCH | PF2_ONTHEPHONE;
@@ -253,8 +253,7 @@ INT_PTR MetaFilter_SendMessage(WPARAM wParam,LPARAM lParam)
 		if ( ccs->wParam & PREF_UNICODE )
 			dbei.cbBlob *= ( sizeof( wchar_t )+1 );
 		dbei.pBlob = (PBYTE)ccs->lParam;
-
-		CallService(MS_DB_EVENT_ADD, (WPARAM)hMeta, (LPARAM)&dbei);
+		db_event_add(hMeta, &dbei);
 	}
 
 	return CallService(MS_PROTO_CHAINSEND, wParam, lParam);
@@ -262,13 +261,8 @@ INT_PTR MetaFilter_SendMessage(WPARAM wParam,LPARAM lParam)
 
 INT_PTR Meta_SendNudge(WPARAM wParam,LPARAM lParam)
 {
-	HANDLE hMeta = (HANDLE)wParam, hSubContact = Meta_GetMostOnline(hMeta);
-
-	char servicefunction[ 100 ];
-	char *protoName = GetContactProto(hSubContact);
-	sprintf(servicefunction, "%s/SendNudge", protoName);
-
-	return CallService(servicefunction, (WPARAM)hSubContact, lParam);
+	HANDLE hSubContact = Meta_GetMostOnline((HANDLE)wParam);
+	return ProtoCallService(GetContactProto(hSubContact), PS_SEND_NUDGE, (WPARAM)hSubContact, lParam);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -295,7 +289,6 @@ INT_PTR Meta_SendMessage(WPARAM wParam,LPARAM lParam)
 		return CallService(MS_PROTO_CHAINSEND, wParam, lParam);
 	}
 
-	char szServiceName[100];
 	HANDLE most_online = Meta_GetMostOnline(ccs->hContact);
 
 	if ( !most_online) {
@@ -325,15 +318,6 @@ INT_PTR Meta_SendMessage(WPARAM wParam,LPARAM lParam)
 	Meta_SetNick(proto);	// (no matter what was there before)
 
 	// don't bypass filters etc
-	strncpy(szServiceName, PSS_MESSAGE, sizeof(szServiceName));
-
-	if (ccs->wParam & PREF_UNICODE) {
-		char szTemp[100];
-		_snprintf(szTemp, sizeof(szTemp), "%s%sW", proto, PSS_MESSAGE);
-		if (ServiceExists(szTemp))
-			strncpy(szServiceName, PSS_MESSAGE "W", sizeof(szServiceName));
-	}
-
 	if (options.subhistory && !(ccs->wParam & PREF_METANODB)) {
 		// add sent event to subcontact
 		DBEVENTINFO dbei = { sizeof(dbei) };
@@ -348,15 +332,14 @@ INT_PTR Meta_SendMessage(WPARAM wParam,LPARAM lParam)
 			if ( ccs->wParam & PREF_UNICODE )
 				dbei.cbBlob *= ( sizeof( wchar_t )+1 );
 			dbei.pBlob = (PBYTE)ccs->lParam;
-
-			CallService(MS_DB_EVENT_ADD, (WPARAM) ccs->hContact, (LPARAM)&dbei);
+			db_event_add(ccs->hContact, &dbei);
 		}
 	}
 
 	// prevent send filter from adding another copy of this send event to the db
 	ccs->wParam |= PREF_METANODB;
 
-	return CallContactService(ccs->hContact, szServiceName, ccs->wParam, ccs->lParam);
+	return CallContactService(ccs->hContact, PSS_MESSAGE, ccs->wParam, ccs->lParam);
 }
 
 /** Transmit a message received by a contact.
@@ -395,7 +378,7 @@ INT_PTR MetaFilter_RecvMessage(WPARAM wParam,LPARAM lParam)
 
 		// add a clist event, so that e.g. there is an icon flashing
 		// (only add it when message api available, 'cause then we can remove the event when the message window is opened)
-		if (message_window_api_enabled 
+		if (message_window_api_enabled
 			&& db_get_b(ccs->hContact, META_PROTO, "WindowOpen", 0) == 0
 			&& db_get_b(hMeta, META_PROTO, "WindowOpen", 0) == 0
 			&& options.flash_meta_message_icon)
@@ -421,13 +404,11 @@ INT_PTR MetaFilter_RecvMessage(WPARAM wParam,LPARAM lParam)
 				// use the subcontact's protocol 'recv' service to add the meta's history (AIMOSCAR removes HTML here!) if possible
 				char *proto = GetContactProto(ccs->hContact);
 				if (proto) {
-					char service[256];
 					HANDLE hSub = ccs->hContact;
 					DWORD flags = pre->flags;
-					mir_snprintf(service, 256, "%s%s", proto, PSR_MESSAGE);
 					ccs->hContact = hMeta;
 					pre->flags |= (db_get_b(hMeta, META_PROTO, "WindowOpen", 0) ? 0 : PREF_CREATEREAD);
-					if (ServiceExists(service) && !CallService(service, 0, (LPARAM)ccs))
+					if (ProtoServiceExists(proto, PSR_MESSAGE) && !ProtoCallService(proto, PSR_MESSAGE, 0, (LPARAM)ccs))
 						added = TRUE;
 					ccs->hContact = hSub;
 					pre->flags = flags;
@@ -449,8 +430,7 @@ INT_PTR MetaFilter_RecvMessage(WPARAM wParam,LPARAM lParam)
 					dbei.cbBlob *= ( sizeof( wchar_t )+1 );
 				}
 				dbei.pBlob = (PBYTE) pre->szMessage;
-
-				CallService(MS_DB_EVENT_ADD, (WPARAM) hMeta, (LPARAM)&dbei);
+				db_event_add(hMeta, &dbei);
 			}
 		}
 
@@ -480,22 +460,17 @@ INT_PTR Meta_RecvMessage(WPARAM wParam, LPARAM lParam)
 	CCSDATA *ccs = (CCSDATA*)lParam;
 	PROTORECVEVENT *pre = (PROTORECVEVENT *) ccs->lParam;
 
-	char *proto = GetContactProto(ccs->hContact);
-
 	// contact is not a meta proto contact - just leave it
+	char *proto = GetContactProto(ccs->hContact);
 	if ( !proto || strcmp(proto, META_PROTO))
 		return 0;
 
 	if (options.use_proto_recv) {
 		// use the subcontact's protocol to add the db if possible (AIMOSCAR removes HTML here!)
 		HANDLE most_online = Meta_GetMostOnline(ccs->hContact);
-		char *proto = GetContactProto(most_online);
-		if (proto) {
-			char service[256];
-			mir_snprintf(service, 256, "%s%s", proto, PSR_MESSAGE);
-			if (CallService(service, wParam, lParam) != CALLSERVICE_NOTFOUND)
+		if (char *subProto = GetContactProto(most_online))
+			if ( ProtoCallService(subProto, PSR_MESSAGE, wParam, lParam) != CALLSERVICE_NOTFOUND)
 				return 0;
-		}
 	}
 
 	// otherwise, add event to db directly
@@ -510,7 +485,7 @@ INT_PTR Meta_RecvMessage(WPARAM wParam, LPARAM lParam)
 	if ( pre->flags & PREF_UNICODE )
 		dbei.cbBlob *= ( sizeof( wchar_t )+1 );
 	dbei.pBlob = (PBYTE) pre->szMessage;
-	CallService(MS_DB_EVENT_ADD, (WPARAM) ccs->hContact, (LPARAM)&dbei);
+	db_event_add(ccs->hContact, &dbei);
 	return 0;
 }
 
@@ -596,7 +571,6 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 {
 	DBCONTACTWRITESETTING *dcws = (DBCONTACTWRITESETTING *)lParam;
 	char buffer[512], szId[40];
-	TCHAR buffer2[512];
 	int contact_number;
 	HANDLE hMeta, most_online;
 
@@ -614,24 +588,15 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 	{
 		// import process has just been run...call startup routines...
 		Meta_SetHandles();
-		{
-			HANDLE hContact = db_find_first();
-			while ( hContact != NULL ) {
-				int meta_id;
-				if ((meta_id = db_get_dw(hContact, META_PROTO, META_ID,(DWORD)-1)) != (DWORD)-1)
-					Meta_CopyData(hContact);
 
-				hContact = db_find_next(hContact);
-			}
+		for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+			int meta_id;
+			if ((meta_id = db_get_dw(hContact, META_PROTO, META_ID,(DWORD)-1)) != (DWORD)-1)
+				Meta_CopyData(hContact);
 		}
 
 		Meta_HideLinkedContacts();
 		Meta_SuppressStatus(options.suppress_status);
-	}
-
-	if (wParam == 0 && strcmp(dcws->szModule, "CListGroups") == 0 && dcws->value.type != DBVT_DELETED && strcmp(dcws->value.pszVal, META_HIDDEN_GROUP) == 0)
-	{
-		// someone is creating our hidden group!!
 	}
 
 	// from here on, we're just interested in contact settings
@@ -648,7 +613,7 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 			Meta_IsEnabled() && db_get_b((HANDLE)wParam, META_PROTO, "Hidden", 0) == 0 && !Miranda_Terminated()) {
 				if ((dcws->value.type == DBVT_ASCIIZ || dcws->value.type == DBVT_UTF8) && !Meta_IsHiddenGroup(dcws->value.pszVal)) {
 					// subcontact group reassigned - copy to saved group
-					MyDBWriteContactSetting((HANDLE)wParam, META_PROTO, "OldCListGroup", &dcws->value);
+					db_set((HANDLE)wParam, META_PROTO, "OldCListGroup", &dcws->value);
 					db_set_s((HANDLE)wParam, "CList", "Group", META_HIDDEN_GROUP);
 				} else if (dcws->value.type == DBVT_DELETED) {
 					db_unset((HANDLE)wParam, META_PROTO, "OldCListGroup");
@@ -677,7 +642,7 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 				db_set_utf(hMeta, META_PROTO, "ListeningTo", dcws->value.pszVal);
 				break;
 			case DBVT_WCHAR:
-				DBWriteContactSettingWString(hMeta, META_PROTO, "ListeningTo", dcws->value.pwszVal);
+				db_set_ws(hMeta, META_PROTO, "ListeningTo", dcws->value.pwszVal);
 				break;
 			case DBVT_DELETED:
 				db_unset(hMeta, META_PROTO, "ListeningTo");
@@ -685,18 +650,18 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 			}
 		}
 		else if ( !strcmp(dcws->szSetting, "Nick") && !dcws->value.type == DBVT_DELETED) {
-			DBVARIANT dbv;
 			HANDLE most_online;
 
 			// subcontact nick has changed - update metacontact
 			strcpy(buffer, "Nick");
 			strcat(buffer, _itoa(contact_number, szId, 10));
-			MyDBWriteContactSetting(hMeta, META_PROTO, buffer, &dcws->value);
+			db_set(hMeta, META_PROTO, buffer, &dcws->value);
 
+			DBVARIANT dbv;
 			if (Mydb_get((HANDLE)wParam, "CList", "MyHandle", &dbv)) {
 				strcpy(buffer, "CListName");
 				strcat(buffer, _itoa(contact_number, szId, 10));
-				MyDBWriteContactSetting(hMeta, META_PROTO, buffer, &dcws->value);
+				db_set(hMeta, META_PROTO, buffer, &dcws->value);
 			}
 			else db_free(&dbv);
 
@@ -722,13 +687,13 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 			HANDLE most_online;
 
 			if (dcws->value.type == DBVT_DELETED) {
-				DBVARIANT dbv;
-
 				char *proto = GetContactProto((HANDLE)wParam);
 				strcpy(buffer, "CListName");
 				strcat(buffer, _itoa(contact_number, szId, 10));
+
+				DBVARIANT dbv;
 				if (proto && !Mydb_get((HANDLE)wParam, proto, "Nick", &dbv)) {
-					MyDBWriteContactSetting(hMeta, META_PROTO, buffer, &dbv);
+					db_set(hMeta, META_PROTO, buffer, &dbv);
 					db_free(&dbv);
 				} else {
 					db_unset(hMeta, META_PROTO, buffer);
@@ -738,7 +703,7 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 				strcpy(buffer, "CListName");
 				strcat(buffer, _itoa(contact_number, szId, 10));
 
-				MyDBWriteContactSetting(hMeta, META_PROTO, buffer, &dcws->value);
+				db_set(hMeta, META_PROTO, buffer, &dcws->value);
 			}
 
 			// copy nick to metacontact, if it's the most online
@@ -757,8 +722,8 @@ int Meta_SettingChanged(WPARAM wParam, LPARAM lParam)
 
 			strcpy(buffer, "StatusString");
 			strcat(buffer, _itoa(contact_number, szId, 10));
-			Meta_GetStatusString(dcws->value.wVal, buffer2, 512);
-			db_set_ts(hMeta, META_PROTO, buffer, buffer2);
+			TCHAR *szStatus = (TCHAR*) CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)dcws->value.wVal, GSMDF_TCHAR);
+			db_set_ts(hMeta, META_PROTO, buffer, szStatus);
 
 			// if the contact was forced, unforce it (which updates status)
 			if ((HANDLE)db_get_dw(hMeta, META_PROTO, "ForceSend", 0) == (HANDLE)wParam) {
@@ -860,13 +825,9 @@ INT_PTR Meta_UserIsTyping(WPARAM wParam, LPARAM lParam)
 		return 0;
 
 	char *proto = GetContactProto(most_online);
-	if (proto) {
-		char buff[512];
-		strncpy(buff, proto, 512);
-		strncpy(buff + strlen(proto), PSS_USERISTYPING, 512 - strlen(proto));
-		if (ServiceExists(buff))
-			CallService(buff, (WPARAM)most_online, (LPARAM)lParam);
-	}
+	if (proto)
+		if ( ProtoServiceExists(proto, PSS_USERISTYPING))
+			ProtoCallService(proto, PSS_USERISTYPING, (WPARAM)most_online, (LPARAM)lParam);
 
 	return 0;
 }
@@ -1030,11 +991,10 @@ int Meta_ModulesLoaded(WPARAM wParam, LPARAM lParam)
 
 	////////////////////////////////////////////////////////////////////////////
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIM_ALL | CMIF_ICONFROMICOLIB;
 
 	// main menu item
 	mi.icolibItem = GetIconHandle(I_MENUOFF);
-	mi.pszName = "Toggle MetaContacts Off";
+	mi.pszName = LPGEN("Toggle MetaContacts Off");
 	mi.pszService = "MetaContacts/OnOff";
 	mi.position = 500010000;
 	hMenuOnOff = Menu_AddMainMenuItem(&mi);
@@ -1042,31 +1002,31 @@ int Meta_ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	// contact menu items
 	mi.icolibItem = GetIconHandle(I_CONVERT);
 	mi.position = -200010;
-	mi.pszName = "Convert to MetaContact";
+	mi.pszName = LPGEN("Convert to MetaContact");
 	mi.pszService = "MetaContacts/Convert";
 	hMenuConvert = Menu_AddContactMenuItem(&mi);
 
 	mi.icolibItem = GetIconHandle(I_ADD);
 	mi.position = -200009;
-	mi.pszName = "Add to existing MetaContact...";
+	mi.pszName = LPGEN("Add to existing MetaContact...");
 	mi.pszService = "MetaContacts/AddTo";
 	hMenuAdd = Menu_AddContactMenuItem(&mi);
 
 	mi.icolibItem = GetIconHandle(I_EDIT);
 	mi.position = -200010;
-	mi.pszName = "Edit MetaContact...";
+	mi.pszName = LPGEN("Edit MetaContact...");
 	mi.pszService = "MetaContacts/Edit";
 	hMenuEdit = Menu_AddContactMenuItem(&mi);
 
 	mi.icolibItem = GetIconHandle(I_SETDEFAULT);
 	mi.position = -200009;
-	mi.pszName = "Set as MetaContact default";
+	mi.pszName = LPGEN("Set as MetaContact default");
 	mi.pszService = "MetaContacts/Default";
 	hMenuDefault = Menu_AddContactMenuItem(&mi);
 
 	mi.icolibItem = GetIconHandle(I_REMOVE);
 	mi.position = -200008;
-	mi.pszName = "Delete MetaContact";
+	mi.pszName = LPGEN("Delete MetaContact");
 	mi.pszService = "MetaContacts/Delete";
 	hMenuDelete = Menu_AddContactMenuItem(&mi);
 
@@ -1074,7 +1034,6 @@ int Meta_ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	mi.pszContactOwner = META_PROTO;
 
 	mi.position = -99000;
-	mi.flags &= ~CMIF_ICONFROMICOLIB;
 	for (i = 0; i < MAX_CONTACTS; i++) {
 		mi.position--;
 		strcpy(buffer3, (char *)Translate("Context"));
@@ -1092,14 +1051,10 @@ int Meta_ModulesLoaded(WPARAM wParam, LPARAM lParam)
 
 	// loop and copy data from subcontacts
 	if (options.copydata) {
-		HANDLE hContact = db_find_first();
 		int meta_id;
-		while ( hContact != NULL ) {
+		for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
 			if ((meta_id = db_get_dw(hContact, META_PROTO, META_ID,(DWORD)-1))!=(DWORD)-1)
 				Meta_CopyData(hContact);
-
-			hContact = db_find_next(hContact);
-		}
 	}
 
 	Meta_HideLinkedContacts();
@@ -1108,8 +1063,8 @@ int Meta_ModulesLoaded(WPARAM wParam, LPARAM lParam)
 		// modify main menu item
 		mi.flags = CMIM_NAME | CMIM_ICON;
 		mi.icolibItem = GetIconHandle(I_MENU);
-		mi.pszName = "Toggle MetaContacts On";
-		CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuOnOff, (LPARAM)&mi);
+		mi.pszName = LPGEN("Toggle MetaContacts On");
+		Menu_ModifyItem(hMenuOnOff, &mi);
 
 		Meta_HideMetaContacts(TRUE);
 	}
@@ -1127,7 +1082,7 @@ int Meta_ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	for (int i = 0; i < numberOfProtocols ; i++)
 		if ( strcmp(ppProtocolDescriptors[i]->szModuleName, META_PROTO)) {
 			char str[MAXMODULELABELLENGTH + 10];
-			sprintf(str,"%s/Nudge",ppProtocolDescriptors[i]->szModuleName);
+			mir_snprintf(str, SIZEOF(str), "%s/Nudge", ppProtocolDescriptors[i]->szModuleName);
 			HookEvent(str, NudgeRecieved);
 		}
 
@@ -1220,21 +1175,8 @@ INT_PTR Meta_FileSend(WPARAM wParam, LPARAM lParam)
 		}
 
 		proto = GetContactProto(most_online);
-		//Meta_CopyContactNick(ccs->hContact, most_online, proto);
-
-		if (proto) {
-			//ccs->hContact = most_online;
-			//Meta_SetNick(proto);
-
-			// don't check for existence of service - 'accounts' based protos don't have them!
-			//_snprintf(szServiceName, sizeof(szServiceName), "%s%s", proto, PSS_FILE);
-			//if (ServiceExists(szServiceName)) {
-			//	PUShowMessage("sending to subcontact", SM_NOTIFY);
+		if (proto)
 			return (int)(CallContactService(most_online, PSS_FILE, ccs->wParam, ccs->lParam));
-			//} else
-			//	PUShowMessage("no service", SM_NOTIFY);
-		} //else
-		//PUShowMessage("no proto for subcontact", SM_NOTIFY);
 	}
 	return 0; // fail
 }
@@ -1275,7 +1217,6 @@ INT_PTR Meta_GetAwayMsg(WPARAM wParam, LPARAM lParam)
 
 INT_PTR Meta_GetAvatarInfo(WPARAM wParam, LPARAM lParam) {
 	PROTO_AVATAR_INFORMATIONT *AI = (PROTO_AVATAR_INFORMATIONT *) lParam;
-	char *proto = 0;
 	DWORD default_contact_number;
 
 	if ((default_contact_number = db_get_dw(AI->hContact, META_PROTO, "Default",(DWORD)-1)) == (DWORD)-1)
@@ -1286,79 +1227,60 @@ INT_PTR Meta_GetAvatarInfo(WPARAM wParam, LPARAM lParam) {
 	}
 	else
 	{
-		HANDLE hSub, hMeta;
-		char szServiceName[100];
-		int result;
-
-		hMeta = AI->hContact;
-		hSub = Meta_GetMostOnlineSupporting(AI->hContact, PFLAGNUM_4, PF4_AVATARS);
-
+		HANDLE hMeta = AI->hContact;
+		HANDLE hSub = Meta_GetMostOnlineSupporting(AI->hContact, PFLAGNUM_4, PF4_AVATARS);
 		if ( !hSub)
 			return GAIR_NOAVATAR;
 
-		proto = GetContactProto(hSub);
+		char *proto = GetContactProto(hSub);
 		if ( !proto) return GAIR_NOAVATAR;
 
 		AI->hContact = hSub;
 
-		mir_snprintf(szServiceName, sizeof(szServiceName), "%s%s", proto, PS_GETAVATARINFOT);
-		result = CallService(szServiceName, wParam, lParam);
+		INT_PTR result = ProtoCallService(proto, PS_GETAVATARINFOT, wParam, lParam);
 		AI->hContact = hMeta;
-		if (result != CALLSERVICE_NOTFOUND) return result;
+		if (result != CALLSERVICE_NOTFOUND)
+			return result;
 	}
 	return GAIR_NOAVATAR; // fail
 }
 
-INT_PTR Meta_GetInfo(WPARAM wParam, LPARAM lParam) {
+INT_PTR Meta_GetInfo(WPARAM wParam, LPARAM lParam)
+{
 	CCSDATA *ccs = (CCSDATA*)lParam;
-	char *proto = 0;
 	DWORD default_contact_number;
 
+	// This is a simple contact
+	// (this should normally not happen, since linked contacts do not appear on the list.)
 	if ((default_contact_number = db_get_dw(ccs->hContact, META_PROTO, "Default",(DWORD)-1)) == (DWORD)-1)
-	{
-		// This is a simple contact
-		// (this should normally not happen, since linked contacts do not appear on the list.)
 		return 0;
-	}
-	else
-	{
-		HANDLE most_online;
-		PROTO_AVATAR_INFORMATIONT AI;
-		char szServiceName[100];
 
-		most_online = Meta_GetMostOnlineSupporting(ccs->hContact, PFLAGNUM_4, PF4_AVATARS);
+	HANDLE most_online = Meta_GetMostOnlineSupporting(ccs->hContact, PFLAGNUM_4, PF4_AVATARS);
+	if ( !most_online)
+		return 0;
 
-		if ( !most_online)
-			return 0;
+	char *proto = GetContactProto(most_online);
+	if ( !proto) return 0;
 
-		proto = GetContactProto(most_online);
-		if ( !proto) return 0;
+	PROTO_AVATAR_INFORMATIONT AI;
+	AI.cbSize = sizeof(AI);
+	AI.hContact = ccs->hContact;
+	AI.format = PA_FORMAT_UNKNOWN;
+	_tcscpy(AI.filename, _T("X"));
+	if ((int)CallProtoService(META_PROTO, PS_GETAVATARINFOT, 0, (LPARAM)&AI) == GAIR_SUCCESS)
+		db_set_ts(ccs->hContact, "ContactPhoto", "File",AI.filename);
 
-		AI.cbSize = sizeof(AI);
-		AI.hContact = ccs->hContact;
-		AI.format = PA_FORMAT_UNKNOWN;
-		_tcscpy(AI.filename, _T("X"));
-		if ((int)CallProtoService(META_PROTO, PS_GETAVATARINFOT, 0, (LPARAM)&AI) == GAIR_SUCCESS)
-			db_set_ts(ccs->hContact, "ContactPhoto", "File",AI.filename);
+	most_online = Meta_GetMostOnline(ccs->hContact);
+	Meta_CopyContactNick(ccs->hContact, most_online);
 
-		most_online = Meta_GetMostOnline(ccs->hContact);
-		Meta_CopyContactNick(ccs->hContact, most_online);
+	if ( !most_online)
+		return 0;
 
-		if ( !most_online)
-			return 0;
+	ccs->hContact = most_online;
+	if ( !ProtoServiceExists(proto, PSS_GETINFO))
+		return 0; // fail
 
-		//Meta_CopyContactNick(ccs->hContact, most_online, proto);
-
-		ccs->hContact = most_online;
-		//Meta_SetNick(proto);
-
-		_snprintf(szServiceName, sizeof(szServiceName), "%s%s", proto, PSS_GETINFO);
-		if (ServiceExists(szServiceName)) {
-			strncpy(szServiceName, PSS_GETINFO, sizeof(szServiceName));
-			return (int)(CallContactService(ccs->hContact, szServiceName, ccs->wParam, ccs->lParam));
-		}
-	}
-	return 0; // fail
+	return CallContactService(ccs->hContact, PSS_GETINFO, ccs->wParam, ccs->lParam);
 }
 
 int Meta_OptInit(WPARAM wParam, LPARAM lParam)
@@ -1370,7 +1292,7 @@ int Meta_OptInit(WPARAM wParam, LPARAM lParam)
 
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPTIONS);
 	odp.pszTitle = LPGEN("MetaContacts");
-	odp.pszGroup = LPGEN("Contact List");
+	odp.pszGroup = LPGEN("Contacts");
 	odp.pszTab = LPGEN("General");
 	odp.pfnDlgProc = DlgProcOpts;
 	Options_AddPage(wParam, &odp);
@@ -1411,20 +1333,19 @@ INT_PTR Meta_OnOff(WPARAM wParam, LPARAM lParam)
 		db_set_b(0, META_PROTO, "Enabled", 0);
 		// modify main mi item
 		mi.icolibItem = GetIconHandle(I_MENU);
-		mi.pszName = "Toggle MetaContacts On";
+		mi.pszName = LPGEN("Toggle MetaContacts On");
 	} else {
 		db_set_b(0, META_PROTO, "Enabled", 1);
 		// modify main mi item
 		mi.icolibItem = GetIconHandle(I_MENUOFF);
-		mi.pszName = "Toggle MetaContacts Off";
+		mi.pszName = LPGEN("Toggle MetaContacts Off");
 	}
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuOnOff, (LPARAM)&mi);
+	Menu_ModifyItem(hMenuOnOff, &mi);
 	return 0;
 }
 
 
 int Meta_PreShutdown(WPARAM wParam, LPARAM lParam) {
-	//MessageBox(0, "Preshutdown called", "MC", MB_OK);
 	Meta_SetStatus((WPARAM)ID_STATUS_OFFLINE, 0);
 	Meta_UnhideLinkedContacts();
 	Meta_SuppressStatus(FALSE);
@@ -1433,11 +1354,6 @@ int Meta_PreShutdown(WPARAM wParam, LPARAM lParam) {
 
 	if (setStatusTimerId) KillTimer(0, setStatusTimerId);
 
-	return 0;
-}
-
-int Meta_OkToExit(WPARAM wParam, LPARAM lParam) {
-	Meta_SetStatus((WPARAM)ID_STATUS_OFFLINE, 0);
 	return 0;
 }
 
@@ -1477,7 +1393,6 @@ void Meta_InitServices()
 
 	CreateProtoServiceFunction(META_PROTO, PS_GETSTATUS, Meta_GetStatus);
 	CreateProtoServiceFunction(META_PROTO, PSS_MESSAGE, Meta_SendMessage);
-	CreateProtoServiceFunction(META_PROTO, PSS_MESSAGE"W", Meta_SendMessage); // unicode send (same send func as above line, checks for PREF_UNICODE)
 
 	CreateProtoServiceFunction(META_PROTO, PSS_USERISTYPING, Meta_UserIsTyping );
 
@@ -1494,7 +1409,6 @@ void Meta_InitServices()
 
 	CreateProtoServiceFunction(META_FILTER, PSR_MESSAGE, MetaFilter_RecvMessage);
 	CreateProtoServiceFunction(META_FILTER, PSS_MESSAGE, MetaFilter_SendMessage);
-	CreateProtoServiceFunction(META_FILTER, PSS_MESSAGE"W", MetaFilter_SendMessage);
 
 	// API services and events
 	CreateServiceFunction(MS_MC_GETMETACONTACT, MetaAPI_GetMeta);
@@ -1520,7 +1434,7 @@ void Meta_InitServices()
 	CreateServiceFunction("MetaContacts/OnOff", Meta_OnOff);
 	CreateServiceFunction("MetaContacts/CListMessageEvent", Meta_ClistMessageEventClicked);
 
-	CreateProtoServiceFunction(META_PROTO, "/SendNudge", Meta_SendNudge);
+	CreateProtoServiceFunction(META_PROTO, PS_SEND_NUDGE, Meta_SendNudge);
 
 	// create our hookable events
 	hEventDefaultChanged = CreateHookableEvent(ME_MC_DEFAULTTCHANGED);
@@ -1530,19 +1444,17 @@ void Meta_InitServices()
 
 	// hook other module events we need
 	HookEvent(ME_PROTO_ACK, Meta_HandleACK);
-	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, Meta_SettingChanged);
-	HookEvent(ME_SYSTEM_MODULESLOADED, Meta_ModulesLoaded);
 	HookEvent(ME_PROTO_CONTACTISTYPING, Meta_ContactIsTyping);
 	HookEvent(ME_DB_CONTACT_DELETED, Meta_ContactDeleted);
-	HookEvent(ME_OPT_INITIALISE, Meta_OptInit );
-
+	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, Meta_SettingChanged);
+	HookEvent(ME_OPT_INITIALISE, Meta_OptInit);
+	HookEvent(ME_SYSTEM_MODULESLOADED, Meta_ModulesLoaded);
 	HookEvent(ME_SYSTEM_PRESHUTDOWN, Meta_PreShutdown);
-	HookEvent(ME_SYSTEM_OKTOEXIT, Meta_OkToExit);
 
 	// hook our own events, used to call Meta_GetMostOnline which sets nick for metacontact
-	HookEvent(ME_MC_DEFAULTTCHANGED, Meta_CallMostOnline );
-	HookEvent(ME_MC_FORCESEND, Meta_CallMostOnline );
-	HookEvent(ME_MC_UNFORCESEND, Meta_CallMostOnline );
+	HookEvent(ME_MC_DEFAULTTCHANGED, Meta_CallMostOnline);
+	HookEvent(ME_MC_FORCESEND, Meta_CallMostOnline);
+	HookEvent(ME_MC_UNFORCESEND, Meta_CallMostOnline);
 
 	// redirect nudge events
 	hEventNudge = CreateHookableEvent(META_PROTO "/Nudge");

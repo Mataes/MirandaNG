@@ -17,9 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "general.h"
-#include "anim.h"
-
-#include <process.h>
 
 Animate::Animate(SmileyType *sml, RECT& rect, HDC hdcMem, HBRUSH hbr, bool clip)
 	: m_sml(sml), m_img(NULL),
@@ -159,26 +156,26 @@ void AnimatedPack::Add(SmileyType *sml, RECT rect, bool clip)
 
 void AnimatedPack::Draw(HDC hdc)
 {
-	for (int i=0; i<m_AniList.getCount(); i++) 
+	for (int i=0; i < m_AniList.getCount(); i++) 
 		m_AniList[i].Draw(hdc);
 }
 
 
 void AnimatedPack::SetOffset(int off)
 {
-	for (int i=0; i<m_AniList.getCount(); i++) 
+	for (int i=0; i < m_AniList.getCount(); i++) 
 		m_AniList[i].SetOffset(off, m_wsize);
 }
 
 
 void AnimatedPack::SetSel(RECT& rect)
 {
-	for (int i=0; i<m_AniList.getCount(); i++) 
+	for (int i=0; i < m_AniList.getCount(); i++) 
 		m_AniList[i].SetSel(rect.left, rect.top);
 }
 
 void AnimatedPack::ProcessTimerTick(HWND hwnd)
 {
-	for (int i=0; i<m_AniList.getCount(); i++) 
+	for (int i=0; i < m_AniList.getCount(); i++) 
 		m_AniList[i].ProcessTimerTick(hwnd);
 }

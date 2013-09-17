@@ -3,6 +3,7 @@
 Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -54,7 +55,7 @@ int JabberHttpGatewayInit(HANDLE /*hConn*/, NETLIBOPENCONNECTION* /*nloc*/, NETL
 	unpackDWord(&buf, &dwSid2);
 	unpackDWord(&buf, &dwSid3);
 	unpackDWord(&buf, &dwSid4);
-	sprintf(szSid, "%08x%08x%08x%08x", dwSid1, dwSid2, dwSid3, dwSid4);
+	mir_snprintf(szSid, SIZEOF(szSid), "%08x%08x%08x%08x", dwSid1, dwSid2, dwSid3, dwSid4);
 	unpackWord(&buf, &wIpLen);
 	if (responseBytes < 30 + wIpLen || wIpLen == 0 || wIpLen > sizeof(szHttpServer) - 1)
 	{
@@ -69,8 +70,8 @@ int JabberHttpGatewayInit(HANDLE /*hConn*/, NETLIBOPENCONNECTION* /*nloc*/, NETL
 	nlhpi.szHttpGetUrl = szHttpGetUrl;
 	nlhpi.szHttpPostUrl = szHttpPostUrl;
 	nlhpi.firstPostSequence = 1;
-	sprintf(szHttpGetUrl, "http://%s/monitor?sid=%s", szHttpServer, szSid);
-	sprintf(szHttpPostUrl, "http://%s/data?sid=%s&seq=", szHttpServer, szSid);
+	mir_snprintf(szHttpGetUrl, SIZEOF(szHttpGetUrl), "http://%s/monitor?sid=%s", szHttpServer, szSid);
+	mir_snprintf(szHttpPostUrl, SIZEOF(szHttpPostUrl), "http://%s/data?sid=%s&seq=", szHttpServer, szSid);
 	return CallService(MS_NETLIB_SETHTTPPROXYINFO, (WPARAM)hConn, (LPARAM)&nlhpi);
 #endif
 	return 1;
@@ -98,18 +99,18 @@ int JabberHttpGatewayBegin(HANDLE /*hConn*/, NETLIBOPENCONNECTION* /*nloc*/)
 
 int JabberHttpGatewayWrapSend(HANDLE hConn, PBYTE buf, int len, int flags, MIRANDASERVICE pfnNetlibSend)
 {
-	TCHAR* strb = mir_utf8decodeW((char*)buf);
+	TCHAR *strb = mir_utf8decodeW((char*)buf);
 
 	TCHAR sid[25] = _T("");
 	unsigned __int64 rid = 0;
 
-	XmlNode hPayLoad(strb); 
+	XmlNode hPayLoad(strb);
 	XmlNode body(_T("body"));
 	HXML hBody = body << XATTRI64(_T("rid"), rid++) << XATTR(_T("sid"), sid) <<
 		XATTR(_T("xmlns"), _T("http://jabber.org/protocol/httpbind"));
 	xmlAddChild(hBody, hPayLoad);
 
-	TCHAR* str = xi.toString(hBody, NULL);
+	TCHAR *str = xi.toString(hBody, NULL);
 
 	mir_free(strb);
 	char* utfStr = mir_utf8encodeT(str);

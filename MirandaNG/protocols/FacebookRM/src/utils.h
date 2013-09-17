@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,35 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // miscellaneous
 #define UTILS_CONV_TIME_T               0x0040 // 1234567890
 
-template<typename T>
-void CreateProtoService(const char *module,const char *service,
-	int (__cdecl T::*serviceProc)(WPARAM,LPARAM),T *self)
-{
-	char temp[MAX_PATH*2];
-
-	mir_snprintf(temp,sizeof(temp),"%s%s",module,service);
-	CreateServiceFunctionObj(temp,( MIRANDASERVICEOBJ )*(void**)&serviceProc, self );
-}
-
-template<typename T>
-void HookProtoEvent(const char* evt, int (__cdecl T::*eventProc)(WPARAM,LPARAM), T *self)
-{
-	::HookEventObj(evt,(MIRANDAHOOKOBJ)*(void**)&eventProc,self);
-}
-
-template<typename T>
-HANDLE ForkThreadEx(void (__cdecl T::*thread)(void*),T *self,void *data = 0)
-{
-	return reinterpret_cast<HANDLE>( mir_forkthreadowner(
-		(pThreadFuncOwner)*(void**)&thread,self,data,0));
-}
-
-template<typename T>
-void ForkThread(void (__cdecl T::*thread)(void*),T *self,void *data = 0)
-{
-	CloseHandle(ForkThreadEx(thread,self,data));
-}
-
 namespace utils
 {
 	namespace url
@@ -70,14 +41,14 @@ namespace utils
 
 	namespace time
 	{
-		std::string unix_timestamp( );
-		std::string mili_timestamp( );
-		DWORD fix_timestamp( double );
+		std::string unix_timestamp();
+		std::string mili_timestamp();
+		DWORD fix_timestamp(unsigned __int64 mili_timestamp);
 	};
 
 	namespace number
 	{
-		int random( );
+		int random();
 	};
 
 	namespace text
@@ -85,22 +56,24 @@ namespace utils
 		void replace_first(std::string* data, std::string from, std::string to);
 		void replace_all(std::string* data, std::string from, std::string to);
 		unsigned int count_all(std::string* data, std::string term);
-		std::string special_expressions_decode( std::string data);
+		std::string special_expressions_decode(std::string data);
 		std::string edit_html(std::string data);
 		std::string remove_html(std::string data);
 		std::string slashu_to_utf8(std::string data);
-		std::string trim(std::string data);
+		std::string trim(std::string data, bool rtrim = false);
 		std::string source_get_value(std::string* data, unsigned int argument_count, ...);
-		std::string source_get_value2(std::string* data, const char *term, const char *endings);
+		std::string source_get_value2(std::string* data, const char *term, const char *endings, bool wholeString = false);
+		std::string source_get_form_data(std::string* data);
 		void explode(std::string str, std::string separator, std::vector<std::string>* results);
 		void append_ordinal(unsigned long value, std::string* data);
 	};
 
 	namespace conversion
 	{
-		DWORD to_timestamp( std::string data );
-		std::string to_string( void*, WORD type );		
-		
+		DWORD to_timestamp(std::string data);
+		struct tm *fbtime_to_timeinfo(unsigned __int64 timestamp);
+		std::string to_string(void*, WORD type);
+
 		template <class T>
 		bool from_string(T& t, const std::string& s, std::ios_base& (*f)(std::ios_base&)) {
 			std::istringstream iss(s);
@@ -111,14 +84,6 @@ namespace utils
 	namespace debug
 	{
 		int log(std::string file_name, std::string text);
-	};
-
-	namespace mem
-	{
-		void __fastcall detract(char** str );
-		void __fastcall detract(void** p);
-		void __fastcall detract(void* p);
-		void* __fastcall allocate(size_t size);
 	};
 };
 
@@ -144,7 +109,5 @@ private:
 	int timeout_;
 };
 
-int ext_to_format(const std::string &ext);
-
-void MB( const char* m );
-void MBI( int a );
+void MB(const char* m);
+void MBI(int a);

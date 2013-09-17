@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2005 Miranda ICQ/IM project, 
+Copyright 2000-2005 Miranda IM project, 
 all portions of this codebase are copyrighted to the people 
 listed in contributors.txt.
 
@@ -168,7 +168,7 @@ void contactDir_Contact_Add(contactDir * cd, HANDLE hContact, char * proto, char
 // only expected to be called at startup.
 void contactDir_Proto_Walk(contactDir * cd)
 {
-	HANDLE hContact;	
+	HANDLE hContact;
 	char buf[128];
 	DBCONTACTGETSETTING gsProto;
 	DBVARIANT dbvProto;
@@ -229,7 +229,6 @@ void InitContactDir(void)
 	//CreateServiceFunction(MS_PROTODIR_PROTOFROMCONTACT, contactDirGetProto);
 }
 
-
 void UninitContactDir(void)
 {
 	return;
@@ -244,5 +243,5 @@ void UninitContactDir(void)
 		}
 	}
 	contactDir_Deinit(&condir);
-#endif 
+#endif
 }

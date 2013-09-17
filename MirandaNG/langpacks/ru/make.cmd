@@ -1,1 +1,0 @@
-LangpackSuite.exe \q \o"My Strings.txt"

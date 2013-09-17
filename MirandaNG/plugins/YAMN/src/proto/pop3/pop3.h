@@ -1,9 +1,6 @@
 #ifndef __POP3_H
 #define __POP3_H
 
-#include "../../debug.h"
-#include "../netlib.h"				//NetLib client
-
 #define DOTLINE(s)	((((s)[-2]=='\r') || ((s)[-2]=='\n')) && ((s)[-1]=='.') && (((s)[0]=='\r') || ((s)[0]=='\n') || ((s)[0]=='\0')))	// be careful, it's different to ESR's pop3.c ;-)
 #define ENDLINE(s)	(((s)[0]=='\r') || ((s)[0]=='\n'))	//endline
 #define OKLINE(s)	(((s)[0]=='+') && (((s)[1]=='o') || ((s)[1]=='O')) && (((s)[2]=='k') || ((s)[2]=='K')))	// +OK
@@ -23,7 +20,7 @@ class CPop3Client
 {
 public:
 	CPop3Client(): NetClient(NULL), Stopped(FALSE) {}
-	~CPop3Client() {if (NetClient!=NULL) delete NetClient;}
+	~CPop3Client() {if (NetClient != NULL) delete NetClient;}
 
 	char* Connect(const char* servername,const int port=110,BOOL UseSSL=FALSE, BOOL NoTLS=FALSE);
 	char* RecvRest(char* prev,int mode,int size=65536);

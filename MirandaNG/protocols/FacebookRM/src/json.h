@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,12 +30,14 @@ class facebook_json_parser
 {
 public:
 	FacebookProto* proto;
-	int parse_buddy_list( void*, List::List< facebook_user >* );
-	int parse_friends( void*, std::map< std::string, facebook_user* >* );
-	int parse_notifications( void*, std::vector< facebook_notification* >* );
-	int parse_messages( void*, std::vector< facebook_message* >*, std::vector< facebook_notification* >* );
+	int parse_buddy_list(void*, List::List< facebook_user >*);
+	int parse_friends(void*, std::map< std::string, facebook_user* >*);
+	int parse_notifications(void*, std::vector< facebook_notification* >*);
+	int parse_messages(void*, std::vector< facebook_message* >*, std::vector< facebook_notification* >*);
+	int parse_unread_threads(void*, std::vector< std::string >*);
+	int parse_thread_messages(void*, std::vector< facebook_message* >*, bool unreadOnly, int limit);
 
-	facebook_json_parser( FacebookProto* proto )
+	facebook_json_parser(FacebookProto* proto)
 	{
 		this->proto = proto;
 	}

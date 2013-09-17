@@ -3,6 +3,7 @@
 Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -21,16 +22,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "jabber.h"
-#include <richedit.h>
 
-#include "jabber_list.h"
 #include "jabber_caps.h"
-
-#include "m_clistint.h"
 
 extern CRITICAL_SECTION mutex;
 
-extern int bSecureIM;
+extern int bSecureIM, bMirOTR, bNewGPG, bPlatform;
 
 void CJabberProto::SerialInit(void)
 {
@@ -71,31 +68,23 @@ void CJabberProto::Log(const char* fmt, ...)
 HANDLE CJabberProto::ChatRoomHContactFromJID(const TCHAR *jid)
 {
 	if (jid == NULL)
-		return (HANDLE)NULL;
-	
-	HANDLE hContactMatched = NULL;
-	HANDLE hContact = (HANDLE)db_find_first();
-	while (hContact != NULL) {
-		char *szProto = GetContactProto(hContact);
-		if (szProto != NULL && !strcmp(m_szModuleName, szProto)) {
-			DBVARIANT dbv;
-			int result = JGetStringT(hContact, "ChatRoomID", &dbv);
-			if (result)
-				result = JGetStringT(hContact, "jid", &dbv);	
+		return NULL;
 
-			if ( !result) {
-				int result;
-				result = lstrcmpi(jid, dbv.ptszVal);
-				db_free(&dbv);
-				if ( !result && JGetByte(hContact, "ChatRoom", 0) != 0) {
-					hContactMatched = hContact;
-					break;
-		}	}	}
+	for (HANDLE hContact = db_find_first(m_szModuleName); hContact; hContact = db_find_next(hContact, m_szModuleName)) {
+		DBVARIANT dbv;
+		int result = getTString(hContact, "ChatRoomID", &dbv);
+		if (result)
+			result = getTString(hContact, "jid", &dbv);
 
-		hContact = db_find_next(hContact);
-	}
+		if ( !result) {
+			int result;
+			result = lstrcmpi(jid, dbv.ptszVal);
+			db_free(&dbv);
+			if ( !result && isChatRoom(hContact))
+				return hContact;
+	}	}
 
-	return hContactMatched;
+	return NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -104,51 +93,39 @@ HANDLE CJabberProto::ChatRoomHContactFromJID(const TCHAR *jid)
 HANDLE CJabberProto::HContactFromJID(const TCHAR *jid , BOOL bStripResource)
 {
 	if (jid == NULL)
-		return (HANDLE)NULL;
+		return NULL;
 
-	JABBER_LIST_ITEM* item = ListGetItemPtr(LIST_CHATROOM, jid);
+	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_CHATROOM, jid);
 
-	HANDLE hContactMatched = NULL;
-	HANDLE hContact = (HANDLE)db_find_first();
-	while (hContact != NULL) {
-		char *szProto = GetContactProto(hContact);
-		if (szProto != NULL && !strcmp(m_szModuleName, szProto)) {
-			DBVARIANT dbv;
+	for (HANDLE hContact = db_find_first(m_szModuleName); hContact; hContact = db_find_next(hContact, m_szModuleName)) {
+		bool bIsChat = isChatRoom(hContact);
+
+		DBVARIANT dbv;
+		if ( !getTString(hContact, bIsChat ? "ChatRoomID" : "jid", &dbv)) {
 			int result;
-			//safer way to check UID (coz some contact have both setting from convert to chat)
-			if (db_get_b(hContact, szProto, "ChatRoom",0))
-				result = JGetStringT(hContact, "ChatRoomID", &dbv);
-			else
-				result = JGetStringT(hContact, "jid", &dbv);
-
-			if ( !result) {
-				int result;
-				if (item != NULL)
-					result = lstrcmpi(jid, dbv.ptszVal);
-				else {
-					if (bStripResource == 3) {
-						if (JGetByte(hContact, "ChatRoom", 0))
-							result = lstrcmpi(jid, dbv.ptszVal);  // for chat room we have to have full contact matched
-						else if (TRUE)
-							result = _tcsnicmp(jid, dbv.ptszVal, _tcslen(dbv.ptszVal));
-						else
-							result = JabberCompareJids(jid, dbv.ptszVal);
-					}
-					// most probably it should just look full matching contact
+			if (item != NULL)
+				result = lstrcmpi(jid, dbv.ptszVal);
+			else {
+				if (bStripResource == 3) {
+					if (bIsChat)
+						result = lstrcmpi(jid, dbv.ptszVal);  // for chat room we have to have full contact matched
+					else if (TRUE)
+						result = _tcsnicmp(jid, dbv.ptszVal, _tcslen(dbv.ptszVal));
 					else
-						result = lstrcmpi(jid, dbv.ptszVal);
-
+						result = JabberCompareJids(jid, dbv.ptszVal);
 				}
-				db_free(&dbv);
-				if ( !result) {
-					hContactMatched = hContact;
-					break;
-		}	}	}
+				// most probably it should just look full matching contact
+				else
+					result = lstrcmpi(jid, dbv.ptszVal);
 
-		hContact = db_find_next(hContact);
+			}
+			db_free(&dbv);
+			if ( !result)
+				return hContact;
+		}
 	}
 
-	return hContactMatched;
+	return NULL;
 }
 
 TCHAR* __stdcall JabberNickFromJID(const TCHAR *jid)
@@ -156,7 +133,7 @@ TCHAR* __stdcall JabberNickFromJID(const TCHAR *jid)
 	if ( !jid) return mir_tstrdup(_T(""));
 
 	const TCHAR *p;
-	TCHAR* nick;
+	TCHAR *nick;
 
 	if ((p = _tcschr(jid, '@')) == NULL)
 		p = _tcschr(jid, '/');
@@ -176,33 +153,36 @@ JABBER_RESOURCE_STATUS* CJabberProto::ResourceInfoFromJID(const TCHAR *jid)
 	if ( !jid)
 		return NULL;
 
-	JABBER_LIST_ITEM *item = NULL;
-	if ((item = ListGetItemPtr(LIST_VCARD_TEMP, jid)) == NULL)
+	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_VCARD_TEMP, jid);
+	if (item == NULL)
 		item = ListGetItemPtr(LIST_ROSTER, jid);
-	if (item == NULL) return NULL;
+	if (item == NULL)
+		return NULL;
 
 	const TCHAR *p = _tcschr(jid, '/');
 	if (p == NULL)
 		return &item->itemResource;
-	if (*++p == '\0') return NULL;
 
-	JABBER_RESOURCE_STATUS *r = item->resource;
-	if (r == NULL) return NULL;
+	return item->findResource(p+1);
+}
 
-	int i;
-	for (i=0; i<item->resourceCount && _tcscmp(r->resourceName, p); i++, r++);
-	if (i >= item->resourceCount)
+JABBER_LIST_ITEM* CJabberProto::GetItemFromContact(HANDLE hContact)
+{
+	DBVARIANT dbv;
+	if (getTString(hContact, "jid", &dbv))
 		return NULL;
 
-	return r;
+	JABBER_LIST_ITEM *pItem = ListGetItemPtr(LIST_ROSTER, dbv.ptszVal);
+	db_free(&dbv);
+	return pItem;
 }
 
 TCHAR* JabberPrepareJid(LPCTSTR jid)
 {
 	if ( !jid) return NULL;
-	TCHAR* szNewJid = mir_tstrdup(jid);
+	TCHAR *szNewJid = mir_tstrdup(jid);
 	if ( !szNewJid) return NULL;
-	TCHAR* pDelimiter = _tcschr(szNewJid, _T('/'));
+	TCHAR *pDelimiter = _tcschr(szNewJid, _T('/'));
 	if (pDelimiter) *pDelimiter = _T('\0');
 	CharLower(szNewJid);
 	if (pDelimiter) *pDelimiter = _T('/');
@@ -317,8 +297,8 @@ char* __stdcall JabberUrlEncode(const char* str)
 						*q = '?';
 					}
 				}
-				else *q = *p; 
-				q++; 
+				else *q = *p;
+				q++;
 				break;
 			}
 		}
@@ -350,9 +330,7 @@ void __stdcall JabberUtfToTchar(const char* pszValue, size_t cbLen, LPTSTR& dest
 
 	JabberUrlDecode(pszCopy);
 
-	
 	mir_utf8decode(pszCopy, &dest);
-	
 
 	if (bNeedsFree)
 		free(pszCopy);
@@ -360,22 +338,18 @@ void __stdcall JabberUtfToTchar(const char* pszValue, size_t cbLen, LPTSTR& dest
 
 char* __stdcall JabberSha1(char* str)
 {
-	mir_sha1_ctx sha;
-	mir_sha1_byte_t digest[20];
-	char* result;
-	int i;
-
 	if (str == NULL)
 		return NULL;
 
+	BYTE digest[20];
+	mir_sha1_ctx sha;
 	mir_sha1_init(&sha);
-	mir_sha1_append(&sha, (mir_sha1_byte_t*)str, (int)strlen(str));
+	mir_sha1_append(&sha, (BYTE*)str, (int)strlen(str));
 	mir_sha1_finish(&sha, digest);
-	if ((result=(char*)mir_alloc(41)) == NULL)
-		return NULL;
 
-	for (i=0; i<20; i++)
-		sprintf(result+(i<<1), "%02x", digest[i]);
+	char *result = (char*)mir_alloc(41);
+	if (result)
+		bin2hex(digest, sizeof(digest), result);
 	return result;
 }
 
@@ -415,7 +389,7 @@ char* __stdcall JabberUnixToDos(const char* str)
 	char* p, *q, *res;
 	int extra;
 
-	if (str==NULL || str[0]=='\0')
+	if (str == NULL || str[0]=='\0')
 		return NULL;
 
 	extra = 0;
@@ -438,7 +412,7 @@ char* __stdcall JabberUnixToDos(const char* str)
 
 WCHAR* __stdcall JabberUnixToDosW(const WCHAR* str)
 {
-	if (str==NULL || str[0]=='\0')
+	if (str == NULL || str[0]=='\0')
 		return NULL;
 
 	const WCHAR* p;
@@ -462,28 +436,9 @@ WCHAR* __stdcall JabberUnixToDosW(const WCHAR* str)
 	return res;
 }
 
-TCHAR* __stdcall JabberHttpUrlEncode(const TCHAR *str)
-{
-	TCHAR* p, *q, *res;
-
-	if (str == NULL) return NULL;
-	res = (TCHAR*) mir_alloc(3*_tcslen(str) + 1);
-	for (p = (TCHAR*)str, q = res; *p!='\0'; p++,q++) {
-		if ((*p>='A' && *p<='Z') || (*p>='a' && *p<='z') || (*p>='0' && *p<='9') || strchr("$-_.+!*'(),", *p)!=NULL) {
-			*q = *p;
-		}
-		else {
-			wsprintf(q, _T("%%%02X"), *p);
-			q += 2;
-		}
-	}
-	*q = '\0';
-	return res;
-}
-
 void __stdcall JabberHttpUrlDecode(TCHAR* str)
 {
-	TCHAR* p, *q;
+	TCHAR *p, *q;
 	unsigned int code;
 
 	if (str == NULL) return;
@@ -530,26 +485,26 @@ int __stdcall JabberCombineStatus(int status1, int status2)
 
 struct tagErrorCodeToStr {
 	int code;
-	TCHAR* str;
+	TCHAR *str;
 }
 static JabberErrorCodeToStrMapping[] = {
-	{ JABBER_ERROR_REDIRECT,               _T("Redirect") },
-	{ JABBER_ERROR_BAD_REQUEST,            _T("Bad request") },
-	{ JABBER_ERROR_UNAUTHORIZED,           _T("Unauthorized") },
-	{ JABBER_ERROR_PAYMENT_REQUIRED,       _T("Payment required") },
-	{ JABBER_ERROR_FORBIDDEN,              _T("Forbidden") },
-	{ JABBER_ERROR_NOT_FOUND,              _T("Not found") },
-	{ JABBER_ERROR_NOT_ALLOWED,            _T("Not allowed") },
-	{ JABBER_ERROR_NOT_ACCEPTABLE,         _T("Not acceptable") },
-	{ JABBER_ERROR_REGISTRATION_REQUIRED,  _T("Registration required") },
-	{ JABBER_ERROR_REQUEST_TIMEOUT,        _T("Request timeout") },
-	{ JABBER_ERROR_CONFLICT,               _T("Conflict") },
-	{ JABBER_ERROR_INTERNAL_SERVER_ERROR,  _T("Internal server error") },
-	{ JABBER_ERROR_NOT_IMPLEMENTED,        _T("Not implemented") },
-	{ JABBER_ERROR_REMOTE_SERVER_ERROR,    _T("Remote server error") },
-	{ JABBER_ERROR_SERVICE_UNAVAILABLE,    _T("Service unavailable") },
-	{ JABBER_ERROR_REMOTE_SERVER_TIMEOUT,  _T("Remote server timeout") },
-	{ -1,                                  _T("Unknown error") }
+	{ JABBER_ERROR_REDIRECT,               LPGENT("Redirect") },
+	{ JABBER_ERROR_BAD_REQUEST,            LPGENT("Bad request") },
+	{ JABBER_ERROR_UNAUTHORIZED,           LPGENT("Unauthorized") },
+	{ JABBER_ERROR_PAYMENT_REQUIRED,       LPGENT("Payment required") },
+	{ JABBER_ERROR_FORBIDDEN,              LPGENT("Forbidden") },
+	{ JABBER_ERROR_NOT_FOUND,              LPGENT("Not found") },
+	{ JABBER_ERROR_NOT_ALLOWED,            LPGENT("Not allowed") },
+	{ JABBER_ERROR_NOT_ACCEPTABLE,         LPGENT("Not acceptable") },
+	{ JABBER_ERROR_REGISTRATION_REQUIRED,  LPGENT("Registration required") },
+	{ JABBER_ERROR_REQUEST_TIMEOUT,        LPGENT("Request timeout") },
+	{ JABBER_ERROR_CONFLICT,               LPGENT("Conflict") },
+	{ JABBER_ERROR_INTERNAL_SERVER_ERROR,  LPGENT("Internal server error") },
+	{ JABBER_ERROR_NOT_IMPLEMENTED,        LPGENT("Not implemented") },
+	{ JABBER_ERROR_REMOTE_SERVER_ERROR,    LPGENT("Remote server error") },
+	{ JABBER_ERROR_SERVICE_UNAVAILABLE,    LPGENT("Service unavailable") },
+	{ JABBER_ERROR_REMOTE_SERVER_TIMEOUT,  LPGENT("Remote server timeout") },
+	{ -1,                                  LPGENT("Unknown error") }
 };
 
 TCHAR* __stdcall JabberErrorStr(int errorCode)
@@ -562,7 +517,7 @@ TCHAR* __stdcall JabberErrorStr(int errorCode)
 
 TCHAR* __stdcall JabberErrorMsg(HXML errorNode, int* pErrorCode)
 {
-	TCHAR* errorStr = (TCHAR*)mir_alloc(256 * sizeof(TCHAR));
+	TCHAR *errorStr = (TCHAR*)mir_alloc(256 * sizeof(TCHAR));
 	if (errorNode == NULL) {
 		if (pErrorCode)
 			*pErrorCode = -1;
@@ -579,7 +534,7 @@ TCHAR* __stdcall JabberErrorMsg(HXML errorNode, int* pErrorCode)
 	if (str == NULL)
 		str = xmlGetText(xmlGetChild(errorNode, _T("text")));
 	if (str == NULL) {
-		for (int i = 0; ; ++i) {
+		for (int i = 0; ; i++) {
 			HXML c = xmlGetChild(errorNode, i);
 			if (c == NULL) break;
 			const TCHAR *attr = xmlGetAttrValue(c, _T("xmlns"));
@@ -614,127 +569,12 @@ void CJabberProto::SendVisibleInvisiblePresence(BOOL invisible)
 		if (hContact == NULL)
 			continue;
 
-		WORD apparentMode = JGetWord(hContact, "ApparentMode", 0);
+		WORD apparentMode = getWord(hContact, "ApparentMode", 0);
 		if (invisible==TRUE && apparentMode==ID_STATUS_OFFLINE)
 			m_ThreadInfo->send(XmlNode(_T("presence")) << XATTR(_T("to"), item->jid) << XATTR(_T("type"), _T("invisible")));
 		else if (invisible==FALSE && apparentMode==ID_STATUS_ONLINE)
 			SendPresenceTo(m_iStatus, item->jid, NULL);
 }	}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-// JabberBase64Encode
-
-static char b64table[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-char* __stdcall JabberBase64Encode(const char* buffer, int bufferLen)
-{
-	if (buffer==NULL || bufferLen<=0)
-		return NULL;
-
-	char* res = (char*)mir_alloc((((bufferLen+2)*4)/3) + 1);
-	if (res == NULL)
-		return NULL;
-
-	unsigned char igroup[3];
-	char *r = res;
-	const char* peob = buffer + bufferLen;
-	for (const char* p = buffer; p < peob;) {
-		igroup[ 0 ] = igroup[ 1 ] = igroup[ 2 ] = 0;
-		int n;
-		for (n=0; n<3; n++) {
-			if (p >= peob) break;
-			igroup[n] = (unsigned char) *p;
-			p++;
-		}
-
-		if (n > 0) {
-			r[0] = b64table[ igroup[0]>>2 ];
-			r[1] = b64table[ ((igroup[0]&3)<<4) | (igroup[1]>>4) ];
-			r[2] = b64table[ ((igroup[1]&0xf)<<2) | (igroup[2]>>6) ];
-			r[3] = b64table[ igroup[2]&0x3f ];
-
-			if (n < 3) {
-				r[3] = '=';
-				if (n < 2)
-					r[2] = '=';
-			}
-			r += 4;
-	}	}
-
-	*r = '\0';
-
-	return res;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-// JabberBase64Decode
-
-static unsigned char b64rtable[256];
-
-char* __stdcall JabberBase64DecodeW(const WCHAR* str, int *resultLen)
-{
-	char *stra = mir_u2a(str);
-	char *res = JabberBase64Decode(stra, resultLen);
-	mir_free(stra);
-	return res;
-}
-
-char* __stdcall JabberBase64Decode(const char* str, int *resultLen)
-{
-	char* res;
-	unsigned char* r, igroup[4], a[4];
-	int n, num, count;
-
-	if (str==NULL || resultLen==NULL) return NULL;
-	if ((res=(char*)mir_alloc(((strlen(str)+3)/4)*3)) == NULL) return NULL;
-
-	for (n=0; n<256; n++)
-		b64rtable[n] = (unsigned char) 0x80;
-	for (n=0; n<26; n++)
-		b64rtable['A'+n] = n;
-	for (n=0; n<26; n++)
-		b64rtable['a'+n] = n + 26;
-	for (n=0; n<10; n++)
-		b64rtable['0'+n] = n + 52;
-	b64rtable['+'] = 62;
-	b64rtable['/'] = 63;
-	b64rtable['='] = 0;
-	count = 0;
-	for (r=(unsigned char*)res; *str != '\0';) {
-		for (n=0; n<4; n++) {
-			if (BYTE(*str) == '\r' || BYTE(*str) == '\n') {
-				n--; str++;
-				continue;
-			}
-
-			if (BYTE(*str)=='\0') {
-				if (n == 0)
-					goto LBL_Exit;
-				mir_free(res);
-				return NULL;
-			}
-
-			if (b64rtable[BYTE(*str)]==0x80) {
-				mir_free(res);
-				return NULL;
-			}
-
-			a[n] = BYTE(*str);
-			igroup[n] = b64rtable[BYTE(*str)];
-			str++;
-		}
-		r[0] = igroup[0]<<2 | igroup[1]>>4;
-		r[1] = igroup[1]<<4 | igroup[2]>>2;
-		r[2] = igroup[2]<<6 | igroup[3];
-		r += 3;
-		num = (a[2]=='='?1:(a[3]=='='?2:3));
-		count += num;
-		if (num < 3) break;
-	}
-LBL_Exit:
-	*resultLen = count;
-	return res;
-}
 
 time_t __stdcall JabberIsoToUnixTime(const TCHAR *stamp)
 {
@@ -794,7 +634,7 @@ void CJabberProto::SendPresenceTo(int status, TCHAR* to, HXML extra, const TCHAR
 	if ( !m_bJabberOnline) return;
 
 	// Send <presence/> update for status (we won't handle ID_STATUS_OFFLINE here)
-	short iPriority = (short)JGetWord(NULL, "Priority", 0);
+	short iPriority = (short)getWord("Priority", 0);
 	UpdatePriorityMenu(iPriority);
 
 	TCHAR szPriority[40];
@@ -808,7 +648,7 @@ void CJabberProto::SendPresenceTo(int status, TCHAR* to, HXML extra, const TCHAR
 		xmlAddChild(p, extra);
 
 	// XEP-0115:Entity Capabilities
-	HXML c = p << XCHILDNS(_T("c"), _T(JABBER_FEAT_ENTITY_CAPS)) << XATTR(_T("node"), _T(JABBER_CAPS_MIRANDA_NODE)) 
+	HXML c = p << XCHILDNS(_T("c"), JABBER_FEAT_ENTITY_CAPS) << XATTR(_T("node"), JABBER_CAPS_MIRANDA_NODE)
 		<< XATTR(_T("ver"), szCoreVersion);
 
 	TCHAR szExtCaps[ 512 ] = _T("");
@@ -820,6 +660,28 @@ void CJabberProto::SendPresenceTo(int status, TCHAR* to, HXML extra, const TCHAR
 		if (szExtCaps[0])
 			_tcscat(szExtCaps, _T(" "));
 		_tcscat(szExtCaps, _T(JABBER_EXT_SECUREIM));
+	}
+
+	if (bMirOTR) {
+		if (szExtCaps[0])
+			_tcscat(szExtCaps, _T(" "));
+		_tcscat(szExtCaps, _T(JABBER_EXT_MIROTR));
+	}
+
+	if (bNewGPG) {
+		if (szExtCaps[0])
+			_tcscat(szExtCaps, _T(" "));
+		_tcscat(szExtCaps, _T(JABBER_EXT_NEWGPG));
+	}
+
+	if (bPlatform) {
+		if (szExtCaps[0])
+			_tcscat(szExtCaps, _T(" "));
+		_tcscat(szExtCaps, _T(JABBER_EXT_PLATFORMX64));
+	} else {
+		if (szExtCaps[0])
+			_tcscat(szExtCaps, _T(" "));
+		_tcscat(szExtCaps, _T(JABBER_EXT_PLATFORMX86));
 	}
 
 	if (m_options.EnableRemoteControl) {
@@ -865,15 +727,13 @@ void CJabberProto::SendPresenceTo(int status, TCHAR* to, HXML extra, const TCHAR
 		xmlAddAttr(c, _T("ext"), szExtCaps);
 
 	if (m_options.EnableAvatars) {
-		char hashValue[ 50 ];
-		if ( !JGetStaticString("AvatarHash", NULL, hashValue, sizeof(hashValue))) {
-			// XEP-0153: vCard-Based Avatars
-			HXML x = p << XCHILDNS(_T("x"), _T("vcard-temp:x:update"));
+		HXML x = p << XCHILDNS(_T("x"), _T("vcard-temp:x:update"));
+
+		ptrA hashValue( getStringA("AvatarHash"));
+		if (hashValue != NULL) // XEP-0153: vCard-Based Avatars
 			x << XCHILD(_T("photo"), _A2T(hashValue));
-		} else {
-			HXML x = p << XCHILDNS(_T("x"), _T("vcard-temp:x:update"));
+		else
 			x << XCHILD(_T("photo"));
-		}
 	}
 
 	EnterCriticalSection(&m_csModeMsgMutex);
@@ -907,7 +767,7 @@ void CJabberProto::SendPresenceTo(int status, TCHAR* to, HXML extra, const TCHAR
 		// Should not reach here
 		break;
 	}
-	
+
 	if (msg)
 		p << XCHILD(_T("status"), msg);
 
@@ -945,8 +805,8 @@ void CJabberProto::OnIqResultGoogleSharedStatus(HXML iqNode, CJabberIqInfo* pInf
 BOOL CJabberProto::OnIqSetGoogleSharedStatus(HXML iqNode, CJabberIqInfo* pInfo) {
 	if (JABBER_IQ_TYPE_SET != pInfo->GetIqType()) return FALSE;
 	if (m_bGoogleSharedStatusLock) return TRUE;
-	
-	int status;	
+
+	int status;
 	HXML query = xmlGetChild(iqNode, _T("query"));
 	HXML node = xmlGetChild(query, _T("invisible"));
 	if (0 == _tcsicmp(_T("true"), xmlGetAttrValue(node, _T("value"))))
@@ -960,15 +820,15 @@ BOOL CJabberProto::OnIqSetGoogleSharedStatus(HXML iqNode, CJabberIqInfo* pInfo) 
 		else
 			status = m_iStatus;
 	}
-	
+
 	if (status != m_iStatus) SetStatus(status);
-	
+
 	return TRUE;
 }
 
 void CJabberProto::SendIqGoogleSharedStatus(int status, const TCHAR *msg) {
 	XmlNodeIq iq(m_iqManager.AddHandler(&CJabberProto::OnIqResultGoogleSharedStatus, JABBER_IQ_TYPE_SET));
-	HXML query = iq << XQUERY(_T(JABBER_FEAT_GTALK_SHARED_STATUS)) << XATTR(_T("version"), _T("2"));
+	HXML query = iq << XQUERY(JABBER_FEAT_GTALK_SHARED_STATUS) << XATTR(_T("version"), _T("2"));
 	query << XCHILD(_T("status"), msg);
 	if (status == ID_STATUS_INVISIBLE) {
 		query << XCHILD(_T("show"), _T("default"));
@@ -993,7 +853,7 @@ void __stdcall JabberStringAppend(char* *str, int *sizeAlloced, const char* fmt,
 
 	if (str == NULL) return;
 
-	if (*str==NULL || *sizeAlloced<=0) {
+	if (*str == NULL || *sizeAlloced<=0) {
 		*sizeAlloced = 2048;
         size = 2048;
 		*str = (char*)mir_alloc(size);
@@ -1006,7 +866,7 @@ void __stdcall JabberStringAppend(char* *str, int *sizeAlloced, const char* fmt,
 
 	p = *str + len;
 	va_start(vararg, fmt);
-	while (_vsnprintf(p, size, fmt, vararg) == -1) {
+	while (mir_vsnprintf(p, size, fmt, vararg) == -1) {
 		size += 2048;
 		(*sizeAlloced) += 2048;
 		*str = (char*)mir_realloc(*str, *sizeAlloced);
@@ -1033,32 +893,36 @@ int __stdcall JabberGetPacketID(HXML n)
 ///////////////////////////////////////////////////////////////////////////////
 // JabberGetClientJID - adds a resource postfix to a JID
 
-TCHAR* CJabberProto::GetClientJID(const TCHAR *jid, TCHAR* dest, size_t destLen)
+TCHAR* CJabberProto::GetClientJID(HANDLE hContact, TCHAR *dest, size_t destLen)
+{
+	if (hContact == NULL)
+		return NULL;
+
+	ptrT jid( getTStringA(hContact, "jid"));
+	return GetClientJID(jid, dest, destLen);
+}
+
+TCHAR* CJabberProto::GetClientJID(const TCHAR *jid, TCHAR *dest, size_t destLen)
 {
 	if (jid == NULL)
 		return NULL;
 
-	size_t len = _tcslen(jid);
-	if (len >= destLen)
-		len = destLen-1;
+	_tcsncpy_s(dest, destLen, jid, _TRUNCATE);
+	TCHAR *p = _tcschr(dest, '/');
 
-	_tcsncpy(dest, jid, len);
-	dest[ len ] = '\0';
+	mir_cslock lck(m_csLists);
+	JABBER_LIST_ITEM *LI = ListGetItemPtr(LIST_ROSTER, jid);
+	if (LI != NULL) {
+		if (LI->arResources.getCount() == 1 && !lstrcmp(LI->arResources[0]->szCapsNode, _T("http://talk.google.com/xmpp/bot/caps"))) {
+			if (p) *p = 0;
+			return dest;
+		}
 
-	TCHAR* p = _tcschr(dest, '/');
-
-	JABBER_LIST_ITEM* LI = ListGetItemPtr(LIST_ROSTER, jid);
-	if (LI && LI->resourceCount == 1 && LI->resource[ 0 ].szCapsNode &&
-		_tcsicmp(LI->resource[ 0 ].szCapsNode, _T("http://talk.google.com/xmpp/bot/caps")) == 0)
-	{
-		if (p) *p = 0; 
-		return dest;
-	}
-
-	if (p == NULL) {
-		TCHAR* resource = ListGetBestResourceNamePtr(jid);
-		if (resource != NULL)
-			mir_sntprintf(dest+len, destLen-len-1, _T("/%s"), resource);
+		if (p == NULL) {
+			JABBER_RESOURCE_STATUS *r = LI->getBestResource();
+			if (r != NULL)
+				mir_sntprintf(dest, destLen, _T("%s/%s"), jid, r->resourceName);
+		}
 	}
 
 	return dest;
@@ -1067,19 +931,14 @@ TCHAR* CJabberProto::GetClientJID(const TCHAR *jid, TCHAR* dest, size_t destLen)
 ///////////////////////////////////////////////////////////////////////////////
 // JabberStripJid - strips a resource postfix from a JID
 
-TCHAR* __stdcall JabberStripJid(const TCHAR *jid, TCHAR* dest, size_t destLen)
+TCHAR* __stdcall JabberStripJid(const TCHAR *jid, TCHAR *dest, size_t destLen)
 {
 	if (jid == NULL)
 		*dest = 0;
 	else {
-		size_t len = _tcslen(jid);
-		if (len >= destLen)
-			len = destLen-1;
+		_tcsncpy_s(dest, destLen, jid, _TRUNCATE);
 
-		memcpy(dest, jid, len * sizeof(TCHAR));
-		dest[ len ] = 0;
-
-		TCHAR* p = _tcschr(dest, '/');
+		TCHAR *p = _tcschr(dest, '/');
 		if (p != NULL)
 			*p = 0;
 	}
@@ -1090,16 +949,23 @@ TCHAR* __stdcall JabberStripJid(const TCHAR *jid, TCHAR* dest, size_t destLen)
 /////////////////////////////////////////////////////////////////////////////////////////
 // JabberGetPictureType - tries to autodetect the picture type from the buffer
 
-int __stdcall JabberGetPictureType(const char* buf)
+LPCTSTR __stdcall JabberGetPictureType(HXML node, const char *picBuf)
 {
-	if (buf != NULL) {
-		if (memcmp(buf, "GIF8", 4) == 0)     return PA_FORMAT_GIF;
-		if (memcmp(buf, "\x89PNG", 4) == 0)  return PA_FORMAT_PNG;
-		if (memcmp(buf, "BM", 2) == 0)       return PA_FORMAT_BMP;
-		if (memcmp(buf, "\xFF\xD8", 2) == 0) return PA_FORMAT_JPEG;
+	if (LPCTSTR ptszType = xmlGetText( xmlGetChild(node , "TYPE")))
+		if ( !_tcscmp(ptszType, _T("image/jpeg")) ||
+		     !_tcscmp(ptszType, _T("image/png"))  ||
+		     !_tcscmp(ptszType, _T("image/gif"))  ||
+		     !_tcscmp(ptszType, _T("image/bmp")))
+			return ptszType;
+
+	switch( ProtoGetBufferFormat(picBuf)) {
+		case PA_FORMAT_GIF:	return _T("image/gif");
+		case PA_FORMAT_BMP:  return _T("image/bmp");
+		case PA_FORMAT_PNG:  return _T("image/png");
+		case PA_FORMAT_JPEG: return _T("image/jpeg");
 	}
 
-	return PA_FORMAT_UNKNOWN;
+	return NULL;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -1158,11 +1024,11 @@ const char* TStringPairs::operator[](const char* key) const
 
 void CJabberProto::ComboLoadRecentStrings(HWND hwndDlg, UINT idcCombo, char *param, int recentCount)
 {
-	for (int i = 0; i < recentCount; ++i) {
+	for (int i = 0; i < recentCount; i++) {
 		DBVARIANT dbv;
 		char setting[MAXMODULELABELLENGTH];
 		mir_snprintf(setting, sizeof(setting), "%s%d", param, i);
-		if ( !JGetStringT(NULL, setting, &dbv)) {
+		if ( !getTString(setting, &dbv)) {
 			SendDlgItemMessage(hwndDlg, idcCombo, CB_ADDSTRING, 0, (LPARAM)dbv.ptszVal);
 			db_free(&dbv);
 	}	}
@@ -1182,11 +1048,11 @@ void CJabberProto::ComboAddRecentString(HWND hwndDlg, UINT idcCombo, char *param
 	if ((id = SendDlgItemMessage(hwndDlg, idcCombo, CB_FINDSTRING, (WPARAM)-1, (LPARAM)_T(""))) != CB_ERR)
 		SendDlgItemMessage(hwndDlg, idcCombo, CB_DELETESTRING, id, 0);
 
-	id = JGetByte(NULL, param, 0);
+	id = getByte(param, 0);
 	char setting[MAXMODULELABELLENGTH];
 	mir_snprintf(setting, sizeof(setting), "%s%d", param, id);
-	JSetStringT(NULL, setting, string);
-	JSetByte(NULL, param, (id+1)%recentCount);
+	setTString(setting, string);
+	setByte(param, (id+1)%recentCount);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -1231,7 +1097,7 @@ static VOID CALLBACK sttRebuildInfoFrameApcProc(void* param)
 		LISTFOREACH(i, ppro, LIST_ROSTER)
 		{
 			if ((item=ppro->ListGetItemPtrFromIndex(i)) != NULL) {
-				if (_tcschr(item->jid, '@')==NULL && _tcschr(item->jid, '/')==NULL && item->subscription!=SUB_NONE) {
+				if (_tcschr(item->jid, '@') == NULL && _tcschr(item->jid, '/') == NULL && item->subscription!=SUB_NONE) {
 					HANDLE hContact = ppro->HContactFromJID(item->jid);
 					if (hContact == NULL) continue;
 
@@ -1254,6 +1120,31 @@ void CJabberProto::RebuildInfoFrame()
 }
 
 ////////////////////////////////////////////////////////////////////////
+// time2str & str2time
+
+TCHAR* time2str(time_t _time, TCHAR *buf, size_t bufLen)
+{
+	struct tm* T = localtime(&_time);
+	mir_sntprintf(buf, bufLen, _T("%04d-%02d-%02dT%02d:%02d:%02dZ"),
+		T->tm_year+1900, T->tm_mon+1, T->tm_mday, T->tm_hour, T->tm_min, T->tm_sec);
+	return buf;
+}
+
+time_t str2time(const TCHAR *buf)
+{
+	struct tm T = { 0 };
+	if ( _stscanf(buf, _T("%04d-%02d-%02dT%02d:%02d:%02dZ"), &T.tm_year, &T.tm_mon, &T.tm_mday, &T.tm_hour, &T.tm_min, &T.tm_sec) != 6) {
+		int boo;
+		if ( _stscanf(buf, _T("%04d-%02d-%02dT%02d:%02d:%02d.%dZ"), &T.tm_year, &T.tm_mon, &T.tm_mday, &T.tm_hour, &T.tm_min, &T.tm_sec, &boo) != 7)
+			return 0;
+	}
+
+	T.tm_year -= 1900;
+	T.tm_mon--;
+	return mktime(&T);
+}
+
+////////////////////////////////////////////////////////////////////////
 // case-insensitive _tcsstr
 const TCHAR *JabberStrIStr(const TCHAR *str, const TCHAR *substr)
 {
@@ -1263,7 +1154,7 @@ const TCHAR *JabberStrIStr(const TCHAR *str, const TCHAR *substr)
 	CharUpperBuff(str_up, lstrlen(str_up));
 	CharUpperBuff(substr_up, lstrlen(substr_up));
 
-	TCHAR* p = _tcsstr(str_up, substr_up);
+	TCHAR *p = _tcsstr(str_up, substr_up);
 	return p ? (str + (p - str_up)) : NULL;
 }
 
@@ -1288,11 +1179,11 @@ void JabberCopyText(HWND hwnd, TCHAR *text)
 
 struct JabberEnterStringParams
 {
-	CJabberProto* ppro;
+	CJabberProto *ppro;
 
 	int type;
-	TCHAR* caption;
-	TCHAR* result;
+	TCHAR *caption;
+	TCHAR *result;
 	size_t resultLen;
 	char *windowName;
 	int recentCount;
@@ -1381,7 +1272,7 @@ static INT_PTR CALLBACK sttEnterStringDlgProc(HWND hwndDlg, UINT msg, WPARAM wPa
 		{
 			SetTimer(hwndDlg, 1001, 1000, NULL);
 			TCHAR buf[128];
-			mir_sntprintf(buf, SIZEOF(buf), _T("%s (%d)"), TranslateT("OK"), params->timeout);
+			mir_sntprintf(buf, SIZEOF(buf), TranslateT("OK (%d)"), params->timeout);
 			SetDlgItemText(hwndDlg, IDOK, buf);
 		}
 
@@ -1402,7 +1293,7 @@ static INT_PTR CALLBACK sttEnterStringDlgProc(HWND hwndDlg, UINT msg, WPARAM wPa
 			case 1001:
 			{
 				TCHAR buf[128];
-				mir_sntprintf(buf, SIZEOF(buf), _T("%s (%d)"), TranslateT("OK"), --params->timeout);
+				mir_sntprintf(buf, SIZEOF(buf), TranslateT("OK (%d)"), --params->timeout);
 				SetDlgItemText(hwndDlg, IDOK, buf);
 
 				if (params->timeout < 0)
@@ -1516,8 +1407,34 @@ BOOL CJabberProto::EnterString(TCHAR *result, size_t resultLen, TCHAR *caption, 
 	return bRetVal;
 }
 
+// XEP-0203 delay support
+bool JabberReadXep203delay(HXML node, time_t &msgTime)
+{
+	HXML n = xmlGetChildByTag(node, "delay", "xmlns", _T("urn:xmpp:delay"));
+	if (n == NULL)
+		return false;
+
+	const TCHAR *ptszTimeStamp = xmlGetAttrValue(n, _T("stamp"));
+	if (ptszTimeStamp == NULL)
+		return false;
+
+	// skip '-' chars
+	TCHAR *szStamp = NEWTSTR_ALLOCA(ptszTimeStamp);
+	int si = 0, sj = 0;
+	while (1) {
+		if (szStamp[si] == _T('-'))
+			si++;
+		else
+			if ( !(szStamp[sj++] = szStamp[si++]))
+				break;
+	};
+	msgTime = JabberIsoToUnixTime(szStamp);
+	return msgTime != 0;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Premultiply bitmap channels for 32-bit bitmaps
+
 void JabberBitmapPremultiplyChannels(HBITMAP hBitmap)
 {
 	BITMAP bmp;
@@ -1652,17 +1569,17 @@ BOOL CJabberProto::IsMyOwnJID(LPCTSTR szJID)
 	if ( !m_ThreadInfo)
 		return FALSE;
 
-	TCHAR* szFrom = JabberPrepareJid(szJID);
+	TCHAR *szFrom = JabberPrepareJid(szJID);
 	if ( !szFrom)
 		return FALSE;
 
-	TCHAR* szTo = JabberPrepareJid(m_ThreadInfo->fullJID);
+	TCHAR *szTo = JabberPrepareJid(m_ThreadInfo->fullJID);
 	if ( !szTo) {
 		mir_free(szFrom);
 		return FALSE;
 	}
 
-	TCHAR* pDelimiter = _tcschr(szFrom, _T('/'));
+	TCHAR *pDelimiter = _tcschr(szFrom, _T('/'));
 	if (pDelimiter) *pDelimiter = _T('\0');
 
 	pDelimiter = _tcschr(szTo, _T('/'));
@@ -1680,8 +1597,7 @@ void __cdecl CJabberProto::LoadHttpAvatars(void* param)
 {
 	OBJLIST<JABBER_HTTP_AVATARS> &avs = *(OBJLIST<JABBER_HTTP_AVATARS>*)param;
 	HANDLE hHttpCon = NULL;
-	for (int i = 0; i < avs.getCount(); ++i)
-	{
+	for (int i = 0; i < avs.getCount(); i++) {
 		NETLIBHTTPREQUEST nlhr = {0};
 		nlhr.cbSize = sizeof(nlhr);
 		nlhr.requestType = REQUEST_GET;
@@ -1690,58 +1606,52 @@ void __cdecl CJabberProto::LoadHttpAvatars(void* param)
 		nlhr.nlc = hHttpCon;
 
 		NETLIBHTTPREQUEST * res = (NETLIBHTTPREQUEST*)CallService(MS_NETLIB_HTTPTRANSACTION, (WPARAM)m_hNetlibUser, (LPARAM)&nlhr);
-		if (res)
-		{
+		if (res) {
 			hHttpCon = res->nlc;
-			if (res->resultCode == 200 && res->dataLength)
-			{
-				int pictureType = JabberGetPictureType(res->pData);
-				if (pictureType != PA_FORMAT_UNKNOWN)
-				{
-					TCHAR tszFileName[ MAX_PATH ];
-
+			if (res->resultCode == 200 && res->dataLength) {
+				int pictureType = ProtoGetBufferFormat(res->pData);
+				if (pictureType != PA_FORMAT_UNKNOWN) {
 					PROTO_AVATAR_INFORMATIONT AI;
 					AI.cbSize = sizeof(AI);
 					AI.format = pictureType;
 					AI.hContact = avs[i].hContact;
 
-					if (JGetByte(AI.hContact, "AvatarType", PA_FORMAT_UNKNOWN) != (unsigned char)pictureType) {
+					if (getByte(AI.hContact, "AvatarType", PA_FORMAT_UNKNOWN) != (unsigned char)pictureType) {
+						TCHAR tszFileName[ MAX_PATH ];
 						GetAvatarFileName(AI.hContact, tszFileName, SIZEOF(tszFileName));
 						DeleteFile(tszFileName);
 					}
 
-					JSetByte(AI.hContact, "AvatarType", pictureType);
+					setByte(AI.hContact, "AvatarType", pictureType);
 
-					char cmpsha[ 41 ];
 					char buffer[ 41 ];
-					mir_sha1_byte_t digest[20];
+					BYTE digest[20];
 					mir_sha1_ctx sha;
 					mir_sha1_init(&sha);
-					mir_sha1_append(&sha, (mir_sha1_byte_t*)res->pData, res->dataLength);
+					mir_sha1_append(&sha, (BYTE*)res->pData, res->dataLength);
 					mir_sha1_finish(&sha, digest);
-					for (int i=0; i<20; i++)
-						sprintf(buffer+(i<<1), "%02x", digest[i]);
+					bin2hex(digest, sizeof(digest), buffer);
 
-					if (JGetStaticString("AvatarSaved", AI.hContact, cmpsha, sizeof(cmpsha)) || strnicmp(cmpsha, buffer, sizeof(buffer)))
-					{
+					ptrA cmpsha( getStringA(AI.hContact, "AvatarSaved"));
+					if (cmpsha == NULL || strnicmp(cmpsha, buffer, sizeof(buffer))) {
+						TCHAR tszFileName[ MAX_PATH ];
 						GetAvatarFileName(AI.hContact, tszFileName, SIZEOF(tszFileName));
 						_tcsncpy(AI.filename, tszFileName, SIZEOF(AI.filename));
 						FILE* out = _tfopen(tszFileName, _T("wb"));
 						if (out != NULL) {
 							fwrite(res->pData, res->dataLength, 1, out);
 							fclose(out);
-							JSetString(AI.hContact, "AvatarSaved", buffer);
-							JSendBroadcast(AI.hContact, ACKTYPE_AVATAR, ACKRESULT_SUCCESS, &AI, 0);
+							setString(AI.hContact, "AvatarSaved", buffer);
+							ProtoBroadcastAck(AI.hContact, ACKTYPE_AVATAR, ACKRESULT_SUCCESS, &AI, 0);
 							Log("Broadcast new avatar: %s",AI.filename);
 						}
-						else JSendBroadcast(AI.hContact, ACKTYPE_AVATAR, ACKRESULT_FAILED, &AI, 0);
+						else ProtoBroadcastAck(AI.hContact, ACKTYPE_AVATAR, ACKRESULT_FAILED, &AI, 0);
 					}
 				}
 			}
 			CallService(MS_NETLIB_FREEHTTPREQUESTSTRUCT, 0, (LPARAM)res);
 		}
-		else
-			hHttpCon = NULL;
+		else hHttpCon = NULL;
 	}
 	delete &avs;
 	if (hHttpCon)

@@ -20,10 +20,6 @@
 */
 
 #include "common.h"
-#include "options.h"
-
-extern OPTIONS opt;
-extern STATUS StatusList[STATUS_COUNT];
 
 TCHAR *db2t(DBVARIANT *dbv)
 {
@@ -59,7 +55,7 @@ int DBGetStringDefault(HANDLE hContact, const char *szModule, const char *szSett
 void HigherLower(int maxValue, int minValue) 
 {
 	TCHAR str[64] = { 0 };
-	wsprintf(str, TranslateT("You cannot specify a value lower than %d and higher than %d."), minValue, maxValue);
+	mir_sntprintf(str, SIZEOF(str), TranslateT("You cannot specify a value lower than %d and higher than %d."), minValue, maxValue);
 }
 
 void ShowLog(TCHAR *file)
@@ -67,17 +63,6 @@ void ShowLog(TCHAR *file)
 	int res = (int)ShellExecute(NULL, _T("open"), file, NULL, NULL, SW_SHOW);
 	if (res <= 32) // error
 		MessageBox(0, TranslateT("Can't open the log file!"), TranslateT("NewXstatusNotify"), MB_OK | MB_ICONERROR);
-}
-
-int ProtoServiceExists(const char *szModule, const char *szService)
-{
-	char str[MAXMODULELABELLENGTH];
-	if (szModule == NULL || szService == NULL) 
-		return 0;
-
-	strcpy(str,szModule);
-	strcat(str,szService);
-	return ServiceExists(str);
 }
 
 BOOL StatusHasAwayMessage(char *szProto, int status) 

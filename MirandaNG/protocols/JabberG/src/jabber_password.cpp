@@ -3,6 +3,7 @@
 Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -38,7 +39,7 @@ INT_PTR __cdecl CJabberProto::OnMenuHandleChangePassword(WPARAM, LPARAM)
 
 static INT_PTR CALLBACK JabberChangePasswordDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	CJabberProto* ppro = (CJabberProto*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+	CJabberProto *ppro = (CJabberProto*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
 	switch (msg) {
 	case WM_INITDIALOG:
 		ppro = (CJabberProto*)lParam;
@@ -46,16 +47,16 @@ static INT_PTR CALLBACK JabberChangePasswordDlgProc(HWND hwndDlg, UINT msg, WPAR
 
 		WindowSetIcon(hwndDlg, ppro, "key");
 		TranslateDialogDefault(hwndDlg);
-		if (ppro->m_bJabberOnline && ppro->m_ThreadInfo!=NULL) {
+		if (ppro->m_bJabberOnline && ppro->m_ThreadInfo != NULL) {
 			TCHAR text[1024];
-			mir_sntprintf(text, SIZEOF(text), _T("%s %s@") _T(TCHAR_STR_PARAM), TranslateT("Set New Password for"), ppro->m_ThreadInfo->username, ppro->m_ThreadInfo->server);
+			mir_sntprintf(text, SIZEOF(text), TranslateT("Set New Password for %s@%S"), ppro->m_ThreadInfo->username, ppro->m_ThreadInfo->server);
 			SetWindowText(hwndDlg, text);
 		}
 		return TRUE;
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDOK:
-			if (ppro->m_bJabberOnline && ppro->m_ThreadInfo!=NULL) {
+			if (ppro->m_bJabberOnline && ppro->m_ThreadInfo != NULL) {
 				TCHAR newPasswd[512], text[512];
 				GetDlgItemText(hwndDlg, IDC_NEWPASSWD, newPasswd, SIZEOF(newPasswd));
 				GetDlgItemText(hwndDlg, IDC_NEWPASSWD2, text, SIZEOF(text));
@@ -74,7 +75,7 @@ static INT_PTR CALLBACK JabberChangePasswordDlgProc(HWND hwndDlg, UINT msg, WPAR
 				ppro->IqAdd(iqId, IQ_PROC_NONE, &CJabberProto::OnIqResultSetPassword);
 
 				XmlNodeIq iq(_T("set"), iqId, _A2T(ppro->m_ThreadInfo->server));
-				HXML q = iq << XQUERY(_T(JABBER_FEAT_REGISTER));
+				HXML q = iq << XQUERY(JABBER_FEAT_REGISTER);
 				q << XCHILD(_T("username"), ppro->m_ThreadInfo->username);
 				q << XCHILD(_T("password"), newPasswd);
 				ppro->m_ThreadInfo->send(iq);

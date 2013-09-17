@@ -204,7 +204,7 @@ procedure TSearchThread.BuildContactsList;
     SetLength(Contacts, Length(Contacts) + 1);
     Contacts[High(Contacts)].hContact := Cont;
     Contacts[High(Contacts)].Timestamp := 0;
-    hDB := CallService(MS_DB_EVENT_FINDLAST, Cont, 0);
+    hDB := db_event_last(Cont);
     if hDB <> 0 then
     begin
       Contacts[High(Contacts)].Timestamp := GetEventTimestamp(hDB);
@@ -251,7 +251,7 @@ procedure TSearchThread.BuildContactsList;
 var
   hCont: THandle;
 begin
-  hCont := CallService(MS_DB_CONTACT_FINDFIRST, 0, 0);
+  hCont := db_find_first();
 
   while hCont <> 0 do
   begin
@@ -261,7 +261,7 @@ begin
     if SearchProtectedContacts or (not SearchProtectedContacts and (not IsUserProtected(hCont)))
     then
       AddContact(hCont);
-    hCont := CallService(MS_DB_CONTACT_FINDNEXT, hCont, 0);
+    hCont := db_find_next(hCont);
   end;
 
   AddContact(hCont);
@@ -274,7 +274,7 @@ var
   hCont: THandle;
 begin
   MaxProgress := 0;
-  hCont := CallService(MS_DB_CONTACT_FINDFIRST, 0, 0);
+  hCont := db_find_first();
   while hCont <> 0 do
   begin
     // I hope I haven't messed this up by
@@ -282,7 +282,7 @@ begin
     if SearchProtectedContacts or (not SearchProtectedContacts and (not IsUserProtected(hCont)))
     then
       MaxProgress := MaxProgress + GetItemsCount(hCont);
-    hCont := CallService(MS_DB_CONTACT_FINDNEXT, hCont, 0);
+    hCont := db_find_next(hCont);
   end;
   // add sysem history
   MaxProgress := MaxProgress + GetItemsCount(hCont);
@@ -338,7 +338,7 @@ begin
     end;
 
 {$IFNDEF SMARTSEARCH}
-    hCont := CallService(MS_DB_CONTACT_FINDFIRST, 0, 0);
+    hCont := db_find_first();
     while (hCont <> 0) and not Terminated do
     begin
       Inc(AllContacts);
@@ -352,7 +352,7 @@ begin
         else
           SearchContact(hCont);
       end;
-      hCont := CallService(MS_DB_CONTACT_FINDNEXT, hCont, 0);
+      hCont := db_find_next(hCont);
     end;
     if BookmarksMode then
       SearchBookmarks(hCont)
@@ -415,7 +415,7 @@ end;
 
 function TSearchThread.GetItemsCount(hContact: THandle): Integer;
 begin
-  Result := CallService(MS_DB_EVENT_GETCOUNT, hContact, 0);
+  Result := db_event_count(hContact);
 end;
 
 procedure TSearchThread.IncProgress;
@@ -432,12 +432,12 @@ begin
   CurContactCP := GetContactCodePage(Contact);
   CurContact := Contact;
   DoMessage(HM_STRD_NEXTCONTACT, wParam(Contact), lParam(GetContactsCount));
-  hDBEvent := CallService(MS_DB_EVENT_FINDLAST, Contact, 0);
+  hDBEvent := db_event_last(Contact);
   while (hDBEvent <> 0) and (not Terminated) do
   begin
     if SearchEvent(hDBEvent) then
       SendItem(hDBEvent);
-    hDBEvent := CallService(MS_DB_EVENT_FINDPREV, hDBEvent, 0);
+    hDBEvent := db_event_prev(hDBEvent);
   end;
   SendBatch;
 end;

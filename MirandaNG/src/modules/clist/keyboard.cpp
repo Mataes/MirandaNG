@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "clc.h"
 #include <m_hotkeys.h>
@@ -33,7 +34,7 @@ static INT_PTR hkHideShow(WPARAM, LPARAM)
 INT_PTR hkSearch(WPARAM wParam, LPARAM lParam)
 {
 	DBVARIANT dbv = {0};
-	if ( !DBGetContactSettingString(NULL, "CList", "SearchUrl", &dbv)) {
+	if ( !db_get_s(NULL, "CList", "SearchUrl", &dbv)) {
 		CallService(MS_UTILS_OPENURL, db_get_b(NULL, "CList", "HKSearchNewWnd", 0), (LPARAM)dbv.pszVal);
 		db_free(&dbv);
 	}
@@ -75,25 +76,20 @@ static INT_PTR hkAllOffline(WPARAM, LPARAM)
 */
 int InitClistHotKeys(void)
 {
-	HOTKEYDESC shk = {0};
-
 	CreateServiceFunction("CLIST/HK/SHOWHIDE", hkHideShow);
 	CreateServiceFunction("CLIST/HK/Opts", hkOpts);
 	CreateServiceFunction("CLIST/HK/Read", hkRead);
-//	CreateServiceFunction("CLIST/HK/CloseMiranda", hkCloseMiranda);
-//	CreateServiceFunction("CLIST/HK/RestoreStatus", hkRestoreStatus);
-//	CreateServiceFunction("CLIST/HK/AllOffline", hkAllOffline);
 
-	shk.cbSize = sizeof(shk);
+	HOTKEYDESC shk = { sizeof(shk) };
 	shk.dwFlags = HKD_TCHAR;
-	shk.ptszDescription = _T("Show Hide Contact List");
+	shk.ptszDescription = LPGENT("Show Hide Contact List");
 	shk.pszName = "ShowHide";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "CLIST/HK/SHOWHIDE";
 	shk.DefHotKey = HOTKEYCODE(HOTKEYF_CONTROL|HOTKEYF_SHIFT, 'A');
 	Hotkey_Register(&shk);
 
-	shk.ptszDescription = _T("Read Message");
+	shk.ptszDescription = LPGENT("Read Message");
 	shk.pszName = "ReadMessage";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "CLIST/HK/Read";
@@ -107,21 +103,21 @@ int InitClistHotKeys(void)
 	shk.DefHotKey = 846;
 	Hotkey_Register(&shk);
 */
-	shk.ptszDescription = _T("Open Options Page");
+	shk.ptszDescription = LPGENT("Open Options Page");
 	shk.pszName = "ShowOptions";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "CLIST/HK/Opts";
 	shk.DefHotKey = HOTKEYCODE(HOTKEYF_CONTROL|HOTKEYF_SHIFT, 'O') | HKF_MIRANDA_LOCAL;
 	Hotkey_Register(&shk);
 
-	shk.ptszDescription = _T("Open Logging Options");
+	shk.ptszDescription = LPGENT("Open Logging Options");
 	shk.pszName = "ShowLogOptions";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "Netlib/Log/Win";
 	shk.DefHotKey = 0;
 	Hotkey_Register(&shk);
 
-	shk.ptszDescription = _T("Open Find User Dialog");
+	shk.ptszDescription = LPGENT("Open Find User Dialog");
 	shk.pszName = "FindUsers";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "FindAdd/FindAddCommand";

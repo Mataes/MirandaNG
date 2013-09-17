@@ -16,8 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "imagecache.h"
-#include "options.h"
+#include "general.h"
 
 typedef BOOL (WINAPI *tAlphaBlend)(HDC, int, int, int, int, HDC, int, int, int, int, BLENDFUNCTION);
 static tAlphaBlend pAlphaBlend;
@@ -43,14 +42,12 @@ static void CALLBACK timerProc(HWND, UINT, UINT_PTR, DWORD)
 		lastdllname.clear();
 	}
 
-	for (int i=g_imagecache.getCount(); i--; )
+	for (int i=g_imagecache.getCount()-1; i >= 0; i--)
 		g_imagecache[i].ProcessTimerTick(ts);
 
-	if (g_imagecache.getCount() == 0) 
-	{
+	if (g_imagecache.getCount() == 0) {
 		g_imagecache.destroy();
-		if (timerId && (timerId+1) && lastmodule == NULL) 
-		{
+		if (timerId && (timerId+1) && lastmodule == NULL) {
 			KillTimer(NULL, timerId);
 			timerId = 0;
 		}

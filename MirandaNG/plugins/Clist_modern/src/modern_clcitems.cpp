@@ -21,7 +21,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "hdr/modern_commonheaders.h"
-#include "m_clc.h"
 #include "hdr/modern_clc.h"
 #include "hdr/modern_clist.h"
 #include "m_metacontacts.h"
@@ -30,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 void AddSubcontacts(ClcData *dat, ClcContact *cont, BOOL showOfflineHereGroup)
 {
 	ClcCacheEntry *cacheEntry = pcli->pfnGetCacheEntry(cont->hContact);
-	cont->SubExpanded = (db_get_b(cont->hContact,"CList","Expanded",0) && (db_get_b(NULL,"CLC","MetaExpanding",SETTING_METAEXPANDING_DEFAULT)));
+	cont->SubExpanded = ( db_get_b(cont->hContact,"CList","Expanded",0) && ( db_get_b(NULL,"CLC","MetaExpanding",SETTING_METAEXPANDING_DEFAULT)));
 	int subcount = (int)CallService(MS_MC_GETNUMCONTACTS,(WPARAM)cont->hContact,0);
 	if (subcount <= 0) {
 		cont->isSubcontact = 0;
@@ -48,7 +47,7 @@ void AddSubcontacts(ClcData *dat, ClcContact *cont, BOOL showOfflineHereGroup)
 		HANDLE hsub = (HANDLE)CallService(MS_MC_GETSUBCONTACT,(WPARAM)cont->hContact,j);
 		cacheEntry = pcli->pfnGetCacheEntry(hsub);
 		WORD wStatus = pdnce___GetStatus(cacheEntry);
-		if (showOfflineHereGroup || (!(db_get_b(NULL,"CLC","MetaHideOfflineSub",SETTING_METAHIDEOFFLINESUB_DEFAULT) && db_get_b(NULL,"CList","HideOffline",SETTING_HIDEOFFLINE_DEFAULT))
+		if (showOfflineHereGroup || (!( db_get_b(NULL,"CLC","MetaHideOfflineSub",SETTING_METAHIDEOFFLINESUB_DEFAULT) && db_get_b(NULL,"CList","HideOffline",SETTING_HIDEOFFLINE_DEFAULT))
 			|| wStatus != ID_STATUS_OFFLINE )) {
 			ClcContact& p = cont->subcontacts[i];
 			p.hContact = cacheEntry->hContact;
@@ -56,7 +55,7 @@ void AddSubcontacts(ClcData *dat, ClcContact *cont, BOOL showOfflineHereGroup)
 			p.avatar_pos = AVATAR_POS_DONT_HAVE;
 			Cache_GetAvatar(dat, &p);
 
-			p.iImage = CallService(MS_CLIST_GETCONTACTICON,(WPARAM)cacheEntry->hContact,1);
+			p.iImage = corecli.pfnGetContactIcon(cacheEntry->hContact);
 			memset(p.iExtraImage, 0xFF, sizeof(p.iExtraImage));
 			p.proto = cacheEntry->m_cache_cszProto;		
 			p.type = CLCIT_CONTACT;
@@ -205,7 +204,7 @@ static void _LoadDataToContact(ClcContact *cont, ClcGroup *group, ClcData *dat, 
 	Cache_GetAvatar(dat,cont);
 	Cache_GetText(dat,cont,1);
 	Cache_GetTimezone(dat,cont->hContact);
-	cont->iImage = CallService(MS_CLIST_GETCONTACTICON,(WPARAM)hContact,1);
+	cont->iImage = corecli.pfnGetContactIcon(hContact);
 	cont->bContactRate = db_get_b(hContact, "CList", "Rate",0);
 }
 
@@ -235,7 +234,7 @@ void * AddTempGroup(HWND hwnd,ClcData *dat,const TCHAR *szName,DWORD flags,int g
 	TCHAR * szGroupName;
 	DWORD groupFlags;
 
-	if ( wildcmp( _T2A(szName), "-@-HIDDEN-GROUP-@-",0))
+	if ( wildcmp( _T2A(szName), "-@-HIDDEN-GROUP-@-"))
 		return NULL;
 
 	for (i = 1;;i++) {
@@ -339,7 +338,6 @@ int RestoreSelection( ClcData *dat, HANDLE hSelected )
 void cliRebuildEntireList(HWND hwnd,ClcData *dat)
 {
 	DWORD style = GetWindowLongPtr(hwnd,GWL_STYLE);
-	HANDLE hContact;
 	ClcContact *cont;
 	ClcGroup *group;
 	static int rebuildCounter = 0;
@@ -372,8 +370,7 @@ void cliRebuildEntireList(HWND hwnd,ClcData *dat)
 		}
 	}
 
-	hContact = db_find_first();
-	while(hContact) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		ClcCacheEntry *cacheEntry = NULL;
 		cont = NULL;
 		cacheEntry = pcli->pfnGetCacheEntry(hContact);
@@ -383,7 +380,7 @@ void cliRebuildEntireList(HWND hwnd,ClcData *dat)
 			if (lstrlen(cacheEntry->tszGroup) == 0)
 				group = &dat->list;
 			else
-				group = cli_AddGroup(hwnd,dat,cacheEntry->tszGroup,(DWORD)-1,0,0);
+				group = cli_AddGroup(hwnd,dat,cacheEntry->tszGroup,(DWORD)-1, 0, 0);
 
 			if (group != NULL) {
 				WORD wStatus = pdnce___GetStatus( cacheEntry );
@@ -408,7 +405,6 @@ void cliRebuildEntireList(HWND hwnd,ClcData *dat)
 			if (cont->proto && g_szMetaModuleName && dat->IsMetaContactsEnabled  && strcmp(cont->proto,g_szMetaModuleName) == 0)
 				AddSubcontacts(dat,cont,CLCItems_IsShowOfflineGroup(group));
 		}
-		hContact = db_find_next(hContact);
 	}
 
 	if (style & CLS_HIDEEMPTYGROUPS) {
@@ -735,7 +731,7 @@ int __fastcall CLVM_GetContactHiddenStatus(HANDLE hContact, char *szProto, ClcDa
 			filterResult = strstr(g_CluiData.protoFilter, szTemp) ? 1 : 0;
 		}
 		if (g_CluiData.bFilterEffective & CLVM_FILTER_GROUPS) {
-			if ( !DBGetContactSettingTString(hContact, "CList", "Group", &dbv)) {
+			if ( !db_get_ts(hContact, "CList", "Group", &dbv)) {
 				mir_sntprintf(szGroupMask, SIZEOF(szGroupMask), _T("%s|"), &dbv.ptszVal[0]);
 				filterResult = (g_CluiData.filterFlags & CLVM_PROTOGROUP_OP) ? (filterResult | (_tcsstr(g_CluiData.groupFilter, szGroupMask) ? 1 : 0)) : (filterResult & (_tcsstr(g_CluiData.groupFilter, szGroupMask) ? 1 : 0));
 				mir_free(dbv.ptszVal);

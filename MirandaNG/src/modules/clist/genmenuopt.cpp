@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "genmenu.h"
 
@@ -113,7 +114,7 @@ static int SaveTree(HWND hwndDlg)
 			if (lstrcmp(iod->name, iod->defname) != 0)
 				db_set_ts(NULL, MenuNameItems, DBString, iod->name);
 			else
-				DBDeleteContactSetting(NULL, MenuNameItems, DBString);
+				db_unset(NULL, MenuNameItems, DBString);
 
 			runtimepos += 100;
 		}
@@ -263,7 +264,7 @@ static int BuildTree(HWND hwndDlg, int MenuObjectId, BOOL bReread)
 				DBVARIANT dbv;
 				mir_snprintf(buf, SIZEOF(buf), "%s_name", menuItemName);
 
-				if ( !DBGetContactSettingTString(NULL, MenuNameItems, buf, &dbv)) {
+				if ( !db_get_ts(NULL, MenuNameItems, buf, &dbv)) {
 					PD->name = mir_tstrdup(dbv.ptszVal);
 					db_free(&dbv);
 				}
@@ -381,8 +382,6 @@ static HTREEITEM MoveItemAbove(HWND hTreeWnd, HTREEITEM hItem, HTREEITEM hInsert
 	return NULL;
 }
 
-WNDPROC MyOldWindowProc = NULL;
-
 LRESULT CALLBACK LBTNDOWNProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	if (uMsg == WM_LBUTTONDOWN && !(GetKeyState(VK_CONTROL)&0x8000)) {
@@ -423,7 +422,7 @@ LRESULT CALLBACK LBTNDOWNProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 		}
 	}
 
-	return CallWindowProc(MyOldWindowProc, hwnd, uMsg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, LBTNDOWNProc, uMsg, wParam, lParam);
 }
 
 static INT_PTR CALLBACK GenMenuOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -438,11 +437,10 @@ static INT_PTR CALLBACK GenMenuOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 		SetWindowLongPtr( GetDlgItem(hwndDlg, IDC_MENUITEMS), GWLP_USERDATA, (LONG_PTR)dat);
 		dat->dragging = 0;
 		dat->iInitMenuValue = db_get_b(NULL, "CList", "MoveProtoMenus", TRUE);
-		MyOldWindowProc = (WNDPROC)GetWindowLongPtr( GetDlgItem(hwndDlg, IDC_MENUITEMS), GWLP_WNDPROC);
-		SetWindowLongPtr( GetDlgItem(hwndDlg, IDC_MENUITEMS), GWLP_WNDPROC, (LONG_PTR)&LBTNDOWNProc);
+		mir_subclassWindow( GetDlgItem(hwndDlg, IDC_MENUITEMS), LBTNDOWNProc);
 		{
 			HIMAGELIST himlCheckBoxes;
-			himlCheckBoxes = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 
+			himlCheckBoxes = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
 				(IsWinVerXPPlus() ? ILC_COLOR32 : ILC_COLOR16) | ILC_MASK, 2, 2);
 
 			ImageList_AddIcon_IconLibLoaded(himlCheckBoxes, SKINICON_OTHER_NOTICK);

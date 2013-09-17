@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/services.cpp $
-Revision       : $Revision: 1651 $
-Last change on : $Date: 2010-07-15 20:31:06 +0300 (Чт, 15 июл 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #include "headers.h"
@@ -37,28 +28,24 @@ int num_classes = 0;			//for core class api support
 // isWorkstationLocked() code from core
 bool isWorkstationLocked()
 {
-	bool rc = false;
-
 	if (OpenInputDesktop != NULL) {
 		HDESK hDesk = OpenInputDesktop(0, FALSE, DESKTOP_SWITCHDESKTOP);
 		if (hDesk == NULL)
-			rc = true;
-		else if (CloseDesktop != NULL)
+			return true;
+		if (CloseDesktop != NULL)
 			CloseDesktop(hDesk);
 	}
-	return rc;
+	return false;
 }
 
 // isFullScreen() code from core
 static bool isFullScreen()
 {
 	RECT rcScreen = {0};
-
 	rcScreen.right = GetSystemMetrics(SM_CXSCREEN);
 	rcScreen.bottom = GetSystemMetrics(SM_CYSCREEN);
 
-	if (MonitorFromWindow != NULL)
-	{
+	if (MonitorFromWindow != NULL) {
 		HMONITOR hMon = MonitorFromWindow(GetForegroundWindow(), MONITOR_DEFAULTTONEAREST);
 		MONITORINFO mi;
 		mi.cbSize = sizeof(mi);
@@ -93,50 +80,15 @@ static bool isFullScreen()
 	return false;
 }
 
-//===== PopUp/AddPopUp
-INT_PTR PopUp_AddPopUp(WPARAM wParam, LPARAM lParam)
+//===== Popup/AddPopup
+INT_PTR Popup_AddPopup(WPARAM wParam, LPARAM lParam)
 {
 	if (!gbPopupLoaded) return -1;
 
 	POPUPDATA *ppd = (POPUPDATA*)wParam;
 	if (!ppd) return -1;
 
-	POPUPDATA2 ppd2 = {0};
-	ppd2.cbSize = sizeof(ppd2);
-	ppd2.flags = PU2_ANSI;
-	ppd2.lchContact = ppd->lchContact;
-	ppd2.lchIcon = ppd->lchIcon;
-	ppd2.lpzTitle = ppd->lpzContactName;
-	ppd2.lpzText = ppd->lpzText;
-	ppd2.colorBack = ppd->colorBack;
-	ppd2.colorText = ppd->colorText;
-	ppd2.PluginWindowProc = ppd->PluginWindowProc;
-	ppd2.PluginData = ppd->PluginData;
-	ppd2.iSeconds = PopUpOptions.Seconds;
-	return PopUp_AddPopUp2((WPARAM)&ppd2, lParam);
-/*
-	PopupWnd2 *wnd = new PopupWnd2(ppd);
-
-	if (lParam & APF_RETURN_HWND)
-	{
-		while (!wnd->bWindowCreated) Sleep(1);
-		return (int)wnd->getHwnd();
-	}
-
-	return 1;
-*/
-}
-
-//===== PopUp/AddPopUpEx
-INT_PTR PopUp_AddPopUpEx(WPARAM wParam, LPARAM lParam)
-{
-	if (!gbPopupLoaded) return -1;
-
-	POPUPDATAEX_V2 *ppd = (POPUPDATAEX_V2*)wParam;
-	if (!ppd) return -1;
-
-	POPUPDATA2 ppd2 = {0};
-	ppd2.cbSize = sizeof(ppd2);
+	POPUPDATA2 ppd2 = { sizeof(ppd2) };
 	ppd2.flags = PU2_ANSI;
 	ppd2.lchContact = ppd->lchContact;
 	ppd2.lchIcon = ppd->lchIcon;
@@ -147,30 +99,11 @@ INT_PTR PopUp_AddPopUpEx(WPARAM wParam, LPARAM lParam)
 	ppd2.PluginWindowProc = ppd->PluginWindowProc;
 	ppd2.PluginData = ppd->PluginData;
 	ppd2.iSeconds = ppd->iSeconds;
-
-	if (lParam&APF_NEWDATA)
-	{
-		ppd2.lchNotification = ppd->hNotification;
-		ppd2.actionCount = ppd->actionCount;
-		ppd2.lpActions = ppd->lpActions;
-//		ppd2.hbmAvatar = ppd->hbmAvatar;
-	}
-
-	return PopUp_AddPopUp2((WPARAM)&ppd2, lParam);
-
-/*
-	if (lParam & APF_RETURN_HWND)
-	{
-		while (!wnd->bWindowCreated) Sleep(1);
-		return (int)wnd->getHwnd();
-	}
-
-	return 1;
-*/
+	return Popup_AddPopup2((WPARAM)&ppd2, lParam);
 }
 
-//===== PopUp/AddPopupW
-INT_PTR PopUp_AddPopUpW(WPARAM wParam, LPARAM lParam)
+//===== Popup/AddPopupW
+INT_PTR Popup_AddPopupW(WPARAM wParam, LPARAM lParam)
 {
 	if (!gbPopupLoaded) return -1;
 
@@ -190,28 +123,16 @@ INT_PTR PopUp_AddPopUpW(WPARAM wParam, LPARAM lParam)
 	ppd2.PluginData = ppd->PluginData;
 	ppd2.iSeconds = ppd->iSeconds;
 
-	if (lParam&APF_NEWDATA)
-	{
+	if (lParam & APF_NEWDATA) {
 		ppd2.lchNotification = ppd->hNotification;
 		ppd2.actionCount = ppd->actionCount;
 		ppd2.lpActions = ppd->lpActions;
-//		ppd2.hbmAvatar = ppd->hbmAvatar;
 	}
 
-	return PopUp_AddPopUp2((WPARAM)&ppd2, lParam);
-
-/*
-	if (lParam & APF_RETURN_HWND)
-	{
-		while (!wnd->bWindowCreated) Sleep(1);
-		return (int)wnd->getHwnd();
-	}
-
-	return 1;
-*/
+	return Popup_AddPopup2((WPARAM)&ppd2, lParam);
 }
 
-//===== PopUp/AddPopup2
+//===== Popup/AddPopup2
 static __forceinline DWORD Proto_Status2Flag_My(DWORD status)
 {
 	if (DWORD res = Proto_Status2Flag(status))
@@ -219,7 +140,7 @@ static __forceinline DWORD Proto_Status2Flag_My(DWORD status)
 	return PF2_IDLE;
 }
 
-INT_PTR PopUp_AddPopUp2(WPARAM wParam, LPARAM lParam)
+INT_PTR Popup_AddPopup2(WPARAM wParam, LPARAM lParam)
 {
 	/* NOTE: we will return 0 instead of -1 since tabSRMM stops using popup after first failure :/ */
 
@@ -256,21 +177,21 @@ INT_PTR PopUp_AddPopUp2(WPARAM wParam, LPARAM lParam)
 	if (ppd->lchContact)
 		proto = GetContactProto(ppd->lchContact);
 
-	BYTE bShowMode = proto ? DBGetContactSettingByte(ppd->lchContact, MODULNAME, "ShowMode", PU_SHOWMODE_AUTO) : PU_SHOWMODE_AUTO;
+	BYTE bShowMode = proto ? db_get_b(ppd->lchContact, MODULNAME, "ShowMode", PU_SHOWMODE_AUTO) : PU_SHOWMODE_AUTO;
 
 	if (bShowMode == PU_SHOWMODE_BLOCK)
 		return -1;
 
 	if (bShowMode != PU_SHOWMODE_FAVORITE)
 	{
-		if (!PopUpOptions.ModuleIsEnabled)
+		if (!PopupOptions.ModuleIsEnabled)
 			return -1;
 		#ifdef _DEBUG
-			itoa(PopUpOptions.DisableWhenFullscreen,temp,10);
-			OutputDebugStringA("PopUpOptions.DisableWhenFullscreen: \t");
+			_itoa(PopupOptions.DisableWhenFullscreen,temp,10);
+			OutputDebugStringA("PopupOptions.DisableWhenFullscreen: \t");
 			OutputDebugStringA(temp);
 			OutputDebugStringA("\n");
-			itoa(bShowMode,temp,10);
+			_itoa(bShowMode,temp,10);
 			OutputDebugStringA("bShowMode: \t");
 			OutputDebugStringA(temp);
 			OutputDebugStringA("\n");
@@ -279,10 +200,10 @@ INT_PTR PopUp_AddPopUp2(WPARAM wParam, LPARAM lParam)
 			OutputDebugStringA("\n");
 		#endif
 
-		if (PopUpOptions.DisableWhenFullscreen && (bShowMode != PU_SHOWMODE_FULLSCREEN) && isFullScreen())
+		if (PopupOptions.DisableWhenFullscreen && (bShowMode != PU_SHOWMODE_FULLSCREEN) && isFullScreen())
 			return -1;
 
-		if (DBGetContactSettingDword(NULL, MODULNAME, "Global Status", 0) &
+		if (db_get_dw(NULL, MODULNAME, LPGEN("Global Status"), 0) &
 				Proto_Status2Flag_My(CallService(MS_CLIST_GETSTATUSMODE, 0, 0)))
 			return -1;
 
@@ -292,8 +213,8 @@ INT_PTR PopUp_AddPopUp2(WPARAM wParam, LPARAM lParam)
 		if (proto)
 		{
 			char prefix[128];
-			mir_snprintf(prefix, sizeof(prefix), "Protocol Status/%s", GetContactProto(ppd->lchContact));
-			if (DBGetContactSettingDword(NULL, MODULNAME, prefix, 0) &
+			mir_snprintf(prefix, sizeof(prefix), LPGEN("Protocol Status") "/%s", GetContactProto(ppd->lchContact));
+			if (db_get_dw(NULL, MODULNAME, prefix, 0) &
 					Proto_Status2Flag_My(CallProtoService(proto, PS_GETSTATUS, 0, 0)))
 				return -1;
 			if (((disableWhen >> 16) & 0xFFFF0000) & Proto_Status2Flag_My(CallProtoService(proto, PS_GETSTATUS, 0, 0)))
@@ -314,8 +235,8 @@ INT_PTR PopUp_AddPopUp2(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-//===== PopUp/GetContact
-INT_PTR PopUp_GetContact(WPARAM wParam, LPARAM lParam)
+//===== Popup/GetContact
+INT_PTR Popup_GetContact(WPARAM wParam, LPARAM lParam)
 {
 	if (!gbPopupLoaded) return -1;
 
@@ -325,93 +246,54 @@ INT_PTR PopUp_GetContact(WPARAM wParam, LPARAM lParam)
 	return (INT_PTR)(-1);
 }
 
-//===== PopUp/GetPluginData
-INT_PTR PopUp_GetPluginData(WPARAM wParam, LPARAM lParam)
+//===== Popup/GetPluginData
+INT_PTR Popup_GetPluginData(WPARAM wParam, LPARAM lParam)
 {
-	if (!gbPopupLoaded) return -1;
+	if (!gbPopupLoaded || !wParam)
+		return -1;
 
-	HWND hwnd = (HWND)wParam;
-	PopupWnd2 *wnd = (PopupWnd2 *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-	if (wnd && IsValidPopupObject(wnd)) return (INT_PTR)wnd->getData();
+	PopupWnd2 *wnd = (PopupWnd2 *)GetWindowLongPtr((HWND)wParam, GWLP_USERDATA);
+	if (wnd && IsValidPopupObject(wnd))
+		return (INT_PTR)wnd->getData();
 	return (INT_PTR)(-1);
 }
 
-//===== PopUp/IsSecondLineShown
-INT_PTR PopUp_IsSecondLineShown(WPARAM wParam, LPARAM lParam)
+//===== Popup/IsSecondLineShown
+INT_PTR Popup_IsSecondLineShown(WPARAM wParam, LPARAM lParam)
 {
 	return 1;
 }
 
-//===== PopUp/ChangeText
-INT_PTR PopUp_ChangeText(WPARAM wParam, LPARAM lParam)
+//===== Popup/ChangeTextW
+INT_PTR Popup_ChangeTextW(WPARAM wParam, LPARAM lParam)
 {
-	if (!gbPopupLoaded) return -1;
+	if (!gbPopupLoaded || !wParam)
+		return -1;
 
-	if (!wParam) return -1;
 	PopupWnd2 *wnd = (PopupWnd2 *)GetWindowLongPtr((HWND)wParam, GWLP_USERDATA);
-	if (!wnd || !IsValidPopupObject(wnd)) return -1;
-	wnd->callMethodSync(&PopupWnd2::m_updateText, lParam);
-/*
-	char *str = (char *)mir_alloc(sizeof(char) * (strlen((char *)lParam) + 1));
-	strcpy(str, (char *)lParam);
-	PostMessage((HWND)wParam, UM_CHANGEPOPUP, CPT_TEXT, (LPARAM)str);
-*/
-	return 0;
-}
+	if (!wnd || !IsValidPopupObject(wnd))
+		return -1;
 
-//===== PopUp/ChangeTextW
-INT_PTR PopUp_ChangeTextW(WPARAM wParam, LPARAM lParam)
-{
-	if (!gbPopupLoaded) return -1;
-
-	if (!wParam) return -1;
-	PopupWnd2 *wnd = (PopupWnd2 *)GetWindowLongPtr((HWND)wParam, GWLP_USERDATA);
-	if (!wnd || !IsValidPopupObject(wnd)) return -1;
 	wnd->callMethodSync(&PopupWnd2::m_updateTextW, lParam);
-/*
-	WCHAR *str = (WCHAR *)mir_alloc(sizeof(WCHAR) * (wcslen((WCHAR *)lParam) + 1));
-	wcscpy(str, (WCHAR *)lParam);
-	PostMessage((HWND)wParam, UM_CHANGEPOPUP, CPT_TEXTW, (LPARAM)str);
-*/
 	return 0;
 }
 
-//===== PopUp/Change
-INT_PTR PopUp_Change(WPARAM wParam, LPARAM lParam)
+//===== Popup/ChangeW
+INT_PTR Popup_ChangeW(WPARAM wParam, LPARAM lParam)
 {
-	if (!gbPopupLoaded) return -1;
+	if (!gbPopupLoaded || !wParam)
+		return -1;
 
-	if (!wParam) return -1;
 	PopupWnd2 *wnd = (PopupWnd2 *)GetWindowLongPtr((HWND)wParam, GWLP_USERDATA);
-	if (!wnd || !IsValidPopupObject(wnd)) return -1;
-	wnd->callMethodSync(&PopupWnd2::m_updateData_POPUPDATAEX_V2, lParam);
-/*
-	POPUPDATAEX_V2 *ppdx = (POPUPDATAEX_V2 *)mir_alloc(sizeof(POPUPDATAEX_V2));
-	memcpy(ppdx, (POPUPDATAEX_V2 *)lParam, sizeof(POPUPDATAEX_V2));
-	PostMessage((HWND)wParam, UM_CHANGEPOPUP, CPT_DATA, (LPARAM)ppdx);
-*/
-	return 0;
-}
+	if (!wnd || !IsValidPopupObject(wnd))
+		return -1;
 
-//===== PopUp/ChangeW
-INT_PTR PopUp_ChangeW(WPARAM wParam, LPARAM lParam)
-{
-	if (!gbPopupLoaded) return -1;
-
-	if (!wParam) return -1;
-	PopupWnd2 *wnd = (PopupWnd2 *)GetWindowLongPtr((HWND)wParam, GWLP_USERDATA);
-	if (!wnd || !IsValidPopupObject(wnd)) return -1;
 	wnd->callMethodSync(&PopupWnd2::m_updateData_POPUPDATAW_V2, lParam);
-/*
-	POPUPDATAW_V2 *ppdw = (POPUPDATAW_V2 *)mir_alloc(sizeof(POPUPDATAW_V2));
-	memcpy(ppdw, (POPUPDATAW_V2 *)lParam, sizeof(POPUPDATAW_V2));
-	PostMessage((HWND)wParam, UM_CHANGEPOPUP, CPT_DATA, (LPARAM)ppdw);
-*/
 	return 0;
 }
 
-//===== PopUp/Change2
-INT_PTR PopUp_Change2(WPARAM wParam, LPARAM lParam)
+//===== Popup/Change2
+INT_PTR Popup_Change2(WPARAM wParam, LPARAM lParam)
 {
 	if (!gbPopupLoaded) return -1;
 
@@ -422,10 +304,10 @@ INT_PTR PopUp_Change2(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-//===== PopUp/ShowMessage
-INT_PTR PopUp_ShowMessage(WPARAM wParam, LPARAM lParam) {
+//===== Popup/ShowMessage
+INT_PTR Popup_ShowMessage(WPARAM wParam, LPARAM lParam) {
 	if (!gbPopupLoaded || !wParam || !lParam) return -1;
-	if(closing) return 0;
+	if (closing) return 0;
 
 	POPUPDATA2 ppd2 = {0};
 	ppd2.cbSize		= sizeof(ppd2);
@@ -456,12 +338,12 @@ INT_PTR PopUp_ShowMessage(WPARAM wParam, LPARAM lParam) {
 		default: //No no no... you must give me a good value.
 			return -1;
 	}
-	return PopUp_AddPopUp2((WPARAM)&ppd2, (LPARAM)((lParam&0x80000000)?APF_NO_HISTORY:0));
+	return Popup_AddPopup2((WPARAM)&ppd2, (LPARAM)((lParam&0x80000000)?APF_NO_HISTORY:0));
 }
 
-INT_PTR PopUp_ShowMessageW(WPARAM wParam, LPARAM lParam) {
+INT_PTR Popup_ShowMessageW(WPARAM wParam, LPARAM lParam) {
 	if (!gbPopupLoaded || !wParam || !lParam) return -1;
-	if(closing) return 0;
+	if (closing) return 0;
 
 	POPUPDATA2 ppd2 = {0};
 	ppd2.cbSize		= sizeof(ppd2);
@@ -492,11 +374,11 @@ INT_PTR PopUp_ShowMessageW(WPARAM wParam, LPARAM lParam) {
 		default: //No no no... you must give me a good value.
 			return -1;
 	}
-	return PopUp_AddPopUp2((WPARAM)&ppd2, (LPARAM)((lParam&0x80000000)?APF_NO_HISTORY:0));
+	return Popup_AddPopup2((WPARAM)&ppd2, (LPARAM)((lParam&0x80000000)?APF_NO_HISTORY:0));
 }
 
-//===== PopUp/Query
-INT_PTR PopUp_Query(WPARAM wParam, LPARAM lParam)
+//===== Popup/Query
+INT_PTR Popup_Query(WPARAM wParam, LPARAM lParam)
 {
 	if (!gbPopupLoaded) return -1;
 
@@ -505,21 +387,21 @@ INT_PTR PopUp_Query(WPARAM wParam, LPARAM lParam)
 
 	switch (wParam) {
 		case PUQS_ENABLEPOPUPS: {
-			if (PopUpOptions.ModuleIsEnabled) return 1; //They're already ON!!!
+			if (PopupOptions.ModuleIsEnabled) return 1; //They're already ON!!!
 			else { //Module was disabled.
 				svcEnableDisableMenuCommand(0,0);
 				return 0;
 			}
 		}
 		case PUQS_DISABLEPOPUPS: {
-			if (!(PopUpOptions.ModuleIsEnabled)) return 1; //They're already OFF!!!
+			if (!(PopupOptions.ModuleIsEnabled)) return 1; //They're already OFF!!!
 			else {
 				svcEnableDisableMenuCommand(0,0);
 				return 0;
 			}
 		}
 		case PUQS_GETSTATUS:
-			return (PopUpOptions.ModuleIsEnabled);
+			return (PopupOptions.ModuleIsEnabled);
 		default:
 			return -1;
 	}
@@ -527,8 +409,8 @@ INT_PTR PopUp_Query(WPARAM wParam, LPARAM lParam)
 }
 
 
-//===== PopUp/RegisterActions
-INT_PTR PopUp_RegisterActions(WPARAM wParam, LPARAM lParam)
+//===== Popup/RegisterActions
+INT_PTR Popup_RegisterActions(WPARAM wParam, LPARAM lParam)
 {
 	LPPOPUPACTION actions = (LPPOPUPACTION)wParam;
 	for (int i=0; i < lParam; ++i)
@@ -537,13 +419,13 @@ INT_PTR PopUp_RegisterActions(WPARAM wParam, LPARAM lParam)
 }
 
 
-INT_PTR PopUp_RegisterNotification(WPARAM wParam, LPARAM lParam)
+INT_PTR Popup_RegisterNotification(WPARAM wParam, LPARAM lParam)
 {
 	return (INT_PTR)RegisterNotification((LPPOPUPNOTIFICATION)wParam);
 }
 
 
-//===== PopUp/UnhookEventAsync
+//===== Popup/UnhookEventAsync
 struct SafeUnhookEventParam
 {
 	HWND hwndPopup;
@@ -558,7 +440,7 @@ static void CALLBACK SafeUnhookEventFunc(ULONG_PTR dwParam)
 	delete (SafeUnhookEventParam *)dwParam;
 }
 
-INT_PTR PopUp_UnhookEventAsync(WPARAM wParam, LPARAM lParam)
+INT_PTR Popup_UnhookEventAsync(WPARAM wParam, LPARAM lParam)
 {
 	SafeUnhookEventParam *param = new SafeUnhookEventParam;
 	param->hwndPopup = (HWND)wParam;
@@ -567,38 +449,38 @@ INT_PTR PopUp_UnhookEventAsync(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-//===== PopUp/RegisterVfx (effekt name for drop down box)
-INT_PTR PopUp_RegisterVfx(WPARAM wParam, LPARAM lParam)
+//===== Popup/RegisterVfx (effekt name for drop down box)
+INT_PTR Popup_RegisterVfx(WPARAM wParam, LPARAM lParam)
 {
 	OptAdv_RegisterVfx((char *)lParam);
 	return 0;
 }
 
-//===== PopUp/RegisterClass		(for core class api support)
-INT_PTR PopUp_RegisterPopupClass(WPARAM wParam, LPARAM lParam) {
+//===== Popup/RegisterClass		(for core class api support)
+INT_PTR Popup_RegisterPopupClass(WPARAM wParam, LPARAM lParam)
+{
 	char setting[256];
-	POPUPCLASS    *pc	= (POPUPCLASS *)lParam;
-	POPUPTREEDATA *ptd	= (POPUPTREEDATA *)mir_alloc(sizeof(POPUPTREEDATA));
-	memset(ptd,0,sizeof(POPUPTREEDATA));
-	ptd->cbSize		= sizeof(POPUPTREEDATA);
+	POPUPCLASS *pc	= (POPUPCLASS *)lParam;
+	POPUPTREEDATA *ptd = (POPUPTREEDATA *)mir_calloc(sizeof(POPUPTREEDATA));
+	ptd->cbSize = sizeof(POPUPTREEDATA);
 	ptd->signature	= 0/*PopupNotificationData_SIGNATURE*/;
-	ptd->typ		= 2;
+	ptd->typ	= 2;
 	memcpy(&ptd->pupClass, pc, sizeof(POPUPCLASS));
-	ptd->pszTreeRoot					= mir_a2t(pc->pszName);
-	ptd->pupClass.pszName				= mir_strdup(pc->pszName);
-	if(pc->flags & PCF_UNICODE) {
+	ptd->pszTreeRoot = mir_a2t(pc->pszName);
+	ptd->pupClass.pszName = mir_strdup(pc->pszName);
+	if (pc->flags & PCF_UNICODE) {
 		ptd->pupClass.pwszDescription	= mir_wstrdup(pc->pwszDescription);
-		ptd->pszDescription				= mir_u2t(pc->pwszDescription);
+		ptd->pszDescription = mir_u2t(pc->pwszDescription);
 	}
 	else {
-		ptd->pupClass.pszDescription	= mir_strdup (pc->pszDescription);
-		ptd->pszDescription				= mir_a2t(pc->pszDescription);
+		ptd->pupClass.pszDescription = mir_strdup(pc->pszDescription);
+		ptd->pszDescription = mir_a2t(pc->pszDescription);
 	}
 	LoadClassSettings(ptd, PU_MODULCLASS);
 
 	//we ignore pc->colorText and use fonts.text as default (if no setting found in DB)
 	mir_snprintf(setting, 256, "%s/TextCol", ptd->pupClass.pszName);
-	ptd->pupClass.colorText = (COLORREF)DBGetContactSettingDword(NULL, PU_MODULCLASS, setting, fonts.clText/*pc->colorText*/);
+	ptd->pupClass.colorText = (COLORREF)db_get_dw(NULL, PU_MODULCLASS, setting, fonts.clText/*pc->colorText*/);
 	FontID fid = {0};
 	fid.cbSize = sizeof(FontID);
 	mir_snprintf(fid.group, sizeof(fid.group), "%s/%s", PU_FNT_AND_COLOR, ptd->pupClass.pszName);
@@ -616,7 +498,7 @@ INT_PTR PopUp_RegisterPopupClass(WPARAM wParam, LPARAM lParam) {
 
 	//we ignore pc->colorBack and use fonts.clBack as default (if no setting found in DB)
 	mir_snprintf(setting, 256, "%s/BgCol", ptd->pupClass.pszName);
-	ptd->pupClass.colorBack				= (COLORREF)DBGetContactSettingDword(NULL, PU_MODULCLASS, setting, (DWORD)fonts.clBack/*pc->colorBack*/);
+	ptd->pupClass.colorBack				= (COLORREF)db_get_dw(NULL, PU_MODULCLASS, setting, (DWORD)fonts.clBack/*pc->colorBack*/);
 	ColourID cid = {0};
 	cid.cbSize = sizeof(ColourID);
 	mir_snprintf(cid.group, sizeof(cid.group), "%s/%s", PU_FNT_AND_COLOR, ptd->pupClass.pszName);
@@ -628,47 +510,61 @@ INT_PTR PopUp_RegisterPopupClass(WPARAM wParam, LPARAM lParam) {
 
 	gTreeData.insert(ptd);
 	num_classes++;
-
-	return 0;
+	return (INT_PTR)ptd;
 }
 
-//===== PopUp/AddPopupClass		(for core class api support)
-INT_PTR PopUp_CreateClassPopup(WPARAM wParam, LPARAM lParam) {
+INT_PTR Popup_UnregisterPopupClass(WPARAM wParam, LPARAM lParam)
+{
+	POPUPTREEDATA *ptd = (POPUPTREEDATA*)lParam;
+	if (ptd == NULL)
+		return 1;
+
+	for (int i=0; i < gTreeData.getCount(); i++)
+		if (gTreeData[i] == ptd) {
+			gTreeData.remove(i);
+			FreePopupClass(ptd);
+			return 0;
+		}
+
+	return 1;
+}
+
+//===== Popup/AddPopupClass		(for core class api support)
+INT_PTR Popup_CreateClassPopup(WPARAM wParam, LPARAM lParam) {
 	int ret = 1;
 	POPUPDATACLASS *pdc = (POPUPDATACLASS *)lParam;
-	if(pdc->cbSize != sizeof(POPUPDATACLASS)) return ret;
+	if (pdc->cbSize != sizeof(POPUPDATACLASS)) return ret;
 
 	POPUPCLASS		*pc  = NULL;
 	POPUPTREEDATA	*ptd = NULL;
 
-	if(wParam) pc = (POPUPCLASS *)wParam;
+	if (wParam) pc = (POPUPCLASS*)wParam;
 	else {
 		LPTSTR group = mir_a2t(pdc->pszClassName);
 		ptd = (POPUPTREEDATA *)FindTreeData(group, NULL, 2);
-		if(ptd) pc = &ptd->pupClass;
+		if (ptd) pc = &ptd->pupClass;
 	}
-	if(pc) {
-		POPUPDATA2 ppd2 = {0};
-		ppd2.cbSize				= sizeof(POPUPDATA2);
-		ppd2.colorBack			= pc->colorBack;
-		ppd2.colorText			= pc->colorText;
-		ppd2.lchIcon			= pc->hIcon;
-		ppd2.iSeconds			= pc->iSeconds;
-		ppd2.PluginWindowProc	= pc->PluginWindowProc;
-		if(pc->flags & PCF_UNICODE) {
-			ppd2.flags			= PU2_UNICODE;
-			ppd2.lpwzTitle		= (WCHAR*)pdc->pwszTitle;
-			ppd2.lpwzText		= (WCHAR*)pdc->pwszText;
+	if (pc) {
+		POPUPDATA2 ppd2 = { sizeof(ppd2) };
+		ppd2.colorBack = pc->colorBack;
+		ppd2.colorText = pc->colorText;
+		ppd2.lchIcon = pc->hIcon;
+		ppd2.iSeconds = pc->iSeconds;
+		ppd2.PluginWindowProc= pc->PluginWindowProc;
+		if (pc->flags & PCF_UNICODE) {
+			ppd2.flags = PU2_UNICODE;
+			ppd2.lpwzTitle = (WCHAR*)pdc->pwszTitle;
+			ppd2.lpwzText = (WCHAR*)pdc->pwszText;
 		}
 		else {
-			ppd2.flags			= PU2_ANSI;
-			ppd2.lpzTitle		= (char *)pdc->pszTitle;
-			ppd2.lpzText		= (char *)pdc->pszText;
+			ppd2.flags = PU2_ANSI;
+			ppd2.lpzTitle = (char *)pdc->pszTitle;
+			ppd2.lpzText = (char *)pdc->pszText;
 		}
-		ppd2.lchContact			= pdc->hContact;
-		ppd2.PluginData			= pdc->PluginData;
+		ppd2.lchContact = pdc->hContact;
+		ppd2.PluginData = pdc->PluginData;
 
-		ret = PopUp_AddPopUp2((WPARAM)&ppd2, 0);
+		ret = Popup_AddPopup2((WPARAM)&ppd2, 0);
 	}
 	return ret!=0 ? 1 : 0;
 }

@@ -89,7 +89,6 @@ const
   CMIF_ROOTHANDLE = 384; // means that hParentMenu member is set (since 0.8#26)
   CMIF_UNICODE    = 512; // will return TCHAR* instead of AnsiChar*
   CMIF_KEEPUNTRANSLATED = 1024; // don't translate a menu item
-  CMIF_ICONFROMICOLIB   = 2048; // use icolibName instead of hIcon
 
   CMIF_DEFAULT = 4096; // this menu item is the default one
 
@@ -146,6 +145,14 @@ const
     Version: v0.1.0.1+
   }
   MS_CLIST_MODIFYMENUITEM:PAnsiChar = 'CList/ModifyMenuItem';
+
+  {
+    wParam : (HGENMENU)hMenuItem
+    lParam : (BOOL) enable = TRUE, disable = FALSE
+    Notes  : changes menu item's visibility
+    Version: v0.94.2+
+  }
+  MS_CLIST_SHOWHIDEMENUITEM:PAnsiChar = 'CList/ShowHideMenuItem';
 
   {
     wParam : HCONTACT
@@ -262,7 +269,7 @@ const
 
   {
     wParam : HCONTACT
-    lParam : HDBEVENT
+    lParam : HANDLE
     Affect : Remove an event from the contact list queue
     Returns: 0 on success, [non zero] on failure
   }
@@ -374,11 +381,11 @@ const
     to ensure that WM_COMMAND was realy from clist menu not from other menu
     it is reserved range of menu ids from CLISTMENUIDMIN to CLISTMENUIDMAX
     the menu items with ids outside from such range will not be processed by service.
-    Moreover if you process WM_COMMAND youself and your window contains self menu 
+    Moreover if you process WM_COMMAND youself and your window contains self menu
     please be sure that you will not call service for non-clist menu items.
     The simplest way is to ensure that your menus are not use item ids from such range.
     Otherwise, you HAVE TO distinguish WM_COMMAND from clist menus and from your
-    internal menu and  DO NOT call MS_CLIST_MENUPROCESSCOMMAND for non clist menus. 
+    internal menu and  DO NOT call MS_CLIST_MENUPROCESSCOMMAND for non clist menus.
   }
   MPCF_CONTACTMENU = 1; // test commands from a contact menu
   MPCF_MAINMENU    = 2; // test commands from the main menu
@@ -425,17 +432,6 @@ const
   MS_CLIST_DOCKINGISDOCKED:PAnsiChar = 'CList/DockingIsDocked';
 
   {
-    wParam : Pointer to a TMSG
-    lParam : Pointer to an LRESULT
-    Affect : Process all the messages required for the tray icon, see notes
-    Returns: TRUE if the message should not be processed anymore, False otherwise
-    Notes  : Only msg.hwnd, msg.message, msg.wparam and msg.lParam are used
-             your WndProc should return LRESULT if and ONLY if TRUE is returned
-    Version: v0.1.1.0+
-  }
-  MS_CLIST_TRAYICONPROCESSMESSAGE:PAnsiChar = 'CList/TrayIconProcessMessage';
-
-  {
     wParam : Pointer to TMSG
     lParam : Pointer to an LRESULT
     Affect : Process all the messages required for hotkeys, see notes
@@ -454,21 +450,10 @@ const
   }
   MS_CLIST_SHOWHIDE:PAnsiChar = 'CList/ShowHide';
 
-  {
-    wParam : 0
-    lParam : 0
-    Affect : temporarily disable the autohide feature, see notes
-    Notes  : this service will restart the auto hide timer, so if you need
-             to keep the window visible you'll have to bee getting user input
-             or calling this service each time
-    Version: v0.1.2.1+
-  }
-  MS_CLIST_PAUSEAUTOHIDE:PAnsiChar = 'CList/PauseAutoHide';
-
 {
   sent when the group get modified (created, renamed or deleted)
-  or contact is moving from group to group 
-  wParam=hContact - NULL if operation on group 
+  or contact is moving from group to group
+  wParam=hContact - NULL if operation on group
   lParam=pointer to CLISTGROUPCHANGE
 }
 type
@@ -479,6 +464,14 @@ type
   end;
 const
   ME_CLIST_GROUPCHANGE:PAnsiChar = 'CList/GroupChange';
+
+  {
+    checks that a group exists
+    wParam : 0 (unused)
+    lParam : (PWideChar)groupName
+    returns 0 if a group is not found or group handle on success
+  }
+  MS_CLIST_GROUPEXISTS:PAnsiChar = 'CList/GroupExists';
 
   {
     wParam : HPARENTGROUP

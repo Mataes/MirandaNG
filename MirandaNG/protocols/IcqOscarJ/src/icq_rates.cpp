@@ -129,7 +129,7 @@ WORD rates::getGroupFromSNAC(WORD wFamily, WORD wCommand)
 				}
 			}
 		}
-		_ASSERTE(0);
+		// Legacy ICQ server
 	}
 
 	return 0; // Failure
@@ -365,7 +365,7 @@ void rates_queue::initDelay(int nDelay, IcqRateFunc delaycode)
 	pArgs->nDelay = nDelay;
 	pArgs->delaycode = delaycode;
 
-	ppro->ForkThread((IcqThreadFunc)&CIcqProto::rateDelayThread, pArgs);
+	ppro->ForkThread((CIcqProto::MyThreadFunc)&CIcqProto::rateDelayThread, pArgs);
 }
 
 
@@ -492,8 +492,7 @@ void rates_queue::putItem(rates_queue_item *pItem, int nMinDelay)
 		if (nDelay < nMinDelay) nDelay = nMinDelay;
 		initDelay(nDelay, &rates_queue::processQueue);
 	}
-	else
-		listsMutex->Leave();
+	else listsMutex->Leave();
 }
 
 
@@ -502,8 +501,7 @@ int CIcqProto::handleRateItem(rates_queue_item *item, int nQueueType, int nMinDe
 	rates_queue *pQueue = NULL;
 
 	m_ratesMutex->Enter();
-	switch (nQueueType) 
-	{
+	switch (nQueueType) {
 	case RQT_REQUEST: 
 		pQueue = m_ratesQueue_Request;
 		break;
@@ -512,10 +510,9 @@ int CIcqProto::handleRateItem(rates_queue_item *item, int nQueueType, int nMinDe
 		break;
 	}
 
-	if (pQueue)
-	{
-		if (bAllowDelay && (item->isOverRate(pQueue->waitLevel) || nMinDelay))
-		{ // limit reached or min delay configured, add to queue
+	if (pQueue) {
+		if (bAllowDelay && (item->isOverRate(pQueue->waitLevel) || nMinDelay)) {
+			// limit reached or min delay configured, add to queue
 			pQueue->putItem(item, nMinDelay);
 
 			m_ratesMutex->Leave();

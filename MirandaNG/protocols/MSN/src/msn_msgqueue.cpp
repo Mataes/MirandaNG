@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2006-2012 Boris Krasnovskiy.
 Copyright (c) 2003-2005 George Hazan.
 Copyright (c) 2002-2003 Richard Hughes (original version).
@@ -36,12 +38,12 @@ void CMsnProto::MsgQueue_Uninit(void)
 	DeleteCriticalSection(&csMsgQueue);
 }
 
-int  CMsnProto::MsgQueue_Add(const char* wlid, int msgType, const char* msg, int msgSize, filetransfer* ft, int flags, STRLIST *cnt)
+int CMsnProto::MsgQueue_Add(const char* wlid, int msgType, const char* msg, int msgSize, filetransfer* ft, int flags, STRLIST *cnt)
 {
 	EnterCriticalSection(&csMsgQueue);
 
 	MsgQueueEntry* E = new MsgQueueEntry;
-	msgQueueList.insert(E);
+	lsMessageQueue.insert(E);
 
 	int seq = msgQueueSeq++;
 
@@ -70,13 +72,13 @@ const char* CMsnProto::MsgQueue_CheckContact(const char* wlid, time_t tsc)
 
 	time_t ts = time(NULL);
 	const char* ret = NULL;
-	for (int i=0; i < msgQueueList.getCount(); i++)
+	for (int i=0; i < lsMessageQueue.getCount(); i++)
 	{
-		if (_stricmp(msgQueueList[i].wlid, wlid) == 0 && (tsc == 0 || (ts - msgQueueList[i].ts) < tsc))
-		{	
+		if (_stricmp(lsMessageQueue[i].wlid, wlid) == 0 && (tsc == 0 || (ts - lsMessageQueue[i].ts) < tsc))
+		{
 			ret = wlid;
 			break;
-		}	
+		}
 	}
 
 	LeaveCriticalSection(&csMsgQueue);
@@ -89,20 +91,20 @@ const char* CMsnProto::MsgQueue_GetNextRecipient(void)
 	EnterCriticalSection(&csMsgQueue);
 
 	const char* ret = NULL;
-	for (int i=0; i < msgQueueList.getCount(); i++)
+	for (int i=0; i < lsMessageQueue.getCount(); i++)
 	{
-		MsgQueueEntry& E = msgQueueList[i];
+		MsgQueueEntry& E = lsMessageQueue[i];
 		if (!E.allocatedToThread)
 		{
 			E.allocatedToThread = 1;
 			ret = E.wlid;
 
-			while(++i < msgQueueList.getCount())
-				if (_stricmp(msgQueueList[i].wlid, ret) == 0)
-					msgQueueList[i].allocatedToThread = 1;
+			while(++i < lsMessageQueue.getCount())
+				if (_stricmp(lsMessageQueue[i].wlid, ret) == 0)
+					lsMessageQueue[i].allocatedToThread = 1;
 
 			break;
-		}	
+		}
 	}
 
 	LeaveCriticalSection(&csMsgQueue);
@@ -110,38 +112,38 @@ const char* CMsnProto::MsgQueue_GetNextRecipient(void)
 }
 
 //deletes from list. Must mir_free() return value
-bool  CMsnProto::MsgQueue_GetNext(const char* wlid, MsgQueueEntry& retVal)
+bool CMsnProto::MsgQueue_GetNext(const char* wlid, MsgQueueEntry& retVal)
 {
 	int i;
 
 	EnterCriticalSection(&csMsgQueue);
-	for(i=0; i < msgQueueList.getCount(); i++)
-		if (_stricmp(msgQueueList[i].wlid, wlid) == 0)
+	for(i=0; i < lsMessageQueue.getCount(); i++)
+		if (_stricmp(lsMessageQueue[i].wlid, wlid) == 0)
 			break;
-	
-	bool res = i != msgQueueList.getCount();
+
+	bool res = i != lsMessageQueue.getCount();
 	if (res)
-	{	
-		retVal = msgQueueList[i];
-		msgQueueList.remove(i);
+	{
+		retVal = lsMessageQueue[i];
+		lsMessageQueue.remove(i);
 	}
 	LeaveCriticalSection(&csMsgQueue);
 	return res;
 }
 
-int  CMsnProto::MsgQueue_NumMsg(const char* wlid)
+int CMsnProto::MsgQueue_NumMsg(const char* wlid)
 {
 	int res = 0;
 	EnterCriticalSection(&csMsgQueue);
 
-	for(int i=0; i < msgQueueList.getCount(); i++)
-		res += (_stricmp(msgQueueList[i].wlid, wlid) == 0);
-	
+	for(int i=0; i < lsMessageQueue.getCount(); i++)
+		res += (_stricmp(lsMessageQueue[i].wlid, wlid) == 0);
+
 	LeaveCriticalSection(&csMsgQueue);
 	return res;
 }
 
-void  CMsnProto::MsgQueue_Clear(const char* wlid, bool msg)
+void CMsnProto::MsgQueue_Clear(const char* wlid, bool msg)
 {
 	int i;
 
@@ -149,45 +151,45 @@ void  CMsnProto::MsgQueue_Clear(const char* wlid, bool msg)
 	if (wlid == NULL)
 	{
 
-		for(i=0; i < msgQueueList.getCount(); i++)
+		for(i=0; i < lsMessageQueue.getCount(); i++)
 		{
-			const MsgQueueEntry& E = msgQueueList[i];
+			const MsgQueueEntry& E = lsMessageQueue[i];
 			if (E.msgSize == 0)
 			{
 				HANDLE hContact = MSN_HContactFromEmail(E.wlid);
-				SendBroadcast(hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED, 
-					(HANDLE)E.seq, (LPARAM)MSN_Translate("Message delivery failed"));
+				ProtoBroadcastAck(hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED,
+					(HANDLE)E.seq, (LPARAM)Translate("Message delivery failed"));
 			}
 			mir_free(E.message);
 			mir_free(E.wlid);
 			if (E.cont) delete E.cont;
 		}
-		msgQueueList.destroy();
+		lsMessageQueue.destroy();
 
 		msgQueueSeq = 1;
 	}
 	else
 	{
-		for(i=0; i < msgQueueList.getCount(); i++)
+		for(i=0; i < lsMessageQueue.getCount(); i++)
 		{
 			time_t ts = time(NULL);
-			const MsgQueueEntry& E = msgQueueList[i];
-			if (_stricmp(msgQueueList[i].wlid, wlid) == 0 && (!msg || E.msgSize == 0))
+			const MsgQueueEntry& E = lsMessageQueue[i];
+			if (_stricmp(lsMessageQueue[i].wlid, wlid) == 0 && (!msg || E.msgSize == 0))
 			{
 				bool msgfnd = E.msgSize == 0 && E.ts < ts;
 				int seq = E.seq;
-				
+
 				mir_free(E.message);
 				mir_free(E.wlid);
 				if (E.cont) delete E.cont;
-				msgQueueList.remove(i);
+				lsMessageQueue.remove(i);
 
-				if (msgfnd) 
+				if (msgfnd)
 				{
 					LeaveCriticalSection(&csMsgQueue);
 					HANDLE hContact = MSN_HContactFromEmail(wlid);
-					SendBroadcast(hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE)seq, 
-						(LPARAM)MSN_Translate("Message delivery failed"));
+					ProtoBroadcastAck(hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE)seq,
+						(LPARAM)Translate("Message delivery failed"));
 					i = 0;
 					EnterCriticalSection(&csMsgQueue);
 				}

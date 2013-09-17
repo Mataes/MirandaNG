@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -67,26 +68,9 @@ typedef enum {			// initial default to RSMODE_LASTSEEN
 } JABBER_RESOURCE_MODE;
 
 
-struct JABBER_XEP0232_SOFTWARE_INFO
+struct JABBER_XEP0232_SOFTWARE_INFO : public MZeroedObject
 {
-	TCHAR* szOs;
-	TCHAR* szOsVersion;
-	TCHAR* szSoftware;
-	TCHAR* szSoftwareVersion;
-	TCHAR* szXMirandaCoreVersion;
-	BOOL bXMirandaIsUnicode;
-	BOOL bXMirandaIsAlpha;
-	BOOL bXMirandaIsDebug;
-	JABBER_XEP0232_SOFTWARE_INFO() {
-		ZeroMemory(this, sizeof(JABBER_XEP0232_SOFTWARE_INFO));
-	}
-	~JABBER_XEP0232_SOFTWARE_INFO() {
-		mir_free(szOs);
-		mir_free(szOsVersion);
-		mir_free(szSoftware);
-		mir_free(szSoftwareVersion);
-		mir_free(szXMirandaCoreVersion);
-	}
+	ptrT tszOs, tszOsVersion, tszSoftware, tszSoftwareVersion, tszXMirandaCoreVersion;
 };
 
 struct JABBER_RESOURCE_STATUS
@@ -115,24 +99,31 @@ struct JABBER_RESOURCE_STATUS
 
 	// XEP-0085 gone event support
 	BOOL bMessageSessionActive;
+
 	JABBER_XEP0232_SOFTWARE_INFO* pSoftwareInfo;
 };
 
-struct JABBER_LIST_ITEM
+struct JABBER_LIST_ITEM : public MZeroedObject
 {
+	JABBER_LIST_ITEM();
+	~JABBER_LIST_ITEM();
+
 	JABBER_LIST list;
 	TCHAR* jid;
 
 	// LIST_ROSTER
 	// jid = jid of the contact
 	TCHAR* nick;
-	int resourceCount;
-	JABBER_RESOURCE_STATUS *resource;
-	JABBER_RESOURCE_STATUS itemResource; // resource for jids without /resource node
-	int lastSeenResource;	// index to resource[x] which was last seen active
-	int manualResource;	// manually set index to resource[x]
-//	int defaultResource;	// index to resource[x] which is the default, negative (-1) means no resource is chosen yet
+
+	JABBER_RESOURCE_STATUS* findResource(const TCHAR *resourceName) const;
+	JABBER_RESOURCE_STATUS* getBestResource() const;
 	JABBER_RESOURCE_MODE resourceMode;
+	LIST<JABBER_RESOURCE_STATUS> arResources; // array of resources
+	JABBER_RESOURCE_STATUS
+		*pLastSeenResource, // resource which was last seen active
+		*pManualResource,   // manually set resource
+		itemResource;       // resource for jids without /resource node
+
 	JABBER_SUBSCRIPTION subscription;
 	TCHAR* group;
 	TCHAR* photoFileName;
@@ -145,19 +136,15 @@ struct JABBER_LIST_ITEM
 
 	// LIST_ROOM
 	// jid = room JID
-	// char* name; // room name
 	TCHAR* type;	// room type
 
 	// LIST_CHATROOM
 	// jid = room JID
-	// char* nick;	// my nick in this chat room (SPECIAL: in TXT)
-	// JABBER_RESOURCE_STATUS *resource;	// participant nicks in this room
 	BOOL bChatActive;
 	HWND hwndGcListBan;
 	HWND hwndGcListAdmin;
 	HWND hwndGcListOwner;
 	int  iChatState;
-	// BOOL bAutoJoin; // chat sessio was started via auto-join
 
 	// LIST_FILE
 	// jid = string representation of port number
@@ -176,13 +163,11 @@ struct JABBER_LIST_ITEM
 
 	//LIST_BOOKMARK
 	// jid = room JID
-	// TCHAR* nick;	// my nick in this chat room
-	// TCHAR* name; // name of the bookmark
-	// TCHAR* type; // type of bookmark ("url" or "conference")
 	TCHAR* password;	// password for room
 	BOOL bAutoJoin;
 
 	BOOL bUseResource;
+	BOOL bHistoryRead;
 };
 
 struct JABBER_HTTP_AVATARS

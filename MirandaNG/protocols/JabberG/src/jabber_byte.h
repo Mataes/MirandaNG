@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -33,11 +34,11 @@ struct JABBER_BYTE_TRANSFER
 {
 	~JABBER_BYTE_TRANSFER();
 
-	TCHAR* sid;
-	TCHAR* srcJID;
-	TCHAR* dstJID;
-	TCHAR* streamhostJID;
-	TCHAR* iqId;
+	TCHAR *sid;
+	TCHAR *srcJID;
+	TCHAR *dstJID;
+	TCHAR *streamhostJID;
+	TCHAR *iqId;
 	JABBER_BYTE_STATE state;
 	HANDLE hConn;
 	HANDLE hEvent;
@@ -50,10 +51,10 @@ struct JABBER_BYTE_TRANSFER
 	// XEP-0065 proxy support
 	BOOL bProxyDiscovered;
 	HANDLE hProxyEvent;
-	TCHAR* szProxyHost;
-	TCHAR* szProxyPort;
-	TCHAR* szProxyJid;
-	TCHAR* szStreamhostUsed;
+	TCHAR *szProxyHost;
+	TCHAR *szProxyPort;
+	TCHAR *szProxyJid;
+	TCHAR *szStreamhostUsed;
 	BOOL bStreamActivated;
 	HANDLE hSendEvent;
 };

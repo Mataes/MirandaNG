@@ -1,5 +1,4 @@
 #include "commonheaders.h"
-#pragma hdrstop
 
 static HANDLE hButtonsBarAddButton;
 static HANDLE hButtonsBarRemoveButton;
@@ -38,7 +37,7 @@ static int sstSortButtons(const void * vmtbi1, const void * vmtbi2)
 
 static void li_ListDestruct(SortedList *pList, ItemDestuctor pItemDestructor)
 {
-	int i = 0;
+	int i=0;
 	if (!pList) return;
 	for (i=0; i < pList->realCount; i++)	pItemDestructor(pList->items[i]);
 	List_Destroy(pList);
@@ -62,10 +61,9 @@ static void li_RemovePtrDestruct(SortedList *pList, void * ptr, ItemDestuctor pI
 static void li_SortList(SortedList *pList, FSortFunc pSortFunct)
 {
 	FSortFunc pOldSort = pList->sortFunc;
-	int i;
 	if (!pSortFunct) pSortFunct = pOldSort;
 	pList->sortFunc = NULL;
-	for (i=0; i < pList->realCount - 1; i++)
+	for (int i=0; i < pList->realCount - 1; i++)
 		if (pOldSort(pList->items[i], pList->items[i+1]) < 0) {
 			void * temp = pList->items[i];
 			pList->items[i] = pList->items[i+1];
@@ -93,10 +91,10 @@ struct RemoveSettings {
 
 static int DBRemoveEnumProc(const char *szSetting, LPARAM lParam)
 {
-	struct RemoveSettings *rs = (struct RemoveSettings *)lParam;
+	RemoveSettings *rs = (RemoveSettings *)lParam;
 
 	if (!rs->szPrefix || !strncmp(szSetting, rs->szPrefix, strlen(rs->szPrefix))) {
-		rs->szSettings = (char **)realloc(rs->szSettings, (rs->count + 1) * sizeof(char *));
+		rs->szSettings = (char **)mir_realloc(rs->szSettings, (rs->count + 1) * sizeof(char *));
 		rs->szSettings[rs->count] = _strdup(szSetting);
 		rs->count += 1;
 	}
@@ -105,31 +103,30 @@ static int DBRemoveEnumProc(const char *szSetting, LPARAM lParam)
 
 static int Hlp_RemoveDatabaseSettings(HANDLE hContact, char *szModule, char *szPrefix)
 {
-	DBCONTACTENUMSETTINGS dbces;
-	struct RemoveSettings rs;
+	RemoveSettings rs;
 	int i, count;
 
-	ZeroMemory(&rs, sizeof(struct RemoveSettings));
+	ZeroMemory(&rs, sizeof(RemoveSettings));
 	rs.szPrefix = szPrefix;
-	ZeroMemory(&dbces, sizeof(DBCONTACTENUMSETTINGS));
-	dbces.pfnEnumProc = DBRemoveEnumProc;
-	dbces.lParam = (LPARAM) & rs;
-	dbces.szModule = szModule;
-	if (CallService(MS_DB_CONTACT_ENUMSETTINGS, (WPARAM)(HANDLE)hContact, (LPARAM)&dbces) == -1) {
 
+	DBCONTACTENUMSETTINGS dbces = { 0 };
+	dbces.pfnEnumProc = DBRemoveEnumProc;
+	dbces.lParam = (LPARAM)&rs;
+	dbces.szModule = szModule;
+	if (CallService(MS_DB_CONTACT_ENUMSETTINGS, (WPARAM)(HANDLE)hContact, (LPARAM)&dbces) == -1)
 		return -1;
-	}
+
 	count = 0;
 	if (rs.szSettings != NULL) {
 		for (i=0; i < rs.count; i++) {
 			if (rs.szSettings[i] != NULL) {
-				if (!DBDeleteContactSetting(hContact, szModule, rs.szSettings[i])) {
+				if (!db_unset(hContact, szModule, rs.szSettings[i])) {
 					count += 1;
 				}
-				free(rs.szSettings[i]);
+				mir_free(rs.szSettings[i]);
 			}
 		}
-		free(rs.szSettings);
+		mir_free(rs.szSettings);
 	}
 
 	return count;
@@ -140,9 +137,9 @@ void CB_InitCustomButtons()
 	LButtonsList = List_Create(0, 1);
 	RButtonsList = List_Create(0, 1);
 	InitializeCriticalSection(&ToolBarCS);
-	dwSepCount = M->GetDword("TabSRMM_Toolbar", "SeparatorsCount", 0);
+	dwSepCount = M.GetDword("TabSRMM_Toolbar", "SeparatorsCount", 0);
 
-	//dwSepCount = DBGetContactSettingDword(NULL, "TabSRMM_Toolbar", "SeparatorsCount", 0);
+	//dwSepCount = db_get_dw(NULL, "TabSRMM_Toolbar", "SeparatorsCount", 0);
 
 	hButtonsBarAddButton = CreateServiceFunction(MS_BB_ADDBUTTON, CB_AddButton);
 	hButtonsBarRemoveButton = CreateServiceFunction(MS_BB_REMOVEBUTTON, CB_RemoveButton);
@@ -168,7 +165,7 @@ void CB_DeInitCustomButtons()
 	DestroyServiceFunction(hButtonsBarSetButtonState);
 }
 
-void CB_DestroyAllButtons(HWND hwndDlg, struct TWindowData *dat)
+void CB_DestroyAllButtons(HWND hwndDlg, TWindowData *dat)
 {
 	int i;
 	HWND hwndBtn = NULL;
@@ -189,7 +186,7 @@ void CB_DestroyAllButtons(HWND hwndDlg, struct TWindowData *dat)
 	}
 }
 
-void CB_DestroyButton(HWND hwndDlg, struct TWindowData *dat, DWORD dwButtonCID, DWORD dwFlags)
+void CB_DestroyButton(HWND hwndDlg, TWindowData *dat, DWORD dwButtonCID, DWORD dwFlags)
 {
 	HWND hwndBtn = GetDlgItem(hwndDlg, dwButtonCID);
 	RECT rc = {0};
@@ -205,14 +202,14 @@ void CB_DestroyButton(HWND hwndDlg, struct TWindowData *dat, DWORD dwButtonCID, 
 	}
 }
 
-void CB_ChangeButton(HWND hwndDlg, struct TWindowData *dat, CustomButtonData* cbd)
+void CB_ChangeButton(HWND hwndDlg, TWindowData *dat, CustomButtonData* cbd)
 {
 	HWND hwndBtn = GetDlgItem(hwndDlg, cbd->dwButtonCID);
 	if (hwndBtn) {
 		if (cbd->hIcon)
 			SendMessage(hwndBtn, BM_SETIMAGE, IMAGE_ICON, (LPARAM)Skin_GetIconByHandle(cbd->hIcon));
 		if (cbd->ptszTooltip)
-			SendMessage(hwndBtn, BUTTONADDTOOLTIP, (WPARAM)TranslateTS(cbd->ptszTooltip), 0);
+			SendMessage(hwndBtn, BUTTONADDTOOLTIP, (WPARAM)TranslateTS(cbd->ptszTooltip), BATF_TCHAR);
 		SendMessage(hwndBtn, BUTTONSETCONTAINER, (LPARAM)dat->pContainer, 0);
 	}
 }
@@ -247,13 +244,13 @@ void CB_ReInitCustomButtons()
 			i--;
 		}
 	}
-	M->BroadcastMessage(DM_BBNEEDUPDATE, 0, 0);
-	M->BroadcastMessage(DM_LOADBUTTONBARICONS, 0, 0);
+	M.BroadcastMessage(DM_BBNEEDUPDATE, 0, 0);
+	M.BroadcastMessage(DM_LOADBUTTONBARICONS, 0, 0);
 }
 
 void CB_HardReInit()
 {
-	M->BroadcastMessage(DM_CBDESTROY, 0, 0);
+	M.BroadcastMessage(DM_CBDESTROY, 0, 0);
 	EnterCriticalSection(&ToolBarCS);
 	li_ListDestruct(LButtonsList, listdestructor);
 	li_ListDestruct(RButtonsList, listdestructor);
@@ -323,7 +320,7 @@ static INT_PTR CB_AddButton(WPARAM wParam, LPARAM lParam)
 	if (cbd->dwArrowCID == LastCID)
 		LastCID++;
 
-	M->BroadcastMessage(DM_BBNEEDUPDATE, 0, 0);
+	M.BroadcastMessage(DM_BBNEEDUPDATE, 0, 0);
 	return 0;
 }
 
@@ -352,7 +349,7 @@ static INT_PTR CB_GetButtonState(WPARAM wParam, LPARAM lParam)
 		}
 
 	if (!realbutton) return 1;
-	hwndDlg = M->FindWindow((HANDLE)wParam);
+	hwndDlg = M.FindWindow((HANDLE)wParam);
 	bbdi->bbbFlags = (IsDlgButtonChecked(hwndDlg, tempCID) ? BBSF_PUSHED : BBSF_RELEASED) | (IsWindowVisible(GetDlgItem(hwndDlg, tempCID)) ? 0 : BBSF_HIDDEN) | (IsWindowEnabled(GetDlgItem(hwndDlg, tempCID)) ? 0 : BBSF_DISABLED);
 	return 0;
 }
@@ -383,15 +380,11 @@ static INT_PTR CB_SetButtonState(WPARAM wParam, LPARAM lParam)
 	if (!realbutton || !wParam) return 1;
 
 
-	hwndDlg = M->FindWindow((HANDLE)wParam);
+	hwndDlg = M.FindWindow((HANDLE)wParam);
 	if (hwndDlg && realbutton && bbdi->hIcon)
 		SendMessage(GetDlgItem(hwndDlg, tempCID), BM_SETIMAGE, IMAGE_ICON, (LPARAM)Skin_GetIconByHandle(bbdi->hIcon));
-	if (hwndDlg && realbutton && bbdi->pszTooltip) {
-		if (bbdi->bbbFlags&BBBF_ANSITOOLTIP)
-			SendMessage(GetDlgItem(hwndDlg, tempCID), BUTTONADDTOOLTIP, (WPARAM)mir_a2u(bbdi->pszTooltip), 0);
-		else
-			SendMessage(GetDlgItem(hwndDlg, tempCID), BUTTONADDTOOLTIP, (WPARAM)bbdi->ptszTooltip, 0);
-	}
+	if (hwndDlg && realbutton && bbdi->pszTooltip)
+		SendMessage(GetDlgItem(hwndDlg, tempCID), BUTTONADDTOOLTIP, (WPARAM)bbdi->ptszTooltip, (bbdi->bbbFlags & BBBF_ANSITOOLTIP) ? 0 : BATF_TCHAR);
 	if (hwndDlg && realbutton && bbdi->bbbFlags) {
 		Utils::showDlgControl(hwndDlg, tempCID, (bbdi->bbbFlags&BBSF_HIDDEN) ? SW_HIDE : SW_SHOW);
 		Utils::enableDlgControl(hwndDlg, tempCID, (bbdi->bbbFlags&BBSF_DISABLED) ? 0 : 1);
@@ -435,7 +428,7 @@ static INT_PTR CB_RemoveButton(WPARAM wParam, LPARAM lParam)
 
 	LeaveCriticalSection(&ToolBarCS);
 	if (tempCID)
-		M->BroadcastMessage(DM_CBDESTROY, (WPARAM)tempCID, (LPARAM)dwFlags);
+		M.BroadcastMessage(DM_CBDESTROY, (WPARAM)tempCID, (LPARAM)dwFlags);
 	return 0;
 }
 
@@ -487,11 +480,11 @@ static INT_PTR CB_ModifyButton(WPARAM wParam, LPARAM lParam)
 	}
 	LeaveCriticalSection(&ToolBarCS);
 	if (bFound)
-		M->BroadcastMessage(DM_BBNEEDUPDATE, 0, (LPARAM)cbd);
+		M.BroadcastMessage(DM_BBNEEDUPDATE, 0, (LPARAM)cbd);
 	return 0;
 }
 
-void BB_UpdateIcons(HWND hdlg, struct TWindowData *dat)
+void BB_UpdateIcons(HWND hdlg, TWindowData *dat)
 {
 	int i;
 	HWND hwndBtn = NULL;
@@ -563,15 +556,17 @@ void TSAPI BB_InitDlgButtons(TWindowData *dat)
 				rwidth += cbd->iButtonWidth + gap;
 			if (!cbd->bHidden && !cbd->bCanBeHidden)
 				dat->iButtonBarReallyNeeds += cbd->iButtonWidth + gap;
-			if (!cbd->bDummy && !GetDlgItem(hdlg, cbd->dwButtonCID))
-				hwndBtn = CreateWindowEx(0, _T("TSButtonClass"), _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP, rect.right - rwidth + gap, splitterY, cbd->iButtonWidth, DPISCALEY_S(22), hdlg, (HMENU) cbd->dwButtonCID, g_hInst, NULL);
+			if (!cbd->bDummy && !GetDlgItem(hdlg, cbd->dwButtonCID)) {
+				hwndBtn = CreateWindowEx(0, _T("MButtonClass"), _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP, rect.right - rwidth + gap, splitterY, cbd->iButtonWidth, DPISCALEY_S(22), hdlg, (HMENU) cbd->dwButtonCID, g_hInst, NULL);
+				CustomizeButton(hwndBtn);
+			}
 			if (!cbd->bDummy && hwndBtn) {
 				SendMessage(hwndBtn, BUTTONSETASFLATBTN, TRUE, 0);
 				SendMessage(hwndBtn, BUTTONSETASTHEMEDBTN, isThemed != 0, 0);
 				if (cbd->hIcon)
 					SendMessage(hwndBtn, BM_SETIMAGE, IMAGE_ICON, (LPARAM)Skin_GetIconByHandle(cbd->hIcon));
 				if (cbd->ptszTooltip)
-					SendMessage(hwndBtn, BUTTONADDTOOLTIP, (WPARAM)TranslateTS(cbd->ptszTooltip), 0);
+					SendMessage(hwndBtn, BUTTONADDTOOLTIP, (WPARAM)TranslateTS(cbd->ptszTooltip), BATF_TCHAR);
 				SendMessage(hwndBtn, BUTTONSETCONTAINER, (LPARAM)dat->pContainer, 0);
 				SendMessage(hwndBtn, BUTTONSETASTOOLBARBUTTON, TRUE, 0);
 
@@ -596,9 +591,11 @@ void TSAPI BB_InitDlgButtons(TWindowData *dat)
 		CustomButtonData* cbd = (CustomButtonData *)LButtonsList->items[i];
 		if (((dat->bType == SESSIONTYPE_IM && cbd->bIMButton)
 				|| (dat->bType == SESSIONTYPE_CHAT && cbd->bChatButton))) {
-			if (!cbd->bDummy && !GetDlgItem(hdlg, cbd->dwButtonCID))
-				hwndBtn = CreateWindowEx(0, _T("TSButtonClass"), _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP, 2 + lwidth, splitterY,
+			if (!cbd->bDummy && !GetDlgItem(hdlg, cbd->dwButtonCID)) {
+				hwndBtn = CreateWindowEx(0, _T("MButtonClass"), _T(""), WS_CHILD | WS_VISIBLE | WS_TABSTOP, 2 + lwidth, splitterY,
 										 cbd->iButtonWidth, DPISCALEY_S(22), hdlg, (HMENU) cbd->dwButtonCID, g_hInst, NULL);
+				CustomizeButton(hwndBtn);
+			}
 			if (!cbd->bHidden)
 				lwidth += cbd->iButtonWidth + gap;
 			if (!cbd->bHidden && !cbd->bCanBeHidden)
@@ -609,7 +606,7 @@ void TSAPI BB_InitDlgButtons(TWindowData *dat)
 				if (cbd->hIcon)
 					SendMessage(hwndBtn, BM_SETIMAGE, IMAGE_ICON, (LPARAM)Skin_GetIconByHandle(cbd->hIcon));
 				if (cbd->ptszTooltip)
-					SendMessage(hwndBtn, BUTTONADDTOOLTIP, (WPARAM)TranslateTS(cbd->ptszTooltip), 0);
+					SendMessage(hwndBtn, BUTTONADDTOOLTIP, (WPARAM)TranslateTS(cbd->ptszTooltip), BATF_TCHAR);
 				SendMessage(hwndBtn, BUTTONSETCONTAINER, (LPARAM)dat->pContainer, 0);
 				SendMessage(hwndBtn, BUTTONSETASTOOLBARBUTTON, TRUE, 0);
 
@@ -660,44 +657,39 @@ void TSAPI BB_RedrawButtons(TWindowData *dat)
 
 BOOL TSAPI BB_SetButtonsPos(TWindowData *dat)
 {
-	RECT 			rect;
-	int 			i;
-	HWND 			hwndBtn = 0;
-	int 			lwidth = 0, rwidth = 0;
-	RECT 			rcSplitter;
-	POINT 			ptSplitter;
-	int 			splitterY, iOff;
-	BYTE 			gap = DPISCALEX_S(PluginConfig.g_iButtonsBarGap);
-	int 			foravatar = 0;
-	BOOL 			showToolbar = dat->pContainer->dwFlags & CNT_HIDETOOLBAR ? 0 : 1;
-	BOOL 			bBottomToolbar = dat->pContainer->dwFlags & CNT_BOTTOMTOOLBAR ? 1 : 0;
-	int 			tempL = dat->bbLSideWidth;
-	int 			tempR = dat->bbRSideWidth;
-	HWND 			hwnd = dat->hwnd;
-	HDWP 			hdwp = BeginDeferWindowPos(LButtonsList->realCount + RButtonsList->realCount + 1);
-	HWND 			hwndToggleSideBar = GetDlgItem(dat->hwnd, dat->bType == SESSIONTYPE_IM ? IDC_TOGGLESIDEBAR : IDC_CHAT_TOGGLESIDEBAR);
-
+	HWND hwnd = dat->hwnd;
 	if (!dat || !IsWindowVisible(hwnd))
 		return 0;
 
+	RECT rect;
+	int  i;
+	HWND hwndBtn = 0;
+	
+	BYTE gap = DPISCALEX_S(PluginConfig.g_iButtonsBarGap);
+	bool showToolbar = !(dat->pContainer->dwFlags & CNT_HIDETOOLBAR);
+	bool bBottomToolbar = (dat->pContainer->dwFlags & CNT_BOTTOMTOOLBAR) != 0;
+
+	HDWP hdwp = BeginDeferWindowPos(LButtonsList->realCount + RButtonsList->realCount + 1);
+
+	HWND hwndToggleSideBar = GetDlgItem(dat->hwnd, dat->bType == SESSIONTYPE_IM ? IDC_TOGGLESIDEBAR : IDC_CHAT_TOGGLESIDEBAR);
 	ShowWindow(hwndToggleSideBar, (showToolbar && dat->pContainer->SideBar->isActive()) ? SW_SHOW : SW_HIDE);
 
 	EnterCriticalSection(&ToolBarCS);
 
+	RECT rcSplitter;
 	GetWindowRect(GetDlgItem(hwnd, (dat->bType == SESSIONTYPE_IM) ? IDC_SPLITTER : IDC_SPLITTERY), &rcSplitter);
-	ptSplitter.x = 0;
-	ptSplitter.y = rcSplitter.top;
+
+	POINT ptSplitter = { 0, rcSplitter.top };
 	ScreenToClient(hwnd, &ptSplitter);
-	if (PluginConfig.g_DPIscaleY > 1.0)
-		iOff = dat->bType == SESSIONTYPE_IM ? DPISCALEY_S(22) : DPISCALEY_S(23);
-	else
-		iOff = DPISCALEY_S(22);
 
 	GetClientRect(hwnd, &rect);
 
-	if (!bBottomToolbar) splitterY = ptSplitter.y - DPISCALEY_S(1);
-	else splitterY = rect.bottom;
+	int splitterY = (!bBottomToolbar) ? ptSplitter.y - DPISCALEY_S(1) : rect.bottom;
+	int tempL = dat->bbLSideWidth, tempR = dat->bbRSideWidth;
+	int lwidth = 0, rwidth = 0;
+	int iOff = DPISCALEY_S((PluginConfig.g_DPIscaleY > 1.0) ? (dat->bType == SESSIONTYPE_IM ? 22 : 23) : 22);
 
+	int foravatar = 0;
 	if ((rect.bottom - ptSplitter.y - (rcSplitter.bottom - rcSplitter.top) /*- DPISCALEY(2)*/ - (bBottomToolbar ? DPISCALEY_S(24) : 0) < dat->pic.cy - DPISCALEY_S(2)) && dat->showPic && !PluginConfig.m_AlwaysFullToolbarWidth)
 		foravatar = dat->pic.cx + gap;
 
@@ -705,29 +697,26 @@ BOOL TSAPI BB_SetButtonsPos(TWindowData *dat)
 		qsort(LButtonsList->items, LButtonsList->realCount, sizeof(BBButton *), sstSortButtons);
 
 	if ((dat->pContainer->dwFlags & CNT_SIDEBAR) && (dat->pContainer->SideBar->getFlags() & CSideBar::SIDEBARORIENTATION_LEFT)) {
-		DeferWindowPos(hdwp, hwndToggleSideBar , NULL, 4, 2 + splitterY - iOff,
-					   0, 0, SWP_NOZORDER | SWP_NOSIZE);// | SWP_NOCOPYBITS);
+		DeferWindowPos(hdwp, hwndToggleSideBar , NULL, 4, 2 + splitterY - iOff, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 		lwidth += 10;
 		tempL -= 10;
 	}
 
 	for (i=0; i < LButtonsList->realCount; i++) {
 		CustomButtonData* cbd = (CustomButtonData *)LButtonsList->items[i];
-		if (((dat->bType == SESSIONTYPE_IM) && cbd->bIMButton)
-				|| ((dat->bType == SESSIONTYPE_CHAT) && cbd->bChatButton)) {
-
+		if (((dat->bType == SESSIONTYPE_IM) && cbd->bIMButton) || ((dat->bType == SESSIONTYPE_CHAT) && cbd->bChatButton)) {
 			hwndBtn = GetDlgItem(hwnd, cbd->dwButtonCID);
 
 			if (!showToolbar) {
 				ShowWindow(hwndBtn, SW_HIDE);
-				DeferWindowPos(hdwp, hwndBtn , NULL, lwidth, splitterY - iOff,
-							   0, 0, SWP_NOZORDER | SWP_NOSIZE);// | SWP_NOCOPYBITS);
+				DeferWindowPos(hdwp, hwndBtn , NULL, lwidth, splitterY - iOff, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 				if (IsWindowVisible(hwndBtn) || (cbd->bDummy && !(cbd->bAutoHidden || cbd->bHidden)))
 					lwidth += cbd->iButtonWidth + gap;
 				if (!IsWindowEnabled(hwndBtn) && !IsWindowVisible(hwndBtn) && !cbd->bAutoHidden)
 					cbd->bAutoHidden = 1;
 				continue;
-			} else if (!cbd->bCanBeHidden && !cbd->bHidden && !(!IsWindowEnabled(hwndBtn) && !IsWindowVisible(hwndBtn) && !cbd->bAutoHidden)) {
+			}
+			if (!cbd->bCanBeHidden && !cbd->bHidden && !(!IsWindowEnabled(hwndBtn) && !IsWindowVisible(hwndBtn) && !cbd->bAutoHidden)) {
 				ShowWindow(hwndBtn, SW_SHOW);
 				cbd->bAutoHidden = 0;
 			}
@@ -740,13 +729,13 @@ BOOL TSAPI BB_SetButtonsPos(TWindowData *dat)
 					ShowWindow(hwndBtn, SW_HIDE);
 					cbd->bAutoHidden = 1;
 					tempL -= cbd->iButtonWidth + gap;
-				} else if (cbd->bAutoHidden) {
+				}
+				else if (cbd->bAutoHidden) {
 					ShowWindow(hwndBtn, SW_SHOW);
 					cbd->bAutoHidden = 0;
 				}
 			}
-			DeferWindowPos(hdwp, hwndBtn , NULL, lwidth, splitterY - iOff,
-						   0, 0, SWP_NOZORDER | SWP_NOSIZE);// SWP_NOCOPYBITS);
+			DeferWindowPos(hdwp, hwndBtn , NULL, lwidth, splitterY - iOff, 0, 0, SWP_NOZORDER | SWP_NOSIZE);// SWP_NOCOPYBITS);
 			if (IsWindowVisible(hwndBtn) || (cbd->bDummy && !(cbd->bAutoHidden || cbd->bHidden)))
 				lwidth += cbd->iButtonWidth + gap;
 		}
@@ -758,29 +747,26 @@ BOOL TSAPI BB_SetButtonsPos(TWindowData *dat)
 	}
 
 	if ((dat->pContainer->dwFlags & CNT_SIDEBAR) && (dat->pContainer->SideBar->getFlags() & CSideBar::SIDEBARORIENTATION_RIGHT)) {
-		DeferWindowPos(hdwp, hwndToggleSideBar , NULL, rect.right - foravatar - 10, 2 + splitterY - iOff,
-					   0, 0, SWP_NOZORDER | SWP_NOSIZE);// | SWP_NOCOPYBITS);
+		DeferWindowPos(hdwp, hwndToggleSideBar , NULL, rect.right - foravatar - 10, 2 + splitterY - iOff, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 		rwidth += 12;
 		tempR -= 12;
 	}
 
 	for (i=0; i < RButtonsList->realCount; i++) {
 		CustomButtonData* cbd = (CustomButtonData *)RButtonsList->items[i];
-		if (((dat->bType == SESSIONTYPE_IM) && cbd->bIMButton)
-				|| ((dat->bType == SESSIONTYPE_CHAT) && cbd->bChatButton)) {
-
+		if (((dat->bType == SESSIONTYPE_IM) && cbd->bIMButton) || ((dat->bType == SESSIONTYPE_CHAT) && cbd->bChatButton)) {
 			hwndBtn = GetDlgItem(hwnd, cbd->dwButtonCID);
 
 			if (!showToolbar) {
 				ShowWindow(hwndBtn, SW_HIDE);
 				if (IsWindowVisible(hwndBtn) || (cbd->bDummy && !(cbd->bAutoHidden || cbd->bHidden)))
 					rwidth += cbd->iButtonWidth + gap;
-				DeferWindowPos(hdwp, hwndBtn , NULL, rect.right - foravatar - rwidth + gap, splitterY - iOff,
-							   0, 0, SWP_NOZORDER | SWP_NOSIZE);// SWP_NOCOPYBITS);
+				DeferWindowPos(hdwp, hwndBtn , NULL, rect.right - foravatar - rwidth + gap, splitterY - iOff, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 				if (!IsWindowEnabled(hwndBtn) && !IsWindowVisible(hwndBtn) && !cbd->bAutoHidden)
 					cbd->bAutoHidden = 1;
 				continue;
-			} else if (!cbd->bCanBeHidden && !cbd->bHidden && !((!IsWindowEnabled(hwndBtn) && !IsWindowVisible(hwndBtn)) && !cbd->bAutoHidden)) {
+			}
+			if (!cbd->bCanBeHidden && !cbd->bHidden && !((!IsWindowEnabled(hwndBtn) && !IsWindowVisible(hwndBtn)) && !cbd->bAutoHidden)) {
 				ShowWindow(hwndBtn, SW_SHOW);
 				cbd->bAutoHidden = 0;
 			}
@@ -793,7 +779,8 @@ BOOL TSAPI BB_SetButtonsPos(TWindowData *dat)
 					ShowWindow(hwndBtn, SW_HIDE);
 					cbd->bAutoHidden = 1;
 					tempR -= cbd->iButtonWidth + gap;
-				} else if (cbd->bAutoHidden) {
+				}
+				else if (cbd->bAutoHidden) {
 					ShowWindow(hwndBtn, SW_SHOW);
 					cbd->bAutoHidden = 0;
 				}
@@ -801,17 +788,16 @@ BOOL TSAPI BB_SetButtonsPos(TWindowData *dat)
 
 			if (IsWindowVisible(hwndBtn) || (cbd->bDummy && !(cbd->bAutoHidden || cbd->bHidden)))
 				rwidth += cbd->iButtonWidth + gap;
-			DeferWindowPos(hdwp, hwndBtn , NULL, rect.right - foravatar - rwidth + gap, splitterY - iOff,
-						   0, 0, SWP_NOZORDER | SWP_NOSIZE);// SWP_NOCOPYBITS);
+			DeferWindowPos(hdwp, hwndBtn , NULL, rect.right - foravatar - rwidth + gap, splitterY - iOff, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 		}
 	}
 
 	LeaveCriticalSection(&ToolBarCS);
 
-	return (EndDeferWindowPos(hdwp));
+	return EndDeferWindowPos(hdwp);
 }
 
-void TSAPI BB_CustomButtonClick(struct TWindowData *dat, DWORD idFrom, HWND hwndFrom, BOOL code)
+void TSAPI BB_CustomButtonClick(TWindowData *dat, DWORD idFrom, HWND hwndFrom, BOOL code)
 {
 	RECT rc;
 	int i;
@@ -866,7 +852,7 @@ void CB_GetButtonSettings(HANDLE hContact, CustomButtonData *cbd)
 
 	mir_snprintf(SettingName, sizeof(SettingName), "%s_%d", cbd->pszModuleName, cbd->dwButtonOrigID);
 
-	if (!DBGetContactSettingString(hContact, "TabSRMM_Toolbar", SettingName, &dbv)) {
+	if (!db_get_s(hContact, "TabSRMM_Toolbar", SettingName, &dbv)) {
 		token = strtok(dbv.pszVal, "_");
 		cbd->dwPosition = (DWORD)atoi(token);
 		token = strtok(NULL, "_");
@@ -880,7 +866,7 @@ void CB_GetButtonSettings(HANDLE hContact, CustomButtonData *cbd)
 		token = strtok(NULL, "_");
 		cbd->bCanBeHidden = (BOOL)atoi(token);
 
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 	}
 }
 
@@ -894,9 +880,9 @@ void CB_WriteButtonSettings(HANDLE hContact, CustomButtonData *cbd)
 	mir_snprintf(SettingName, sizeof(SettingName), "%s_%d", cbd->pszModuleName, cbd->dwButtonOrigID);
 	mir_snprintf(SettingParameter, sizeof(SettingParameter), "%d_%u_%u_%u_%u_%u", cbd->dwPosition, cbd->bIMButton, cbd->bChatButton, cbd->bLSided, cbd->bRSided, cbd->bCanBeHidden);
 	if (!(cbd->opFlags&BBSF_NTBDESTRUCT))
-		DBWriteContactSettingString(hContact, "TabSRMM_Toolbar", SettingName, SettingParameter);
+		db_set_s(hContact, "TabSRMM_Toolbar", SettingName, SettingParameter);
 	else
-		DBDeleteContactSetting(hContact, "TabSRMM_Toolbar", SettingName);
+		db_unset(hContact, "TabSRMM_Toolbar", SettingName);
 }
 
 void BB_RegisterSeparators()
@@ -936,7 +922,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 10;
 	bbd.hIcon = LoadSkinnedIconHandle(SKINICON_OTHER_CONNECTING);
 	bbd.pszModuleName = "Tabsrmm";
-	bbd.ptszTooltip = _T("Protocol Button");
+	bbd.ptszTooltip = LPGENT("Protocol Button");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -945,7 +931,7 @@ void CB_InitDefaultButtons()
 	bbd.dwButtonID = IDC_NAME;
 	bbd.dwDefPos = 20;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[20];
-	bbd.ptszTooltip = _T("Info button");
+	bbd.ptszTooltip = LPGENT("Info button");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -955,7 +941,7 @@ void CB_InitDefaultButtons()
 		bbd.iButtonWidth = 0;
 		bbd.dwDefPos = 30;
 		bbd.hIcon = PluginConfig.g_buttonBarIconHandles[9];
-		bbd.ptszTooltip = _T("Insert Emoticon");
+		bbd.ptszTooltip = LPGENT("Insert Emoticon");
 		CB_AddButton(0, (LPARAM)&bbd);
 	}
 
@@ -963,7 +949,7 @@ void CB_InitDefaultButtons()
 	bbd.dwButtonID = IDC_FONTBOLD;
 	bbd.dwDefPos = 40;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[10];
-	bbd.ptszTooltip = _T("Bold text");
+	bbd.ptszTooltip = LPGENT("Bold text");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -971,7 +957,7 @@ void CB_InitDefaultButtons()
 	bbd.dwButtonID = IDC_FONTITALIC;
 	bbd.dwDefPos = 50;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[11];
-	bbd.ptszTooltip = _T("Italic text");
+	bbd.ptszTooltip = LPGENT("Italic text");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -979,7 +965,7 @@ void CB_InitDefaultButtons()
 	bbd.dwButtonID = IDC_FONTUNDERLINE;
 	bbd.dwDefPos = 60;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[12];
-	bbd.ptszTooltip = _T("Underlined text");
+	bbd.ptszTooltip = LPGENT("Underlined text");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -987,7 +973,7 @@ void CB_InitDefaultButtons()
 	bbd.dwButtonID = IDC_FONTSTRIKEOUT;
 	bbd.dwDefPos = 70;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[15];
-	bbd.ptszTooltip = _T("Strike-through text");
+	bbd.ptszTooltip = LPGENT("Strike-through text");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -995,7 +981,7 @@ void CB_InitDefaultButtons()
 	bbd.dwButtonID = IDC_FONTFACE;
 	bbd.dwDefPos = 80;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[14];
-	bbd.ptszTooltip = _T("Select font color");
+	bbd.ptszTooltip = LPGENT("Select font color");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1005,7 +991,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 10;
 	bbd.iButtonWidth = 51;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[6];
-	bbd.ptszTooltip = _T("Send message\nClick dropdown arrow for sending options");
+	bbd.ptszTooltip = LPGENT("Send message\nClick dropdown arrow for sending options");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1014,7 +1000,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 20;
 	bbd.iButtonWidth = 0;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[8];
-	bbd.ptszTooltip = _T("Close session");
+	bbd.ptszTooltip = LPGENT("Close session");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1023,7 +1009,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 30;
 	bbd.iButtonWidth = 0;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[4];
-	bbd.ptszTooltip = _T("Quote last message OR selected text");
+	bbd.ptszTooltip = LPGENT("Quote last message OR selected text");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1032,7 +1018,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 40;
 	bbd.iButtonWidth = 0;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[2];
-	bbd.ptszTooltip = _T("Message Log Options");
+	bbd.ptszTooltip = LPGENT("Message Log Options");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1041,7 +1027,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 50;
 	bbd.iButtonWidth = 0;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[0];
-	bbd.ptszTooltip = _T("View User's History");
+	bbd.ptszTooltip = LPGENT("View User's History");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1050,7 +1036,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 60;
 	bbd.iButtonWidth = 0;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[7];
-	bbd.ptszTooltip = _T("Edit user notes");
+	bbd.ptszTooltip = LPGENT("Edit user notes");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1091,7 +1077,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 81;
 	bbd.iButtonWidth = 22;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[16];
-	bbd.ptszTooltip = _T("Change background color");
+	bbd.ptszTooltip = LPGENT("Change background color");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 	//
@@ -1101,7 +1087,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 22;
 	bbd.iButtonWidth = 22;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[19];
-	bbd.ptszTooltip = _T("Toggle nick list");
+	bbd.ptszTooltip = LPGENT("Toggle nick list");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1110,7 +1096,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 24;
 	bbd.iButtonWidth = 22;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[18];
-	bbd.ptszTooltip = _T("Event filter - right click to setup, left click to activate/deactivate");
+	bbd.ptszTooltip = LPGENT("Event filter - right click to setup, left click to activate/deactivate");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1119,7 +1105,7 @@ void CB_InitDefaultButtons()
 	bbd.dwDefPos = 33;
 	bbd.iButtonWidth = 22;
 	bbd.hIcon = PluginConfig.g_buttonBarIconHandles[17];
-	bbd.ptszTooltip = _T("Channel manager");
+	bbd.ptszTooltip = LPGENT("Channel manager");
 
 	CB_AddButton(0, (LPARAM)&bbd);
 
@@ -1198,7 +1184,7 @@ static int SaveTree(HWND hToolBarTree)
 		tvi.hItem = hItem;
 	}
 	LeaveCriticalSection(&ToolBarCS);
-	M->WriteDword("TabSRMM_Toolbar", "SeparatorsCount", loc_sepcout);
+	db_set_dw(0, "TabSRMM_Toolbar", "SeparatorsCount", loc_sepcout);
 	dwSepCount = loc_sepcout;
 	bNeedResort = TRUE;
 	return 1;
@@ -1219,14 +1205,13 @@ static int BuildMenuObjectsTree(HWND hToolBarTree)
 	TreeView_DeleteAllItems(hToolBarTree);
 
 	himgl = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), ILC_COLOR32 | ILC_MASK, 2, 2);
-	ImageList_AddIcon(himgl, Skin_GetIcon("core_main_24"));
-	HIMAGELIST himl = TreeView_GetImageList(hToolBarTree, TVSIL_NORMAL);
-	ImageList_Destroy(himl);
+	ImageList_AddIcon(himgl, LoadSkinnedIcon(SKINICON_OTHER_SMALLDOT));
+	ImageList_Destroy( TreeView_GetImageList(hToolBarTree, TVSIL_NORMAL));
 	TreeView_SetImageList(hToolBarTree, himgl, TVSIL_NORMAL);
-
 
 	if ((RButtonsList->realCount + LButtonsList->realCount) == 0)
 		return FALSE;
+
 	EnterCriticalSection(&ToolBarCS);
 	qsort(LButtonsList->items, LButtonsList->realCount, sizeof(CustomButtonData *), sstSortButtons);
 
@@ -1235,7 +1220,7 @@ static int BuildMenuObjectsTree(HWND hToolBarTree)
 		tvis.item.lParam  = (LPARAM)cbd;
 
 		if (cbd->bDummy) {
-			tvis.item.pszText = TranslateTS(_T("<Separator>"));
+			tvis.item.pszText = TranslateT("<Separator>");
 			tvis.item.iImage  = tvis.item.iSelectedImage = 0;
 		} else {
 			tvis.item.pszText = TranslateTS(cbd->ptszTooltip);
@@ -1265,7 +1250,7 @@ static int BuildMenuObjectsTree(HWND hToolBarTree)
 		tvis.item.lParam  = (LPARAM)cbd;
 
 		if (cbd->bDummy) {
-			tvis.item.pszText = TranslateTS(_T("<Separator>"));
+			tvis.item.pszText = TranslateT("<Separator>");
 			tvis.item.iImage  = tvis.item.iSelectedImage = -1;
 		} else {
 			tvis.item.pszText = TranslateTS(cbd->ptszTooltip);
@@ -1286,83 +1271,77 @@ BOOL drag = FALSE, bOptionsInit = TRUE;
 HANDLE 	hDragItem = NULL;
 HWND	 hToolBarTree = NULL;
 
-
 INT_PTR CALLBACK DlgProcToolBar(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	switch (uMsg) {
-		case WM_INITDIALOG: {
-			LONG_PTR style;
-			hToolBarTree = GetDlgItem(hwndDlg, IDC_TOOLBARTREE);
+	HTREEITEM hti;
 
-			style = GetWindowLongPtr(hToolBarTree, GWL_STYLE);
+	switch (uMsg) {
+	case WM_INITDIALOG:
+		hToolBarTree = GetDlgItem(hwndDlg, IDC_TOOLBARTREE);
+		{
+			LONG_PTR style = GetWindowLongPtr(hToolBarTree, GWL_STYLE);
 			style ^= TVS_CHECKBOXES;
 			SetWindowLongPtr(hToolBarTree, GWL_STYLE, style);
 			style |= TVS_CHECKBOXES;
 			style |= TVS_NOHSCROLL;
 			SetWindowLongPtr(hToolBarTree, GWL_STYLE, style);
-
-			EnterCriticalSection(&ToolBarCS);
-
-			BuildMenuObjectsTree((HWND)hToolBarTree);
-
-			LeaveCriticalSection(&ToolBarCS);
-
-			Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, FALSE);
-			Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, FALSE);
-			Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, FALSE);
-
-			SendDlgItemMessage(hwndDlg, IDC_SPIN1, UDM_SETRANGE, 0, MAKELONG(10, 0));
-			SendDlgItemMessage(hwndDlg, IDC_SPIN1, UDM_SETPOS, 0, MAKELONG(PluginConfig.g_iButtonsBarGap, 0));
-			TranslateDialogDefault(hwndDlg);
-			bOptionsInit = FALSE;
 		}
+		EnterCriticalSection(&ToolBarCS);
+
+		BuildMenuObjectsTree((HWND)hToolBarTree);
+
+		LeaveCriticalSection(&ToolBarCS);
+
+		Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, FALSE);
+		Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, FALSE);
+		Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, FALSE);
+
+		SendDlgItemMessage(hwndDlg, IDC_SPIN1, UDM_SETRANGE, 0, MAKELONG(10, 0));
+		SendDlgItemMessage(hwndDlg, IDC_SPIN1, UDM_SETPOS, 0, MAKELONG(PluginConfig.g_iButtonsBarGap, 0));
+		TranslateDialogDefault(hwndDlg);
+		bOptionsInit = FALSE;
 		break;
 
-		case WM_LBUTTONUP: {
-
-			if (!drag)
-				break;
-
+	case WM_LBUTTONUP:
+		if (drag) {
 			TreeView_SetInsertMark(hToolBarTree, NULL, 0);
 			drag = 0;
 			ReleaseCapture();
-			{
-				TVHITTESTINFO hti;
-				TVITEM tvi;
-				hti.pt.x = (short)LOWORD(lParam);
-				hti.pt.y = (short)HIWORD(lParam);
-				ClientToScreen(hwndDlg, &hti.pt);
-				ScreenToClient(hToolBarTree, &hti.pt);
-				hti.pt.y -= TreeView_GetItemHeight(hToolBarTree) / 2;
-				TreeView_HitTest(hToolBarTree, &hti);
-				if (hDragItem == hti.hItem) break;
-				if (hti.flags&TVHT_ABOVE) hti.hItem = TVI_FIRST;
-				tvi.mask = TVIF_HANDLE | TVIF_PARAM;
-				tvi.hItem = (HTREEITEM)hDragItem;
-				TreeView_GetItem(hToolBarTree, &tvi);
-				if (hti.flags&(TVHT_ONITEM | TVHT_ONITEMRIGHT) || (hti.hItem == TVI_FIRST)) {
-					TVINSERTSTRUCT tvis;
-					TCHAR strbuf[128];
-					tvis.item.mask = TVIF_HANDLE | TVIF_PARAM | TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_STATE;
-					tvis.item.stateMask = 0xFFFFFFFF;
-					tvis.item.pszText = strbuf;
-					tvis.item.cchTextMax = sizeof(strbuf);
-					tvis.item.hItem = (HTREEITEM)hDragItem;
-					TreeView_GetItem(hToolBarTree, &tvis.item);
-					TreeView_DeleteItem(hToolBarTree, hDragItem);
-					tvis.hParent = NULL;
-					tvis.hInsertAfter = hti.hItem;
-					TreeView_SelectItem(hToolBarTree, TreeView_InsertItem(hToolBarTree, &tvis));
-					SendMessage((GetParent(hwndDlg)), PSM_CHANGED, 0, 0);
-				}
+
+			TVHITTESTINFO hti;
+			TVITEM tvi;
+			hti.pt.x = (short)LOWORD(lParam);
+			hti.pt.y = (short)HIWORD(lParam);
+			ClientToScreen(hwndDlg, &hti.pt);
+			ScreenToClient(hToolBarTree, &hti.pt);
+			hti.pt.y -= TreeView_GetItemHeight(hToolBarTree) / 2;
+			TreeView_HitTest(hToolBarTree, &hti);
+			if (hDragItem == hti.hItem) break;
+			if (hti.flags&TVHT_ABOVE) hti.hItem = TVI_FIRST;
+			tvi.mask = TVIF_HANDLE | TVIF_PARAM;
+			tvi.hItem = (HTREEITEM)hDragItem;
+			TreeView_GetItem(hToolBarTree, &tvi);
+			if (hti.flags&(TVHT_ONITEM | TVHT_ONITEMRIGHT) || (hti.hItem == TVI_FIRST)) {
+				TVINSERTSTRUCT tvis;
+				TCHAR strbuf[128];
+				tvis.item.mask = TVIF_HANDLE | TVIF_PARAM | TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_STATE;
+				tvis.item.stateMask = 0xFFFFFFFF;
+				tvis.item.pszText = strbuf;
+				tvis.item.cchTextMax = sizeof(strbuf);
+				tvis.item.hItem = (HTREEITEM)hDragItem;
+				TreeView_GetItem(hToolBarTree, &tvis.item);
+				TreeView_DeleteItem(hToolBarTree, hDragItem);
+				tvis.hParent = NULL;
+				tvis.hInsertAfter = hti.hItem;
+				TreeView_SelectItem(hToolBarTree, TreeView_InsertItem(hToolBarTree, &tvis));
+				SendMessage((GetParent(hwndDlg)), PSM_CHANGED, 0, 0);
 			}
 		}
 		break;
 
-		case WM_MOUSEMOVE: {
+	case WM_MOUSEMOVE:
+		if (drag) {
 			TVHITTESTINFO hti;
-			if (!drag) break;
-
 			hti.pt.x = (short)LOWORD(lParam);
 			hti.pt.y = (short)HIWORD(lParam);
 			ClientToScreen(hwndDlg, &hti.pt);
@@ -1384,237 +1363,200 @@ INT_PTR CALLBACK DlgProcToolBar(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
 		}
 		break;
 
-		case WM_COMMAND:
-			if (HIWORD(wParam) == BN_CLICKED && GetFocus() == (HWND)lParam && (HWND)lParam != hToolBarTree)
+	case WM_COMMAND:
+		if (HIWORD(wParam) == BN_CLICKED && GetFocus() == (HWND)lParam && (HWND)lParam != hToolBarTree)
+			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+		if ((HIWORD(wParam) == EN_CHANGE) && ((HWND)lParam == GetFocus()))
+			if (!bOptionsInit)
 				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-			if ((HIWORD(wParam) == EN_CHANGE) && ((HWND)lParam == GetFocus()))
-				if (!bOptionsInit)
-					SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 
-			switch (LOWORD(wParam)) {
-				case IDC_BBRESET: {
-					Hlp_RemoveDatabaseSettings(NULL, "TabSRMM_Toolbar", 0);
-					CB_HardReInit();
-					BuildMenuObjectsTree(hToolBarTree);
+		switch (LOWORD(wParam)) {
+		case IDC_BBRESET:
+			Hlp_RemoveDatabaseSettings(NULL, "TabSRMM_Toolbar", 0);
+			CB_HardReInit();
+			BuildMenuObjectsTree(hToolBarTree);
+			break;
+
+		case IDC_SEPARATOR:
+			hti = TreeView_GetSelection(hToolBarTree);
+			if (!hti)
+				hti = TVI_FIRST;
+
+			CustomButtonData *cbd = (CustomButtonData *)mir_alloc(sizeof(CustomButtonData));
+			ZeroMemory(cbd, sizeof(CustomButtonData));
+
+			cbd->bDummy = 1;
+			cbd->bHidden = 1;
+			cbd->bIMButton = 1;
+			cbd->bLSided = 1;
+			cbd->dwButtonOrigID = ++dwSepCount;
+			cbd->pszModuleName = "Tabsrmm_sep";
+			cbd->iButtonWidth = 22;
+			cbd->opFlags = BBSF_NTBDESTRUCT;
+			List_InsertPtr(LButtonsList, cbd);
+
+			TVINSERTSTRUCT tvis;
+			tvis.hParent = NULL;
+			tvis.hInsertAfter = hti;
+			tvis.item.mask = TVIF_PARAM | TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
+
+			tvis.item.pszText = TranslateT("<Separator>");
+			tvis.item.iImage  = tvis.item.iSelectedImage = -1;
+			tvis.item.lParam  = (LPARAM)cbd;
+			hti = TreeView_InsertItem(hToolBarTree, &tvis);
+
+			TreeView_SetCheckState(hToolBarTree, hti, (cbd->bIMButton || cbd->bChatButton));
+		}
+		break;
+
+	case WM_NOTIFY:
+		switch (((LPNMHDR)lParam)->idFrom) {
+		case 0:
+			switch (((LPNMHDR)lParam)->code) {
+			case PSN_RESET:
+				CB_ReInitCustomButtons();
+				dwSepCount = M.GetDword("TabSRMM_Toolbar", "SeparatorsCount", 0);
+				return 1;
+
+			case PSN_APPLY:
+				hti = TreeView_GetSelection(hToolBarTree);
+				if (hti) {
+					TVITEM tvi;
+					tvi.mask = TVIF_HANDLE | TVIF_PARAM;
+					tvi.hItem = hti;
+					TreeView_GetItem(hToolBarTree, &tvi);
+
+					if (tvi.lParam) {
+						CustomButtonData *cbd = (CustomButtonData*)tvi.lParam;
+						if (cbd) {
+							cbd->bIMButton = IsDlgButtonChecked(hwndDlg, IDC_IMCHECK);
+							cbd->bChatButton = IsDlgButtonChecked(hwndDlg, IDC_CHATCHECK);
+							cbd->bCanBeHidden = IsDlgButtonChecked(hwndDlg, IDC_CANBEHIDDEN);
+						}
+					}
 				}
-				break;
 
-				case IDC_SEPARATOR: {
-					int i = 0;
-					HTREEITEM hti;
-					TVINSERTSTRUCT tvis;
-					CustomButtonData* cbd;
+				SaveTree(hToolBarTree);
+				CB_ReInitCustomButtons();
+				PluginConfig.g_iButtonsBarGap = (BYTE)SendDlgItemMessage(hwndDlg, IDC_SPIN1, UDM_GETPOS, 0, 0);
 
-					hti = TreeView_GetSelection(hToolBarTree);
-					if (!hti)
-						hti = TVI_FIRST;
-					cbd = (CustomButtonData *)mir_alloc(sizeof(CustomButtonData));
-					ZeroMemory(cbd, sizeof(CustomButtonData));
+				if (PluginConfig.g_iButtonsBarGap != M.GetByte("ButtonsBarGap", 1))
+					M.BroadcastMessageAsync(WM_SIZE, 0, 0);
 
-					cbd->bDummy = 1;
-					cbd->bHidden = 1;
-					cbd->bIMButton = 1;
-					cbd->bLSided = 1;
-					cbd->dwButtonOrigID = ++dwSepCount;
-					cbd->pszModuleName = "Tabsrmm_sep";
-					cbd->iButtonWidth = 22;
-					cbd->opFlags = BBSF_NTBDESTRUCT;
-					List_InsertPtr(LButtonsList, cbd);
+				db_set_b(0, SRMSGMOD_T, "ButtonsBarGap", PluginConfig.g_iButtonsBarGap);
 
-					tvis.hParent = NULL;
-					tvis.hInsertAfter = hti;
-					tvis.item.mask = TVIF_PARAM | TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-
-					tvis.item.pszText = TranslateTS(_T("<Separator>"));
-					tvis.item.iImage  = tvis.item.iSelectedImage = -1;
-					tvis.item.lParam  = (LPARAM)cbd;
-
-					hti = TreeView_InsertItem(hToolBarTree, &tvis);
-
-					TreeView_SetCheckState(hToolBarTree, hti, (cbd->bIMButton || cbd->bChatButton));
-				}
-				break;
+				BuildMenuObjectsTree((HWND)hToolBarTree);
+				Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, FALSE);
+				Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, FALSE);
+				Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, FALSE);
+				return 1;
 			}
 			break;
 
-		case WM_NOTIFY: {
-			switch (((LPNMHDR)lParam)->idFrom) {
-				case 0:
-					switch (((LPNMHDR)lParam)->code) {
-						case PSN_APPLY: {
-							TVITEM tvi;
-							HTREEITEM hti;
-							CustomButtonData* cbd;
+		case IDC_TOOLBARTREE:
+			switch (((LPNMHDR)lParam)->code) {
+			case TVN_BEGINDRAGA:
+			case TVN_BEGINDRAGW:
+				SetCapture(hwndDlg);
+				drag = 1;
+				hDragItem = ((LPNMTREEVIEW)lParam)->itemNew.hItem;
+				TreeView_SelectItem(hToolBarTree, hDragItem);
+				break;
 
-							hti = TreeView_GetSelection(hToolBarTree);
+			case TVN_SELCHANGINGA:
+			case TVN_SELCHANGINGW:
+				hti = TreeView_GetSelection(hToolBarTree);
+				if (hti != NULL) {
+					TCHAR strbuf[128];
 
-							if (hti) {
-								tvi.mask = TVIF_HANDLE | TVIF_PARAM;
-								tvi.hItem = hti;
-								TreeView_GetItem(hToolBarTree, &tvi);
+					TVITEM tvi;
+					tvi.hItem = hti;
+					tvi.pszText = strbuf;
+					tvi.cchTextMax = sizeof(strbuf);
+					tvi.mask = TVIF_TEXT | TVIF_HANDLE | TVIF_PARAM;
+					TreeView_GetItem(hToolBarTree, &tvi);
 
-								if (tvi.lParam) {
-									cbd = (CustomButtonData*)tvi.lParam;
-									if (cbd) {
-										cbd->bIMButton = IsDlgButtonChecked(hwndDlg, IDC_IMCHECK);
-										cbd->bChatButton = IsDlgButtonChecked(hwndDlg, IDC_CHATCHECK);
-										cbd->bCanBeHidden = IsDlgButtonChecked(hwndDlg, IDC_CANBEHIDDEN);
-									}
-								}
-							}
+					if (tvi.lParam == 0 || !TreeView_GetCheckState(hToolBarTree, tvi.hItem) || !_tcscmp(tvi.pszText, MIDDLE_SEPARATOR))
+						break;
 
-							SaveTree(hToolBarTree);
-							CB_ReInitCustomButtons();
-							PluginConfig.g_iButtonsBarGap = (BYTE)SendDlgItemMessage(hwndDlg, IDC_SPIN1, UDM_GETPOS, 0, 0);
+					CustomButtonData *cbd = (CustomButtonData*)tvi.lParam;
+					if (cbd) {
+						cbd->opFlags = (IsDlgButtonChecked(hwndDlg, IDC_IMCHECK)) ? BBSF_IMBUTTON : 0;
+						cbd->opFlags |= (IsDlgButtonChecked(hwndDlg, IDC_CHATCHECK)) ? BBSF_CHATBUTTON : 0;
+						cbd->opFlags |= (IsDlgButtonChecked(hwndDlg, IDC_CANBEHIDDEN)) ? BBSF_CANBEHIDDEN : 0;
 
-							if (PluginConfig.g_iButtonsBarGap != M->GetByte("ButtonsBarGap", 1))
-								M->BroadcastMessageAsync(WM_SIZE, 0, 0);
+						cbd->bIMButton = (IsDlgButtonChecked(hwndDlg, IDC_IMCHECK) ? TRUE : FALSE);
+						cbd->bChatButton = (IsDlgButtonChecked(hwndDlg, IDC_CHATCHECK) ? TRUE : FALSE);
+						cbd->bCanBeHidden = (IsDlgButtonChecked(hwndDlg, IDC_CANBEHIDDEN) ? TRUE : FALSE);
+					}
+				}
+				break;
 
-							M->WriteByte(SRMSGMOD_T, "ButtonsBarGap", PluginConfig.g_iButtonsBarGap);
+			case TVN_SELCHANGEDW:
+			case TVN_SELCHANGEDA:
+				hti = TreeView_GetSelection(hToolBarTree);
+				if (hti != NULL) {
+					TCHAR strbuf[128];
 
-							BuildMenuObjectsTree((HWND)hToolBarTree);
+					TVITEM tvi;
+					tvi.pszText = strbuf;
+					tvi.cchTextMax = sizeof(strbuf);
+					tvi.mask = TVIF_TEXT | TVIF_HANDLE | TVIF_PARAM;
+					tvi.hItem = hti;
+					TreeView_GetItem(hToolBarTree, &tvi);
+
+					if (!TreeView_GetCheckState(hToolBarTree, tvi.hItem) || !_tcscmp(tvi.pszText, MIDDLE_SEPARATOR)) {
+						Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, FALSE);
+						Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, FALSE);
+						Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, FALSE);
+						break;
+					}
+
+					if (tvi.lParam == 0)
+						break;
+
+					CustomButtonData *cbd = (CustomButtonData*)tvi.lParam;
+					if (cbd) {
+						Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, TRUE);
+						Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, TRUE);
+						Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, TRUE);
+						CheckDlgButton(hwndDlg, IDC_IMCHECK, (cbd->bIMButton) ? 1 : 0);
+						CheckDlgButton(hwndDlg, IDC_CHATCHECK, (cbd->bChatButton) ? 1 : 0);
+						CheckDlgButton(hwndDlg, IDC_CANBEHIDDEN, (cbd->bCanBeHidden) ? 1 : 0);
+					}
+				}
+				break;
+
+			case NM_CLICK:
+				TVHITTESTINFO hti = {0};
+				GetCursorPos(&hti.pt);
+				ScreenToClient(hToolBarTree, &hti.pt);
+				if (TreeView_HitTest(hToolBarTree, &hti)) {
+					if (hti.flags&TVHT_ONITEMSTATEICON) {
+						SendMessage(GetParent(hwndDlg), PSM_CHANGED, (WPARAM)hwndDlg, 0);
+						if (TreeView_GetCheckState(hToolBarTree, hti.hItem)) {
 							Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, FALSE);
 							Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, FALSE);
 							Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, FALSE);
-							return 1;
+							CheckDlgButton(hwndDlg, IDC_IMCHECK, 1);
+						} else {
+							Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, TRUE);
+							Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, TRUE);
+							Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, TRUE);
 						}
-
-						case PSN_RESET: {
-							CB_ReInitCustomButtons();
-							dwSepCount = M->GetDword("TabSRMM_Toolbar", "SeparatorsCount", 0);
-							return 1;
-						}
+						TreeView_SelectItem(hToolBarTree, hti.hItem);
 					}
-					break;
-
-
-				case IDC_TOOLBARTREE:
-					switch (((LPNMHDR)lParam)->code) {
-
-						case TVN_BEGINDRAGA:
-						case TVN_BEGINDRAGW:
-							SetCapture(hwndDlg);
-							drag = 1;
-							hDragItem = ((LPNMTREEVIEW)lParam)->itemNew.hItem;
-							TreeView_SelectItem(hToolBarTree, hDragItem);
-							break;
-
-						case TVN_SELCHANGINGA:
-						case TVN_SELCHANGINGW:
-						{
-							TVITEM tvi;
-							HTREEITEM hti;
-							TCHAR strbuf[128];
-							CustomButtonData* cbd;
-
-							hti = TreeView_GetSelection(hToolBarTree);
-
-							if (hti == NULL)
-								break;
-
-							tvi.hItem = hti;
-							tvi.pszText = strbuf;
-							tvi.cchTextMax = sizeof(strbuf);
-							tvi.mask = TVIF_TEXT | TVIF_HANDLE | TVIF_PARAM;
-
-							TreeView_GetItem(hToolBarTree, &tvi);
-
-							if (tvi.lParam == 0 || !TreeView_GetCheckState(hToolBarTree, tvi.hItem) || !_tcscmp(tvi.pszText, MIDDLE_SEPARATOR))
-								break;
-
-							cbd = (CustomButtonData*)tvi.lParam;
-							if (cbd) {
-								cbd->opFlags = (IsDlgButtonChecked(hwndDlg, IDC_IMCHECK)) ? BBSF_IMBUTTON : 0;
-								cbd->opFlags |= (IsDlgButtonChecked(hwndDlg, IDC_CHATCHECK)) ? BBSF_CHATBUTTON : 0;
-								cbd->opFlags |= (IsDlgButtonChecked(hwndDlg, IDC_CANBEHIDDEN)) ? BBSF_CANBEHIDDEN : 0;
-								
-								cbd->bIMButton = (IsDlgButtonChecked(hwndDlg, IDC_IMCHECK) ? TRUE : FALSE);
-								cbd->bChatButton = (IsDlgButtonChecked(hwndDlg, IDC_CHATCHECK) ? TRUE : FALSE);
-								cbd->bCanBeHidden = (IsDlgButtonChecked(hwndDlg, IDC_CANBEHIDDEN) ? TRUE : FALSE);
-							}
-						}
-						break;
-
-						case TVN_SELCHANGEDW:
-						case TVN_SELCHANGEDA: {
-							TVITEM tvi;
-							HTREEITEM hti;
-							TCHAR strbuf[128];
-							CustomButtonData* cbd;
-
-							hti = TreeView_GetSelection(hToolBarTree);
-
-							if (hti == NULL)
-								break;
-
-							tvi.pszText = strbuf;
-							tvi.cchTextMax = sizeof(strbuf);
-							tvi.mask = TVIF_TEXT | TVIF_HANDLE | TVIF_PARAM;
-							tvi.hItem = hti;
-							TreeView_GetItem(hToolBarTree, &tvi);
-
-
-							if (!TreeView_GetCheckState(hToolBarTree, tvi.hItem) || !_tcscmp(tvi.pszText, MIDDLE_SEPARATOR)) {
-								Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, FALSE);
-								Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, FALSE);
-								Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, FALSE);
-								break;
-							}
-
-							if (tvi.lParam == 0)
-								break;
-
-							cbd = (CustomButtonData*)tvi.lParam;
-							if (cbd) {
-								Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, TRUE);
-								Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, TRUE);
-								Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, TRUE);
-								CheckDlgButton(hwndDlg, IDC_IMCHECK, (cbd->bIMButton) ? 1 : 0);
-								CheckDlgButton(hwndDlg, IDC_CHATCHECK, (cbd->bChatButton) ? 1 : 0);
-								CheckDlgButton(hwndDlg, IDC_CANBEHIDDEN, (cbd->bCanBeHidden) ? 1 : 0);
-							}
-						}
-						break;
-
-						case NM_CLICK: {
-							TVHITTESTINFO hti = {0};
-							GetCursorPos(&hti.pt);
-							ScreenToClient(hToolBarTree, &hti.pt);
-							if (TreeView_HitTest(hToolBarTree, &hti)) {
-								if (hti.flags&TVHT_ONITEMSTATEICON) {
-									SendMessage(GetParent(hwndDlg), PSM_CHANGED, (WPARAM)hwndDlg, 0);
-									if (TreeView_GetCheckState(hToolBarTree, hti.hItem)) {
-										Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, FALSE);
-										Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, FALSE);
-										Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, FALSE);
-										CheckDlgButton(hwndDlg, IDC_IMCHECK, 1);
-									} else {
-										Utils::enableDlgControl(hwndDlg, IDC_IMCHECK, TRUE);
-										Utils::enableDlgControl(hwndDlg, IDC_CHATCHECK, TRUE);
-										Utils::enableDlgControl(hwndDlg, IDC_CANBEHIDDEN, TRUE);
-									}
-									TreeView_SelectItem(hToolBarTree, hti.hItem);
-								}
-							}
-						}
-						break;
-
-					}
-					break;
+				}
 			}
 		}
 		break;
 
-		case WM_DESTROY: {
-			HIMAGELIST hIml = TreeView_GetImageList(GetDlgItem(hwndDlg, IDC_TOOLBARTREE), TVSIL_NORMAL);
-			ImageList_Destroy(hIml);
-			hIml = TreeView_GetImageList(GetDlgItem(hwndDlg, IDC_TOOLBARTREE), TVSIL_STATE);
-			ImageList_Destroy(hIml);
-			break;
-		}
-
-		default:
-			break;
+	case WM_DESTROY:
+		HIMAGELIST hIml = TreeView_GetImageList(GetDlgItem(hwndDlg, IDC_TOOLBARTREE), TVSIL_NORMAL);
+		ImageList_Destroy(hIml);
+		hIml = TreeView_GetImageList(GetDlgItem(hwndDlg, IDC_TOOLBARTREE), TVSIL_STATE);
+		ImageList_Destroy(hIml);
+		break;
 	}
 
 	return FALSE;

@@ -1,11 +1,11 @@
-// ---------------------------------------------------------------------------80
+ï»¿// ---------------------------------------------------------------------------80
 //                ICQ plugin for Miranda Instant Messenger
 //                ________________________________________
 //
-// Copyright © 2000-2001 Richard Hughes, Roland Rabien, Tristan Van de Vreede
-// Copyright © 2001-2002 Jon Keating, Richard Hughes
-// Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
-// Copyright © 2004-2010 Joe Kucera
+// Copyright Â© 2000-2001 Richard Hughes, Roland Rabien, Tristan Van de Vreede
+// Copyright Â© 2001-2002 Jon Keating, Richard Hughes
+// Copyright Â© 2002-2004 Martin Ã–berg, Sam Kothari, Robert Rainwater
+// Copyright Â© 2004-2010 Joe Kucera
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -35,19 +35,19 @@
 HINSTANCE hInst;
 int hLangpack;
 CLIST_INTERFACE *pcli;
+BOOL bPopupService = FALSE;
 
-IcqIconHandle hStaticIcons[4];
-HANDLE hExtraXStatus;
+HANDLE   hExtraXStatus;
 
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
-	"IcqOscarJ Protocol",
+	__PLUGIN_NAME,
 	__VERSION_DWORD,
-	"Support for ICQ network, enhanced.",
-	"Joe Kucera, Bio, Martin Öberg, Richard Hughes, Jon Keating, etc",
-	"jokusoftware@miranda-im.org",
-	"(C) 2000-2010 M.Öberg, R.Hughes, J.Keating, Bio, Angeli-Ka, G.Hazan, J.Kucera",
-	"http://miranda-ng.org/",
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,   //doesn't replace anything built-in
 	{0x73a9615c, 0x7d4e, 0x4555, {0xba, 0xdb, 0xee, 0x5, 0xdc, 0x92, 0x8e, 0xff}} // {73A9615C-7D4E-4555-BADB-EE05DC928EFF}
 };
@@ -81,14 +81,19 @@ static int icqProtoUninit( PROTO_INTERFACE* ppro )
 	return 0;
 }
 
+int ModuleLoad(WPARAM wParam, LPARAM lParam)
+{
+	bPopupService = ServiceExists(MS_POPUP_ADDPOPUP);
+	return 0;
+}
+
 extern "C" int __declspec(dllexport) Load(void)
 {
 	mir_getLP( &pluginInfo );
+	mir_getCLI();
 
 	srand(time(NULL));
 	_tzset();
-
-	pcli = (CLIST_INTERFACE*)CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)hInst);
 
 	// Register the module
 	PROTOCOLDESCRIPTOR pd = { sizeof(pd) };
@@ -104,22 +109,14 @@ extern "C" int __declspec(dllexport) Load(void)
 	// Register static services
 	CreateServiceFunction(ICQ_DB_GETEVENTTEXT_MISSEDMESSAGE, icq_getEventTextMissedMessage);
 
-	// Define global icons
-	char szSectionName[MAX_PATH];
-	null_snprintf(szSectionName, sizeof(szSectionName), "Protocols/%s", ICQ_PROTOCOL_NAME);
-
-	TCHAR lib[MAX_PATH];
-	GetModuleFileName(hInst, lib, MAX_PATH);
-	hStaticIcons[ISI_AUTH_REQUEST] = IconLibDefine(LPGEN("Request authorization"), szSectionName, NULL, "req_auth", lib, -IDI_AUTH_ASK);
-	hStaticIcons[ISI_AUTH_GRANT] = IconLibDefine(LPGEN("Grant authorization"), szSectionName, NULL, "grant_auth", lib, -IDI_AUTH_GRANT);
-	hStaticIcons[ISI_AUTH_REVOKE] = IconLibDefine(LPGEN("Revoke authorization"), szSectionName, NULL, "revoke_auth", lib, -IDI_AUTH_REVOKE);
-	hStaticIcons[ISI_ADD_TO_SERVLIST] = IconLibDefine(LPGEN("Add to server list"), szSectionName, NULL, "add_to_server", lib, -IDI_SERVLIST_ADD);
-
 	// Init extra statuses
 	InitXStatusIcons();
 	HookEvent(ME_SKIN2_ICONSCHANGED, OnReloadIcons);
 
-	hExtraXStatus = ExtraIcon_Register("xstatus", "ICQ XStatus", "icq_xstatus13");
+	HookEvent(ME_SYSTEM_MODULELOAD, ModuleLoad);
+	HookEvent(ME_SYSTEM_MODULEUNLOAD, ModuleLoad);
+
+	hExtraXStatus = ExtraIcon_Register("xstatus", LPGEN("ICQ XStatus"), "icq_xstatus13");
 
 	g_MenuInit();
 	return 0;
@@ -128,40 +125,11 @@ extern "C" int __declspec(dllexport) Load(void)
 
 extern "C" int __declspec(dllexport) Unload(void)
 {
-	// Release static icon handles
-	for (int i = 0; i < SIZEOF(hStaticIcons); i++)
-		IconLibRemove(&hStaticIcons[i]);
-
 	// destroying contact menu
 	g_MenuUninit();
 
-	UninitXStatusIcons();
-
 	g_Instances.destroy();
 	return 0;
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////////////
-// OnPrebuildContactMenu event
-
-void CListShowMenuItem(HANDLE hMenuItem, BYTE bShow)
-{
-	CLISTMENUITEM mi = { sizeof(mi) };
-	if (bShow)
-		mi.flags = CMIM_FLAGS;
-	else
-		mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
-
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuItem, (LPARAM)&mi);
-}
-
-static void CListSetMenuItemIcon(HANDLE hMenuItem, HICON hIcon)
-{
-	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIM_FLAGS | CMIM_ICON;
-	mi.hIcon = hIcon;
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuItem, (LPARAM)&mi);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -172,14 +140,14 @@ void CIcqProto::UpdateGlobalSettings()
 	char szServer[MAX_PATH] = "";
 	getSettingStringStatic(NULL, "OscarServer", szServer, MAX_PATH);
 
-	m_bSecureConnection = getSettingByte(NULL, "SecureConnection", DEFAULT_SECURE_CONNECTION);
+	m_bSecureConnection = getByte("SecureConnection", DEFAULT_SECURE_CONNECTION);
 	if (szServer[0]) {
 		if (strstr(szServer, "aol.com"))
-			setSettingString(NULL, "OscarServer", m_bSecureConnection ? DEFAULT_SERVER_HOST_SSL : DEFAULT_SERVER_HOST);
+			setString("OscarServer", m_bSecureConnection ? DEFAULT_SERVER_HOST_SSL : DEFAULT_SERVER_HOST);
 
 		if (m_bSecureConnection && !_strnicmp(szServer, "login.", 6)) {
-			setSettingString(NULL, "OscarServer", DEFAULT_SERVER_HOST_SSL);
-			setSettingWord(NULL, "OscarPort", DEFAULT_SERVER_PORT_SSL);
+			setString("OscarServer", DEFAULT_SERVER_HOST_SSL);
+			setWord("OscarPort", DEFAULT_SERVER_PORT_SSL);
 		}
 	}
 
@@ -194,15 +162,16 @@ void CIcqProto::UpdateGlobalSettings()
 		else m_bGatewayMode = 0;
 	}
 
-	m_bSecureLogin = getSettingByte(NULL, "SecureLogin", DEFAULT_SECURE_LOGIN);
-	m_bAimEnabled = getSettingByte(NULL, "AimEnabled", DEFAULT_AIM_ENABLED);
-	m_bUtfEnabled = getSettingByte(NULL, "UtfEnabled", DEFAULT_UTF_ENABLED);
-	m_wAnsiCodepage = getSettingWord(NULL, "AnsiCodePage", DEFAULT_ANSI_CODEPAGE);
-	m_bDCMsgEnabled = getSettingByte(NULL, "DirectMessaging", DEFAULT_DCMSG_ENABLED);
-	m_bTempVisListEnabled = getSettingByte(NULL, "TempVisListEnabled", DEFAULT_TEMPVIS_ENABLED);
-	m_bSsiEnabled = getSettingByte(NULL, "UseServerCList", DEFAULT_SS_ENABLED);
+	m_bSecureLogin = getByte("SecureLogin", DEFAULT_SECURE_LOGIN);
+	m_bLegacyFix = getByte("LegacyFix", DEFAULT_LEGACY_FIX);
+	m_bAimEnabled = getByte("AimEnabled", DEFAULT_AIM_ENABLED);
+	m_bUtfEnabled = getByte("UtfEnabled", DEFAULT_UTF_ENABLED);
+	m_wAnsiCodepage = getWord("AnsiCodePage", DEFAULT_ANSI_CODEPAGE);
+	m_bDCMsgEnabled = getByte("DirectMessaging", DEFAULT_DCMSG_ENABLED);
+	m_bTempVisListEnabled = getByte("TempVisListEnabled", DEFAULT_TEMPVIS_ENABLED);
+	m_bSsiEnabled = getByte("UseServerCList", DEFAULT_SS_ENABLED);
 	m_bSsiSimpleGroups = FALSE; /// TODO: enable, after server-list revolution is over
-	m_bAvatarsEnabled = getSettingByte(NULL, "AvatarsEnabled", DEFAULT_AVATARS_ENABLED);
-	m_bXStatusEnabled = getSettingByte(NULL, "XStatusEnabled", DEFAULT_XSTATUS_ENABLED);
-	m_bMoodsEnabled = getSettingByte(NULL, "MoodsEnabled", DEFAULT_MOODS_ENABLED);
+	m_bAvatarsEnabled = getByte("AvatarsEnabled", DEFAULT_AVATARS_ENABLED);
+	m_bXStatusEnabled = getByte("XStatusEnabled", DEFAULT_XSTATUS_ENABLED);
+	m_bMoodsEnabled = getByte("MoodsEnabled", DEFAULT_MOODS_ENABLED);
 }

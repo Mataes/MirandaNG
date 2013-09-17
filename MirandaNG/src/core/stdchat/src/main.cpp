@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "chat.h"
 
 //globals
+CLIST_INTERFACE *pcli;
+
 HINSTANCE   g_hInst;
 HANDLE      g_hWindowList;
 HMENU       g_hMenu = NULL;
@@ -31,7 +33,7 @@ HICON       hIcons[30];
 BOOL        IEviewInstalled = FALSE;
 HBRUSH      hListBkgBrush = NULL;
 BOOL        SmileyAddInstalled = FALSE;
-BOOL        PopUpInstalled = FALSE;
+BOOL        PopupInstalled = FALSE;
 HBRUSH      hEditBkgBrush = NULL;
 HBRUSH      hListSelectedBkgBrush = NULL;
 
@@ -80,6 +82,7 @@ extern "C" __declspec(dllexport) int Load(void)
 {
 	// set the memory & utf8 managers
 	mir_getLP( &pluginInfo );
+	mir_getCLI();
 
 	UpgradeCheck();
 
@@ -94,20 +97,19 @@ extern "C" __declspec(dllexport) int Load(void)
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	DBWriteContactSettingWord(NULL, "Chat", "SplitterX", (WORD)g_Settings.iSplitterX);
-	DBWriteContactSettingWord(NULL, "Chat", "SplitterY", (WORD)g_Settings.iSplitterY);
-	DBWriteContactSettingDword(NULL, "Chat", "roomx", g_Settings.iX);
-	DBWriteContactSettingDword(NULL, "Chat", "roomy", g_Settings.iY);
-	DBWriteContactSettingDword(NULL, "Chat", "roomwidth" , g_Settings.iWidth);
-	DBWriteContactSettingDword(NULL, "Chat", "roomheight", g_Settings.iHeight);
+	db_set_w(NULL, "Chat", "SplitterX", (WORD)g_Settings.iSplitterX);
+	db_set_w(NULL, "Chat", "SplitterY", (WORD)g_Settings.iSplitterY);
+	db_set_dw(NULL, "Chat", "roomx", g_Settings.iX);
+	db_set_dw(NULL, "Chat", "roomy", g_Settings.iY);
+	db_set_dw(NULL, "Chat", "roomwidth" , g_Settings.iWidth);
+	db_set_dw(NULL, "Chat", "roomheight", g_Settings.iHeight);
 
 	CList_SetAllOffline(TRUE, NULL);
 
-	mir_free( pszActiveWndID );
-	mir_free( pszActiveWndModule );
+	mir_free(pszActiveWndID);
+	mir_free(pszActiveWndModule);
 
 	DestroyMenu(g_hMenu);
-	DestroyServiceFunctions();
 	DestroyHookableEvents();
 	FreeIcons();
 	OptionsUnInit();
@@ -118,35 +120,32 @@ extern "C" __declspec(dllexport) int Unload(void)
 
 void UpgradeCheck(void)
 {
-	DWORD dwVersion = DBGetContactSettingDword(NULL, "Chat", "OldVersion", PLUGIN_MAKE_VERSION(0,2,9,9));
-	if (	pluginInfo.version > dwVersion)
-	{
-		if (dwVersion < PLUGIN_MAKE_VERSION(0,3,0,0))
-		{
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font18");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font18Col");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font18Set");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font18Size");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font18Sty");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font19");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font19Col");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font19Set");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font19Size");
-			DBDeleteContactSetting(NULL, "ChatFonts",	"Font19Sty");
-			DBDeleteContactSetting(NULL, "Chat",		"ColorNicklistLines");
-			DBDeleteContactSetting(NULL, "Chat",		"NicklistIndent");
-			DBDeleteContactSetting(NULL, "Chat",		"NicklistRowDist");
-			DBDeleteContactSetting(NULL, "Chat",		"ShowFormatButtons");
-			DBDeleteContactSetting(NULL, "Chat",		"ShowLines");
-			DBDeleteContactSetting(NULL, "Chat",		"ShowName");
-			DBDeleteContactSetting(NULL, "Chat",		"ShowTopButtons");
-			DBDeleteContactSetting(NULL, "Chat",		"SplitterX");
-			DBDeleteContactSetting(NULL, "Chat",		"SplitterY");
-			DBDeleteContactSetting(NULL, "Chat",		"IconFlags");
-			DBDeleteContactSetting(NULL, "Chat",		"LogIndentEnabled");
-	}	}
+	DWORD dwVersion = db_get_dw(NULL, "Chat", "OldVersion", PLUGIN_MAKE_VERSION(0,2,9,9));
+	if (pluginInfo.version > dwVersion && dwVersion < PLUGIN_MAKE_VERSION(0,3,0,0)) {
+		db_unset(NULL, "ChatFonts",	"Font18");
+		db_unset(NULL, "ChatFonts",	"Font18Col");
+		db_unset(NULL, "ChatFonts",	"Font18Set");
+		db_unset(NULL, "ChatFonts",	"Font18Size");
+		db_unset(NULL, "ChatFonts",	"Font18Sty");
+		db_unset(NULL, "ChatFonts",	"Font19");
+		db_unset(NULL, "ChatFonts",	"Font19Col");
+		db_unset(NULL, "ChatFonts",	"Font19Set");
+		db_unset(NULL, "ChatFonts",	"Font19Size");
+		db_unset(NULL, "ChatFonts",	"Font19Sty");
+		db_unset(NULL, "Chat",		"ColorNicklistLines");
+		db_unset(NULL, "Chat",		"NicklistIndent");
+		db_unset(NULL, "Chat",		"NicklistRowDist");
+		db_unset(NULL, "Chat",		"ShowFormatButtons");
+		db_unset(NULL, "Chat",		"ShowLines");
+		db_unset(NULL, "Chat",		"ShowName");
+		db_unset(NULL, "Chat",		"ShowTopButtons");
+		db_unset(NULL, "Chat",		"SplitterX");
+		db_unset(NULL, "Chat",		"SplitterY");
+		db_unset(NULL, "Chat",		"IconFlags");
+		db_unset(NULL, "Chat",		"LogIndentEnabled");
+	}
 
-	DBWriteContactSettingDword(NULL, "Chat", "OldVersion", pluginInfo.version);
+	db_set_dw(NULL, "Chat", "OldVersion", pluginInfo.version);
 }
 
 void LoadLogIcons(void)
@@ -175,10 +174,7 @@ void LoadLogIcons(void)
 
 void LoadIcons(void)
 {
-	int i;
-
-	for(i = 0; i < 20; i++)
-		hIcons[i] = NULL;
+	memset(hIcons, 0, sizeof(hIcons));
 
 	LoadLogIcons();
 	LoadMsgLogBitmaps();
@@ -265,7 +261,7 @@ STDMETHODIMP CREOleCallback::GetNewStorage(LPSTORAGE * lplpstg)
 {
 	WCHAR szwName[64];
 	char szName[64];
-	wsprintfA(szName, "s%u", nextStgId++);
+	mir_snprintf(szName, SIZEOF(szName), "s%u", nextStgId++);
 	MultiByteToWideChar(CP_ACP, 0, szName, -1, szwName, SIZEOF(szwName));
 	if (pictStg == NULL)
 		return STG_E_MEDIUMFULL;

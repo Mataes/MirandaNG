@@ -19,15 +19,15 @@ extern TREEELEMENT *RemindersList;
 static PLUGININFOEX pluginInfo =
 {
 	sizeof(PLUGININFOEX),
-	"Sticky Notes & Reminders",
-	PLUGIN_MAKE_VERSION(0,0,5,1),
-	"Sticky Notes & Reminders Implementation for Miranda NG.",
-	"Joe Kucera, Lubomir Kolev Ivanov, Georg Fischer",
-	"jokusoftware@users.sourceforge.net; d00mEr@dir.bg",
-	"(C) 2003,2005 Joe Kucera, Lubomir Ivanov",
-	"http://d00mer.freeshell.org/miranda/",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
-	MIID_NNR
+	{0x842a6668, 0xf9da, 0x4968, {0xbf, 0xd7, 0xd2, 0xbd, 0x9d, 0xf8, 0x48, 0xee}} // {842A6668-F9DA-4968-BFD7-D2BD9DF848EE}
 };
 
 
@@ -38,7 +38,7 @@ void BringAllNotesToFront(STICKYNOTE *pActive);
 void CloseNotesList();
 void CloseReminderList();
 
-INT_PTR PluginMenuCommandAddNew(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandAddNew(WPARAM w, LPARAM l)
 {
 	STICKYNOTE *PSN = NewNote(0,0,0,0,NULL,NULL,TRUE,TRUE,0);
 	if(PSN)
@@ -46,46 +46,46 @@ INT_PTR PluginMenuCommandAddNew(WPARAM w,LPARAM l)
 	return 0;
 }
 
-INT_PTR PluginMenuCommandDeleteAll(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandDeleteAll(WPARAM w, LPARAM l)
 {
-	if (g_Stickies && MessageBox(NULL, TranslateT("Are you sure you want to delete all notes?"), _T(SECTIONNAME), MB_OKCANCEL) == IDOK)
+	if (g_Stickies && MessageBox(NULL, TranslateT("Are you sure you want to delete all notes?"), TranslateT(SECTIONNAME), MB_OKCANCEL) == IDOK)
 		DeleteNotes();
 	return 0;
 }
 
-INT_PTR PluginMenuCommandShowHide(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandShowHide(WPARAM w, LPARAM l)
 {
 	ShowHideNotes();
 	return 0;
 }
 
-INT_PTR PluginMenuCommandViewNotes(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandViewNotes(WPARAM w, LPARAM l)
 {
 	ListNotes();
 	return 0;
 }
 
-INT_PTR PluginMenuCommandAllBringFront(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandAllBringFront(WPARAM w, LPARAM l)
 {
 	BringAllNotesToFront(NULL);
 	return 0;
 }
 
-INT_PTR PluginMenuCommandNewReminder(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandNewReminder(WPARAM w, LPARAM l)
 {
 	NewReminder();
 	return 0;
 }
 
-INT_PTR PluginMenuCommandViewReminders(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandViewReminders(WPARAM w, LPARAM l)
 {
 	ListReminders();
 	return 0;
 }
 
-INT_PTR PluginMenuCommandDeleteReminders(WPARAM w,LPARAM l)
+INT_PTR PluginMenuCommandDeleteReminders(WPARAM w, LPARAM l)
 {
-	if (RemindersList && MessageBox(NULL, TranslateT("Are you sure you want to delete all reminders?"), _T(SECTIONNAME), MB_OKCANCEL) == IDOK)
+	if (RemindersList && MessageBox(NULL, TranslateT("Are you sure you want to delete all reminders?"), TranslateT(SECTIONNAME), MB_OKCANCEL) == IDOK)
 		DeleteReminders();
 	return 0;
 }
@@ -112,7 +112,7 @@ IconItem iconList[] =
 
 void InitIcons(void)
 {
-	Icon_Register(hinstance, MODULENAME, iconList, SIZEOF(iconList), MODULENAME);
+	Icon_Register(hinstance, LPGEN("Sticky Notes"), iconList, SIZEOF(iconList), MODULENAME);
 }
 
 int OnOptInitialise(WPARAM w, LPARAM L)
@@ -122,15 +122,15 @@ int OnOptInitialise(WPARAM w, LPARAM L)
 	odp.position = 900002000;
 	odp.hInstance = hinstance;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_STNOTEOPTIONS);
-	odp.ptszTitle = _T(SECTIONNAME);
-	odp.ptszGroup = _T("Plugins");
+	odp.ptszTitle = SECTIONNAME;
+	odp.ptszGroup = LPGENT("Plugins");
 	odp.pfnDlgProc = DlgProcOptions;
 	odp.flags = ODPF_TCHAR;
 	Options_AddPage(w, &odp);
 	return 0;
 }
 
-int OnTopToolBarInit(WPARAM w,LPARAM L) 
+int OnTopToolBarInit(WPARAM w, LPARAM L) 
 {
 	TTBButton ttb = {0};
 	ttb.cbSize = sizeof(TTBButton);
@@ -177,7 +177,7 @@ static void InitServices()
 	CreateServiceFunction(MODULENAME"/OpenTriggeredReminder",OpenTriggeredReminder);
 }
 
-int OnModulesLoaded(WPARAM wparam,LPARAM lparam)
+int OnModulesLoaded(WPARAM wparam, LPARAM lparam)
 {
 	// register fonts and hotkeys
 	RegisterFontServiceFonts();
@@ -187,7 +187,7 @@ int OnModulesLoaded(WPARAM wparam,LPARAM lparam)
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.pszContactOwner = NULL;
 	mi.ptszPopupName = LPGENT("Notes && Reminders");
-	mi.flags = CMIF_TCHAR | CMIF_ICONFROMICOLIB;
+	mi.flags = CMIF_TCHAR;
 
 	mi.position = 1600000000;
 	mi.icolibItem = iconList[2].hIcolib;
@@ -343,7 +343,7 @@ extern "C" __declspec(dllexport) int Load(void)
 	InitServices();
 	WS_Init();
 
-	hkModulesLoaded = HookEvent(ME_SYSTEM_MODULESLOADED,OnModulesLoaded);
+	hkModulesLoaded = HookEvent(ME_SYSTEM_MODULESLOADED, OnModulesLoaded);
 	InitIcons();
 
 	return 0;

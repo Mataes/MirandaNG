@@ -13,13 +13,11 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
+// German (Germany) resources
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DEU)
+LANGUAGE LANG_GERMAN, SUBLANG_GERMAN
 #pragma code_page(1252)
-#endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
@@ -27,18 +25,18 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE
+1 TEXTINCLUDE 
 BEGIN
     "resource.h\0"
 END
 
-2 TEXTINCLUDE
+2 TEXTINCLUDE 
 BEGIN
     "#include ""winres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE
+3 TEXTINCLUDE 
 BEGIN
     "\r\n"
     "\0"
@@ -52,28 +50,28 @@ END
 // Dialog
 //
 
-IDD_OPT_KS_BASIC DIALOGEX 0, 0, 260, 211
+IDD_OPT_KS_BASIC DIALOGEX 0, 0, 292, 224
 STYLE DS_SETFONT | DS_3DLOOK | DS_FIXEDSYS | DS_CENTER | WS_CHILD | WS_VISIBLE
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    CONTROL         "Check connection",IDC_CHECKCONNECTION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,49,136,10
-    EDITTEXT        IDC_MAXRETRIES,13,64,22,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Max. retries",IDC_STATIC,41,67,108,8
-    GROUPBOX        "Protocol Connection",IDC_STATIC,7,35,241,103
-    EDITTEXT        IDC_INITDELAY,13,83,22,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Delay between retries (secs)",IDC_STATIC,41,86,109,8
-    CONTROL         "Show popups",IDC_SHOWCONNECTIONPOPUPS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,17,211,10
-    GROUPBOX        "General",IDC_STATIC,7,7,241,25
-    CONTROL         "",IDC_PROTOCOLLIST,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,155,60,84,72
-    LTEXT           "Protocols to check",IDC_STATIC,157,49,83,8
-    GROUPBOX        "Dial-Up",IDC_STATIC,7,140,241,64
+    CONTROL         "Check connection",IDC_CHECKCONNECTION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,51,162,10
+    EDITTEXT        IDC_MAXRETRIES,21,70,22,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Max. retries",IDC_STATIC,47,73,129,14
+    GROUPBOX        "Account Connection",IDC_STATIC,3,32,286,116
+    EDITTEXT        IDC_INITDELAY,21,92,22,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Delay between retries (secs)",IDC_STATIC,47,95,130,17
+    CONTROL         "Show popups",IDC_SHOWCONNECTIONPOPUPS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,12,269,10
+    GROUPBOX        "General",IDC_STATIC,3,0,286,30
+    CONTROL         "",IDC_PROTOCOLLIST,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,180,52,101,92
+    CTEXT           "Accounts to check",IDC_STATIC,180,41,96,8
+    GROUPBOX        "Dial-Up",IDC_STATIC,4,149,285,69
     CONTROL         "Don't reconnect if no internet connection seems available",IDC_CHKINET,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,151,225,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,161,265,8
     CONTROL         "Continuously check for internet connection",IDC_CONTCHECK,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,163,225,10
-    CONTROL         "Do so by pinging host",IDC_BYPING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,24,174,214,10
-    EDITTEXT        IDC_PINGHOST,36,186,189,14,ES_AUTOHSCROLL
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,175,265,8
+    CONTROL         "Do so by pinging host",IDC_BYPING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,21,188,256,8
+    EDITTEXT        IDC_PINGHOST,36,198,237,14,ES_AUTOHSCROLL
 END
 
 IDD_CONFIRMDIALOG DIALOGEX 0, 0, 257, 121
@@ -87,7 +85,7 @@ BEGIN
     CONTROL         "List1",IDC_STARTUPLIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,7,23,243,74
     PUSHBUTTON      "Cancel",IDC_CANCEL,69,100,59,14
     LTEXT           "Profile",IDC_STATIC,7,9,116,8
-    COMBOBOX        IDC_PROFILE,185,7,65,89,CBS_DROPDOWNLIST | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_PROFILE,185,7,65,89,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON      "Message",IDC_SETSTSMSG,131,100,50,14
 END
 
@@ -102,7 +100,7 @@ BEGIN
     EDITTEXT        IDC_NATIME,51,114,26,12,ES_AUTOHSCROLL
     LTEXT           "minutes of level 1 mode",IDC_SETNASTR,82,116,86,8
     CONTROL         "Confirm resetting status",IDC_CONFIRM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,181,168,10
-    LTEXT           "Protocol",IDC_STATIC,9,11,78,8
+    LTEXT           "Account",IDC_STATIC,9,11,78,8
     COMBOBOX        IDC_LV1STATUS,41,39,65,101,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     COMBOBOX        IDC_LV2STATUS,41,97,65,101,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     LTEXT           "Only set if current status is",IDC_STATIC,180,42,95,8
@@ -163,7 +161,7 @@ BEGIN
     LTEXT           "ms",IDC_STATIC,88,37,13,8
     LTEXT           "Set after",IDC_STATIC,26,37,28,8
     EDITTEXT        IDC_DLGTIMEOUT,57,86,28,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Timeout",IDC_STATIC,26,89,26,8
+    LTEXT           "Timeout",IDC_STATIC,26,89,30,8
     LTEXT           "s",IDC_STATIC,88,89,12,8
     CONTROL         "Set window location",IDC_SETWINLOCATION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,209,82,80,10
     EDITTEXT        IDC_XPOS,209,94,30,14,ES_AUTOHSCROLL | ES_NUMBER
@@ -214,7 +212,7 @@ BEGIN
     CONTROL         "Show when reconnection has finished",IDC_PURESULT,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,177,226,10
     CONTROL         "Show other messages",IDC_PUOTHER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,15,189,226,10
-    CONTROL         "From PopUp plugin",IDC_DELAYFROMPU,"Button",BS_AUTORADIOBUTTON | WS_GROUP,143,19,94,10
+    CONTROL         "From Popup plugin",IDC_DELAYFROMPU,"Button",BS_AUTORADIOBUTTON | WS_GROUP,143,19,94,10
     CONTROL         "Custom",IDC_DELAYCUSTOM,"Button",BS_AUTORADIOBUTTON,143,32,47,10
     CONTROL         "Permanent",IDC_DELAYPERMANENT,"Button",BS_AUTORADIOBUTTON,143,45,50,10
     CONTROL         "Show additional information in popups",IDC_PUSHOWEXTRA,
@@ -239,9 +237,9 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    CONTROL         "Specify settings for each protocol",IDC_PERPROTOCOLSETTINGS,
+    CONTROL         "Specify settings for each account",IDC_PERPROTOCOLSETTINGS,
                     "Button",BS_AUTORADIOBUTTON,20,20,220,10
-    CONTROL         "Use same settings for all protocols",IDC_SAMESETTINGS,
+    CONTROL         "Use same settings for all accounts",IDC_SAMESETTINGS,
                     "Button",BS_AUTORADIOBUTTON,20,31,220,10
     CONTROL         "Ignore caps-lock, num-lock and scroll-lock keys",IDC_IGNLOCK,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,20,44,220,10
@@ -264,12 +262,12 @@ EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     CONTROL         "",IDC_PROTOLIST,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,16,63,100,72
-    LTEXT           "Protocols",IDC_STATIC,19,51,30,8
+    LTEXT           "Accounts",IDC_STATIC,19,51,30,8
     CONTROL         "Enable checking",IDC_ENABLECHECKING,"Button",BS_AUTORADIOBUTTON,16,17,69,10
     CONTROL         "Disable checking",IDC_DISABLECHECKING,"Button",BS_AUTORADIOBUTTON,16,33,71,10
 END
 
-IDD_SETSTSMSGDIALOG DIALOG  0, 0, 240, 126
+IDD_SETSTSMSGDIALOG DIALOG 0, 0, 240, 126
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Set status message"
 FONT 8, "MS Shell Dlg"
@@ -280,32 +278,12 @@ BEGIN
     LTEXT           "Set status message",IDC_DESCRIPTION,7,7,226,8
 END
 
-IDD_OPT_KS_TRIGGER DIALOGEX 0, 0, 201, 103
-STYLE DS_SETFONT | DS_3DLOOK | WS_CHILD
-EXSTYLE WS_EX_CONTROLPARENT
-FONT 8, "MS Shell Dlg", 0, 0, 0x1
-BEGIN
-    CONTROL         "Trigger when connection loss is detected",IDC_CONNLOST,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,22,170,10
-    CONTROL         "Trigger when reconnection attempt is made",IDC_CONNRETRY,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,58,170,10
-    CONTROL         "Trigger when successfull reconnected",IDC_CONNSUCCESS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,70,170,10
-    CONTROL         "Trigger when giving up reconnecting",IDC_CONNGIVEUP,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,82,170,10
-    CONTROL         "Trigger when reconnected from another location",IDC_OTHERLOC,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,46,170,10
-    GROUPBOX        "Pre-conditions",IDC_STATIC,7,7,187,89
-    CONTROL         "Trigger when a login error occurs",IDC_LOGINERROR,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,34,170,10
-END
-
 IDD_OPT_STATUSPROFILES DIALOGEX 0, 0, 305, 234
 STYLE DS_SETFONT | DS_3DLOOK | DS_FIXEDSYS | DS_CENTER | WS_CHILD | WS_VISIBLE
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    LTEXT           "Protocol",IDC_STATIC,16,78,77,8
+    LTEXT           "Account",IDC_STATIC,16,78,77,8
     LTEXT           "Status",IDC_STATIC,156,78,77,8
     LISTBOX         IDC_PROTOCOL,16,88,133,58,LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
     LISTBOX         IDC_STATUS,156,88,133,58,LBS_NOINTEGRALHEIGHT | WS_VSCROLL | WS_TABSTOP
@@ -326,44 +304,44 @@ BEGIN
     CONTROL         "In submenu",IDC_INSUBMENU,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,169,47,119,10
 END
 
-IDD_OPT_TABS DIALOGEX 0, 0, 314, 248
+IDD_OPT_TABS DIALOGEX 0, 0, 314, 250
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    CONTROL         "Tab1",IDC_TABS,"SysTabControl32",0x0,7,7,300,234
+    CONTROL         "Tab1",IDC_TABS,"SysTabControl32",0x0,3,4,306,242
 END
 
-IDD_OPT_KS_ADV DIALOGEX 0, 0, 280, 206
+IDD_OPT_KS_ADV DIALOGEX 0, 0, 292, 224
 STYLE DS_SETFONT | DS_3DLOOK | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    EDITTEXT        IDC_MAXDELAY,16,32,22,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Max. delay (secs)",IDC_STATIC,44,35,74,8
+    EDITTEXT        IDC_MAXDELAY,11,32,22,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Max. delay (secs)",IDC_STATIC,39,35,84,8
     CONTROL         "Increase delay exponential",IDC_INCREASEEXPONENTIAL,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,20,213,10
-    CONTROL         "Cancel all if a protocol connects from another location",IDC_CNCOTHERLOC,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,91,234,10
-    CONTROL         "Reconnect on APM resume",IDC_CHECKAPMRESUME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,102,234,10
-    CONTROL         "Stop trying to reconnect",IDC_LOGINERR_CANCEL,"Button",BS_AUTORADIOBUTTON,27,126,169,10
-    CONTROL         "Set delay to",IDC_LOGINERR_SETDELAY,"Button",BS_AUTORADIOBUTTON,27,139,64,10
-    CONTROL         "React on login errors",IDC_LOGINERR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,113,234,10
-    EDITTEXT        IDC_LOGINERR_DELAY,97,136,22,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "seconds",IDC_STATIC,125,139,77,8
-    CONTROL         "Set protocol offline before a connection attempt",IDC_FIRSTOFFLINE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,80,234,10
-    EDITTEXT        IDC_MAXCONNECTINGTIME,132,32,22,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Max. protocol connecting time (secs)",IDC_STATIC,159,35,113,19
-    GROUPBOX        "Timers",IDC_STATIC,7,7,266,48
-    GROUPBOX        "Reconnecting",IDC_STATIC,7,56,266,98
-    CONTROL         "Ignore locked status of accounts",IDC_NOLOCKED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,69,234,10
-    GROUPBOX        "Dial-Up",IDC_STATIC,7,156,266,43
-    LTEXT           "Consider connection lost after",IDC_STATIC,17,168,122,8
-    EDITTEXT        IDC_PINGCOUNT,140,165,22,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "failed pings",IDC_STATIC,165,168,108,8
-    EDITTEXT        IDC_CNTDELAY,16,180,22,14,ES_AUTOHSCROLL | ES_NUMBER
-    LTEXT           "Continuously check interval (secs)",IDC_STATIC,41,183,160,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,14,263,10
+    CONTROL         "Cancel all if a account connects from another location",IDC_CNCOTHERLOC,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,96,234,10
+    CONTROL         "Reconnect on APM resume",IDC_CHECKAPMRESUME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,108,234,10
+    CONTROL         "Stop trying to reconnect",IDC_LOGINERR_CANCEL,"Button",BS_AUTORADIOBUTTON,22,132,169,10
+    CONTROL         "Set delay to",IDC_LOGINERR_SETDELAY,"Button",BS_AUTORADIOBUTTON,22,143,110,12
+    CONTROL         "React on login errors",IDC_LOGINERR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,120,234,10
+    EDITTEXT        IDC_LOGINERR_DELAY,136,142,22,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "seconds",IDC_STATIC,164,145,77,8
+    CONTROL         "Set account offline before a connection attempt",IDC_FIRSTOFFLINE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,84,234,10
+    EDITTEXT        IDC_MAXCONNECTINGTIME,127,32,22,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Max. account connecting time (secs)",IDC_STATIC,154,35,121,19
+    GROUPBOX        "Timers",IDC_STATIC,3,2,284,54
+    GROUPBOX        "Reconnecting",IDC_STATIC,4,58,283,106
+    CONTROL         "Ignore locked status of accounts",IDC_NOLOCKED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,72,234,10
+    GROUPBOX        "Dial-Up",IDC_STATIC,5,166,282,51
+    LTEXT           "Consider connection lost after",IDC_STATIC,12,180,122,8
+    EDITTEXT        IDC_PINGCOUNT,135,177,22,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "failed pings",IDC_STATIC,160,180,101,8
+    EDITTEXT        IDC_CNTDELAY,11,193,22,14,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Continuously check interval (secs)",IDC_STATIC,36,196,160,8
 END
 
 IDD_TRG_AAASTATECHANGE DIALOGEX 0, 0, 212, 144
@@ -380,7 +358,7 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,19,76,140,10
     GROUPBOX        "Pre-conditions",IDC_STATIC,7,7,198,89
     GROUPBOX        "TriggerData",IDC_STATIC,7,97,198,40
-    LTEXT           "Status: The status the protocol will change to\r\nProtocol: The protocol changing state",IDC_STATIC,19,111,177,18
+    LTEXT           "Status: The status the account will change to\r\nAccount: The account changing state",IDC_STATIC,19,111,177,18
 END
 
 
@@ -394,136 +372,20 @@ GUIDELINES DESIGNINFO
 BEGIN
     IDD_OPT_KS_BASIC, DIALOG
     BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 248
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 204
-    END
-
-    IDD_CONFIRMDIALOG, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 250
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 114
-    END
-
-    IDD_OPT_AUTOAWAY, DIALOG
-    BEGIN
-        RIGHTMARGIN, 277
-        VERTGUIDE, 7
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 191
-    END
-
-    IDD_CMDLOPTIONS, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 308
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 75
-    END
-
-    IDD_ADDPROFILE, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 124
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 53
-    END
-
-    IDD_OPT_STARTUPSTATUS, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 298
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 216
-    END
-
-    IDD_PUOPT_KEEPSTATUS, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 247
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 216
-    END
-
-    IDD_OPT_AUTOAWAYMSG, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 152
-    END
-
-    IDD_OPT_GENAUTOAWAY, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 251
-        VERTGUIDE, 240
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 184
-    END
-
-    IDD_OPT_KS_ACTION, DIALOG
-    BEGIN
-        RIGHTMARGIN, 132
-        VERTGUIDE, 7
-        BOTTOMMARGIN, 152
-        HORZGUIDE, 7
-    END
-
-    IDD_SETSTSMSGDIALOG, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 233
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 119
-    END
-
-    IDD_OPT_KS_TRIGGER, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 194
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 96
-    END
-
-    IDD_OPT_STATUSPROFILES, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 298
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 227
     END
 
     IDD_OPT_TABS, DIALOG
     BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 307
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 241
+        BOTTOMMARGIN, 248
     END
 
     IDD_OPT_KS_ADV, DIALOG
     BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 273
-        VERTGUIDE, 16
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 199
-    END
-
-    IDD_TRG_AAASTATECHANGE, DIALOG
-    BEGIN
-        LEFTMARGIN, 7
-        RIGHTMARGIN, 205
-        TOPMARGIN, 7
-        BOTTOMMARGIN, 137
     END
 END
 #endif    // APSTUDIO_INVOKED
 
-#endif    // English (U.S.) resources
+#endif    // German (Germany) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
@@ -537,3 +399,4 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
+

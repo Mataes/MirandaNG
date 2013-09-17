@@ -46,28 +46,23 @@ pfnTryEnterCriticalSection fnTryEnterCriticalSection;
 pfnGetAncestor fnGetAncestor;
 pfnGetMenuBarInfo fnGetMenuBarInfo;
 pfnGetScrollBarInfo fnGetScrollBarInfo;
-pfnMsgWaitForMultipleObjectsEx fnMsgWaitForMultipleObjectsEx;
 
 static HRESULT SubclassClistInterface();
 static HRESULT CreateHookableEvents();
 int EventArea_UnloadModule();
 
-__forceinline int MakeVer(int a, int b, int c, int d)
-{	return PLUGIN_MAKE_VERSION(a,b,c,d);
-}
-
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
-	"Modern Contact List",
-	MakeVer(PRODUCT_VERSION),
-	"Displays contacts, event notifications, protocol status with advantage visual modifications. Supported MW modifications, enchanced metacontact cooperation.",
-	"Artem Shpynov, Ricardo Pescuma Domenecci and Anton Senko based on clist_mw by Bethoven",
-	"ashpynov@gmail.com" ,
-	"Copyright 2000-2010 Miranda-IM project",
-	"http://miranda-ng.org/",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
-	//{043909B6-AAD8-4d82-8EB5-9F64CFE867CD}
-	{0x43909b6, 0xaad8, 0x4d82, { 0x8e, 0xb5, 0x9f, 0x64, 0xcf, 0xe8, 0x67, 0xcd }}
+	// {043909B6-AAD8-4D82-8EB5-9F64CFE867CD}
+	{0x43909b6, 0xaad8, 0x4d82, {0x8e, 0xb5, 0x9f, 0x64, 0xcf, 0xe8, 0x67, 0xcd}}
 };
 
 extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_CLIST, MIID_LAST};
@@ -79,27 +74,26 @@ BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD dwReason, LPVOID reserved)
 	return TRUE;
 }
 
-PLUGININTERFACE PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
+extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
 {
 	return &pluginInfo;
 }
 
-PLUGININTERFACE int CListInitialise()
+extern "C" __declspec(dllexport) int CListInitialise()
 {
-	HMODULE hKernel = GetModuleHandleA( "kernel32.dll" );
-	fnTryEnterCriticalSection = ( pfnTryEnterCriticalSection )GetProcAddress( hKernel, "TryEnterCriticalSection" );
+	mir_getLP( &pluginInfo );
+	mir_getTMI(&tmi);
 
-	HMODULE hUser = GetModuleHandleA( "user32.dll" );
-	fnGetMenuBarInfo = ( pfnGetMenuBarInfo )GetProcAddress( hUser, "GetMenuBarInfo" );
-	fnGetScrollBarInfo = ( pfnGetScrollBarInfo )GetProcAddress( hUser, "GetScrollBarInfo" );
-	fnMsgWaitForMultipleObjectsEx = ( pfnMsgWaitForMultipleObjectsEx )GetProcAddress( hUser, "MsgWaitForMultipleObjectsEx" );
+	HMODULE hKernel = GetModuleHandleA("kernel32.dll");
+	fnTryEnterCriticalSection = ( pfnTryEnterCriticalSection )GetProcAddress( hKernel, "TryEnterCriticalSection");
 
-	if (( fnGetAncestor = ( pfnGetAncestor )GetProcAddress( hUser, "GetAncestor" )) == NULL )
+	HMODULE hUser = GetModuleHandleA("user32.dll");
+	fnGetMenuBarInfo = ( pfnGetMenuBarInfo )GetProcAddress( hUser, "GetMenuBarInfo");
+	fnGetScrollBarInfo = ( pfnGetScrollBarInfo )GetProcAddress( hUser, "GetScrollBarInfo");
+	if (( fnGetAncestor = ( pfnGetAncestor )GetProcAddress( hUser, "GetAncestor")) == NULL )
 		fnGetAncestor = MyGetAncestor;
 
 	g_dwMainThreadID = GetCurrentThreadId();
-	mir_getTMI(&tmi);
-	mir_getLP( &pluginInfo );
 
 	CHECKRES ( PreLoadContactListModule ( )	);
 	CHECKRES ( SubclassClistInterface ( )	);
@@ -112,19 +106,18 @@ PLUGININTERFACE int CListInitialise()
 	CHECKRES ( ToolbarButtonLoadModule( )   );
 	CHECKRES ( ToolbarLoadModule()			);
 
-	TRACE( "CListInitialise Modern Contact List ... Done\r\n" );
+	TRACE("CListInitialise Modern Contact List ... Done\r\n");
 
 	return S_OK;
 }
 
 // never called by a newer plugin loader.
-PLUGININTERFACE int Load(void)
+extern "C" __declspec(dllexport) int Load(void)
 {
-	MessageBoxA(0,"You Running Old Miranda, use " MINIMAL_COREVERSION_STR " version!","Modern Clist",0);
 	return 1;
 }
 
-PLUGININTERFACE int Unload(void)
+extern "C" __declspec(dllexport) int Unload(void)
 {
 	TRACE("Unloading Clist Modern\r\n");
 
@@ -147,9 +140,6 @@ PLUGININTERFACE int Unload(void)
 
 static HRESULT SubclassClistInterface()
 {
-	// get the contact list interface
-	pcli = ( CLIST_INTERFACE* )CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)g_hInst);
-
 	// OVERLOAD CLIST INTERFACE FUNCTIONS
 	//
 	//	Naming convention is:
@@ -157,15 +147,18 @@ static HRESULT SubclassClistInterface()
 	//  'save*' - pointer to stored default parent handle
 	//	'cli_*'	- new handler with default core service calling
 
+	mir_getCLI();
 	corecli = *pcli;
 
+	pcli->hInst = g_hInst;
 	pcli->bDisplayLocked = TRUE;
 
 	pcli->pfnCheckCacheItem	= cliCheckCacheItem;
 	pcli->pfnFreeCacheItem = cliFreeCacheItem;
 	pcli->pfnInvalidateDisplayNameCacheEntry	 = cliInvalidateDisplayNameCacheEntry;
 
-	pcli->pfnTrayIconUpdateBase = cliTrayIconUpdateBase;
+	pcli->pfnTrayIconPauseAutoHide = cliTrayIconPauseAutoHide;
+	pcli->pfnTrayCalcChanged       = cliTrayCalcChanged;
 	pcli->pfnCluiProtocolStatusChanged = cliCluiProtocolStatusChanged;
 
 	pcli->pfnBeginRenameSelection  = cliBeginRenameSelection;
@@ -196,6 +189,7 @@ static HRESULT SubclassClistInterface()
 	pcli->pfnFindRowByText         = cliFindRowByText;
 
 	//partialy overloaded - call default handlers from inside
+	pcli->pfnGetContactIcon        = cli_GetContactIcon;
 	pcli->pfnIconFromStatusMode    = cli_IconFromStatusMode;
 	pcli->pfnLoadCluiGlobalOpts    = CLUI_cli_LoadCluiGlobalOpts;
 	pcli->pfnSortCLC               = cli_SortCLC;
@@ -221,9 +215,6 @@ static HRESULT SubclassClistInterface()
 
 static HRESULT CreateHookableEvents()
 {
-//	g_CluiData.hEventExtraImageListRebuilding  = CreateHookableEvent(ME_CLIST_EXTRA_LIST_REBUILD);
-//	g_CluiData.hEventExtraImageApplying        = CreateHookableEvent(ME_CLIST_EXTRA_IMAGE_APPLY);
-// g_CluiData.hEventExtraClick                = CreateHookableEvent(ME_CLIST_EXTRA_CLICK);
 	g_CluiData.hEventBkgrChanged               = CreateHookableEvent(ME_BACKGROUNDCONFIG_CHANGED);
 	g_CluiData.hEventPreBuildTrayMenu          = CreateHookableEvent(ME_CLIST_PREBUILDTRAYMENU);
 	g_CluiData.hEventPreBuildFrameMenu         = CreateHookableEvent(ME_CLIST_PREBUILDFRAMEMENU);

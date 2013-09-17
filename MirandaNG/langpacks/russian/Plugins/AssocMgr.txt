@@ -1,0 +1,65 @@
+﻿#muuid {52685cd7-0ec7-44c1-a1a6-381612418202}
+;============================================================
+;  File: AssocMgr.dll
+;  Plugin: File association manager
+;  Version: 0.1.1.0
+;  Authors: H. Herkenrath
+;============================================================
+[Handles file type associations and URLs like aim, ymsgr, xmpp, wpmsg, gg, tlen.]
+Ассоциация расширений файлов и URL-ссылок с протоколами: AIM, Yahoo, Jabber, Gadu-Gadu, Tlen.
+[Registered associations for Miranda NG:]
+Зарегистрированные ассоциации для Miranda NG:
+[Miscellaneous]
+Miscellaneous
+[&Start Miranda NG automatically when the computer starts (using current profile)]
+&Загружать программу при запуске компьютера (используя текущий профиль)
+[Only associate with Miranda NG while it is &running]
+Ассоциировать только во время &работы программы
+[%hs files]
+%hs файлы
+[Type]
+Тип
+[Description]
+Описание
+[URLs on Websites]
+Ссылки и сайты
+[File Types]
+Типы файлов
+[File Association Error]
+Ошибка ассоциации файлов
+[There was an error writing to the registry to modify the file/url associations.\nReason: %s]
+Ошибка при попытке записи в реестр ассоциаций файлов/ссылок.\n\nПричина: %s
+[Unknown]
+Неизвестно
+[Autostart Error]
+Ошибка автозагрузки
+[There was an error writing to the registry to modify the autostart list.\n\nReason: %s]
+Ошибка при попытке записи в реестр значения автозапуска.\n\nПричина: %s
+[Services]
+Службы
+[Associations]
+Ассоциации
+[Miranda NG Database]
+База данных Miranda NG
+[Miranda NG could not open file]
+Miranda NG не может открыть файл
+[Miranda NG could not open URL]
+Miranda NG не может открыть ссылку
+[Access failed:\n%.64hs(%.128s)\n%.250hs(%u)\n%.256hs (%u)]
+Доступ запрещён:\n%.64hs(%.128s)\n%.250hs(%u)\n%.256hs (%u)
+[Registry Warning]
+Предупреждение
+[AIM Link Protocol]
+Протокол AIM
+[ICQ Link Shortcut]
+Протокол ICQ
+[&Add to Contact List...]
+&Добавить в список контактов...
+[Yahoo Link Protocol]
+Протокол Yahoo
+[MSN Link Protocol]
+Протокол MSN
+[Gadu-Gadu Link Protocol]
+Протокол Gadu-Gadu
+[Jabber Link Protocol]
+Протокол Jabber

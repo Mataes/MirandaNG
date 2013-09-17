@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "findadd.h"
 
@@ -50,7 +51,7 @@ void SaveColumnSizes(HWND hwndResults)
 		db_set_b(NULL, "FindAdd", szSetting, (BYTE)columnOrder[i]);
 		if (i>=columnCount) continue;
 		mir_snprintf(szSetting, SIZEOF(szSetting), "ColWidth%d", i);
-		DBWriteContactSettingWord(NULL, "FindAdd", szSetting, (WORD)ListView_GetColumnWidth(hwndResults, i));
+		db_set_w(NULL, "FindAdd", szSetting, (WORD)ListView_GetColumnWidth(hwndResults, i));
 	}
 	db_set_b(NULL, "FindAdd", "SortColumn", (BYTE)dat->iLastColumnSortIndex);
 	db_set_b(NULL, "FindAdd", "SortAscending", (BYTE)dat->bSortAscending);

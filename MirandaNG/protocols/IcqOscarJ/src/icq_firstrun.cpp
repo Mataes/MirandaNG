@@ -36,7 +36,7 @@ static void accountLoadDetails(CIcqProto *ppro, HWND hwndDlg)
 	DWORD dwUIN = ppro->getContactUin(NULL);
 	if (dwUIN)
 	{
-		null_snprintf(pszUIN, 20, "%u", dwUIN);
+		mir_snprintf(pszUIN, 20, "%u", dwUIN);
 		SetDlgItemTextA(hwndDlg, IDC_UIN, pszUIN);
 	}
 
@@ -56,19 +56,18 @@ INT_PTR CALLBACK icq_FirstRunDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 		ppro = (CIcqProto*)lParam;
 		SetWindowLongPtr( hwndDlg, GWLP_USERDATA, lParam );
-		{
-			SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)ppro->m_hIconProtocol->GetIcon(true));
-			SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)ppro->m_hIconProtocol->GetIcon());
 
-			SendDlgItemMessage(hwndDlg, IDC_PW, EM_LIMITTEXT, PASSWORDMAXLEN - 1, 0);
+		SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)Skin_GetIconByHandle(ppro->m_hProtoIcon, true));
+		SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)Skin_GetIconByHandle(ppro->m_hProtoIcon));
 
-			accountLoadDetails(ppro, hwndDlg);
-		}
+		SendDlgItemMessage(hwndDlg, IDC_PW, EM_LIMITTEXT, PASSWORDMAXLEN - 1, 0);
+
+		accountLoadDetails(ppro, hwndDlg);
 		return TRUE;
 
 	case WM_DESTROY:
-		ppro->m_hIconProtocol->ReleaseIcon(true);
-		ppro->m_hIconProtocol->ReleaseIcon();
+		Skin_ReleaseIcon((HICON)SendMessage(hwndDlg, WM_GETICON, ICON_BIG, 0));
+		Skin_ReleaseIcon((HICON)SendMessage(hwndDlg, WM_GETICON, ICON_SMALL, 0));
 		break;
 
 	case WM_CLOSE:
@@ -99,11 +98,11 @@ INT_PTR CALLBACK icq_FirstRunDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 			{
         char str[128];
         GetDlgItemTextA(hwndDlg, IDC_UIN, str, sizeof(str));
-        ppro->setSettingDword(NULL, UNIQUEIDSETTING, atoi(str));
+        ppro->setDword(UNIQUEIDSETTING, atoi(str));
         GetDlgItemTextA(hwndDlg, IDC_PW, str, sizeof(ppro->m_szPassword));
         strcpy(ppro->m_szPassword, str);
         CallService(MS_DB_CRYPT_ENCODESTRING, sizeof(ppro->m_szPassword), (LPARAM) str);
-        ppro->setSettingString(NULL, "Password", str);
+        ppro->setString("Password", str);
       }
       break;
 

@@ -69,7 +69,7 @@ STATUSBARDATA g_StatusBarData = {0};
 
 char* ApendSubSetting(char * buf, int size, char *first, char *second)
 {
-	_snprintf(buf,size,"%sFont%s",first,second);
+	mir_snprintf(buf, size, "%sFont%s", first, second);
 	return buf;
 }
 
@@ -79,7 +79,7 @@ int LoadStatusBarData()
 	g_StatusBarData.showProtoIcon = db_get_b(NULL,"CLUI","SBarShow",SETTING_SBARSHOW_DEFAULT)&1;
 	g_StatusBarData.showProtoName = db_get_b(NULL,"CLUI","SBarShow",SETTING_SBARSHOW_DEFAULT)&2;
 	g_StatusBarData.showStatusName = db_get_b(NULL,"CLUI","SBarShow",SETTING_SBARSHOW_DEFAULT)&4;
-	g_StatusBarData.xStatusMode = (BYTE)(db_get_b(NULL,"CLUI","ShowXStatus",SETTING_SHOWXSTATUS_DEFAULT));
+	g_StatusBarData.xStatusMode = (BYTE)( db_get_b(NULL,"CLUI","ShowXStatus",SETTING_SHOWXSTATUS_DEFAULT));
 	g_StatusBarData.connectingIcon = db_get_b(NULL,"CLUI","UseConnectingIcon",SETTING_USECONNECTINGICON_DEFAULT);
 	g_StatusBarData.showProtoEmails = db_get_b(NULL,"CLUI","ShowUnreadEmails",SETTING_SHOWUNREADEMAILS_DEFAULT);
 	g_StatusBarData.SBarRightClk = db_get_b(NULL,"CLUI","SBarRightClk",SETTING_SBARRIGHTCLK_DEFAULT);
@@ -118,16 +118,16 @@ int LoadStatusBarData()
 	if (g_CluiData.fDisableSkinEngine) {
 		DBVARIANT dbv;
 		g_StatusBarData.bkColour = sttGetColor("StatusBar","BkColour",CLCDEFAULT_BKCOLOUR);
-		if (db_get_b(NULL,"StatusBar","UseBitmap",CLCDEFAULT_USEBITMAP)) {
-			if ( !DBGetContactSettingString(NULL,"StatusBar","BkBitmap",&dbv)) {
-				g_StatusBarData.hBmpBackground = (HBITMAP)CallService(MS_UTILS_LOADBITMAP,0,(LPARAM)dbv.pszVal);
+		if ( db_get_b(NULL,"StatusBar","UseBitmap",CLCDEFAULT_USEBITMAP)) {
+			if ( !db_get_s(NULL,"StatusBar","BkBitmap",&dbv)) {
+				g_StatusBarData.hBmpBackground = (HBITMAP)CallService(MS_UTILS_LOADBITMAP, 0, (LPARAM)dbv.pszVal);
 				db_free(&dbv);
 			}
 		}
 		g_StatusBarData.bkUseWinColors = db_get_b(NULL,"StatusBar", "UseWinColours", CLCDEFAULT_USEWINDOWSCOLOURS);
 		g_StatusBarData.backgroundBmpUse = db_get_w(NULL,"StatusBar","BkBmpUse",CLCDEFAULT_BKBMPUSE);
 	}
-	SendMessage(pcli->hwndContactList,WM_SIZE,0,0);
+	SendMessage(pcli->hwndContactList,WM_SIZE, 0, 0);
 
 	return 1;
 }
@@ -218,7 +218,7 @@ int ModernDrawStatusBarWorker(HWND hWnd, HDC hDC)
 
 		if (g_StatusBarData.perProtoConfig && db_get_b(NULL, "CLUI", buf, SETTING_SBARACCOUNTISCUSTOM_DEFAULT)) {
 			mir_snprintf(buf, SIZEOF(buf), "HideAccount_%s", accs[i]->szModuleName);
-			if (db_get_b(NULL, "CLUI", buf, SETTING_SBARHIDEACCOUNT_DEFAULT))
+			if ( db_get_b(NULL, "CLUI", buf, SETTING_SBARHIDEACCOUNT_DEFAULT))
 				continue;
 
 			mir_snprintf(buf, SIZEOF(buf), "SBarShow_%s", accs[i]->szModuleName);
@@ -258,14 +258,14 @@ int ModernDrawStatusBarWorker(HWND hWnd, HDC hDC)
 			p->PaddingRight = 0;
 		}
 
-		p->ProtoStatus = CallProtoService(accs[i]->szModuleName,PS_GETSTATUS,0,0);
+		p->ProtoStatus = CallProtoService(accs[i]->szModuleName,PS_GETSTATUS, 0, 0);
 
 		p->ProtoEMailCount = NULL;
 		if (p->ProtoStatus > ID_STATUS_OFFLINE) {
 			// create service name
 			mir_snprintf(servName, SIZEOF(servName), "%s/GetUnreadEmailCount", accs[i]->szModuleName);
 			if (p->showProtoEmails == 1 && ServiceExists(servName)) {
-				mir_snprintf(protoNameExt, SIZEOF(protoNameExt),"[%d]", (int) CallService(servName, 0, 0));
+				mir_snprintf(protoNameExt, SIZEOF(protoNameExt),"[%d]", (int)CallService(servName, 0, 0));
 				p->ProtoEMailCount = mir_strdup(protoNameExt);
 			}
 		}
@@ -373,18 +373,16 @@ int ModernDrawStatusBarWorker(HWND hWnd, HDC hDC)
 				if ((p.xStatusMode & 8) && p.ProtoStatus > ID_STATUS_OFFLINE) {
 					TCHAR str[512];
 					CUSTOM_STATUS cs = { sizeof(cs) };
-					cs.flags = CSSF_MASK_MESSAGE | CSSF_TCHAR;
-					cs.ptszMessage = str;
+					cs.flags = CSSF_MASK_NAME | CSSF_TCHAR;
+					cs.ptszName = str;
 					if ( CallProtoService(p.AccountName, PS_GETCUSTOMSTATUSEX, 0, (LPARAM)&cs) == 0)
 						p.ProtoXStatus = mir_tstrdup(str);
 				}
 				
 				if ((p.xStatusMode & 3)) {
 					if (p.ProtoStatus > ID_STATUS_OFFLINE) {
-						char str[MAXMODULELABELLENGTH];
-						mir_snprintf(str, SIZEOF(str), "%s/GetXStatusIcon", p.AccountName);
-						if ( ServiceExists(str))
-							p.extraIcon = (HICON)CallService(str,0,0);
+						if ( ProtoServiceExists(p.AccountName, PS_GETCUSTOMSTATUSICON))
+							p.extraIcon = (HICON)ProtoCallService(p.AccountName, PS_GETCUSTOMSTATUSICON, 0, 0);
 						if (p.extraIcon && (p.xStatusMode & 3) == 3)
 							w += GetSystemMetrics(SM_CXSMICON)+1;
 					}
@@ -467,9 +465,7 @@ int ModernDrawStatusBarWorker(HWND hWnd, HDC hDC)
 
 			if (p.showProtoIcon) {
 				if (p.ProtoStatus > ID_STATUS_OFFLINE && (p.xStatusMode & 3) > 0) {
-					char str[MAXMODULELABELLENGTH];
-					mir_snprintf(str, SIZEOF(str), "%s/GetXStatusIcon", p.AccountName);
-					if ( ServiceExists(str)) {
+					if ( ProtoServiceExists(p.AccountName, PS_GETCUSTOMSTATUSICON)) {
 						hxIcon = p.extraIcon;
 						if (hxIcon) {
 							if ((p.xStatusMode & 3) == 2) {
@@ -516,25 +512,25 @@ int ModernDrawStatusBarWorker(HWND hWnd, HDC hDC)
 
 				if ((p.xStatusMode&3) == 3) {
 					if (hIcon)
-						mod_DrawIconEx_helper(hDC,x,iconY,hIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),0,NULL,  DI_NORMAL|dim );
+						mod_DrawIconEx_helper(hDC,x,iconY,hIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON), 0, NULL,  DI_NORMAL|dim );
 					if (hxIcon) {
-						mod_DrawIconEx_helper(hDC,x+GetSystemMetrics(SM_CXSMICON)+1,iconY,hxIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),0,NULL,DI_NORMAL|dim);
+						mod_DrawIconEx_helper(hDC,x+GetSystemMetrics(SM_CXSMICON)+1,iconY,hxIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON), 0, NULL,DI_NORMAL|dim);
 						x += GetSystemMetrics(SM_CXSMICON)+1;
 					}
 					p.DoubleIcons = hIcon && hxIcon;
 				}
 				else {
 					if (hxIcon)
-						mod_DrawIconEx_helper(hDC,x,iconY,hxIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),0,NULL,DI_NORMAL|dim);
+						mod_DrawIconEx_helper(hDC,x,iconY,hxIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON), 0, NULL,DI_NORMAL|dim);
 					if (hIcon)
-						mod_DrawIconEx_helper(hDC,x,iconY,hIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),0,NULL,DI_NORMAL| ((hxIcon && (p.xStatusMode&4))?(192 << 24):0 ) | dim );
+						mod_DrawIconEx_helper(hDC,x,iconY,hIcon,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON), 0, NULL,DI_NORMAL| ((hxIcon && (p.xStatusMode&4))?(192 << 24):0 ) | dim );
 				}
 
 				if (hxIcon || hIcon) { /* TODO g_StatusBarData.bDrawLockOverlay  options to draw locked proto*/
 					if ( db_get_b( NULL,p.AccountName,"LockMainStatus",0 )) {
 						HICON hLockOverlay = LoadSkinnedIcon(SKINICON_OTHER_STATUS_LOCKED);
 						if (hLockOverlay != NULL) {
-							mod_DrawIconEx_helper(hDC, x, iconY, hLockOverlay, GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),0,NULL,DI_NORMAL | dim);
+							mod_DrawIconEx_helper(hDC, x, iconY, hLockOverlay, GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON), 0, NULL,DI_NORMAL | dim);
 							Skin_ReleaseIcon(hLockOverlay);
 						}
 					}
@@ -608,7 +604,7 @@ static BOOL _ModernStatus_OnExtraIconClick(int protoIndex)
 		if (ProtosData[protoIndex].ProtoStatus < ID_STATUS_ONLINE)
 			return FALSE;
 
-		HMENU hMainStatusMenu = (HMENU)CallService(MS_CLIST_MENUGETSTATUS,0,0);
+		HMENU hMainStatusMenu = (HMENU)CallService(MS_CLIST_MENUGETSTATUS, 0, 0);
 		if ( !hMainStatusMenu)
 			return FALSE;
 
@@ -622,12 +618,12 @@ static BOOL _ModernStatus_OnExtraIconClick(int protoIndex)
 			return FALSE;
 
 		POINT pt; GetCursorPos( &pt );
-		HWND hWnd = (HWND) CallService( MS_CLUI_GETHWND, 0 ,0 );
+		HWND hWnd = (HWND) CallService(MS_CLUI_GETHWND, 0 ,0 );
 		TrackPopupMenu( hExtraStatusMenu, TPM_TOPALIGN|TPM_LEFTALIGN|TPM_LEFTBUTTON, pt.x, pt.y, 0, hWnd, NULL );
 		return TRUE;
 	} 
 	
-	if ( !mir_strcmpi( ProtosData[protoIndex].ProtoName, "JABBER" )) {
+	if ( !mir_strcmpi( ProtosData[protoIndex].ProtoName, "JABBER")) {
 		if ( ProtosData[protoIndex].ProtoStatus < ID_STATUS_ONLINE )
 			return FALSE;
 
@@ -715,7 +711,7 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 		{
 			RECT rct;
 			GetWindowRect(hwnd,&rct);
-			memset((LPMINMAXINFO)lParam,0,sizeof(MINMAXINFO));
+			memset((LPMINMAXINFO)lParam, 0, sizeof(MINMAXINFO));
 			((LPMINMAXINFO)lParam)->ptMinTrackSize.x = 16;
 			((LPMINMAXINFO)lParam)->ptMinTrackSize.y = 16;
 			((LPMINMAXINFO)lParam)->ptMaxTrackSize.x = 1600;
@@ -726,14 +722,14 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 	case WM_SHOWWINDOW:
 		{
 			if (tooltipshoing) {
-				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip,0,0);
+				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip, 0, 0);
 				tooltipshoing = FALSE;
 			}
 			int ID = Sync(FindFrameID, hwnd);
 			if (ID) {
 				int res = CallService(MS_CLIST_FRAMES_GETFRAMEOPTIONS, MAKEWPARAM(FO_FLAGS,ID),0);
 				if (res >= 0)
-					db_set_b(0,"CLUI","ShowSBar",(BYTE)(wParam/*(res&F_VISIBLE)*/?1:0));
+					db_set_b(0, "CLUI","ShowSBar",(BYTE)(wParam/*(res&F_VISIBLE)*/?1:0));
 			}
 		}
 		break;
@@ -742,7 +738,7 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 		if (wParam == TM_STATUSBARHIDE) {
 			KillTimer(hwnd,TM_STATUSBARHIDE);
 			if (tooltipshoing) {
-				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip,0,0);
+				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip, 0, 0);
 				tooltipshoing = FALSE;
 				ReleaseCapture();
 			}
@@ -777,7 +773,7 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 			GetCursorPos(&pt);
 			if ( abs(pt.x-ptToolTipShow.x) > TOOLTIP_TOLERANCE || abs(pt.y-ptToolTipShow.y) > TOOLTIP_TOLERANCE) {
 				KillTimer(hwnd,TM_STATUSBARHIDE);
-				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip,0,0);
+				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip, 0, 0);
 				tooltipshoing = FALSE;
 				ReleaseCapture();
 			}
@@ -797,7 +793,7 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 			if (tooltipshoing)
 				if  ( abs(pt.x-ptToolTipShow.x) > TOOLTIP_TOLERANCE || abs(pt.y-ptToolTipShow.y) > TOOLTIP_TOLERANCE) {
 					KillTimer(hwnd,TM_STATUSBARHIDE);
-					NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip,0,0);
+					NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip, 0, 0);
 					tooltipshoing = FALSE;
 					ReleaseCapture();
 				}
@@ -811,14 +807,12 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 	case WM_RBUTTONDOWN:
 		{
 			RECT rc;
-			POINT pt;
-			pt.x = (short)LOWORD(lParam);
-			pt.y = (short)HIWORD(lParam);
+			POINT pt = UNPACK_POINT(lParam);
 			KillTimer(hwnd,TM_STATUSBARHIDE);
 			KillTimer(hwnd,TM_STATUSBAR);
 
 			if (tooltipshoing)
-				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip,0,0);
+				NotifyEventHooks(g_CluiData.hEventStatusBarHideToolTip, 0, 0);
 
 			tooltipshoing = FALSE;
 			for (int i=0; i < ProtosData.getCount(); i++) {
@@ -857,7 +851,7 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 								memmove( pos, pos + len, strlen( pos + len ) + 1 );
 
 								if ( strlen( g_CluiData.protoFilter ) == 0 )
-									ApplyViewMode( "" );
+									ApplyViewMode("");
 								else
 									g_CluiData.bFilterEffective = CLVM_FILTER_PROTOS;
 							}
@@ -908,12 +902,12 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 						if (msg == WM_RBUTTONDOWN) {
 							BOOL a = ((g_StatusBarData.perProtoConfig && p.SBarRightClk) || g_StatusBarData.SBarRightClk );
 							if ( a ^ bShift )
-								hMenu = (HMENU)CallService(MS_CLIST_MENUGETMAIN,0,0);
+								hMenu = (HMENU)CallService(MS_CLIST_MENUGETMAIN, 0, 0);
 							else
-								hMenu = (HMENU)CallService(MS_CLIST_MENUGETSTATUS,0,0);
+								hMenu = (HMENU)CallService(MS_CLIST_MENUGETSTATUS, 0, 0);
 						}
 						else {
-							hMenu = (HMENU)CallService(MS_CLIST_MENUGETSTATUS,0,0);  
+							hMenu = (HMENU)CallService(MS_CLIST_MENUGETSTATUS, 0, 0);  
 							unsigned int cpnl = 0;
 							int mcnt = GetMenuItemCount(hMenu);
 							for (int j = 0; j < mcnt; ++j) {
@@ -930,19 +924,19 @@ LRESULT CALLBACK ModernStatusProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam
 
 					HWND parent = GetParent(hwnd);
 					if (parent != pcli->hwndContactList) parent = GetParent(parent);
-					TrackPopupMenu(hMenu,TPM_TOPALIGN|TPM_LEFTALIGN|TPM_LEFTBUTTON,pt.x,pt.y,0,parent,NULL);
+					TrackPopupMenu(hMenu,TPM_TOPALIGN|TPM_LEFTALIGN|TPM_LEFTBUTTON,pt.x,pt.y, 0, parent,NULL);
 					return 0;
 				}
 			}
 
 			GetClientRect(hwnd, &rc);
 			if ( PtInRect( &rc, pt ) && msg == WM_LBUTTONDOWN && g_CluiData.bFilterEffective == CLVM_FILTER_PROTOS) {
-				ApplyViewMode( "" );
+				ApplyViewMode("");
 				CLUI__cliInvalidateRect( hwnd, NULL, FALSE );
 				SetCapture( NULL );
 				return 0;
 			}
-			return SendMessage(GetParent(hwnd), msg, wParam, lParam );
+			return SendMessage(GetParent(hwnd), msg, wParam, lParam);
 		}
 	}
 	return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -972,12 +966,12 @@ HWND StatusBar_Create(HWND parent)
 
 	// register frame
 	CLISTFrame Frame;
-	memset(&Frame,0,sizeof(Frame));
+	memset(&Frame, 0, sizeof(Frame));
 	Frame.cbSize = sizeof(CLISTFrame);
 	Frame.hWnd = hModernStatusBar;
 	Frame.align = alBottom;
-	Frame.hIcon = LoadSkinnedIcon (SKINICON_OTHER_MIRANDA);
-	Frame.Flags = (db_get_b(NULL,"CLUI","ShowSBar",SETTING_SHOWSBAR_DEFAULT)?F_VISIBLE:0)|F_LOCKED|F_NOBORDER|F_NO_SUBCONTAINER|F_TCHAR;
+	Frame.hIcon = LoadSkinnedIcon (SKINICON_OTHER_FRAME);
+	Frame.Flags = ( db_get_b(NULL,"CLUI","ShowSBar",SETTING_SHOWSBAR_DEFAULT)?F_VISIBLE:0)|F_LOCKED|F_NOBORDER|F_NO_SUBCONTAINER|F_TCHAR;
 	Frame.height = h;
 	Frame.tname = _T("Status Bar");
 	Frame.TBtname = TranslateT("Status Bar");
@@ -985,7 +979,7 @@ HWND StatusBar_Create(HWND parent)
 	CallService(MS_SKINENG_REGISTERPAINTSUB,(WPARAM)Frame.hWnd,(LPARAM)NewStatusPaintCallbackProc); //$$$$$ register sub for frame
 
 	LoadStatusBarData();
-	CLUIServices_ProtocolStatusChanged(0,0);
+	cliCluiProtocolStatusChanged(0, 0);
 	CallService(MS_CLIST_FRAMES_UPDATEFRAME,-1,0);
 	return hModernStatusBar;
 }

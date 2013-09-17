@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -21,17 +21,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-// options dialog for protocol order and visibility
-// written by daniel vijge
-// gpl license ect...
-
 #include "..\..\core\commonheaders.h"
 #include "clc.h"
 
 typedef struct tagProtocolData
 {
 	char *RealName;
-	int protopos;
 	int show, enabled;
 }
 	ProtocolData;
@@ -108,7 +103,16 @@ bool CheckProtocolOrder(void)
 	return changed;
 }
 
-int FillTree(HWND hwnd)
+static bool ProtoToInclude(PROTOACCOUNT *pa)
+{
+	if ( !Proto_IsAccountEnabled(pa))
+		return false;
+
+	PROTOCOLDESCRIPTOR *pd = Proto_IsProtocolLoaded(pa->szProtoName);
+	return (pd != NULL && pd->type == PROTOTYPE_PROTOCOL);
+}
+
+static int FillTree(HWND hwnd)
 {
 	TVINSERTSTRUCT tvis;
 	tvis.hParent = NULL;
@@ -125,12 +129,11 @@ int FillTree(HWND hwnd)
 			continue;
 
 		PROTOACCOUNT *pa = accounts[idx];
-		if ( !cli.pfnGetProtocolVisibility(pa->szModuleName))
+		if ( !ProtoToInclude(pa))
 			continue;
 
 		ProtocolData *PD = (ProtocolData*)mir_alloc(sizeof(ProtocolData));
 		PD->RealName = pa->szModuleName;
-		PD->protopos = pa->iOrder;
 		PD->enabled = Proto_IsAccountEnabled(pa) && isProtoSuitable(pa->ppro);
 		PD->show = PD->enabled ? pa->bIsVisible : 100;
 
@@ -180,7 +183,7 @@ INT_PTR CALLBACK ProtocolOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 		switch(((LPNMHDR)lParam)->idFrom) {
 		case 0:
 			if (((LPNMHDR)lParam)->code == PSN_APPLY) {
-				int count = 0;
+				int idx = 0;
 
 				TVITEM tvi;
 				tvi.hItem = TreeView_GetRoot(hwndProtoOrder);
@@ -194,7 +197,8 @@ INT_PTR CALLBACK ProtocolOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 						ProtocolData* ppd = (ProtocolData*)tvi.lParam;
 						PROTOACCOUNT* pa = Proto_GetAccount(ppd->RealName);
 						if (pa != NULL) {
-							pa->iOrder = count++;
+							while (idx < accounts.getCount() && !ProtoToInclude(accounts[idx])) idx++;
+							pa->iOrder = idx++;
 							if (ppd->enabled)
 								pa->bIsVisible = ppd->show;
 						}

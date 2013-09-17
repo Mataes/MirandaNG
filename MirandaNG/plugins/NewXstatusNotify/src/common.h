@@ -30,55 +30,46 @@
 
 #define _WIN32_WINNT 0x0500
 #define WINVER 0x0600
-#define MIRANDA_VER 0x0A00
 
-//Standard Windows "libraries"
 #include <windows.h>
 #include <mmsystem.h>
 #include <commctrl.h>
 #include <commdlg.h>
 #include <shellapi.h>
 #include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <tchar.h>
 #include <malloc.h>
 
 #include <newpluginapi.h>
-#include <m_system.h>
-#include <m_system_cpp.h>
-#include <statusmodes.h>
 #include <win2k.h>
+#include <m_button.h>
+#include <m_clc.h>
+#include <m_database.h>
+#include <m_genmenu.h>
+#include <m_history.h>
+#include <m_icolib.h>
+#include <m_ignore.h>
+#include <m_langpack.h>
+#include <m_message.h>
+#include <m_options.h>
+#include <m_popup.h>
+#include <m_protosvc.h>
+#include <m_skin.h>
+#include <m_userinfo.h>
+#include <m_xstatus.h>
+#include <m_extraicons.h>
 
-#include "m_awaymsg.h"
-#include "m_button.h"
-#include "m_clc.h"
-#include "m_database.h"
-#include "m_genmenu.h"
-#include "m_history.h"
-#include "m_icolib.h"
-#include "m_ignore.h"
-#include "m_langpack.h"
-#include "m_message.h"
-#include "m_options.h"
-#include "m_popup.h"
-#include "m_protosvc.h"
-#include "m_skin.h"
-#include "m_system.h"
-#include "m_userinfo.h"
-#include "m_utils.h"
-#include "m_xstatus.h"
-#include "m_extraicons.h"
+#include <m_metacontacts.h>
+#include <m_toptoolbar.h>
 
-#include "m_metacontacts.h"
-#include "m_toptoolbar.h"
 #include "resource.h"
-
-#define MIID_NXSN { 0xebf19652, 0xe434, 0x4d79, { 0x98, 0x97, 0x91, 0xa0, 0xff, 0x22, 0x6f, 0x51 } }
+#include "indsnd.h"
+#include "options.h"
+#include "popup.h"
+#include "utils.h"
+#include "version.h"
+#include "xstatus.h"
 
 #define MODULE "NewStatusNotify"
-
-#define WM_AWAYMSG				WM_USER + 0x0192
 
 #define MAX_STATUSTEXT			36
 #define MAX_STANDARDTEXT		36
@@ -125,6 +116,7 @@ typedef struct tagPLUGINDATA
 {
 	WORD newStatus;
 	WORD oldStatus;
+	HWND hWnd;
 	HANDLE hAwayMsgProcess;
 	HANDLE hAwayMsgHook;
 } PLUGINDATA;
@@ -151,5 +143,12 @@ Cast them to (int) if you need them that way.
 #define MS_STATUSCHANGE_MENUCOMMAND "NewStatusNotify/EnableDisableMenuCommand"
 
 #define TMR_CONNECTIONTIMEOUT		10000
+
+extern OPTIONS opt;
+extern LIST<DBEVENT> eventList;
+extern TEMPLATES templates;
+extern HINSTANCE hInst;
+extern HGENMENU hEnableDisableMenu;
+extern STATUS StatusList[STATUS_COUNT];
 
 #endif //COMMON_H

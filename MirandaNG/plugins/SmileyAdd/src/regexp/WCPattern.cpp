@@ -23,18 +23,7 @@
   @version  1.07.00
 */
 
-#ifdef _WIN32
-  #pragma warning(push)
-  #pragma warning(disable:4996)
-#endif
-
-#include <WCPattern.h>
-#include <WCMatcher.h>
-#include <wchar.h>
-#include <algorithm>
-#ifndef _WIN32
-  #include <wctype.h>
-#endif
+#include "..\general.h"
 
 std::map<bkstring, WCPattern *> WCPattern::compiledWCPatterns;
 std::map<bkstring, std::pair<bkstring, unsigned long> > WCPattern::registeredWCPatterns;
@@ -164,7 +153,7 @@ bool WCPattern::quantifyCurly(int & sNum, int & eNum)
 {
   bool good = 1;
   int i, ci = curInd + 1;
-  int commaInd = ci, endInd = ci, len = pattern.size();
+  int commaInd = ci, endInd = ci, len = (int)pattern.size();
   sNum = eNum = 0;
 
   while (endInd   < len     && pattern[endInd  ] != (wchar_t)'}') ++endInd;
@@ -336,7 +325,7 @@ bkstring WCPattern::parseClass()
       if (pattern[++curInd] != (wchar_t)'[')
       {
         raiseError();
-        curInd = pattern.size();
+        curInd = (int)pattern.size();
       }
       else
       {
@@ -351,7 +340,7 @@ bkstring WCPattern::parseClass()
       if (quo)
       {
         raiseError();
-        curInd = pattern.size();
+        curInd = (int)pattern.size();
       }
       else if (inv || t.size() > 1) // cant be part of a range (a-z)
       {
@@ -372,7 +361,7 @@ bkstring WCPattern::parseClass()
             if (quo)
             {
               raiseError();
-              curInd = pattern.size();
+              curInd = (int)pattern.size();
             }
             else if (inv || t.size() > 1) raiseError();
             else ret = classUnion(ret, classCreateRange(c1, c2));
@@ -380,7 +369,7 @@ bkstring WCPattern::parseClass()
           else if (c2 == (wchar_t)'[' || c2 == (wchar_t)']' || c2 == (wchar_t)'-' || c2 == (wchar_t)'&')
           {
             raiseError();
-            curInd = pattern.size();
+            curInd = (int)pattern.size();
           }
           else ret = classUnion(ret, classCreateRange(c1, c2));
         }
@@ -404,7 +393,7 @@ bkstring WCPattern::parseClass()
           if (quo)
           {
             raiseError();
-            curInd = pattern.size();
+            curInd = (int)pattern.size();
           }
           else if (inv || t.size() > 1) raiseError();
           else ret = classUnion(ret, classCreateRange(c1, c2));
@@ -412,7 +401,7 @@ bkstring WCPattern::parseClass()
         else if (c2 == (wchar_t)'[' || c2 == (wchar_t)']' || c2 == (wchar_t)'-' || c2 == (wchar_t)'&')
         {
           raiseError();
-          curInd = pattern.size();
+          curInd = (int)pattern.size();
         }
         else
         {
@@ -635,9 +624,7 @@ NFAUNode * WCPattern::parseRegisteredWCPattern(NFAUNode ** end)
           (pattern[j] >= (wchar_t)'a' && pattern[j] <= (wchar_t)'z') ||
           (pattern[j] >= (wchar_t)'A' && pattern[j] <= (wchar_t)'Z') ||
           (pattern[j] >= (wchar_t)'0' && pattern[j] <= (wchar_t)'9') ||
-          (pattern[j] == (wchar_t)'_')
-         )
-        )
+          (pattern[j] == (wchar_t)'_')))
     {
       raiseError();
       return NULL;
@@ -1741,7 +1728,3 @@ int NFAGroupLoopUNode::matchPossessive(const bkstring & str, WCMatcher * matcher
   }
   return ret;
 }
-
-#ifdef _WIN32
-  #pragma warning(pop)
-#endif

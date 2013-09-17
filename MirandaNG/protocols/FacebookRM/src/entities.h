@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,21 +31,22 @@ struct facebook_user
 
 	unsigned int status_id;
 	unsigned int gender;
+	DWORD last_active;
 
 	std::string image_url;
 
 	bool deleted;
 
-	facebook_user( )
+	facebook_user()
 	{
 		this->handle = NULL;
 		this->user_id = this->real_name = this->image_url = "";
 		this->status_id = ID_STATUS_OFFLINE;
-		this->gender = 0;
+		this->gender = this->last_active = 0;
 		this->deleted = false;
 	}
 
-	facebook_user( facebook_user* fu )
+	facebook_user(facebook_user* fu)
 	{
 		this->handle = fu->handle;
 		this->image_url = fu->image_url;
@@ -53,6 +54,7 @@ struct facebook_user
 		this->status_id = fu->status_id;
 		this->user_id = fu->user_id;
 		this->gender = fu->gender;
+		this->last_active = fu->last_active;
 		this->deleted = fu->deleted;
 	}
 };
@@ -62,20 +64,27 @@ struct facebook_message
 	std::string user_id;
 	std::string message_text;
 	std::string sender_name;
+	std::string message_id;
 	DWORD time;
+	bool isIncoming;
+	bool isUnread;
 
-	facebook_message( )
+	facebook_message()
 	{
-		this->user_id = this->message_text = this->sender_name = "";
+		this->user_id = this->message_text = this->sender_name = this->message_id = "";
 		this->time = 0;
+		this->isUnread = this->isIncoming = true;
 	}
 
-	facebook_message( const facebook_message& msg )
+	facebook_message(const facebook_message& msg)
 	{
 		this->user_id = msg.user_id;
 		this->message_text = msg.message_text;
 		this->sender_name = msg.sender_name;
+		this->message_id = msg.message_id;
 		this->time = msg.time;
+		this->isIncoming = msg.isIncoming;
+		this->isUnread = msg.isUnread;
 	}
 };
 
@@ -84,10 +93,11 @@ struct facebook_notification
 	std::string user_id;
 	std::string text;
 	std::string link;
+	std::string id;
 
-	facebook_notification( )
+	facebook_notification()
 	{
-		this->user_id = this->text = this->link = "";
+		this->user_id = this->text = this->link = this->id = "";
 	}
 };
 
@@ -98,12 +108,11 @@ struct facebook_newsfeed
 	std::string text;
 	std::string link;
 
-	facebook_newsfeed( )
+	facebook_newsfeed()
 	{
 		this->user_id = this->title = this->text = this->link = "";
 	}
 };
-
 
 struct send_chat
 {
@@ -111,7 +120,6 @@ struct send_chat
 	std::string chat_id;
 	std::string msg;
 };
-
 
 struct send_direct
 {
@@ -128,9 +136,48 @@ struct send_typing
 	int status;
 };
 
-struct send_messaging
+struct popup_data
 {
-	send_messaging(const std::string &user_id, const int type) : user_id(user_id), type(type) {}
+	popup_data(FacebookProto *proto) : proto(proto) {}
+	popup_data(FacebookProto *proto, std::string url) : proto(proto), url(url) {}
+	FacebookProto *proto;
+	std::string url;
+	std::string notification_id;
+};
+
+struct status_data
+{
+	status_data() {
+		this->user_id = this->text = this->url = this->place = this->privacy = "";
+		this->isPage = false;
+	}
 	std::string user_id;
-	int type;
+	std::string text;
+	std::string url;	
+	std::string place;	
+	std::string privacy;
+	bool isPage;
+	std::vector<facebook_user*> users;
+};
+
+struct wall_data
+{
+	wall_data() {
+		this->user_id = "";
+		this->title = NULL;
+		this->isPage = false;
+	}
+	wall_data(std::string user_id, TCHAR *title, bool isPage = false) : user_id(user_id), title(title), isPage(isPage) {}
+	std::string user_id;
+	TCHAR *title;
+	bool isPage;
+};
+
+struct post_status_data {
+	post_status_data(FacebookProto *proto) : proto(proto) {}
+	post_status_data(FacebookProto *proto, wall_data *wall) : proto(proto) {
+		this->walls.push_back(wall);
+	}
+	FacebookProto *proto;
+	std::vector<wall_data*> walls;
 };

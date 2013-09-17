@@ -13,7 +13,7 @@ HWND hwndContactList = 0;
 
 int nextButtonId = 200;
 
-HANDLE hTTBModuleLoaded, hTTBInitButtons;
+HANDLE hTTBModuleLoaded;
 static WNDPROC buttonWndProc;
 
 CRITICAL_SECTION csButtonsHook;
@@ -46,7 +46,7 @@ void InsertSBut(int i)
 	ttb.hIconUp = (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_RUN), IMAGE_ICON, 16, 16, LR_DEFAULTCOLOR);
 	ttb.dwFlags = TTBBF_VISIBLE | TTBBF_ISSBUTTON | TTBBF_INTERNAL;
 	ttb.wParamDown = i;
-	TTBAddButton(( WPARAM )&ttb, 0);
+	TTBAddButton((WPARAM)&ttb, 0);
 }
 
 void LoadAllSButs()
@@ -83,7 +83,7 @@ void InsertLBut(int i)
 	ttb.name = LPGEN("Default");
 	ttb.program = _T("Execute Path");
 	ttb.wParamDown = i;
-	TTBAddButton(( WPARAM )&ttb, 0);
+	TTBAddButton((WPARAM)&ttb, 0);
 }
 
 void LoadAllLButs()
@@ -152,7 +152,7 @@ static void Icon2button(TTBButton* but, HANDLE& hIcoLib, HICON& hIcon, bool bIsU
 		char buf[256];
 		mir_snprintf(buf, SIZEOF(buf), "toptoolbar_%s%s", but->name, (bIsUp) ? (but->hIconDn ? "%s_up" : "%s") : "%s_dn");
 		SKINICONDESC sid = { sizeof(sid) };
-		sid.pszSection = "Toolbar";				
+		sid.pszSection = "Toolbar";
 		sid.pszName = buf;
 		sid.pszDefaultFile = NULL;
 		sid.pszDescription = but->name;
@@ -278,7 +278,7 @@ int ArrangeButtons()
 		if (g_ctrl->bSingleLine)
 			break;
 	}
-		while (iFirstButtonId < Buttons.getCount() && y >= 0 && (g_ctrl->bAutoSize || (y + g_ctrl->nButtonHeight <= rcClient.bottom - rcClient.top)));		
+		while (iFirstButtonId < Buttons.getCount() && y >= 0 && (g_ctrl->bAutoSize || (y + g_ctrl->nButtonHeight <= rcClient.bottom - rcClient.top)));
 
 	for (i=iLastButtonId; i < Buttons.getCount(); i++)
 		hdwp = DeferWindowPos(hdwp, Buttons[i]->hwnd, NULL, nextX, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_HIDEWINDOW);
@@ -314,7 +314,7 @@ INT_PTR TTBAddButton(WPARAM wParam, LPARAM lParam)
 		delete b;
 		return -1;
 	}
-	{	
+	{
 		mir_cslock lck(csButtonsHook);
 		Buttons.insert(b);
 	}
@@ -335,7 +335,7 @@ INT_PTR TTBRemoveButton(WPARAM wParam, LPARAM lParam)
 	TopButtonInt* b = idtopos(wParam, &idx);
 	if (b == NULL)
 		return -1;
-	
+
 	RemoveFromOptions(b->id);
 
 	Buttons.remove(idx);
@@ -347,7 +347,7 @@ INT_PTR TTBRemoveButton(WPARAM wParam, LPARAM lParam)
 }
 
 // wparam = hTTBButton
-// lparam = state 
+// lparam = state
 INT_PTR TTBSetState(WPARAM wParam, LPARAM lParam)
 {
 	mir_cslock lck(csButtonsHook);
@@ -401,7 +401,7 @@ INT_PTR TTBGetOptions(WPARAM wParam, LPARAM lParam)
 			lpTTBButton lpTTB = (lpTTBButton)lParam;
 			if (lpTTB->cbSize != sizeof(TTBButton))
 				break;
-				
+
 			lpTTB->dwFlags = b->dwFlags & (~TTBBF_PUSHED);
 			if (b->bPushed)
 				lpTTB->dwFlags |= TTBBF_PUSHED;
@@ -427,7 +427,7 @@ INT_PTR TTBGetOptions(WPARAM wParam, LPARAM lParam)
 		retval = -1;
 		break;
 	}
-	
+
 	return retval;
 }
 
@@ -446,14 +446,14 @@ INT_PTR TTBSetOptions(WPARAM wParam, LPARAM lParam)
 			break;
 
 		retval = b->CheckFlags(lParam);
-		
+
 		if (retval & TTBBF_PUSHED)
 			b->SetBitmap();
 		if (retval & TTBBF_VISIBLE) {
 			ArrangeButtons();
 			b->SaveSettings(0,0);
 		}
-				
+
 		retval = 1;
 		break;
 
@@ -493,7 +493,7 @@ INT_PTR TTBSetOptions(WPARAM wParam, LPARAM lParam)
 
 			if (b->dwFlags & TTBBF_ISLBUTTON)
 				replaceStrT(b->ptszProgram, lpTTB->program);
-			else 
+			else
 				replaceStr(b->pszService, lpTTB->pszService);
 
 			b->lParamUp = lpTTB->lParamUp;
@@ -509,7 +509,7 @@ INT_PTR TTBSetOptions(WPARAM wParam, LPARAM lParam)
 		retval = -1;
 		break;
 	}
-	
+
 	return retval;
 }
 
@@ -538,7 +538,7 @@ int OnIconChange(WPARAM wParam, LPARAM lParam)
 
 	if (g_ctrl->hWnd) {
 		g_ctrl->bOrderChanged = true;
-		PostMessage(g_ctrl->hWnd, TTB_UPDATEFRAMEVISIBILITY, TRUE, 0);
+		PostMessage(g_ctrl->hWnd, TTB_UPDATEFRAMEVISIBILITY, 0, 0);
 	}
 
 	return 0;
@@ -560,18 +560,18 @@ static INT_PTR TTBSetCustomProc(WPARAM wParam, LPARAM lParam)
 /////////////////////////////////////////////////////////////////////////////////////////
 // Adds buttons of plugins being loaded. lParam = HINSTANCE
 
-int OnPluginLoad(WPARAM wParam, LPARAM lParam)
+int OnPluginLoad(WPARAM, LPARAM lParam)
 {
 	CallPluginEventHook((HINSTANCE)lParam, hTTBModuleLoaded, 0, 0);
 	if (g_ctrl->hWnd && g_ctrl->bOrderChanged)
-		PostMessage(g_ctrl->hWnd, TTB_UPDATEFRAMEVISIBILITY, TRUE, 0);
+		PostMessage(g_ctrl->hWnd, TTB_UPDATEFRAMEVISIBILITY, 0, 0);
 	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Removes buttons of plugins being unloaded. lParam = HINSTANCE
 
-int OnPluginUnload(WPARAM wParam, LPARAM lParam)
+int OnPluginUnload(WPARAM, LPARAM lParam)
 {
 	int hLangpack = CallService(MS_LANGPACK_LOOKUPHANDLE, 0, lParam);
 	if (hLangpack) {
@@ -587,7 +587,7 @@ int OnPluginUnload(WPARAM wParam, LPARAM lParam)
 		if (bNeedUpdate) {
 			ArrangeButtons();
 			if (g_ctrl->hWnd)
-				PostMessage(g_ctrl->hWnd, TTB_UPDATEFRAMEVISIBILITY, TRUE, 0);
+				PostMessage(g_ctrl->hWnd, TTB_UPDATEFRAMEVISIBILITY, 0, 0);
 		}
 	}
 	return 0;
@@ -605,12 +605,12 @@ static int OnModulesLoad(WPARAM wParam, LPARAM lParam)
 	HANDLE hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);//anonymous event
 	if (hEvent != 0)
 		CallService(MS_SYSTEM_WAITONHANDLE, (WPARAM)hEvent, (LPARAM)"TTB_ONSTARTUPFIRE");
-	
+
 	if ( HookEvent(ME_BACKGROUNDCONFIG_CHANGED, OnBGChange)) {
 		char buf[256];
-		sprintf(buf, "TopToolBar Background/%s", TTB_OPTDIR);
+		mir_snprintf(buf, SIZEOF(buf), "TopToolBar Background/%s", TTB_OPTDIR);
 		CallService(MS_BACKGROUNDCONFIG_REGISTER, (WPARAM)buf, 0);
-	}	
+	}
 	return 0;
 }
 
@@ -649,7 +649,7 @@ int LoadToolbarModule()
 {
 	if ( !ServiceExists(MS_CLIST_FRAMES_ADDFRAME)) {
 		if ( !db_get_b(NULL, TTB_OPTDIR, "WarningDone", 0))
-			MessageBox(0, TranslateT("Frames service has not been found, so plugin will be disabled.\nTo run it you need to install and / or enable contact list plugin that supports it:\n- Modern contact list\n- MultiWindow (MW)\n- Nicer+\nYou can get them at http://miranda-ng.org"), _T("TopToolBar"), 0);
+			MessageBox(0, TranslateT("Frames service has not been found, so plugin will be disabled.\nTo run it you need to install and / or enable contact list plugin that supports it:\n- Modern contact list\n- MultiWindow (MW)\n- Nicer+\nYou can get them at http://miranda-ng.org/"), TranslateT("TopToolBar"), 0);
 		db_set_b(NULL, TTB_OPTDIR, "WarningDone", 1);
 		return 1;
 	}
@@ -661,7 +661,7 @@ int LoadToolbarModule()
 	g_ctrl->nLastHeight = db_get_dw(0, TTB_OPTDIR, "LastHeight", DEFBUTTHEIGHT);
 
 	g_ctrl->bFlatButtons = db_get_b(0, TTB_OPTDIR, "UseFlatButton", true);
-	g_ctrl->bSingleLine = db_get_b(0, TTB_OPTDIR, "SingleLine", false);
+	g_ctrl->bSingleLine = db_get_b(0, TTB_OPTDIR, "SingleLine", true);
 	g_ctrl->bAutoSize = db_get_b(0, TTB_OPTDIR, "AutoSize", true);
 
 	db_unset(NULL, TTB_OPTDIR, "WarningDone");
@@ -677,8 +677,6 @@ int LoadToolbarModule()
 	HookEvent(ME_OPT_INITIALISE, TTBOptInit);
 
 	hTTBModuleLoaded = CreateHookableEvent(ME_TTB_MODULELOADED);
-	hTTBInitButtons = CreateHookableEvent(ME_TTB_INITBUTTONS);
-	SetHookDefaultForHookableEvent(hTTBInitButtons, InitInternalButtons);
 
 	CreateServiceFunction("TopToolBar/AddButton", TTBAddButton);
 	CreateServiceFunction(MS_TTB_REMOVEBUTTON, TTBRemoveButton);
@@ -712,7 +710,6 @@ int LoadToolbarModule()
 int UnloadToolbarModule()
 {
 	DestroyHookableEvent(hTTBModuleLoaded);
-	DestroyHookableEvent(hTTBInitButtons);
 
 	DeleteObject(hBmpSeparator);
 	DeleteCriticalSection(&csButtonsHook);

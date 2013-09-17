@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -56,7 +56,7 @@ static HICON ExtractIconFromPath(const TCHAR *path, int cxIcon, int cyIcon)
 		n = _ttoi(comma+1);
 		*comma = 0;
 	}
-	PathToAbsoluteT(file, fileFull, NULL);
+	PathToAbsoluteT(file, fileFull);
 	hIcon = NULL;
 
 	//SHOULD BE REPLACED WITH GOOD ENOUGH FUNCTION
@@ -547,7 +547,7 @@ INT_PTR CALLBACK DlgProcIconImport(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				LVITEM lvi;
 
 				GetDlgItemText(hwndDlg, IDC_ICONSET, fullPath, SIZEOF(fullPath));
-				CallService(MS_UTILS_PATHTORELATIVET, (WPARAM)fullPath, (LPARAM)filename);
+				PathToRelativeT(fullPath, filename);
 				lvi.mask = LVIF_PARAM;
 				lvi.iItem = dragItem; lvi.iSubItem = 0;
 				ListView_GetItem(hPreview, &lvi);
@@ -874,7 +874,7 @@ INT_PTR CALLBACK DlgProcIcoLibOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				HWND htv = GetDlgItem(hwndDlg, IDC_CATEGORYLIST);
 				TCHAR filename[ MAX_PATH ];
 
-				CallService(MS_UTILS_PATHTORELATIVET, (WPARAM)file, (LPARAM)filename);
+				PathToRelativeT(file, filename);
 				SAFE_FREE((void**)&file);
 
 				MySetCursor(IDC_WAIT);
@@ -940,7 +940,7 @@ INT_PTR CALLBACK DlgProcIcoLibOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					for (int indx = 0; indx < iconList.getCount(); indx++) {
 						IcolibItem *item = iconList[indx];
 						if (item->temp_reset) {
-							DBDeleteContactSetting(NULL, "SkinIcons", item->name);
+							db_unset(NULL, "SkinIcons", item->name);
 							if (item->source_small != item->default_icon) {
 								IconSourceItem_Release(&item->source_small);
 							}

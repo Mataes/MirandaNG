@@ -1,21 +1,23 @@
 /*
- Copyright (C) 2009 Ricardo Pescuma Domenecci
 
- This is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
+Copyright (C) 2009 Ricardo Pescuma Domenecci
+Copyright (C) 2012-13 Miranda NG Project
 
- This is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
+This is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
 
- You should have received a copy of the GNU Library General Public
- License along with this file; see the file license.txt.  If
- not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- Boston, MA 02111-1307, USA.
- */
+This is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Library General Public
+License along with this file; see the file license.txt.  If
+not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+*/
 
 #include "..\..\core\commonheaders.h"
 
@@ -54,18 +56,13 @@ BOOL ScreenToClient(HWND hWnd, LPRECT lpRect)
 
 static void RemoveExtraIcons(int slot)
 {
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
 		Clist_SetExtraIcon(hContact, slot, INVALID_HANDLE_VALUE);
-		hContact = db_find_next(hContact);
-	}
 }
 
 #ifndef TVIS_FOCUSED
 #define TVIS_FOCUSED	1
 #endif
-
-WNDPROC origTreeProc;
 
 static bool IsSelected(HWND tree, HTREEITEM hItem)
 {
@@ -232,7 +229,7 @@ LRESULT CALLBACK TreeProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-	return CallWindowProc(origTreeProc, hwndDlg, msg, wParam, lParam);
+	return mir_callNextSubclass(hwndDlg, TreeProc, msg, wParam, lParam);
 }
 
 static vector<int> * Tree_GetIDs(HWND tree, HTREEITEM hItem)
@@ -466,7 +463,7 @@ static INT_PTR CALLBACK OptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 			sort.lpfnCompare = CompareFunc;
 			TreeView_SortChildrenCB(tree, &sort, 0);
 
-			origTreeProc = (WNDPROC) SetWindowLongPtr(tree, GWLP_WNDPROC, (INT_PTR)TreeProc);
+			mir_subclassWindow(tree, TreeProc);
 		}
 		return TRUE;
 
@@ -541,22 +538,22 @@ static INT_PTR CALLBACK OptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 
 						char setting[512];
 						mir_snprintf(setting, SIZEOF(setting), "Position_%s", extra->getName());
-						DBWriteContactSettingWord(NULL, MODULE_NAME, setting, extra->getPosition());
+						db_set_w(NULL, MODULE_NAME, setting, extra->getPosition());
 
 						mir_snprintf(setting, SIZEOF(setting), "Slot_%s", extra->getName());
-						DBWriteContactSettingWord(NULL, MODULE_NAME, setting, extra->getSlot());
+						db_set_w(NULL, MODULE_NAME, setting, extra->getSlot());
 					}
 
 					CallService(MS_DB_MODULE_DELETE, 0, (LPARAM) MODULE_NAME "Groups");
-					DBWriteContactSettingWord(NULL, MODULE_NAME "Groups", "Count", (WORD)groups.size());
-					for (i = 0; i < groups.size(); i++) {
-						ExtraIconGroup *group = groups[i];
+					db_set_w(NULL, MODULE_NAME "Groups", "Count", (WORD)groups.size());
+					for (unsigned k = 0; k < groups.size(); k++) {
+						ExtraIconGroup *group = groups[k];
 
 						char setting[512];
 						mir_snprintf(setting, SIZEOF(setting), "%d_count", i);
-						DBWriteContactSettingWord(NULL, MODULE_NAME "Groups", setting, (WORD)group->items.size());
+						db_set_w(NULL, MODULE_NAME "Groups", setting, (WORD)group->items.size());
 
-						for (unsigned int j = 0; j < group->items.size(); j++) {
+						for (unsigned j = 0; j < group->items.size(); j++) {
 							BaseExtraIcon *extra = group->items[j];
 
 							mir_snprintf(setting, SIZEOF(setting), "%d_%d", i, j);
@@ -570,8 +567,8 @@ static INT_PTR CALLBACK OptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 
 					// Apply icons to new slots
 					RebuildListsBasedOnGroups(groups);
-					for (i = 0; i < extraIconsBySlot.size(); i++) {
-						ExtraIcon *extra = extraIconsBySlot[i];
+					for (unsigned n = 0; n < extraIconsBySlot.size(); n++) {
+						ExtraIcon *extra = extraIconsBySlot[n];
 
 						if (extra->getType() != EXTRAICON_TYPE_GROUP)
 							if (oldSlots[((BaseExtraIcon *) extra)->getID() - 1] == extra->getSlot())

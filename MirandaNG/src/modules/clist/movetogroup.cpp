@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,9 +20,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 
-HANDLE hOnCntMenuBuild;
 HGENMENU hMoveToGroupItem = 0, hPriorityItem = 0, hFloatingItem = 0;
 
 LIST<HANDLE> lphGroupsItems(5);
@@ -84,13 +84,13 @@ static void AddGroupItem(HGENMENU hRoot, TCHAR* name, int pos, WPARAM param, boo
 static int OnContactMenuBuild(WPARAM wParam, LPARAM)
 {
 	int i;
-	OBJLIST<GroupItemSort> groups(10, GroupItemSort::compare);	
+	OBJLIST<GroupItemSort> groups(10, GroupItemSort::compare);
 
 	if ( !hMoveToGroupItem) {
 		CLISTMENUITEM mi = { sizeof(mi) };
 		mi.position = 100000;
 		mi.pszName = LPGEN("&Move to Group");
-		mi.flags = CMIF_ROOTHANDLE | CMIF_ICONFROMICOLIB;
+		mi.flags = CMIF_ROOTHANDLE;
 		mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_GROUP);
 
 		hMoveToGroupItem = Menu_AddContactMenuItem(&mi);
@@ -100,7 +100,7 @@ static int OnContactMenuBuild(WPARAM wParam, LPARAM)
 		CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)lphGroupsItems[i], 0);
 	lphGroupsItems.destroy();
 
-	TCHAR *szContactGroup = DBGetStringT((HANDLE)wParam, "CList", "Group");
+	ptrT szContactGroup( db_get_tsa((HANDLE)wParam, "CList", "Group"));
 
 	int pos = 1000;
 
@@ -108,13 +108,13 @@ static int OnContactMenuBuild(WPARAM wParam, LPARAM)
 
 	pos += 100000; // Separator
 
-	for (i=0; ; i++) 
+	for (i=0; ; i++)
 	{
 		char intname[20];
 		_itoa(i, intname, 10);
 
 		DBVARIANT dbv;
-		if (DBGetContactSettingTString(NULL, "CListGroups", intname, &dbv))
+		if (db_get_ts(NULL, "CListGroups", intname, &dbv))
 			break;
 
 		if (dbv.ptszVal[0])
@@ -123,15 +123,12 @@ static int OnContactMenuBuild(WPARAM wParam, LPARAM)
 		mir_free(dbv.ptszVal);
 	}
 
-	for (i=0; i < groups.getCount(); i++)
-	{
-		bool checked = szContactGroup && !_tcscmp(szContactGroup, groups[i].name);		
+	for (i=0; i < groups.getCount(); i++) {
+		bool checked = szContactGroup && !_tcscmp(szContactGroup, groups[i].name);
 		AddGroupItem(hMoveToGroupItem, groups[i].name, ++pos, groups[i].position, checked);
 	}
 
 	groups.destroy();
-	mir_free(szContactGroup);
-
 	return 0;
 }
 
@@ -143,14 +140,12 @@ static INT_PTR MTG_DOMOVE(WPARAM wParam, LPARAM lParam)
 
 void MTG_OnmodulesLoad()
 {
-	hOnCntMenuBuild = HookEvent(ME_CLIST_PREBUILDCONTACTMENU, OnContactMenuBuild);
+	HookEvent(ME_CLIST_PREBUILDCONTACTMENU, OnContactMenuBuild);
 	CreateServiceFunction(MTG_MOVE, MTG_DOMOVE);
 }
 
 int UnloadMoveToGroup(void)
 {
-	UnhookEvent(hOnCntMenuBuild);
 	lphGroupsItems.destroy();
-
 	return 0;
 }

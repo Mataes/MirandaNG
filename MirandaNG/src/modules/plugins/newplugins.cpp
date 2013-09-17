@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 
 #include "plugins.h"
@@ -30,7 +31,8 @@ void LoadExtraIconsModule();
 extern bool bModulesLoadedFired;
 
 static int sttComparePluginsByName(const pluginEntry* p1, const pluginEntry* p2)
-{	return lstrcmp(p1->pluginname, p2->pluginname);
+{
+	return lstrcmp(p1->pluginname, p2->pluginname);
 }
 
 LIST<pluginEntry>
@@ -74,7 +76,6 @@ bool hasMuuid(const MUUID* p, const MUUID& uuid)
 	return false;
 }
 
-
 bool hasMuuid(const BASIC_PLUGIN_INFO& bpi, const MUUID& uuid)
 {
 	if (bpi.Interfaces)
@@ -86,7 +87,7 @@ bool hasMuuid(const BASIC_PLUGIN_INFO& bpi, const MUUID& uuid)
 /////////////////////////////////////////////////////////////////////////////////////////
 // banned plugins
 
-static const MUUID pluginBannedList[] = 
+static const MUUID pluginBannedList[] =
 {
 	{0x9d6c3213, 0x02b4, 0x4fe1, { 0x92, 0xe6, 0x52, 0x6d, 0xe2, 0x4f, 0x8d, 0x65 }},  // old chat
 	{0x240a91dc, 0x9464, 0x457a, { 0x97, 0x87, 0xff, 0x1e, 0xa8, 0x8e, 0x77, 0xe3 }},  // old clist
@@ -106,7 +107,7 @@ static bool isPluginBanned(const MUUID& u1)
 /////////////////////////////////////////////////////////////////////////////////////////
 // default plugins
 
-static MuuidReplacement pluginDefault[] = 
+static MuuidReplacement pluginDefault[] =
 {
 	{	MIID_UIUSERINFO,      _T("stduserinfo"),   NULL },  // 0
 	{	MIID_SRURL,           _T("stdurl"),        NULL },  // 1
@@ -121,7 +122,8 @@ static MuuidReplacement pluginDefault[] =
 	{	MIID_SRAWAY,          _T("stdaway"),       NULL },  // 10
 	{	MIID_CLIST,           _T("stdclist"),      NULL },  // 11
 	{	MIID_CHAT,            _T("stdchat"),       NULL },  // 12
-	{	MIID_SRMM,            _T("stdmsg"),        NULL }   // 13
+	{	MIID_SRMM,            _T("stdmsg"),        NULL },  // 13
+	{	MIID_CRYPTO,          _T("stdcrypt"),      NULL },  // 14
 };
 
 int getDefaultPluginIdx(const MUUID& muuid)
@@ -148,7 +150,7 @@ int LoadStdPlugins()
 	}
 
 	if (pluginDefault[13].pImpl == NULL)
-		MessageBox(NULL, TranslateT("No messaging plugins loaded. Please install/enable one of the messaging plugins, for instance, \"srmm.dll\""), _T("Miranda NG"), MB_OK | MB_ICONINFORMATION);
+		MessageBox(NULL, TranslateT("No messaging plugins loaded. Please install/enable one of the messaging plugins, for instance, \"StdMsg.dll\""), _T("Miranda NG"), MB_OK | MB_ICONWARNING);
 
 	return 0;
 }
@@ -158,7 +160,7 @@ int LoadStdPlugins()
 
 char* GetPluginNameByInstance(HINSTANCE hInstance)
 {
-	if (pluginList.getCount() == 0) 
+	if (pluginList.getCount() == 0)
 		return NULL;
 
 	for (int i=0; i < pluginList.getCount(); i++) {
@@ -171,7 +173,7 @@ char* GetPluginNameByInstance(HINSTANCE hInstance)
 
 int GetPluginLangByInstance(HINSTANCE hInstance)
 {
-	if (pluginList.getCount() == 0) 
+	if (pluginList.getCount() == 0)
 		return NULL;
 
 	for (int i=0; i < pluginList.getCount(); i++) {
@@ -192,7 +194,7 @@ int GetPluginFakeId(const MUUID &uuid, int hLangpack)
 		if ( equalUUID(p->bpi.pluginInfo->uuid, uuid))
 			return p->hLangpack = (hLangpack) ? hLangpack : --sttFakeID;
 	}
-			
+
 	return 0;
 }
 
@@ -215,28 +217,6 @@ static bool validInterfaceList(MUUID *piface)
 	return true;
 }
 
-/*
- * historyeditor added by nightwish - plugin is problematic and can ruin database as it does not understand UTF-8 message
- * storage
- */
-
-static const TCHAR* modulesToSkip[] = 
-{
-	_T("autoloadavatars.dll"), _T("multiwindow.dll"), _T("fontservice.dll"),
-	_T("icolib.dll"), _T("historyeditor.dll")
-};
-
-// The following plugins will be checked for a valid MUUID or they will not be loaded
-static const TCHAR* expiredModulesToSkip[] = 
-{
-	_T("scriver.dll"), _T("nconvers.dll"), _T("tabsrmm.dll"), _T("nhistory.dll"),
-	_T("historypp.dll"), _T("help.dll"), _T("loadavatars.dll"), _T("tabsrmm_unicode.dll"),
-	_T("clist_nicer_plus.dll"), _T("changeinfo.dll"), _T("png2dib.dll"), _T("dbx_mmap.dll"),
-	_T("dbx_3x.dll"), _T("sramm.dll"), _T("srmm_mod.dll"), _T("srmm_mod (no Unicode).dll"),
-	_T("singlemodeSRMM.dll"), _T("msg_export.dll"), _T("clist_modern.dll"),
-	_T("clist_nicer.dll")
-};
-
 static int checkPI(BASIC_PLUGIN_INFO* bpi, PLUGININFOEX* pi)
 {
 	if (pi == NULL)
@@ -258,15 +238,6 @@ static int checkPI(BASIC_PLUGIN_INFO* bpi, PLUGININFOEX* pi)
 int checkAPI(TCHAR* plugin, BASIC_PLUGIN_INFO* bpi, DWORD mirandaVersion, int checkTypeAPI)
 {
 	HINSTANCE h = NULL;
-
-	// this is evil but these plugins are buggy/old and people are blaming Miranda
-	// fontservice plugin is built into the core now
-	TCHAR* p = _tcsrchr(plugin, '\\');
-	if (p != NULL && ++p) {
-		for (int i=0; i < SIZEOF(modulesToSkip); i++)
-			if (lstrcmpi(p, modulesToSkip[i]) == 0)
-				return 0;
-	}
 
 	h = LoadLibrary(plugin);
 	if (h == NULL)
@@ -340,16 +311,19 @@ void Plugin_Uninit(pluginEntry* p)
 	pluginList.remove(p);
 }
 
-int Plugin_UnloadDyn(pluginEntry* p)
+int Plugin_UnloadDyn(pluginEntry *p)
 {
 	if (p->bpi.hInst) {
 		if ( CallPluginEventHook(p->bpi.hInst, hOkToExitEvent, 0, 0) != 0)
 			return FALSE;
 
-		NotifyEventHooks(hevUnloadModule, (WPARAM)p->bpi.InfoEx, (LPARAM)p->bpi.hInst);
+		KillModuleSubclassing(p->bpi.hInst);
 
 		CallPluginEventHook(p->bpi.hInst, hPreShutdownEvent, 0, 0);
 		CallPluginEventHook(p->bpi.hInst, hShutdownEvent, 0, 0);
+
+		KillModuleEventHooks(p->bpi.hInst);
+		KillModuleServices(p->bpi.hInst);
 	}
 
 	int hLangpack = p->hLangpack;
@@ -362,7 +336,10 @@ int Plugin_UnloadDyn(pluginEntry* p)
 		KillModuleHotkeys(hLangpack);
 		KillModuleSounds(hLangpack);
 		KillModuleExtraIcons(hLangpack);
+		KillModuleSrmmIcons(hLangpack);
 	}
+
+	NotifyFastHook(hevUnloadModule, (WPARAM)p->bpi.pluginInfo, (LPARAM)p->bpi.hInst);
 
 	Plugin_Uninit(p);
 
@@ -453,7 +430,7 @@ pluginEntry* OpenPlugin(TCHAR *tszFileName, TCHAR *dir, TCHAR *path)
 		clistPlugins.insert(p);
 		p->pclass |= PCLASS_CLIST;
 	}
-	// plugin declared that it's a service mode plugin. 
+	// plugin declared that it's a service mode plugin.
 	// load it for a profile manager's window
 	else if ( hasMuuid(pIds, miid_servicemode)) {
 		BASIC_PLUGIN_INFO bpi;
@@ -518,7 +495,7 @@ bool TryLoadPlugin(pluginEntry *p, bool bDynamic)
 				p->pclass |= PCLASS_FAILED;
 				return false;
 			}
-		
+
 			p->bpi = bpi;
 			p->pclass |= PCLASS_OK | PCLASS_BASICAPI;
 		}
@@ -537,7 +514,10 @@ bool TryLoadPlugin(pluginEntry *p, bool bDynamic)
 					if ( !(p->pclass & PCLASS_CORE)) {
 						Plugin_UnloadDyn(pluginDefault[idx].pImpl);
 						pluginDefault[idx].pImpl = NULL;
-		}	}	}	}
+					}
+				}
+			}
+		}
 
 		RegisterModule(p->bpi.hInst);
 		if (p->bpi.Load() != 0)
@@ -584,7 +564,7 @@ LBL_Error:
 		if (CallPluginEventHook(pPlug->bpi.hInst, hModulesLoadedEvent, 0, 0) != 0)
 			goto LBL_Error;
 
-		NotifyEventHooks(hevLoadModule, (WPARAM)pPlug->bpi.InfoEx, (LPARAM)pPlug->bpi.hInst);
+		NotifyEventHooks(hevLoadModule, (WPARAM)pPlug->bpi.pluginInfo, (LPARAM)pPlug->bpi.hInst);
 	}
 	mr.pImpl = pPlug;
 	return TRUE;
@@ -673,7 +653,7 @@ static int LaunchServicePlugin(pluginEntry* p)
 	if (res != CALLSERVICE_NOTFOUND)
 		return res;
 
-	MessageBox(NULL, TranslateT("Unable to load plugin in Service Mode!"), p->pluginname, 0);
+	MessageBox(NULL, TranslateT("Unable to load plugin in Service Mode!"), p->pluginname, MB_ICONSTOP);
 	Plugin_Uninit(p);
 	return SERVICE_FAILED;
 }
@@ -736,7 +716,8 @@ void UnloadNewPlugins(void)
 		pluginEntry* p = pluginList[i];
 		if ( !(p->pclass & PCLASS_LAST) && (p->pclass & PCLASS_OK))
 			Plugin_Uninit(p);
-}	}
+	}
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Loads all plugins
@@ -770,7 +751,8 @@ int LoadNewPluginsModule(void)
 				pluginList_freeimg->pclass |= PCLASS_LOADED;
 			else
 				Plugin_Uninit(pluginList_freeimg);
-	}	}
+		}
+	}
 
 	// first load the clist cos alot of plugins need that to be present at Load(void)
 	pluginEntry* clist = getCListModule(exe, slice);
@@ -779,9 +761,9 @@ int LoadNewPluginsModule(void)
 	if (clist == NULL) {
 		// result = 0, no clist_* can be found
 		if (clistPlugins.getCount())
-			MessageBox(NULL, TranslateT("Unable to start any of the installed contact list plugins, I even ignored your preferences for which contact list couldn't load any."), _T("Miranda NG"), MB_OK | MB_ICONINFORMATION);
+			MessageBox(NULL, TranslateT("Unable to start any of the installed contact list plugins, I even ignored your preferences for which contact list couldn't load any."), _T("Miranda NG"), MB_OK | MB_ICONERROR);
 		else
-			MessageBox(NULL, TranslateT("Can't find a contact list plugin! you need clist_classic or any other clist plugin.") , _T("Miranda NG"), MB_OK | MB_ICONINFORMATION);
+			MessageBox(NULL, TranslateT("Can't find a contact list plugin! You need StdClist or any other clist plugin.") , _T("Miranda NG"), MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
@@ -832,7 +814,7 @@ int LoadNewPluginsModuleInfos(void)
 	mirandaVersion = (DWORD)CallService(MS_SYSTEM_GETVERSION, 0, 0);
 
 	// remember where the mirandaboot.ini goes
-	PathToAbsoluteT(_T("mirandaboot.ini"), mirandabootini, NULL);
+	PathToAbsoluteT(_T("mirandaboot.ini"), mirandabootini);
 	// look for all *.dll's
 	enumPlugins(scanPluginsDir, 0, 0);
 	return 0;

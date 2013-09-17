@@ -28,41 +28,29 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _WIN32_WINNT 0x0400
 #define _WIN32_IE 0x0300
 
-#define MIRANDA_VER 0x0A00
-
-#include <m_stdhdr.h>
-
 #include <windows.h>
-#include <commctrl.h>
-#include <string.h>
 #include <time.h>
-#include "resource.h"
-
-#include "m_metacontacts.h"
 
 #include <newpluginapi.h>
 #include <m_clistint.h>
 #include <m_clui.h>
 #include <m_skin.h>
-#include <m_langpack.h>
 #include <m_protomod.h>
 #include <m_database.h>
 #include <m_system.h>
-#include <m_protocols.h>
 #include <m_userinfo.h>
-#include <m_options.h>
-#include <m_protosvc.h>
-#include <m_utils.h>
-#include <m_ignore.h>
-#include <m_clc.h>
 #include <m_contacts.h>
 #include <m_message.h>
 #include <m_ignore.h>
 #include <m_icolib.h>
 #include <m_langpack.h>
-#include <m_popup.h>
-#include <m_cluiframes.h>
+#include <m_nudge.h>
 #include <win2k.h>
+
+#include <m_metacontacts.h>
+
+#include "resource.h"
+#include "version.h"
 
 #define META_PROTO				"MetaContacts"
 #define META_FILTER				"MetaContactsFilter"
@@ -76,7 +64,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // I can't think of a way around this - mental block
 
 INT_PTR TranslateMenuFunc(HANDLE hContact, int i);
-extern HANDLE hMenuContact[MAX_CONTACTS];
+extern HGENMENU hMenuContact[MAX_CONTACTS];
 
 extern HINSTANCE hInstance;
 extern PLUGININFOEX pluginInfo;
@@ -109,7 +97,6 @@ int Meta_SetHandles(void);
 int Meta_UnhideLinkedContacts(void);
 int Meta_GetContactNumber(HANDLE hContact);
 HANDLE Meta_GetContactHandle(HANDLE hMeta, int contact_number);
-void Meta_GetStatusString(int status, TCHAR *buf, size_t size);
 void Meta_RestoreGroup(HANDLE hContact);
 void Meta_SetGroup(HANDLE hContact);
 int Meta_HideMetaContacts(int hide);
@@ -200,7 +187,6 @@ INT_PTR MetaAPI_RemoveFromMeta(WPARAM wParam, LPARAM lParam);
 INT_PTR MetaAPI_DisableHiddenGroup(WPARAM wParam, LPARAM lParam);
 
 // extended db get/write setting functions, that handle unicode
-INT_PTR MyDBWriteContactSetting(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv);
 INT_PTR Mydb_get(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv);
 
 // IcoLib support
@@ -233,6 +219,6 @@ extern BOOL meta_group_hack_disabled;
 #ifndef MS_CLUI_GETVERSION
 #define MS_CLUI_GETVERSION      "CLUI/GetVersion"
 
-#define szDelMsg "You are going to remove all the contacts associated with this MetaContact.\nThis will delete the MetaContact.\n\nProceed Anyway?"
+#define szDelMsg LPGEN("You are going to remove all the contacts associated with this MetaContact.\nThis will delete the MetaContact.\n\nProceed Anyway?")
 
 #endif

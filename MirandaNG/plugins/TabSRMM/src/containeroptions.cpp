@@ -26,14 +26,11 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: containeroptions.cpp 13631 2011-04-24 08:44:57Z silvercircle $
- *
  * The dialog to customize per container options
  *
  */
 
 #include "commonheaders.h"
-#pragma hdrstop
 
 static void MY_CheckDlgButton(HWND hWnd, UINT id, int iCheck)
 {
@@ -42,18 +39,15 @@ static void MY_CheckDlgButton(HWND hWnd, UINT id, int iCheck)
 
 static void ReloadGlobalContainerSettings(bool fForceReconfig)
 {
-	struct TContainerData *pC = pFirstContainer;
-
-	while (pC) {
-		if (!pC->settings->fPrivate) {
-			Utils::SettingsToContainer(pC);
+	for (TContainerData *p = pFirstContainer; p; p = p->pNext) {
+		if (!p->settings->fPrivate) {
+			Utils::SettingsToContainer(p);
 			if (fForceReconfig)
-				SendMessage(pC->hwnd, DM_CONFIGURECONTAINER, 0, 0);
+				SendMessage(p->hwnd, DM_CONFIGURECONTAINER, 0, 0);
 			else
-				SendMessage(pC->hwnd, WM_SIZE, 0, 1);
-			BroadCastContainer(pC, DM_SETINFOPANEL, 0, 0);
+				SendMessage(p->hwnd, WM_SIZE, 0, 1);
+			BroadCastContainer(p, DM_SETINFOPANEL, 0, 0);
 		}
-		pC = pC->pNextContainer;
 	}
 }
 
@@ -81,16 +75,11 @@ void TSAPI ApplyContainerSetting(TContainerData *pContainer, DWORD flags, UINT m
 		if (flags & CNT_INFOPANEL)
 			BroadCastContainer(pContainer, DM_SETINFOPANEL, 0, 0);
 		if (flags & CNT_SIDEBAR) {
-			struct TContainerData *pC = pFirstContainer;
-			while (pC) {
-				if (!pC->settings->fPrivate) {
-					SendMessage(pC->hwnd, WM_COMMAND, IDC_TOGGLESIDEBAR, 0);
-				}
-				pC = pC->pNextContainer;
-			}
+			for (TContainerData *p = pFirstContainer; p; p = p->pNext)
+				if (!p->settings->fPrivate)
+					SendMessage(p->hwnd, WM_COMMAND, IDC_TOGGLESIDEBAR, 0);
 		}
-		else
-			ReloadGlobalContainerSettings(fForceResize);
+		else ReloadGlobalContainerSettings(fForceResize);
 	}
 	else {
 		if (!isEx)
@@ -119,22 +108,22 @@ static struct _tagPages {
 	const TCHAR *szTitle, *szDesc;
 	UINT uIds[10];
 } o_pages[] = {
-	{ _T("General options"), NULL, IDC_O_NOTABS, IDC_O_STICKY, IDC_VERTICALMAX, IDC_AUTOSPLITTER, IDC_O_AUTOHIDE, IDC_AUTOCLOSETABTIME, IDC_AUTOCLOSETABSPIN, IDC_O_AUTOHIDESECONDS, 0, 0},
-	{ _T("Window layout"), NULL, IDC_CNTNOSTATUSBAR, IDC_HIDEMENUBAR, IDC_UIDSTATUSBAR, IDC_HIDETOOLBAR, IDC_INFOPANEL, IDC_BOTTOMTOOLBAR, 0, 0, 0, 0},
-	{ _T("Tabs and switch bar"), _T("Choose your options for the tabbed user interface. Not all options can be applied to open windows. You may need to close and re-open them."), IDC_TABMODE, IDC_O_TABMODE, IDC_O_SBARLAYOUT, IDC_SBARLAYOUT, IDC_FLASHICON, IDC_FLASHLABEL, IDC_SINGLEROWTAB, IDC_BUTTONTABS, IDC_CLOSEBUTTONONTABS, 0},
-	{ _T("Notifications"), _T("Select, when you want to see event notifications (popups) for this window. The settings apply to all tabs within this window."), IDC_O_DONTREPORT, IDC_DONTREPORTUNFOCUSED2, IDC_DONTREPORTFOCUSED2, IDC_ALWAYSPOPUPSINACTIVE, IDC_O_EXPLAINGLOBALNOTIFY, 0, 0, 0, 0, 0},
-	{ _T("Flashing"), NULL, IDC_O_FLASHDEFAULT, IDC_O_FLASHALWAYS, IDC_O_FLASHNEVER, 0, 0, 0, 0, 0, 0, 0},
-	{ _T("Title bar"), NULL, IDC_O_HIDETITLE, IDC_TITLEFORMAT, IDC_O_TITLEBARFORMAT, IDC_O_HELP_TITLEFORMAT, 0, 0, 0, 0, 0, 0},
-	{ _T("Window size and theme"), _T("You can select a private theme (.tabsrmm file) for this container which will then override the default message log theme. You will have to close and re-open all message windows after changing this option."), IDC_THEME, IDC_SELECTTHEME, IDC_USEGLOBALSIZE, IDC_SAVESIZEASGLOBAL, IDC_LABEL_PRIVATETHEME, IDC_TSLABEL_EXPLAINTHEME, 0, 0, 0, 0},
-	{ _T("Transparency"), _T("This feature requires Windows 2000 or later and may be unavailable when using a container skin."), IDC_TRANSPARENCY, IDC_TRANSPARENCY_ACTIVE, IDC_TRANSPARENCY_INACTIVE, IDC_TSLABEL_ACTIVE, IDC_TSLABEL_INACTIVE, 0, 0, 0, 0, 0},
-	{ _T("Contact avatars"), NULL, IDC_O_STATIC_AVATAR, IDC_O_STATIC_OWNAVATAR, IDC_AVATARMODE, IDC_OWNAVATARMODE, IDC_AVATARSONTASKBAR, 0, 0, 0, 0, 0},
-	{ _T("Sound notifications"), NULL, IDC_O_ENABLESOUNDS, IDC_O_SOUNDSMINIMIZED, IDC_O_SOUNDSUNFOCUSED, IDC_O_SOUNDSINACTIVE, IDC_O_SOUNDSFOCUSED, 0, 0, 0, 0, 0},
+	{ LPGENT("General options"), NULL, IDC_O_NOTABS, IDC_O_STICKY, IDC_VERTICALMAX, IDC_AUTOSPLITTER, IDC_O_AUTOHIDE, IDC_AUTOCLOSETABTIME, IDC_AUTOCLOSETABSPIN, IDC_O_AUTOHIDESECONDS, 0, 0},
+	{ LPGENT("Window layout"), NULL, IDC_CNTNOSTATUSBAR, IDC_HIDEMENUBAR, IDC_UIDSTATUSBAR, IDC_HIDETOOLBAR, IDC_INFOPANEL, IDC_BOTTOMTOOLBAR, 0, 0, 0, 0},
+	{ LPGENT("Tabs and switch bar"), LPGENT("Choose your options for the tabbed user interface. Not all options can be applied to open windows. You may need to close and re-open them."), IDC_TABMODE, IDC_O_TABMODE, IDC_O_SBARLAYOUT, IDC_SBARLAYOUT, IDC_FLASHICON, IDC_FLASHLABEL, IDC_SINGLEROWTAB, IDC_BUTTONTABS, IDC_CLOSEBUTTONONTABS, 0},
+	{ LPGENT("Notifications"), LPGENT("Select, when you want to see event notifications (popups) for this window. The settings apply to all tabs within this window."), IDC_O_DONTREPORT, IDC_DONTREPORTUNFOCUSED2, IDC_DONTREPORTFOCUSED2, IDC_ALWAYSPOPUPSINACTIVE, IDC_O_EXPLAINGLOBALNOTIFY, 0, 0, 0, 0, 0},
+	{ LPGENT("Flashing"), NULL, IDC_O_FLASHDEFAULT, IDC_O_FLASHALWAYS, IDC_O_FLASHNEVER, 0, 0, 0, 0, 0, 0, 0},
+	{ LPGENT("Title bar"), NULL, IDC_O_HIDETITLE, IDC_TITLEFORMAT, IDC_O_TITLEBARFORMAT, IDC_O_HELP_TITLEFORMAT, 0, 0, 0, 0, 0, 0},
+	{ LPGENT("Window size and theme"), LPGENT("You can select a private theme (.tabsrmm file) for this container which will then override the default message log theme. You will have to close and re-open all message windows after changing this option."), IDC_THEME, IDC_SELECTTHEME, IDC_USEGLOBALSIZE, IDC_SAVESIZEASGLOBAL, IDC_LABEL_PRIVATETHEME, IDC_TSLABEL_EXPLAINTHEME, 0, 0, 0, 0},
+	{ LPGENT("Transparency"), LPGENT("This feature requires Windows 2000 or later and may be unavailable when using a container skin."), IDC_TRANSPARENCY, IDC_TRANSPARENCY_ACTIVE, IDC_TRANSPARENCY_INACTIVE, IDC_TSLABEL_ACTIVE, IDC_TSLABEL_INACTIVE, 0, 0, 0, 0, 0},
+	{ LPGENT("Contact avatars"), NULL, IDC_O_STATIC_AVATAR, IDC_O_STATIC_OWNAVATAR, IDC_AVATARMODE, IDC_OWNAVATARMODE, IDC_AVATARSONTASKBAR, 0, 0, 0, 0, 0},
+	{ LPGENT("Sound notifications"), NULL, IDC_O_ENABLESOUNDS, IDC_O_SOUNDSMINIMIZED, IDC_O_SOUNDSUNFOCUSED, IDC_O_SOUNDSINACTIVE, IDC_O_SOUNDSFOCUSED, 0, 0, 0, 0, 0},
 };
 
 static void ShowPage(HWND hwndDlg, int iPage, BOOL fShow)
 {
 	if (iPage >= 0 && iPage < NR_O_PAGES) {
-		for (int i = 0; i < NR_O_OPTIONSPERPAGE && o_pages[iPage].uIds[i] != 0; i++)
+		for (int i=0; i < NR_O_OPTIONSPERPAGE && o_pages[iPage].uIds[i] != 0; i++)
 			Utils::showDlgControl(hwndDlg, o_pages[iPage].uIds[i], fShow ? SW_SHOW : SW_HIDE);
 	}
 	if (fShow) {
@@ -156,9 +145,9 @@ static void ShowPage(HWND hwndDlg, int iPage, BOOL fShow)
 
 INT_PTR CALLBACK DlgProcContainerOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	struct TContainerData *pContainer = 0;
+	TContainerData *pContainer = 0;
 	HWND   hwndTree = GetDlgItem(hwndDlg, IDC_SECTIONTREE);
-	pContainer = (struct TContainerData *) GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+	pContainer = (TContainerData *) GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
 
 	switch (msg) {
 		case WM_INITDIALOG: {
@@ -289,8 +278,8 @@ INT_PTR CALLBACK DlgProcContainerOptions(HWND hwndDlg, UINT msg, WPARAM wParam, 
 							char szCname[40];
 							mir_snprintf(szCname, 40, "%s%d_Blob", CNT_BASEKEYNAME, pContainer->iContainerIndex);
 							pContainer->settings->fPrivate = false;
-							DBWriteContactSettingBlob(0, SRMSGMOD_T, szCname, pContainer->settings, sizeof(TContainerSettings));
-							free(pContainer->settings);
+							db_set_blob(0, SRMSGMOD_T, szCname, pContainer->settings, sizeof(TContainerSettings));
+							mir_free(pContainer->settings);
 						}
 						pContainer->settings = &PluginConfig.globalContainerSettings;
 						pContainer->settings->fPrivate = false;
@@ -313,10 +302,10 @@ INT_PTR CALLBACK DlgProcContainerOptions(HWND hwndDlg, UINT msg, WPARAM wParam, 
 
 					wp.length = sizeof(wp);
 					if (GetWindowPlacement(pContainer->hwnd, &wp)) {
-						M->WriteDword(SRMSGMOD_T, "splitx", wp.rcNormalPosition.left);
-						M->WriteDword(SRMSGMOD_T, "splity", wp.rcNormalPosition.top);
-						M->WriteDword(SRMSGMOD_T, "splitwidth", wp.rcNormalPosition.right - wp.rcNormalPosition.left);
-						M->WriteDword(SRMSGMOD_T, "splitheight", wp.rcNormalPosition.bottom - wp.rcNormalPosition.top);
+						db_set_dw(0, SRMSGMOD_T, "splitx", wp.rcNormalPosition.left);
+						db_set_dw(0, SRMSGMOD_T, "splity", wp.rcNormalPosition.top);
+						db_set_dw(0, SRMSGMOD_T, "splitwidth", wp.rcNormalPosition.right - wp.rcNormalPosition.left);
+						db_set_dw(0, SRMSGMOD_T, "splitheight", wp.rcNormalPosition.bottom - wp.rcNormalPosition.top);
 					}
 					break;
 				}
@@ -362,7 +351,7 @@ INT_PTR CALLBACK DlgProcContainerOptions(HWND hwndDlg, UINT msg, WPARAM wParam, 
 
 						GetDlgItemText(hwndDlg, IDC_THEME, szFilename, MAX_PATH);
 						szFilename[MAX_PATH - 1] = 0;
-						M->pathToAbsolute(szFilename, szFinalThemeFile);
+						M.pathToAbsolute(szFilename, szFinalThemeFile);
 
 						if (_tcscmp(szFilename, pContainer->szRelThemeFile))
 						   pContainer->fPrivateThemeChanged = TRUE;
@@ -381,7 +370,7 @@ INT_PTR CALLBACK DlgProcContainerOptions(HWND hwndDlg, UINT msg, WPARAM wParam, 
 
 					if (!IsDlgButtonChecked(hwndDlg, IDC_CNTPRIVATE)) {
 						ReloadGlobalContainerSettings(true);
-						::DBWriteContactSettingBlob(0, SRMSGMOD_T, CNT_KEYNAME, &PluginConfig.globalContainerSettings, sizeof(TContainerSettings));
+						::db_set_blob(0, SRMSGMOD_T, CNT_KEYNAME, &PluginConfig.globalContainerSettings, sizeof(TContainerSettings));
 					}
 					else {
 						char *szSetting = "CNTW_";
@@ -488,8 +477,8 @@ do_apply:
 			SendDlgItemMessage(hwndDlg, IDC_TRANSPARENCY_ACTIVE, TBM_SETRANGE, 0, (LPARAM)MAKELONG(50, 255));
 			SendDlgItemMessage(hwndDlg, IDC_TRANSPARENCY_INACTIVE, TBM_SETRANGE, 0, (LPARAM)MAKELONG(50, 255));
 
-			SendDlgItemMessage(hwndDlg, IDC_TRANSPARENCY_ACTIVE, TBM_SETPOS, TRUE, (LPARAM) LOWORD(dwTransparency));
-			SendDlgItemMessage(hwndDlg, IDC_TRANSPARENCY_INACTIVE, TBM_SETPOS, TRUE, (LPARAM) HIWORD(dwTransparency));
+			SendDlgItemMessage(hwndDlg, IDC_TRANSPARENCY_ACTIVE, TBM_SETPOS, TRUE, (LPARAM)LOWORD(dwTransparency));
+			SendDlgItemMessage(hwndDlg, IDC_TRANSPARENCY_INACTIVE, TBM_SETPOS, TRUE, (LPARAM)HIWORD(dwTransparency));
 
 			Utils::enableDlgControl(hwndDlg, IDC_O_DONTREPORT, nen_options.bWindowCheck == 0);
 			Utils::enableDlgControl(hwndDlg, IDC_DONTREPORTUNFOCUSED2, nen_options.bWindowCheck == 0);

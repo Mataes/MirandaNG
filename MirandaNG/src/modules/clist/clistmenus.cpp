@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #pragma hdrstop
 
@@ -54,8 +55,6 @@ void Proto_SetStatus(const char* szProto, unsigned status);
 bool prochotkey;
 
 HANDLE hPreBuildMainMenuEvent, hStatusModeChangeEvent, hPreBuildContactMenuEvent;
-
-static HANDLE hAckHook;
 
 static HMENU hMainMenu, hStatusMenu = 0;
 static const int statusModeList[ MAX_STATUS_COUNT ] =
@@ -312,12 +311,8 @@ static INT_PTR AddContactMenuItem(WPARAM, LPARAM lParam)
 		mir_snprintf(buf, SIZEOF(buf), "%s/%s", (mi->pszContactOwner) ? mi->pszContactOwner : "", (mi->pszService) ? mi->pszService : "");
 	else if (mi->ptszName)
 	{
-		if (tmi.flags&CMIF_UNICODE)
-		{
-			char * temp = mir_t2a(mi->ptszName);
-			mir_snprintf(buf, SIZEOF(buf), "%s/NoService/%s", (mi->pszContactOwner) ? mi->pszContactOwner : "", temp);
-			mir_free(temp);
-		}
+		if (tmi.flags & CMIF_UNICODE)
+			mir_snprintf(buf, SIZEOF(buf), "%s/NoService/%s", (mi->pszContactOwner) ? mi->pszContactOwner : "", _T2A(mi->ptszName));
 		else
 			mir_snprintf(buf, SIZEOF(buf), "%s/NoService/%s", (mi->pszContactOwner) ? mi->pszContactOwner : "", mi->ptszName);
 	}
@@ -472,8 +467,7 @@ INT_PTR StatusMenuCheckService(WPARAM wParam, LPARAM)
 			if (reset || check) {
 				PMO_IntMenuItem timiParent = MO_GetIntMenuItem(timi->mi.root);
 				if (timiParent) {
-					CLISTMENUITEM mi2 = {0};
-					mi2.cbSize = sizeof(mi2);
+					CLISTMENUITEM mi2 = { sizeof(mi2) };
 					mi2.flags = CMIM_NAME | CMIF_TCHAR;
 					mi2.ptszName = TranslateTH(timi->mi.hLangpack, timi->mi.hIcon ? timi->mi.ptszName : LPGENT("Custom status"));
 
@@ -511,7 +505,7 @@ INT_PTR StatusMenuCheckService(WPARAM wParam, LPARAM)
 						SetMenuItemInfo(it.OwnerMenu, it.position, TRUE, &mi);
 					}
 
-					CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)timi->mi.root, (LPARAM)&mi2);
+					Menu_ModifyItem(timi->mi.root, &mi2);
 					timiParent->iconId = timi->iconId;
 					if (timiParent->hBmp) DeleteObject(timiParent->hBmp);
 					timiParent->hBmp = NULL;
@@ -634,7 +628,7 @@ INT_PTR StatusMenuExecService(WPARAM wParam, LPARAM)
 					Proto_SetStatus(pa->szModuleName, cli.currentDesiredStatusMode);
 				}
 				NotifyEventHooks(hStatusModeChangeEvent, cli.currentDesiredStatusMode, 0);
-				DBWriteContactSettingWord(NULL, "CList", "Status", (WORD)cli.currentDesiredStatusMode);
+				db_set_w(NULL, "CList", "Status", (WORD)cli.currentDesiredStatusMode);
 				return 1;
 			}
 		}
@@ -657,6 +651,22 @@ INT_PTR FreeOwnerDataStatusMenu(WPARAM, LPARAM lParam)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Other menu functions
+
+static INT_PTR ShowHideMenuItem(WPARAM wParam, LPARAM lParam)
+{
+	PMO_IntMenuItem pimi = MO_GetIntMenuItem((HGENMENU)wParam);
+	if (pimi == NULL)
+		return 1;
+
+	TMO_MenuItem tmi = { sizeof(tmi) };
+	tmi.flags = CMIM_FLAGS + pimi->mi.flags;
+	if (lParam)
+		tmi.flags &= ~CMIF_HIDDEN;
+	else
+		tmi.flags |= CMIF_HIDDEN;
+
+	return MO_ModifyMenuItem((PMO_IntMenuItem)wParam, &tmi);
+}
 
 //wparam MenuItemHandle
 static INT_PTR ModifyCustomMenuItem(WPARAM wParam, LPARAM lParam)
@@ -695,17 +705,15 @@ INT_PTR MenuProcessCommand(WPARAM wParam, LPARAM lParam)
 
 BOOL FindMenuHanleByGlobalID(HMENU hMenu, PMO_IntMenuItem id, MenuItemData* itdat)
 {
-	int i;
-	PMO_IntMenuItem pimi;
-	MENUITEMINFO mii = {0};
-	BOOL inSub = FALSE;
-
 	if ( !itdat)
 		return FALSE;
 
+	BOOL inSub = FALSE;
+
+	MENUITEMINFO mii = {0};
 	mii.cbSize = MENUITEMINFO_V4_SIZE;
 	mii.fMask = MIIM_SUBMENU | MIIM_DATA;
-	for (i = GetMenuItemCount(hMenu)-1; i >= 0; i--) {
+	for (int i = GetMenuItemCount(hMenu)-1; i >= 0; i--) {
 		GetMenuItemInfo(hMenu, i, TRUE, &mii);
 		if (mii.fType == MFT_SEPARATOR)
 			continue;
@@ -715,7 +723,7 @@ BOOL FindMenuHanleByGlobalID(HMENU hMenu, PMO_IntMenuItem id, MenuItemData* itda
 		if (inSub)
 			return inSub;
 
-		pimi = MO_GetIntMenuItem((HGENMENU)mii.dwItemData);
+		PMO_IntMenuItem pimi = MO_GetIntMenuItem((HGENMENU)mii.dwItemData);
 		if (pimi != NULL) {
 			if (pimi == id) {
 				itdat->OwnerMenu = hMenu;
@@ -817,7 +825,7 @@ int fnGetProtoIndexByPos(PROTOCOLDESCRIPTOR **proto, int protoCnt, int Pos)
 	_itoa(Pos, buf, 10);
 
 	DBVARIANT dbv;
-	if ( !DBGetContactSettingString(NULL, "Protocols", buf, &dbv)) {
+	if ( !db_get_s(NULL, "Protocols", buf, &dbv)) {
 		for (int p=0; p < protoCnt; p++) {
 			if (lstrcmpA(proto[p]->szName, dbv.pszVal) == 0) {
 				db_free(&dbv);
@@ -1095,7 +1103,7 @@ static int MenuProtoAck(WPARAM, LPARAM lParam)
 	}
 	else {
 		int pos = statustopos(cli.currentStatusMenuItem);
-		if (pos == -1) 
+		if (pos == -1)
 			pos = 0;
 
 		if (pos >= 0 && pos < hStatusMainMenuHandlesCnt) {
@@ -1303,6 +1311,7 @@ void InitCustomMenus(void)
 	CreateServiceFunction(MS_CLIST_MENUBUILDCONTACT, BuildContactMenu);
 	CreateServiceFunction(MS_CLIST_REMOVECONTACTMENUITEM, RemoveContactMenuItem);
 
+	CreateServiceFunction(MS_CLIST_SHOWHIDEMENUITEM, ShowHideMenuItem);
 	CreateServiceFunction(MS_CLIST_MODIFYMENUITEM, ModifyCustomMenuItem);
 	CreateServiceFunction(MS_CLIST_MENUMEASUREITEM, MeasureMenuItem);
 	CreateServiceFunction(MS_CLIST_MENUDRAWITEM, DrawMenuItem);
@@ -1318,7 +1327,7 @@ void InitCustomMenus(void)
 	cli.hPreBuildStatusMenuEvent = CreateHookableEvent(ME_CLIST_PREBUILDSTATUSMENU);
 	hStatusModeChangeEvent = CreateHookableEvent(ME_CLIST_STATUSMODECHANGE);
 
-	hAckHook = (HANDLE)HookEvent(ME_PROTO_ACK, MenuProtoAck);
+	HookEvent(ME_PROTO_ACK, MenuProtoAck);
 
 	hMainMenu = CreatePopupMenu();
 	hStatusMenu = CreatePopupMenu();
@@ -1378,7 +1387,6 @@ void InitCustomMenus(void)
 
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.position = 0x7fffffff;
-	mi.flags = CMIF_ICONFROMICOLIB;
 	mi.pszService = "CloseAction";
 	mi.pszName = LPGEN("E&xit");
 	mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_EXIT);
@@ -1407,5 +1415,4 @@ void UninitCustomMenus(void)
 
 	DestroyMenu(hMainMenu);
 	DestroyMenu(hStatusMenu);
-	UnhookEvent(hAckHook);
 }

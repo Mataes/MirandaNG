@@ -33,25 +33,25 @@ HINSTANCE g_hInst = NULL;
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
 	__PLUGIN_NAME,
-	__VERSION_DWORD,
-	"Provides Miranda database support: global settings, contacts, history, settings per contact. Enhanced modification with Encryption support.",
-	"Miranda-IM project, modification by FYR and chaos.persei, nullbie, Billy_Bons",
-	"chaos.persei@gmail.com; ashpynov@gmail.com; bio@msx.ru; ghazan@miranda.im",
-	"Copyright 2000-2011 Miranda IM project, 2012 Miranda NG project FYR, chaos.persei, induction, nullbie",
-	"http://miranda-ng.org/",
-	UNICODE_AWARE,
-	// {28FF9B91-3E4D-4f1c-B47C-C641B037FF40}
-	{ 0x28ff9b91, 0x3e4d, 0x4f1c, { 0xb4, 0x7c, 0xc6, 0x41, 0xb0, 0x37, 0xff, 0x40 } }
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
+	UNICODE_AWARE | STATIC_PLUGIN,
+	// {28FF9B91-3E4D-4F1C-B47C-C641B037FF40}
+	{0x28ff9b91, 0x3e4d, 0x4f1c, {0xb4, 0x7c, 0xc6, 0x41, 0xb0, 0x37, 0xff, 0x40}}
 };
 
-LIST<CDdxMmapSA> g_Dbs(1, (LIST<CDdxMmapSA>::FTSortFunc)HandleKeySort);
+LIST<CDbxMmapSA> g_Dbs(1, HandleKeySortT);
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
 // returns 0 if the profile is created, EMKPRF*
 static int makeDatabase(const TCHAR *profile)
 {
-	std::auto_ptr<CDdxMmapSA> db( new CDdxMmapSA(profile));
+	std::auto_ptr<CDbxMmapSA> db( new CDbxMmapSA(profile));
 	if (db->Create() == ERROR_SUCCESS) {
 		db->CreateDbHeaders(dbSignatureNonSecured);
 		return 0;
@@ -63,7 +63,7 @@ static int makeDatabase(const TCHAR *profile)
 // returns 0 if the given profile has a valid header
 static int grokHeader(const TCHAR *profile)
 {
-	std::auto_ptr<CDdxMmapSA> db( new CDdxMmapSA(profile));
+	std::auto_ptr<CDbxMmapSA> db( new CDbxMmapSA(profile));
 	if (db->Load(true) != ERROR_SUCCESS)
 		return EGROKPRF_CANTREAD;
 
@@ -76,7 +76,7 @@ static MIDatabase* LoadDatabase(const TCHAR *profile)
 	// set the memory, lists & UTF8 manager
 	mir_getLP( &pluginInfo );
 
-	std::auto_ptr<CDdxMmapSA> db( new CDdxMmapSA(profile));
+	std::auto_ptr<CDbxMmapSA> db( new CDbxMmapSA(profile));
 	if (db->Load(false) != ERROR_SUCCESS)
 		return NULL;
 
@@ -86,14 +86,14 @@ static MIDatabase* LoadDatabase(const TCHAR *profile)
 
 static int UnloadDatabase(MIDatabase* db)
 {
-	g_Dbs.remove((CDdxMmapSA*)db);
-	delete (CDdxMmapSA*)db;
+	g_Dbs.remove((CDbxMmapSA*)db);
+	delete (CDbxMmapSA*)db;
 	return 0;
 }
 
 MIDatabaseChecker* CheckDb(const TCHAR* profile, int *error)
 {
-	std::auto_ptr<CDdxMmapSA> db( new CDdxMmapSA(profile));
+	std::auto_ptr<CDbxMmapSA> db( new CDbxMmapSA(profile));
 	if (db->Load(true) != ERROR_SUCCESS) {
 		*error = EGROKPRF_CANTREAD;
 		return NULL;
@@ -112,8 +112,8 @@ MIDatabaseChecker* CheckDb(const TCHAR* profile, int *error)
 static DATABASELINK dblink =
 {
 	sizeof(DATABASELINK),
-	"db3x secure mmap driver",
-	_T("db3x secure mmap database support"),
+	"dbx_mmap_sa",
+	_T("dbx secure mmap driver"),
 	makeDatabase,
 	grokHeader,
 	LoadDatabase,
@@ -133,7 +133,6 @@ extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_DATABAS
 extern "C" __declspec(dllexport) int Load(void)
 {
 	InitSecurity();
-	InitPreset();
 
 	RegisterDatabasePlugin(&dblink);
 	return 0;
@@ -143,7 +142,6 @@ extern "C" __declspec(dllexport) int Unload(void)
 {
 	g_Dbs.destroy();
 	UnloadSecurity();
-	UninitPreset();
 	return 0;
 }
 

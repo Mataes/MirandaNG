@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "clc.h"
 
@@ -85,7 +86,7 @@ int fnHitTest(HWND hwnd, struct ClcData *dat, int testx, int testy, ClcContact *
 
 		POINT pt1 = pt;
 		ScreenToClient(hwndParent, &pt1);
-		HWND h = ChildWindowFromPointEx(hwndParent ? hwndParent : GetDesktopWindow(), 
+		HWND h = ChildWindowFromPointEx(hwndParent ? hwndParent : GetDesktopWindow(),
 			pt1, CWP_SKIPINVISIBLE | CWP_SKIPTRANSPARENT);
 		if (h != hwndTemp)
 		{
@@ -416,7 +417,7 @@ void fnEndRename(HWND, struct ClcData *dat, int save)
 				if (contact->type == CLCIT_GROUP) {
 					if (contact->group->parent && contact->group->parent->parent) {
 						TCHAR szFullName[256];
-						mir_sntprintf(szFullName, SIZEOF(szFullName), _T("%s\\%s"), 
+						mir_sntprintf(szFullName, SIZEOF(szFullName), _T("%s\\%s"),
 							cli.pfnGetGroupName(contact->group->parent->groupId, NULL), text);
 						cli.pfnRenameGroup(contact->groupId, szFullName);
 					}
@@ -427,7 +428,7 @@ void fnEndRename(HWND, struct ClcData *dat, int save)
 					cli.pfnInvalidateDisplayNameCacheEntry(contact->hContact);
 					TCHAR* otherName = cli.pfnGetContactDisplayName(contact->hContact, GCDNF_NOMYHANDLE);
 					if ( !text[0] || !lstrcmp(otherName, text))
-						DBDeleteContactSetting(contact->hContact, "CList", "MyHandle");
+						db_unset(contact->hContact, "CList", "MyHandle");
 					else
 						db_set_ts(contact->hContact, "CList", "MyHandle", text);
 					mir_free(otherName);
@@ -456,7 +457,6 @@ void fnDeleteFromContactList(HWND hwnd, struct ClcData *dat)
 	}
 }
 
-static WNDPROC OldRenameEditWndProc;
 static LRESULT CALLBACK RenameEditSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg) {
@@ -483,7 +483,7 @@ static LRESULT CALLBACK RenameEditSubclassProc(HWND hwnd, UINT msg, WPARAM wPara
 		cli.pfnEndRename(GetParent(hwnd), (struct ClcData *) GetWindowLongPtr(GetParent(hwnd), 0), 1);
 		return 0;
 	}
-	return CallWindowProc(OldRenameEditWndProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, RenameEditSubclassProc, msg, wParam, lParam);
 }
 
 void fnBeginRenameSelection(HWND hwnd, struct ClcData *dat)
@@ -506,7 +506,7 @@ void fnBeginRenameSelection(HWND hwnd, struct ClcData *dat)
 	cli.pfnCalcEipPosition(dat, contact, group, &pt);
 	int h = cli.pfnGetRowHeight(dat, dat->selection);
 	dat->hwndRenameEdit = CreateWindow(_T("EDIT"), contact->szText, WS_CHILD | WS_BORDER | ES_AUTOHSCROLL, pt.x, pt.y, clRect.right - pt.x, h, hwnd, NULL, cli.hInst, NULL);
-	OldRenameEditWndProc = (WNDPROC) SetWindowLongPtr(dat->hwndRenameEdit, GWLP_WNDPROC, (LONG_PTR) RenameEditSubclassProc);
+	mir_subclassWindow(dat->hwndRenameEdit, RenameEditSubclassProc);
 	SendMessage(dat->hwndRenameEdit, WM_SETFONT, (WPARAM) (contact->type == CLCIT_GROUP ? dat->fontInfo[FONTID_GROUPS].hFont : dat->fontInfo[FONTID_CONTACTS].hFont), 0);
 	SendMessage(dat->hwndRenameEdit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN | EC_USEFONTINFO, 0);
 	SendMessage(dat->hwndRenameEdit, EM_SETSEL, 0, (LPARAM) (-1));
@@ -697,7 +697,7 @@ void fnGetFontSetting(int i, LOGFONT* lf, COLORREF* colour)
 
 	cli.pfnGetDefaultFontSetting(i, lf, colour);
 	mir_snprintf(idstr, SIZEOF(idstr), "Font%dName", i);
-	if ( !DBGetContactSettingTString(NULL, "CLC", idstr, &dbv)) {
+	if ( !db_get_ts(NULL, "CLC", idstr, &dbv)) {
 		lstrcpy(lf->lfFaceName, dbv.ptszVal);
 		mir_free(dbv.pszVal);
 	}
@@ -763,7 +763,7 @@ void fnLoadClcOptions(HWND hwnd, struct ClcData *dat)
 			dat->hBmpBackground = NULL;
 		}
 		if (db_get_b(NULL, "CLC", "UseBitmap", CLCDEFAULT_USEBITMAP)) {
-			if ( !DBGetContactSettingString(NULL, "CLC", "BkBitmap", &dbv)) {
+			if ( !db_get_s(NULL, "CLC", "BkBitmap", &dbv)) {
 				dat->hBmpBackground = (HBITMAP) CallService(MS_UTILS_LOADBITMAP, 0, (LPARAM) dbv.pszVal);
 				mir_free(dbv.pszVal);
 			}

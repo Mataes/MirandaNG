@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-08  George Hazan
 Copyright (C) 2007     Maxim Mluhov
 Copyright (C) 2008-09  Dmitriy Chervov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -29,14 +30,14 @@ BOOL CJabberProto::OnMessageError(HXML node, ThreadData *pThreadData, CJabberMes
 {
 	// we check if is message delivery failure
 	int id = JabberGetPacketID(node);
-	JABBER_LIST_ITEM* item = ListGetItemPtr(LIST_ROSTER, pInfo->GetFrom());
+	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_ROSTER, pInfo->GetFrom());
 	if (item == NULL)
 		item = ListGetItemPtr(LIST_CHATROOM, pInfo->GetFrom());
 	if (item != NULL) { // yes, it is
 		TCHAR *szErrText = JabberErrorMsg(pInfo->GetChildNode());
 		if (id != -1) {
 			char *errText = mir_t2a(szErrText);
-			JSendBroadcast(pInfo->GetHContact(), ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE)id, (LPARAM)errText);
+			ProtoBroadcastAck(pInfo->GetHContact(), ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE)id, (LPARAM)errText);
 			mir_free(errText);
 		} else {
 			TCHAR buf[512];
@@ -58,9 +59,9 @@ BOOL CJabberProto::OnMessageIbb(HXML node, ThreadData *pThreadData, CJabberMessa
 	BOOL bOk = FALSE;
 	const TCHAR *sid = xmlGetAttrValue(pInfo->GetChildNode(), _T("sid"));
 	const TCHAR *seq = xmlGetAttrValue(pInfo->GetChildNode(), _T("seq"));
-	if (sid && seq && xmlGetText(pInfo->GetChildNode())) {
+	if (sid && seq && xmlGetText(pInfo->GetChildNode()))
 		bOk = OnIbbRecvdData(xmlGetText(pInfo->GetChildNode()), sid, seq);
-	}
+
 	return TRUE;
 }
 

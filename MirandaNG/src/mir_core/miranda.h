@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -24,9 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 extern "C"
 {
 	MIR_CORE_DLL(int) Langpack_MarkPluginLoaded(PLUGININFOEX* pInfo);
+	MIR_CORE_DLL(MUUID*) Langpack_LookupUuid(WPARAM wParam);
 };
-
-MIR_CORE_DLL(MUUID*) Langpack_LookupUuid(WPARAM wParam);
 
 void UnloadLangPackModule(void);
 
@@ -35,9 +34,13 @@ void DestroyModularEngine(void);
 
 int InitPathUtils(void);
 
+void InitProtocols();
+void UninitProtocols();
+
 extern HINSTANCE hInst;
 extern HWND hAPCWindow;
 extern HANDLE hStackMutex, hThreadQueueEmpty;
+extern bool g_bDebugMode;
 
 /**** modules.cpp **********************************************************************/
 
@@ -86,6 +89,10 @@ TCHAR* LangPackTranslateStringT(int hLangpack, const TCHAR* tszEnglish);
 /**** options.cpp **********************************************************************/
 
 HTREEITEM FindNamedTreeItemAtRoot(HWND hwndTree, const TCHAR* name);
+
+/**** subclass.cpp *********************************************************************/
+
+void UninitSubclassing();
 
 /**** threads.cpp **********************************************************************/
 

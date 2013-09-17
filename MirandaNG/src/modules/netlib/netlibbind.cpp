@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "netlib.h"
 
@@ -77,7 +78,7 @@ bool BindSocketToPort(const char *szPorts, SOCKET s, SOCKET s6, int* portn)
 
 					if (s == INVALID_SOCKET) continue;
 					if ( !before && portnum <= *portn) continue;
-					if (before  && portnum >= *portn) 
+					if (before  && portnum >= *portn)
 						return false;
 
 					sin.sin_port = htons((WORD)port);
@@ -112,22 +113,21 @@ int NetlibFreeBoundPort(struct NetlibBoundPort *nlbp)
 	closesocket(nlbp->s);
 	closesocket(nlbp->s6);
 	WaitForSingleObject(nlbp->hThread, INFINITE);
-	CloseHandle(nlbp->hThread);
 	NetlibLogf(nlbp->nlu, "(%u) Port %u closed for incoming connections", nlbp->s, nlbp->wPort);
 	mir_free(nlbp);
 	return 1;
 }
 
-static unsigned __stdcall NetlibBindAcceptThread(void* param)
+static void NetlibBindAcceptThread(void* param)
 {
 	SOCKET s;
 	SOCKADDR_INET_M sin;
 	int sinLen;
-	struct NetlibConnection *nlc;
+	NetlibConnection *nlc;
 	struct NetlibBoundPort *nlbp = (NetlibBoundPort*)param;
 
 	NetlibLogf(nlbp->nlu, "(%u) Port %u opened for incoming connections", nlbp->s, nlbp->wPort);
-	for (;;)
+	while(true)
 	{
 		fd_set r;
 		FD_ZERO(&r);
@@ -168,18 +168,16 @@ static unsigned __stdcall NetlibBindAcceptThread(void* param)
 			nlbp->pfnNewConnectionV2(nlc, ntohl(sin.Ipv4.sin_addr.S_un.S_addr), nlbp->pExtra);
 	}
 	NetlibUPnPDeletePortMapping(nlbp->wExPort, "TCP");
-	return 0;
 }
 
 INT_PTR NetlibBindPort(WPARAM wParam, LPARAM lParam)
 {
 	NETLIBBIND *nlb = (NETLIBBIND*)lParam;
-	struct NetlibUser *nlu = (struct NetlibUser*)wParam;
+	NetlibUser *nlu = (NetlibUser*)wParam;
 	struct NetlibBoundPort *nlbp;
 	SOCKADDR_IN sin = {0};
 	SOCKADDR_IN6 sin6 = {0};
 	int foundPort = 0;
-	UINT dwThreadId;
 
 	if (GetNetlibHandleType(nlu) != NLH_USER || !(nlu->user.flags & NUF_INCOMING) ||
 		nlb == NULL || nlb->pfnNewConnection == NULL)
@@ -299,10 +297,10 @@ INT_PTR NetlibBindPort(WPARAM wParam, LPARAM lParam)
 		}
 
 		DWORD extIP;
-		if (nlu->settings.enableUPnP && 
+		if (nlu->settings.enableUPnP &&
 			NetlibUPnPAddPortMapping(nlb->wPort, "TCP", &nlbp->wExPort, &extIP, nlb->cbSize > NETLIBBIND_SIZEOF_V2))
 		{
-			NetlibLogf(NULL, "UPnP port mapping succeeded. Internal Port: %u External Port: %u\n", 
+			NetlibLogf(NULL, "UPnP port mapping succeeded. Internal Port: %u External Port: %u\n",
 				nlb->wPort, nlbp->wExPort);
 			if (nlb->cbSize > NETLIBBIND_SIZEOF_V2)
 			{
@@ -318,14 +316,13 @@ INT_PTR NetlibBindPort(WPARAM wParam, LPARAM lParam)
 				NetlibLogf(NULL, "UPnP disabled. Internal Port: %u\n", nlb->wPort);
 
 			nlbp->wExPort = 0;
-			if (nlb->cbSize > NETLIBBIND_SIZEOF_V2)
-			{
+			if (nlb->cbSize > NETLIBBIND_SIZEOF_V2) {
 				nlb->wExPort = nlb->wPort;
 				nlb->dwExternalIP = nlb->dwInternalIP;
 			}
 		}
 	}
 
-	nlbp->hThread = (HANDLE)mir_forkthreadex(NetlibBindAcceptThread, nlbp, &dwThreadId);
+	nlbp->hThread = mir_forkthread(NetlibBindAcceptThread, nlbp);
 	return (INT_PTR)nlbp;
 }

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -302,11 +302,14 @@
   </data>
   <data name="VarText" xml:space="preserve">
     <value>\q - тихая генерация
-\n - имя файла ленгпака
+\n - имя файла ленгпака или путь выходного файла ленгпака
 \o - путь к файлу для включения в ленгпак
 \u - ссылка на ВИ с miranda-vi.org или полный локальный путь
-\l - путь выходного файла ленгпака
+\p - доступный языковой пакет
 
-Пример, LangpackSuite.exe \q \nLang_Test \o"My Strings.txt" \uD:\Miranda\VersionInfo.txt</value>
+Пример, LangpackSuite.exe \q \nLang_Test \o"My Strings.txt" \uD:\Miranda\VersionInfo.txt \prussian</value>
+  </data>
+  <data name="AvailLangpacks" xml:space="preserve">
+    <value>Доступные пакеты:</value>
   </data>
 </root>

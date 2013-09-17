@@ -1,8 +1,4 @@
 #include "StdAfx.h"
-#include "Log.h"
-#include "LightMutex.h"
-#include "EconomicRateInfo.h"
-#include "CreateFilePath.h"
 
 namespace
 {
@@ -18,7 +14,7 @@ namespace
 #ifdef _DEBUG
 		return true;
 #else
-		return (1 == DBGetContactSettingByte(NULL,QUOTES_PROTOCOL_NAME,DB_STR_ENABLE_LOG,false));
+		return (1 == db_get_b(NULL,QUOTES_PROTOCOL_NAME,DB_STR_ENABLE_LOG,false));
 #endif
 	}
 

@@ -138,7 +138,7 @@ typedef struct {
 #endif
 
 #define CMIF_KEEPUNTRANSLATED  1024 // don't translate a menu item
-#define CMIF_ICONFROMICOLIB    2048 // use icolibName instead of hIcon
+//#define CMIF_ICONFROMICOLIB  2048 // use icolibName instead of hIcon, unused
 #define CMIF_DEFAULT           4096 // this menu item is the default one
 
 // for compatibility. since 0.8.0 they both mean nothing
@@ -175,7 +175,7 @@ __forceinline HGENMENU Menu_AddProtoMenuItem(CLISTMENUITEM *mi)
 }
 
 //modify an existing menu item     v0.1.0.1+
-//wParam = (WPARAM)(HANDLE)hMenuItem
+//wParam = (WPARAM)(HGENMENU)hMenuItem
 //lParam = (LPARAM)(CLISTMENUITEM*)&clmi
 //returns 0 on success, nonzero on failure
 //hMenuItem will have been returned by clist/add*menuItem
@@ -187,6 +187,19 @@ __forceinline HGENMENU Menu_AddProtoMenuItem(CLISTMENUITEM *mi)
 #define CMIM_HOTKEY  0x10000000
 #define CMIM_ALL     0xF0000000
 #define MS_CLIST_MODIFYMENUITEM         "CList/ModifyMenuItem"
+
+__forceinline void Menu_ModifyItem(HGENMENU hMenuItem, CLISTMENUITEM *clmi)
+{	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuItem, (LPARAM)clmi);
+}
+
+//changes menu item's visibility     v0.94.2+
+//wParam = (WPARAM)(HGENMENU)hMenuItem
+//lParam = (BOOL) enable = TRUE, disable = FALSE
+#define MS_CLIST_SHOWHIDEMENUITEM       "CList/ShowHideMenuItem"
+
+__forceinline void Menu_ShowItem(HGENMENU hMenuItem, BOOL bShow)
+{	CallService(MS_CLIST_SHOWHIDEMENUITEM, (WPARAM)hMenuItem, bShow);
+}
 
 //the context menu for a contact is about to be built     v0.1.0.1+
 //wParam = (WPARAM)(HANDLE)hContact
@@ -430,14 +443,6 @@ typedef struct {
 //returns nonzero if the contact list is docked, of 0 if it is not
 #define MS_CLIST_DOCKINGISDOCKED        "CList/DockingIsDocked"
 
-//process all the messages required for the tray icon       v0.1.1.0+
-//wParam = (WPARAM)(MSG*)&msg
-//lParam = (LPARAM)(LRESULT*)&lResult
-//returns TRUE if the message should not be processed further, FALSE otherwise
-//only msg.hwnd, msg.message, msg.wParam and msg.lParam are used
-//your wndproc should return lResult if and only if TRUE is returned
-#define MS_CLIST_TRAYICONPROCESSMESSAGE  "CList/TrayIconProcessMessage"
-
 //process all the messages required for hotkeys             v0.1.1.0+
 //wParam = (WPARAM)(MSG*)&msg
 //lParam = (LPARAM)(LRESULT*)&lResult
@@ -451,14 +456,6 @@ typedef struct {
 //returns 0 on success, nonzero on failure
 #define MS_CLIST_SHOWHIDE     "CList/ShowHide"
 
-//temporarily disable the autohide feature         v0.1.2.1+
-//wParam = lParam = 0
-//returns 0 on success, nonzero on failure
-//This service will restart the autohide timer, so if you need to keep the
-//window visible you'll have to be getting user input regularly and calling
-//this function each time
-#define MS_CLIST_PAUSEAUTOHIDE        "CList/PauseAutoHide"
-
 //sent when the group get modified (created, renamed or deleted)
 //or contact is moving from group to group
 //wParam = hContact - NULL if operation on group
@@ -471,6 +468,16 @@ typedef struct {
 
 #define ME_CLIST_GROUPCHANGE       "CList/GroupChange"
 
+//checks that a group exists                                v0.1.1.0+
+//wParam = 0 (unused)
+//lParam = (TCHAR*)groupName
+//returns 0 if a group is not found or group handle on success
+#define MS_CLIST_GROUPEXISTS       "CList/GroupExists"
+
+__forceinline HANDLE Clist_GroupExists(LPCTSTR ptszGroupName)
+{	return (HANDLE)CallService(MS_CLIST_GROUPEXISTS, 0, (LPARAM)ptszGroupName);
+}
+
 //creates a new group and calls CLUI to display it          v0.1.1.0+
 //wParam = hParentGroup
 //lParam = groupName
@@ -480,6 +487,10 @@ typedef struct {
 //groupName is a TCHAR* pointing to the group name to create or NULL for
 //API to create unique name by itself
 #define MS_CLIST_GROUPCREATE   "CList/GroupCreate"
+
+__forceinline HANDLE Clist_CreateGroup(HANDLE hParent, LPCTSTR ptszGroupName)
+{	return (HANDLE)CallService(MS_CLIST_GROUPCREATE, (WPARAM)hParent, (LPARAM)ptszGroupName);
+}
 
 //deletes a group and calls CLUI to display the change      v0.1.1.0+
 //wParam = (WPARAM)(HANDLE)hGroup

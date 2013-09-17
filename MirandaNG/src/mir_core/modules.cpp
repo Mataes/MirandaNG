@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -76,9 +76,6 @@ static BOOL bServiceMode = FALSE;
 static CRITICAL_SECTION csHooks, csServices;
 static DWORD  mainThreadId;
 static int    hookId = 1;
-static HANDLE hMainThread;
-static HANDLE hMissingService;
-static THook *pLastHook = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -94,8 +91,7 @@ __forceinline HANDLE getThreadEvent()
 
 static int QueueMainThread(PAPCFUNC pFunc, void* pParam, HANDLE hDoneEvent)
 {
-	int result = QueueUserAPC(pFunc, hMainThread, (ULONG_PTR)pParam);
-	PostMessage(hAPCWindow, WM_NULL, 0, 0); // let this get processed in its own time
+	int result = PostMessage(hAPCWindow, WM_USER+1, (WPARAM)pFunc, (LPARAM)pParam); // let this get processed in its own time
 	if (hDoneEvent)
 		WaitForSingleObject(hDoneEvent, INFINITE);
 
@@ -130,8 +126,8 @@ MIR_CORE_DLL(HANDLE) CreateHookableEvent(const char *name)
 
 MIR_CORE_DLL(int) DestroyHookableEvent(HANDLE hEvent)
 {
-	if (pLastHook == (THook*)hEvent)
-		pLastHook = NULL;
+	if (hEvent == NULL)
+		return 1;
 
 	mir_cslock lck(csHooks);
 
@@ -266,13 +262,13 @@ MIR_CORE_DLL(int) NotifyEventHooks(HANDLE hEvent, WPARAM wParam, LPARAM lParam)
 	if ( GetCurrentThreadId() == mainThreadId)
 		return CallHookSubscribers((THook*)hEvent, wParam, lParam);
 
-	mir_ptr<THookToMainThreadItem> item;
-	item->hDoneEvent = getThreadEvent();
-	item->hook = (THook*)hEvent;
-	item->wParam = wParam;
-	item->lParam = lParam;
-	QueueMainThread(HookToMainAPCFunc, item, item->hDoneEvent);
-	return item->result;
+	THookToMainThreadItem item;
+	item.hDoneEvent = getThreadEvent();
+	item.hook = (THook*)hEvent;
+	item.wParam = wParam;
+	item.lParam = lParam;
+	QueueMainThread(HookToMainAPCFunc, &item, item.hDoneEvent);
+	return item.result;
 }
 
 MIR_CORE_DLL(int) NotifyFastHook(HANDLE hEvent, WPARAM wParam, LPARAM lParam)
@@ -555,13 +551,13 @@ MIR_CORE_DLL(INT_PTR) CallServiceSync(const char *name, WPARAM wParam, LPARAM lP
 	if (GetCurrentThreadId() == mainThreadId)
 		return CallService(name, wParam, lParam);
 
-	mir_ptr<TServiceToMainThreadItem> item;
-	item->wParam = wParam;
-	item->lParam = lParam;
-	item->name = name;
-	item->hDoneEvent = getThreadEvent();
-	QueueMainThread(CallServiceToMainAPCFunc, item, item->hDoneEvent);
-	return item->result;
+	TServiceToMainThreadItem item;
+	item.wParam = wParam;
+	item.lParam = lParam;
+	item.name = name;
+	item.hDoneEvent = getThreadEvent();
+	QueueMainThread(CallServiceToMainAPCFunc, &item, item.hDoneEvent);
+	return item.result;
 }
 
 MIR_CORE_DLL(int) CallFunctionAsync(void (__stdcall *func)(void *), void *arg)
@@ -649,9 +645,6 @@ int InitialiseModularEngine(void)
 	InitializeCriticalSection(&csServices);
 
 	mainThreadId = GetCurrentThreadId();
-	DuplicateHandle(GetCurrentProcess(), GetCurrentThread(), GetCurrentProcess(), &hMainThread, 0, FALSE, DUPLICATE_SAME_ACCESS);
-
-	hMissingService = CreateHookableEvent(ME_SYSTEM_MISSINGSERVICE);
 	return 0;
 }
 
@@ -666,6 +659,4 @@ void DestroyModularEngine(void)
 	DeleteCriticalSection(&csServices);
 
 	pluginListAddr.destroy();
-
-	CloseHandle(hMainThread);
 }

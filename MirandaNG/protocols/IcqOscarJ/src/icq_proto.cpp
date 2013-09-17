@@ -71,20 +71,14 @@ static int CompareContactsCache(const icq_contacts_cache *p1, const icq_contacts
 }
 
 CIcqProto::CIcqProto( const char* aProtoName, const TCHAR* aUserName ) :
-cookies(10, CompareCookies),
-directConns(10, CompareConns),
-expectedFileRecvs(10, CompareFT),
-contactsCache(10, CompareContactsCache),
-cheekySearchId( -1 )
+	PROTO<CIcqProto>(aProtoName, aUserName),
+	cookies(10, CompareCookies),
+	directConns(10, CompareConns),
+	expectedFileRecvs(10, CompareFT),
+	contactsCache(10, CompareContactsCache),
+	cheekySearchId(-1)
 {
-	m_iVersion = 2;
-	m_iStatus = ID_STATUS_OFFLINE;
-	m_tszUserName = mir_tstrdup( aUserName );
-	m_szModuleName = mir_strdup( aProtoName );
-	m_szProtoName = mir_strdup( aProtoName );
-	_strlwr( m_szProtoName );
-	m_szProtoName[0] = toupper( m_szProtoName[0] );
-	NetLog_Server( "Setting protocol/module name to '%s/%s'", m_szProtoName, m_szModuleName );
+	NetLog_Server( "Setting protocol/module name to '%s'", m_szModuleName );
 
 	oftMutex = new icq_critical_section();
 
@@ -116,16 +110,16 @@ cheekySearchId( -1 )
 	m_avatarsMutex = new icq_critical_section();
 
 	// Initialize temporary DB settings
-	CreateResidentSetting("Status"); // NOTE: XStatus cannot be temporary
-	CreateResidentSetting("TemporaryVisible");
-	CreateResidentSetting("TickTS");
-	CreateResidentSetting("IdleTS");
-	CreateResidentSetting("AwayTS");
-	CreateResidentSetting("LogonTS");
-	CreateResidentSetting("DCStatus");
-	CreateResidentSetting("CapBuf"); //capabilities bufer
-	CreateResidentSetting(DBSETTING_STATUS_NOTE_TIME);
-	CreateResidentSetting(DBSETTING_STATUS_MOOD);
+	db_set_resident(m_szModuleName, "Status"); // NOTE: XStatus cannot be temporary
+	db_set_resident(m_szModuleName, "TemporaryVisible");
+	db_set_resident(m_szModuleName, "TickTS");
+	db_set_resident(m_szModuleName, "IdleTS");
+	db_set_resident(m_szModuleName, "AwayTS");
+	db_set_resident(m_szModuleName, "LogonTS");
+	db_set_resident(m_szModuleName, "DCStatus");
+	db_set_resident(m_szModuleName, "CapBuf"); //capabilities bufer
+	db_set_resident(m_szModuleName, DBSETTING_STATUS_NOTE_TIME);
+	db_set_resident(m_szModuleName, DBSETTING_STATUS_MOOD);
 
 	// Setup services
 	CreateProtoService(PS_CREATEACCMGRUI, &CIcqProto::OnCreateAccMgrUI );
@@ -164,17 +158,6 @@ cheekySearchId( -1 )
 	// Custom caps
 	CreateProtoService(PS_ICQ_ADDCAPABILITY, &CIcqProto::IcqAddCapability);
 	CreateProtoService(PS_ICQ_CHECKCAPABILITY, &CIcqProto::IcqCheckCapability);
-	{
-		// Initialize IconLib icons
-		char szSectionName[MAX_PATH], *szAccountName = tchar_to_utf8(m_tszUserName);
-		null_snprintf(szSectionName, sizeof(szSectionName), "Protocols/%s/Accounts", ICQ_PROTOCOL_NAME);
-
-		TCHAR lib[MAX_PATH];
-		GetModuleFileName(hInst, lib, MAX_PATH);
-
-		m_hIconProtocol = IconLibDefine(szAccountName, szSectionName, m_szModuleName, "main", lib, -IDI_ICQ);
-		SAFE_FREE(&szAccountName);
-	}
 
 	// Reset a bunch of session specific settings
 	UpdateGlobalSettings();
@@ -191,7 +174,7 @@ cheekySearchId( -1 )
 	// Register netlib users
 	NETLIBUSER nlu = {0};
 	TCHAR szBuffer[MAX_PATH + 64];
-	null_snprintf(szBuffer, SIZEOF(szBuffer), TranslateT("%s server connection"), m_tszUserName);
+	mir_sntprintf(szBuffer, SIZEOF(szBuffer), TranslateT("%s server connection"), m_tszUserName);
 	nlu.cbSize = sizeof(nlu);
 	nlu.flags = NUF_OUTGOING | NUF_HTTPCONNS | NUF_TCHAR;
 	nlu.ptszDescriptiveName = szBuffer;
@@ -205,8 +188,8 @@ cheekySearchId( -1 )
 	m_hServerNetlibUser = (HANDLE)CallService(MS_NETLIB_REGISTERUSER, 0, (LPARAM)&nlu);
 
 	char szP2PModuleName[MAX_PATH];
-	null_snprintf(szP2PModuleName, SIZEOF(szP2PModuleName), "%sP2P", m_szModuleName);
-	null_snprintf(szBuffer, SIZEOF(szBuffer), TranslateT("%s client-to-client connections"), m_tszUserName);
+	mir_snprintf(szP2PModuleName, SIZEOF(szP2PModuleName), "%sP2P", m_szModuleName);
+	mir_sntprintf(szBuffer, SIZEOF(szBuffer), TranslateT("%s client-to-client connections"), m_tszUserName);
 	nlu.flags = NUF_OUTGOING | NUF_INCOMING | NUF_TCHAR;
 	nlu.ptszDescriptiveName = szBuffer;
 	nlu.szSettingsModule = szP2PModuleName;
@@ -280,20 +263,11 @@ CIcqProto::~CIcqProto()
 	SAFE_FREE(&m_modeMsgs.szDnd);
 	SAFE_FREE(&m_modeMsgs.szFfc);
 
-	// Remove account icons
-	IconLibRemove(&m_hIconProtocol);
-
 	NetLog_Server("%s: Protocol instance '%s' destroyed.", ICQ_PROTOCOL_NAME, m_szModuleName);
-
-	mir_free( m_szProtoName );
-	mir_free( m_szModuleName );
-	mir_free( m_tszUserName );
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////
 // OnModulesLoadedEx - performs hook registration
-
 
 int CIcqProto::OnModulesLoaded( WPARAM wParam, LPARAM lParam )
 {
@@ -302,9 +276,9 @@ int CIcqProto::OnModulesLoaded( WPARAM wParam, LPARAM lParam )
 	char pszSrvGroupsName[MAX_PATH];
 	char* modules[5] = {0,0,0,0,0};
 
-	null_snprintf(pszP2PName, SIZEOF(pszP2PName), "%sP2P", m_szModuleName);
-	null_snprintf(pszGroupsName, SIZEOF(pszGroupsName), "%sGroups", m_szModuleName);
-	null_snprintf(pszSrvGroupsName, SIZEOF(pszSrvGroupsName), "%sSrvGroups", m_szModuleName);
+	mir_snprintf(pszP2PName, SIZEOF(pszP2PName), "%sP2P", m_szModuleName);
+	mir_snprintf(pszGroupsName, SIZEOF(pszGroupsName), "%sGroups", m_szModuleName);
+	mir_snprintf(pszSrvGroupsName, SIZEOF(pszSrvGroupsName), "%sSrvGroups", m_szModuleName);
 	modules[0] = m_szModuleName;
 	modules[1] = pszP2PName;
 	modules[2] = pszGroupsName;
@@ -318,7 +292,7 @@ int CIcqProto::OnModulesLoaded( WPARAM wParam, LPARAM lParam )
 	InitAvatars();
 
 	// Init extra optional modules
-	InitPopUps();
+	ModuleLoad(0, 0);
 	InitXStatusItems(FALSE);
 
 	HANDLE hContact = FindFirstContact();
@@ -394,15 +368,14 @@ HANDLE __cdecl CIcqProto::AddToListByEvent( int flags, int iContact, HANDLE hDbE
 	DWORD uin = 0;
 	uid_str uid = {0};
 
-	DBEVENTINFO dbei = {0};
-	dbei.cbSize = sizeof(dbei);
-	if ((dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, (WPARAM)hDbEvent, 0)) == -1)
+	DBEVENTINFO dbei = { sizeof(dbei) };
+	if ((dbei.cbBlob = db_event_getBlobSize(hDbEvent)) == -1)
 		return 0;
 
 	dbei.pBlob = (PBYTE)_alloca(dbei.cbBlob + 1);
 	dbei.pBlob[dbei.cbBlob] = '\0';
 
-	if (CallService(MS_DB_EVENT_GET, (WPARAM)hDbEvent, (LPARAM)&dbei))
+	if (db_event_get(hDbEvent, &dbei))
 		return 0; // failed to get event
 
 	if (strcmpnull(dbei.szModule, m_szModuleName))
@@ -434,8 +407,8 @@ HANDLE __cdecl CIcqProto::AddToListByEvent( int flags, int iContact, HANDLE hDbE
 
 	case EVENTTYPE_AUTHREQUEST:
 	case EVENTTYPE_ADDED:
-		if ( getContactUid( DbGetAuthEventContact(&dbei), &uin, &uid))
-			return 0;
+		if (!getContactUid(DbGetAuthEventContact(&dbei), &uin, &uid))
+			break;
 
 	default:
 		return 0;
@@ -470,7 +443,7 @@ int CIcqProto::Authorize( HANDLE hDbEvent )
 
 		icq_sendAuthResponseServ(uin, uid, 1, _T(""));
 
-		deleteSetting(hContact, "Grant");
+		delSetting(hContact, "Grant");
 
 		return 0; // Success
 	}
@@ -724,7 +697,7 @@ DWORD_PTR __cdecl CIcqProto::GetCaps( int type, HANDLE hContact )
 			PF1_ADDED | PF1_CONTACT;
 		if (!m_bAimEnabled)
 			nReturn |= PF1_NUMERICUSERID;
-		if (m_bSsiEnabled && getSettingByte(NULL, "ServerAddRemove", DEFAULT_SS_ADDSERVER))
+		if (m_bSsiEnabled && getByte("ServerAddRemove", DEFAULT_SS_ADDSERVER))
 			nReturn |= PF1_SERVERCLIST;
 		break;
 
@@ -766,7 +739,7 @@ DWORD_PTR __cdecl CIcqProto::GetCaps( int type, HANDLE hContact )
 	case PFLAG_MAXCONTACTSPERPACKET:
 		if ( hContact )
 		{ // determine per contact
-			BYTE bClientId = getSettingByte(hContact, "ClientID", CLID_GENERIC);
+			BYTE bClientId = getByte(hContact, "ClientID", CLID_GENERIC);
 
 			if (bClientId == CLID_MIRANDA)
 			{
@@ -794,30 +767,6 @@ DWORD_PTR __cdecl CIcqProto::GetCaps( int type, HANDLE hContact )
 	}
 
 	return nReturn;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////
-// GetIcon - loads an icon for the contact list
-
-HICON __cdecl CIcqProto::GetIcon( int iconIndex )
-{
-	if (LOWORD(iconIndex) == PLI_PROTOCOL)
-	{
-		if (iconIndex & PLIF_ICOLIBHANDLE)
-			return (HICON)m_hIconProtocol->Handle();
-
-		bool big = (iconIndex & PLIF_SMALL) == 0;
-		HICON hIcon = m_hIconProtocol->GetIcon(big);
-
-		if (iconIndex & PLIF_ICOLIB)
-			return hIcon;
-
-		hIcon = CopyIcon(hIcon);
-		m_hIconProtocol->ReleaseIcon(big);
-		return hIcon;
-
-	}
-	return NULL;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -865,8 +814,8 @@ void CIcqProto::CheekySearchThread( void* )
 	}
 	isr.uin = cheekySearchUin;
 
-	BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, (HANDLE)cheekySearchId, (LPARAM)&isr);
-	BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)cheekySearchId, 0);
+	ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, (HANDLE)cheekySearchId, (LPARAM)&isr);
+	ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)cheekySearchId, 0);
 	cheekySearchId = -1;
 }
 
@@ -1437,7 +1386,7 @@ HANDLE __cdecl CIcqProto::SendFile( HANDLE hContact, const TCHAR* szDescription,
 
 			if (dwUin)
 			{
-				WORD wClientVersion = getSettingWord(hContact, "Version", 7);
+				WORD wClientVersion = getWord(hContact, "Version", 7);
 
 				if (wClientVersion < 7)
 					NetLog_Server("IcqSendFile() can't send to version %u", wClientVersion);
@@ -1488,7 +1437,7 @@ HANDLE __cdecl CIcqProto::SendFile( HANDLE hContact, const TCHAR* szDescription,
 						}
 						else
 						{
-							null_snprintf(szFiles, SIZEOF(szFiles), ICQTranslateUtfStatic("%d Files", tmp, SIZEOF(tmp)), ft->dwFileCount);
+							mir_snprintf(szFiles, SIZEOF(szFiles), ICQTranslateUtfStatic("%d Files", tmp, SIZEOF(tmp)), ft->dwFileCount);
 							pszFiles = szFiles;
 						}
 
@@ -1565,7 +1514,7 @@ int __cdecl CIcqProto::SendMsg( HANDLE hContact, int flags, const char* pszSrc )
 		BOOL oldAnsi = plain_ascii || !m_bUtfEnabled ||
 			(!(flags & (PREF_UTF | PREF_UNICODE)) && m_bUtfEnabled == 1) ||
 			!CheckContactCapabilities(hContact, CAPF_UTF) ||
-			!getSettingByte(hContact, "UnicodeSend", 1);
+			!getByte(hContact, "UnicodeSend", 1);
 
 		if (m_bTempVisListEnabled && m_iStatus == ID_STATUS_INVISIBLE)
 			makeContactTemporaryVisible(hContact);  // make us temporarily visible to contact
@@ -1619,8 +1568,8 @@ int __cdecl CIcqProto::SendMsg( HANDLE hContact, int flags, const char* pszSrc )
 
 			if (!dwUin || !CheckContactCapabilities(hContact, CAPF_SRV_RELAY) ||
 				wRecipientStatus == ID_STATUS_OFFLINE || wRecipientStatus == ID_STATUS_INVISIBLE ||
-				getSettingByte(hContact, "OnlyServerAcks", getSettingByte(NULL, "OnlyServerAcks", DEFAULT_ONLYSERVERACKS)) ||
-				!getSettingByte(hContact, "SlowSend", getSettingByte(NULL, "SlowSend", DEFAULT_SLOWSEND)))
+				getByte(hContact, "OnlyServerAcks", getByte("OnlyServerAcks", DEFAULT_ONLYSERVERACKS)) ||
+				!getByte(hContact, "SlowSend", getByte("SlowSend", DEFAULT_SLOWSEND)))
 			{
 				/// TODO: add support for RTL & user customizable font
 				{
@@ -1849,12 +1798,12 @@ int __cdecl CIcqProto::SetApparentMode( HANDLE hContact, int mode )
 		// Only 3 modes are supported
 		if (mode == 0 || mode == ID_STATUS_ONLINE || mode == ID_STATUS_OFFLINE)
 		{
-			int oldMode = getSettingWord(hContact, "ApparentMode", 0);
+			int oldMode = getWord(hContact, "ApparentMode", 0);
 
 			// Don't send redundant updates
 			if (mode != oldMode)
 			{
-				setSettingWord(hContact, "ApparentMode", (WORD)mode);
+				setWord(hContact, "ApparentMode", (WORD)mode);
 
 				// Not being online is only an error when in SS mode. This is not handled
 				// yet so we just ignore this for now.
@@ -1862,17 +1811,17 @@ int __cdecl CIcqProto::SetApparentMode( HANDLE hContact, int mode )
 				{
 					if (oldMode != 0)
 					{ // Remove from old list
-						if (oldMode == ID_STATUS_OFFLINE && getSettingWord(hContact, DBSETTING_SERVLIST_IGNORE, 0))
+						if (oldMode == ID_STATUS_OFFLINE && getWord(hContact, DBSETTING_SERVLIST_IGNORE, 0))
 						{ // Need to remove Ignore item as well
-							icq_removeServerPrivacyItem(hContact, uin, uid, getSettingWord(hContact, DBSETTING_SERVLIST_IGNORE, 0), SSI_ITEM_IGNORE);
+							icq_removeServerPrivacyItem(hContact, uin, uid, getWord(hContact, DBSETTING_SERVLIST_IGNORE, 0), SSI_ITEM_IGNORE);
 
-							setSettingWord(hContact, DBSETTING_SERVLIST_IGNORE, 0);
+							setWord(hContact, DBSETTING_SERVLIST_IGNORE, 0);
 						}
 						icq_sendChangeVisInvis(hContact, uin, uid, oldMode==ID_STATUS_OFFLINE, 0);
 					}
 					if (mode != 0)
 					{ // Add to new list
-						if (mode==ID_STATUS_OFFLINE && getSettingWord(hContact, DBSETTING_SERVLIST_IGNORE, 0))
+						if (mode==ID_STATUS_OFFLINE && getWord(hContact, DBSETTING_SERVLIST_IGNORE, 0))
 							return 0; // Success: offline by ignore item
 
 						icq_sendChangeVisInvis(hContact, uin, uid, mode==ID_STATUS_OFFLINE, 1);
@@ -1935,7 +1884,7 @@ int __cdecl CIcqProto::SetStatus(int iNewStatus)
 		return 0;
 
 	// clear custom status on status change
-	if (getSettingByte(NULL, "XStatusReset", DEFAULT_XSTATUS_RESET))
+	if (getByte("XStatusReset", DEFAULT_XSTATUS_RESET))
 		setXStatusEx(0, 0);
 
 	// New status is OFFLINE
@@ -1944,21 +1893,8 @@ int __cdecl CIcqProto::SetStatus(int iNewStatus)
 		if (icqOnline())
 		{ // set offline status note (otherwise the old will remain)
 			char *szOfflineNote = PrepareStatusNote(nNewStatus);
-
-			// Create unnamed event to wait until the status note change process is completed
-			m_hNotifyNameInfoEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-
-			int bNoteChanged = SetStatusNote(szOfflineNote, 0, FALSE);
-
+			SetStatusNote(szOfflineNote, 0, FALSE);
 			SAFE_FREE(&szOfflineNote);
-
-			// Note was changed, wait until the process is over
-			if (bNoteChanged)
-				ICQWaitForSingleObject(m_hNotifyNameInfoEvent, 4000, TRUE);
-
-			// Release the event
-			CloseHandle(m_hNotifyNameInfoEvent);
-			m_hNotifyNameInfoEvent = NULL;
 		}
 
 		m_iDesiredStatus = nNewStatus;
@@ -1989,7 +1925,7 @@ int __cdecl CIcqProto::SetStatus(int iNewStatus)
 				if (m_dwLocalUIN == 0)
 				{
 					SetCurrentStatus(ID_STATUS_OFFLINE);
-					BroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_BADUSERID);
+					ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_BADUSERID);
 					icq_LogMessage(LOG_FATAL, LPGEN("You have not entered a ICQ number.\nConfigure this in Options->Network->ICQ and try again."));
 					return 0;
 				}
@@ -2076,7 +2012,7 @@ void __cdecl CIcqProto::GetAwayMsgThread( void *pStatusData )
 		setStatusMsgVar(pThreadData->hContact, pThreadData->szMessage, false);
 
 		TCHAR *tszMsg = mir_utf8decodeT(pThreadData->szMessage);
-		BroadcastAck(pThreadData->hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, pThreadData->hProcess, (LPARAM)tszMsg);
+		ProtoBroadcastAck(pThreadData->hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, pThreadData->hProcess, (LPARAM)tszMsg);
 		mir_free(tszMsg);
 
 		SAFE_FREE(&pThreadData->szMessage);
@@ -2162,10 +2098,10 @@ HANDLE __cdecl CIcqProto::GetAwayMsg( HANDLE hContact )
 			}
 			if (CheckContactCapabilities(hContact, CAPF_STATUS_MESSAGES))
 				return (HANDLE)icq_sendGetAwayMsgServExt(hContact, dwUin, szUID, wMessageType,
-				(WORD)(getSettingWord(hContact, "Version", 0)==9?9:ICQ_VERSION)); // Success
+				(WORD)(getWord(hContact, "Version", 0)==9?9:ICQ_VERSION)); // Success
 			else
 				return (HANDLE)icq_sendGetAwayMsgServ(hContact, dwUin, wMessageType,
-				(WORD)(getSettingWord(hContact, "Version", 0)==9?9:ICQ_VERSION)); // Success
+				(WORD)(getWord(hContact, "Version", 0)==9?9:ICQ_VERSION)); // Success
 		}
 	}
 	else
@@ -2187,12 +2123,12 @@ int __cdecl CIcqProto::RecvAwayMsg( HANDLE hContact, int statusMode, PROTORECVEV
 		setStatusMsgVar(hContact, evt->szMessage, false);
 
 		TCHAR* pszMsg = mir_utf8decodeT(evt->szMessage);
-		BroadcastAck(hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)evt->lParam, (LPARAM)pszMsg);
+		ProtoBroadcastAck(hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)evt->lParam, (LPARAM)pszMsg);
 		mir_free(pszMsg);
 	}
 	else {
 		setStatusMsgVar(hContact, evt->szMessage, true);
-		BroadcastAck(hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)evt->lParam, (LPARAM)(TCHAR*)_A2T(evt->szMessage));
+		ProtoBroadcastAck(hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)evt->lParam, (LPARAM)(TCHAR*)_A2T(evt->szMessage));
 	}
 	return 0;
 }
@@ -2325,11 +2261,11 @@ int __cdecl CIcqProto::OnEvent(PROTOEVENTTYPE eventType, WPARAM wParam, LPARAM l
 		{
 			char szDbSetting[MAX_PATH];
 
-			null_snprintf(szDbSetting, sizeof(szDbSetting), "%sP2P", m_szModuleName);
+			mir_snprintf(szDbSetting, sizeof(szDbSetting), "%sP2P", m_szModuleName);
 			CallService(MS_DB_MODULE_DELETE, 0, (LPARAM)szDbSetting);
-			null_snprintf(szDbSetting, sizeof(szDbSetting), "%sSrvGroups", m_szModuleName);
+			mir_snprintf(szDbSetting, sizeof(szDbSetting), "%sSrvGroups", m_szModuleName);
 			CallService(MS_DB_MODULE_DELETE, 0, (LPARAM)szDbSetting);
-			null_snprintf(szDbSetting, sizeof(szDbSetting), "%sGroups", m_szModuleName);
+			mir_snprintf(szDbSetting, sizeof(szDbSetting), "%sGroups", m_szModuleName);
 			CallService(MS_DB_MODULE_DELETE, 0, (LPARAM)szDbSetting);
 			break;
 		}

@@ -1,12 +1,12 @@
 #include "skype.h"
-#include "skype_proto.h"
 
 int hLangpack;
 HINSTANCE g_hInstance;
-XML_API  xi = {0};
+
 TIME_API tmi = {0};
 
-CSkype* g_skype;
+int g_cbCountries;
+struct CountryListEntry* g_countries;
 
 PLUGININFOEX pluginInfo =
 {
@@ -37,170 +37,8 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 
 extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_PROTOCOL, MIID_LAST};
 
-int port = 8963;
+// ---
 
-void *buf;
-
-static const char base64Fillchar = '='; // used to mark partial words at the end
-
-const unsigned char base64DecodeTable[] = {
-	99, 98, 98, 98, 98, 98, 98, 98, 98, 97,  97, 98, 98, 97, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  //00 -29
-	98, 98, 97, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 62, 98, 98, 98, 63, 52, 53,  54, 55, 56, 57, 58, 59, 60, 61, 98, 98,  //30 -59
-	98, 96, 98, 98, 98, 0, 1, 2, 3, 4,   5, 6, 7, 8, 9, 10, 11, 12, 13, 14,  15, 16, 17, 18, 19, 20, 21, 22, 23, 24,  //60 -89
-	25, 98, 98, 98, 98, 98, 98, 26, 27, 28,  29, 30, 31, 32, 33, 34, 35, 36, 37, 38,  39, 40, 41, 42, 43, 44, 45, 46, 47, 48,  //90 -119
-	49, 50, 51, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  //120 -149
-	98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  //150 -179
-	98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  //180 -209
-	98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  //210 -239
-	98, 98, 98, 98, 98, 98, 98, 98, 98, 98,  98, 98, 98, 98, 98, 98                                               //240 -255
-};
-
-unsigned int decodeSize(char * data)
-{
-	if ( !data) return 0;
-	int size = 0;
-	unsigned char c;
-	//skip any extra characters (e.g. newlines or spaces)
-	while (*data)
-	{
-		if (*data>255) { return 0; }
-		c = base64DecodeTable[(unsigned char)(*data)];
-		if (c<97) size++;
-		else if (c == 98) { return 0; }
-		data++;
-	}
-	if (size == 0) return 0;
-	do { data--; size--; } while (*data == base64Fillchar); size++;
-	return (unsigned int)((size*3)/4);
-}
-
-unsigned char decode(char * data, unsigned char *buf, int len)
-{
-	if ( !data) return 0;
-	int i=0, p = 0;
-	unsigned char d, c;
-	for (;;)
-	{
-
-	#define BASE64DECODE_READ_NEXT_CHAR(c)                                              \
-	do {                                                                        \
-	if (data[i]>255) { c = 98; break; }                                        \
-	c = base64DecodeTable[(unsigned char)data[i++]];                       \
-	}while (c == 97);                                                             \
-	if(c == 98) { return 0; }
-
-		BASE64DECODE_READ_NEXT_CHAR(c)
-			if (c == 99) { return 2; }
-			if (c == 96)
-			{
-				if (p == (int)len) return 2;
-				return 1;
-			}
-
-			BASE64DECODE_READ_NEXT_CHAR(d)
-				if ((d == 99) || (d == 96)) { return 1; }
-				if (p == (int)len) { return 0; }
-				buf[p++] = (unsigned char)((c<<2)|((d>>4)&0x3));
-
-				BASE64DECODE_READ_NEXT_CHAR(c)
-					if (c == 99) { return 1; }
-					if (p == (int)len)
-					{
-						if (c == 96) return 2;
-						return 0;
-					}
-					if (c == 96) { return 1; }
-					buf[p++] = (unsigned char)(((d<<4)&0xf0)|((c>>2)&0xf));
-
-					BASE64DECODE_READ_NEXT_CHAR(d)
-						if (d == 99) { return 1; }
-						if (p == (int)len)
-						{
-							if (d == 96) return 2;
-							return 0;
-						}
-						if (d == 96) { return 1; }
-						buf[p++] = (unsigned char)(((c<<6)&0xc0)|d);
-	}
-}
-#undef BASE64DECODE_READ_NEXT_CHAR
-
-unsigned char *decode(char * data, int *outlen)
-{
-	if ( !data) { *outlen = 0; return (unsigned char*)""; }
-	unsigned int len = decodeSize(data);
-	if (outlen) *outlen = len;
-	if ( !len) return NULL;
-	malloc(len+1);
-	if( !decode(data, (unsigned char*)buf, len)) { return NULL; }
-	return (unsigned char*)buf;
-}
-
-char* LoadKeyPair()
-{
-	HRSRC hRes = FindResource(g_hInstance, MAKEINTRESOURCE(IDR_KEY), _T("BIN"));
-	if (hRes) {
-		HGLOBAL hResource = LoadResource(g_hInstance, hRes);
-		if (hResource) {
-			aes_context ctx;
-
-			int basedecodedkey = decodeSize((char*)MY_KEY);
-			unsigned char *tmpK = (unsigned char*)malloc(basedecodedkey + 1);
-			decode((char*)MY_KEY, tmpK, basedecodedkey);
-			tmpK[basedecodedkey] = 0;
-
-
-			aes_set_key( &ctx, tmpK, 128);
-			int dwResSize = SizeofResource(g_hInstance, hRes);
-			char *pData = (char*)GlobalLock(hResource);
-			char *pCopy = (char*)_alloca(dwResSize+1);
-			memcpy(pCopy, pData, dwResSize);
-			pCopy[dwResSize] = 0;
-			int basedecoded = decodeSize(pCopy);
-			GlobalUnlock(hResource);
-			unsigned char *bufD = (unsigned char*)mir_alloc(basedecoded + 1);
-			unsigned char *tmpD = (unsigned char*)mir_alloc(basedecoded + 1);
-			decode(pData, tmpD, basedecoded);
-			for (int i = 0; i < basedecoded; i += 16) {
-				aes_decrypt(&ctx, tmpD+i, bufD+i);
-			}
-			mir_free(tmpD);
-			bufD[basedecoded] = 0; //cert should be null terminated
-			return (char*)bufD;
-		}
-		return NULL;
-	}
-	return NULL;
-}
-
-//
-//   FUNCTION: IsRunAsAdmin()
-//
-//   PURPOSE: The function checks whether the current process is run as 
-//   administrator. In other words, it dictates whether the primary access 
-//   token of the process belongs to user account that is a member of the 
-//   local Administrators group and it is elevated.
-//
-//   RETURN VALUE: Returns TRUE if the primary access token of the process 
-//   belongs to user account that is a member of the local Administrators 
-//   group and it is elevated. Returns FALSE if the token does not.
-//
-//   EXCEPTION: If this function fails, it throws a C++ DWORD exception which 
-//   contains the Win32 error code of the failure.
-//
-//   EXAMPLE CALL:
-//     try 
-//     {
-//         if (IsRunAsAdmin())
-//             wprintf (L"Process is run as administrator\n");
-//         else
-//             wprintf (L"Process is not run as administrator\n");
-//     }
-//     catch (DWORD dwError)
-//     {
-//         wprintf(L"IsRunAsAdmin failed w/err %lu\n", dwError);
-//     }
-//
 BOOL IsRunAsAdmin()
 {
 	BOOL fIsRunAsAdmin = FALSE;
@@ -209,12 +47,12 @@ BOOL IsRunAsAdmin()
 
 	// Allocate and initialize a SID of the administrators group.
 	SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
-	if (!AllocateAndInitializeSid(
-		&NtAuthority, 
-		2, 
-		SECURITY_BUILTIN_DOMAIN_RID, 
-		DOMAIN_ALIAS_RID_ADMINS, 
-		0, 0, 0, 0, 0, 0, 
+	if ( !AllocateAndInitializeSid(
+		&NtAuthority,
+		2,
+		SECURITY_BUILTIN_DOMAIN_RID,
+		DOMAIN_ALIAS_RID_ADMINS,
+		0, 0, 0, 0, 0, 0,
 		&pAdministratorsGroup))
 	{
 		dwError = GetLastError();
@@ -223,7 +61,7 @@ BOOL IsRunAsAdmin()
 
 	// Determine whether the SID of administrators group is enabled in 
 	// the primary access token of the process.
-	if (!CheckTokenMembership(NULL, pAdministratorsGroup, &fIsRunAsAdmin))
+	if ( !CheckTokenMembership(NULL, pAdministratorsGroup, &fIsRunAsAdmin))
 	{
 		dwError = GetLastError();
 		goto Cleanup;
@@ -246,41 +84,37 @@ Cleanup:
 	return fIsRunAsAdmin;
 }
 
-int StartSkypeRuntime()
+int UnpackSkypeRuntime(HINSTANCE hInstance, const wchar_t *profileName)
 {
-	// loading skype runtime
-	// shitcode
-	STARTUPINFO cif;
-	PROCESS_INFORMATION pi;
-	TCHAR param[128];
+	wchar_t	fileName[MAX_PATH];
+	::GetModuleFileName(hInstance, fileName, MAX_PATH);
 
-	ZeroMemory(&cif, sizeof(STARTUPINFO));	
-	cif.cb = sizeof(STARTUPINFO);
-	cif.dwFlags = STARTF_USESHOWWINDOW;
-	cif.wShowWindow = SW_HIDE;
-
-	HRSRC 	hRes;
-	HGLOBAL	hResource;
-	TCHAR	szFilename[MAX_PATH];
-
-	hRes = FindResource(g_hInstance, MAKEINTRESOURCE(IDR_RUNTIME), _T("BIN"));
-
-	if (hRes) {
-		hResource = LoadResource(g_hInstance, hRes);
-		if (hResource) {
-			HANDLE  hFile;
-			char 	*pData = (char *)LockResource(hResource);
-			DWORD	dwSize = SizeofResource(g_hInstance, hRes), written = 0;
-			GetModuleFileName(g_hInstance, szFilename, MAX_PATH);
-			TCHAR *SkypeKitPath = _tcsrchr(szFilename, '\\');
-			if (SkypeKitPath != NULL)
-				*SkypeKitPath = '\0';
-			mir_sntprintf(szFilename, SIZEOF(szFilename), _T("%s\\%s"), szFilename, _T("SkypeKit.exe"));
-			if (!PathFileExists(szFilename))
+	wchar_t *skypeKitPath = ::wcsrchr(fileName, '\\');
+	if (skypeKitPath != NULL)
+		*skypeKitPath = 0;
+	::mir_snwprintf(fileName, SIZEOF(fileName), L"%s\\%s", fileName, L"SkypeKit.exe");
+	if ( ::GetFileAttributes(fileName) == DWORD(-1))
+	{
+		HRSRC hRes = ::FindResource(hInstance, MAKEINTRESOURCE(IDR_RUNTIME), L"BIN");
+		if (hRes)
+		{
+			HGLOBAL hResource = ::LoadResource(hInstance, hRes);
+			if (hResource)
 			{
-				if ((hFile = CreateFile(szFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0)) != INVALID_HANDLE_VALUE) {
-					WriteFile(hFile, (void *)pData, dwSize, &written, NULL);
-					CloseHandle(hFile);
+				HANDLE hFile;
+				char *pData = (char *)LockResource(hResource);
+				DWORD dwSize = SizeofResource(hInstance, hRes), written = 0;
+				if ((hFile = ::CreateFile(
+					fileName,
+					GENERIC_WRITE,
+					0,
+					NULL,
+					CREATE_ALWAYS,
+					FILE_ATTRIBUTE_NORMAL,
+					0)) != INVALID_HANDLE_VALUE)
+				{
+					::WriteFile(hFile, (void *)pData, dwSize, &written, NULL);
+					::CloseHandle(hFile);
 				}
 				else
 				{
@@ -288,97 +122,92 @@ int StartSkypeRuntime()
 					// Elevate the process if it is not run as administrator.
 					if (!IsRunAsAdmin())
 					{
-						wchar_t szPath[MAX_PATH], cmdLine[100];
-						GetModuleFileName(NULL, szPath, ARRAYSIZE(szPath));
-						TCHAR *profilename = Utils_ReplaceVarsT(_T("%miranda_profilename%"));
-						mir_sntprintf(cmdLine, SIZEOF(cmdLine), _T(" /restart:%d /profile=%s"), GetCurrentProcessId(), profilename);
+						wchar_t path[MAX_PATH], cmdLine[100];
+						::GetModuleFileName(NULL, path, ARRAYSIZE(path));
+
+						if (profileName)
+							::mir_snwprintf(
+							cmdLine,
+							SIZEOF(cmdLine),
+							L" /restart:%d /profile=%s",
+							::GetCurrentProcessId(),
+							profileName);
+						else
+							::mir_snwprintf(
+							cmdLine,
+							SIZEOF(cmdLine),
+							L" /restart:%d",
+							::GetCurrentProcessId());
+
 						// Launch itself as administrator.
 						SHELLEXECUTEINFO sei = { sizeof(sei) };
 						sei.lpVerb = L"runas";
-						sei.lpFile = szPath;
+						sei.lpFile = path;
 						sei.lpParameters = cmdLine;
 						//sei.hwnd = hDlg;
 						sei.nShow = SW_NORMAL;
 
-						if (!ShellExecuteEx(&sei))
+						if ( !::ShellExecuteEx(&sei))
 						{
-							DWORD dwError = GetLastError();
+							DWORD dwError = ::GetLastError();
 							if (dwError == ERROR_CANCELLED)
 							{
 								// The user refused to allow privileges elevation.
 								// Do nothing ...
 							}
 						}
-						else
-						{
-							//DestroyWindow(hDlg);  // Quit itself
-							CallService("CloseAction", 0, 0);
-						}
 					}
-					return 0;
+					else
+						return 0;
 				}
 			}
+			else
+				return 0;
 		}
+		else
+			return 0;
 	}
 
-    PROCESSENTRY32 entry;
-    entry.dwSize = sizeof(PROCESSENTRY32);
-
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
-    if (Process32First(snapshot, &entry) == TRUE) {
-        while (Process32Next(snapshot, &entry) == TRUE) {
-            if (_tcsicmp(entry.szExeFile, _T("SkypeKit.exe")) == 0) {  
-                HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, entry.th32ProcessID);
-				port += rand() % 100;
-                CloseHandle(hProcess);
-				break;
-            }
-        }
-    }
-    CloseHandle(snapshot);
-
-	mir_sntprintf(param, SIZEOF(param), L"-p -P %d", port);
-	int startingrt = CreateProcess(szFilename, param, NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &cif, &pi);
-
-	return startingrt;
+	return 1;
 }
+
+// ---
 
 extern "C" int __declspec(dllexport) Load(void)
 {
-	if (!StartSkypeRuntime())
-		return 1;
+	VARST profilename( _T("%miranda_profilename%"));
 
-	mir_getXI(&xi);
+	if ( !UnpackSkypeRuntime(g_hInstance, (TCHAR *)profilename))
+	{
+		::MessageBox(NULL, TranslateT("Did not unpack SkypeKit.exe."), _T(MODULE), MB_OK | MB_ICONERROR);
+		return 1;
+	}
+
 	mir_getTMI(&tmi);
 	mir_getLP(&pluginInfo);
-
-	g_skype = new CSkype();
-	char *keyBuf = LoadKeyPair();
-	g_skype->init(keyBuf, "127.0.0.1", port);
-	mir_free(keyBuf);
-	g_skype->start();	
 
 	PROTOCOLDESCRIPTOR pd = { sizeof(pd) };
 	pd.szName = "SKYPE";
 	pd.type = PROTOTYPE_PROTOCOL;
 	pd.fnInit = (pfnInitProto)CSkypeProto::InitSkypeProto;
 	pd.fnUninit = (pfnUninitProto)CSkypeProto::UninitSkypeProto;
-	CallService(MS_PROTO_REGISTERMODULE, 0, reinterpret_cast<LPARAM>(&pd));
+	CallService(MS_PROTO_REGISTERMODULE, 0, (LPARAM)&pd);
+
+	CallService(MS_UTILS_GETCOUNTRYLIST, (WPARAM)&g_cbCountries, (LPARAM)&g_countries);
 
 	CSkypeProto::InitIcons();
-	CSkypeProto::InitServiceList();
 	CSkypeProto::InitMenus();
+	CSkypeProto::InitHookList();
+	CSkypeProto::InitLanguages();
+	CSkypeProto::InitServiceList();
 
 	return 0;
 }
 
 extern "C" int __declspec(dllexport) Unload(void)
 {
-	CSkypeProto::UninitMenus();
 	CSkypeProto::UninitIcons();
-
-	g_skype->stop();
-	delete g_skype;
-
+	CSkypeProto::UninitMenus();
+	CSkypeProto::UninitInstances();
 	return 0;
 }

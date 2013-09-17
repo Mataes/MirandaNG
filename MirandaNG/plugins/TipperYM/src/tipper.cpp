@@ -19,12 +19,6 @@ Boston, MA 02111-1307, USA.
 */
 
 #include "common.h"
-#include "version.h"
-#include "message_pump.h"
-#include "options.h"
-#include "popwin.h"
-#include "skin_parser.h"
-#include "str_utils.h"
 
 HMODULE hInst;
 
@@ -50,21 +44,21 @@ int hLangpack;
 PLUGININFOEX pluginInfoEx =
 {
 	sizeof(PLUGININFOEX),
-	"Tipper YM",
-	__VERSION_DWORD,
-	"Tool Tip notification windows.",
-	"Scott Ellis, yaho",
-	"yaho@miranda-easy.net",
-	"© 2005-2007 Scott Ellis, 2007-2011 Jan Holub",
-	"http://miranda-ng.org/",
-	UNICODE_AWARE,					//doesn't replace anything built-in
-	MIID_TIPPER
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
+	UNICODE_AWARE,
+	// {8392DF1D-9090-4F8E-9DF6-2FE058EDD800}
+	{0x8392df1d, 0x9090, 0x4f8e, {0x9d, 0xf6, 0x2f, 0xe0, 0x58, 0xed, 0xd8, 0x00}}
 };
 
-extern "C" bool WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+bool WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	hInst = hinstDLL;
-	DisableThreadLibraryCalls(hInst);
     return TRUE;
 }
 
@@ -72,8 +66,6 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 {
 	return &pluginInfoEx;
 }
-
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_TOOLTIPS, MIID_LAST};
 
 int ReloadFont(WPARAM wParam, LPARAM lParam)
 {
@@ -118,13 +110,10 @@ int SettingChanged(WPARAM wParam, LPARAM lParam)
 // needed for msg_count_xxx substitutions
 int EventDeleted(WPARAM wParam, LPARAM lParam)
 {
-	DBEVENTINFO dbei = {0};
-	dbei.cbSize = sizeof(dbei);
-	if (!CallService(MS_DB_EVENT_GET, lParam, (LPARAM)&dbei))
-	{
+	DBEVENTINFO dbei = { sizeof(dbei) };
+	if ( !db_event_get((HANDLE)lParam, &dbei))
 		if (dbei.eventType == EVENTTYPE_MESSAGE)
-			DBDeleteContactSetting((HANDLE)wParam, MODULE, "LastCountTS");
-	}
+			db_unset((HANDLE)wParam, MODULE, "LastCountTS");
 
 	return 0;
 }
@@ -258,7 +247,7 @@ void InitFonts()
 	hReloadFonts = HookEvent(ME_FONT_RELOAD, ReloadFont);
 }
 
-int ModulesLoaded(WPARAM wParam, LPARAM lParam)
+int ModulesLoaded(WPARAM, LPARAM)
 {
 	InitFonts();
 	
@@ -272,7 +261,7 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 
 	hFolderChanged = HookEvent(ME_FOLDERS_PATH_CHANGED, ReloadSkinFolder);
 
-	hSkinFolder = FoldersRegisterCustomPathT(MODULE, "Tipper skins", MIRANDA_PATHT _T("\\") _T(DEFAULT_SKIN_FOLDER));
+	hSkinFolder = FoldersRegisterCustomPathT(LPGEN("Skins"), LPGEN("Tipper"), MIRANDA_PATHT _T("\\") _T(DEFAULT_SKIN_FOLDER));
 	FoldersGetCustomPathT(hSkinFolder, SKIN_FOLDER, SIZEOF(SKIN_FOLDER), _T(DEFAULT_SKIN_FOLDER));
 
 	InitTipperSmileys();
@@ -284,7 +273,7 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	CallService(MS_CLC_SETINFOTIPHOVERTIME, opt.iTimeIn, 0);
 
 	// set Miranda start timestamp
-	DBWriteContactSettingDword(0, MODULE, "MirandaStartTS", (DWORD)time(0));
+	db_set_dw(0, MODULE, "MirandaStartTS", (DWORD)time(0));
 
 	// get MetaContacts module name
 	if (ServiceExists(MS_MC_GETPROTOCOLNAME))
@@ -318,8 +307,6 @@ HANDLE hEventPreShutdown, hEventModulesLoaded;
 
 extern "C" int __declspec(dllexport) Load(void)
 {
-
-
 	CallService(MS_IMG_GETINTERFACE, FI_IF_VERSION, (LPARAM)&fii);
 	mir_getTMI(&tmi);
 	mir_getLP(&pluginInfoEx);

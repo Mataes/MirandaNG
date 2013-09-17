@@ -16,26 +16,19 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+
 #include "variables.h"
-#include "parse_inet.h"
-#include <wininet.h>
 
-static TCHAR *parseUrlEnc(ARGUMENTSINFO *ai) {
-
-	TCHAR *tres;
-	char hex[8], *res;
-	unsigned int cur;
-
-	if (ai->argc != 2) {
+static TCHAR *parseUrlEnc(ARGUMENTSINFO *ai)
+{
+	if (ai->argc != 2)
 		return NULL;
-	}
 
-	res = mir_t2a(ai->targv[1]);
-
-	if (res == NULL) {
+	char *res = mir_t2a(ai->targv[1]);
+	if (res == NULL)
 		return NULL;
-	}
-	cur = 0;
+
+	size_t cur = 0;
 	while (cur < strlen(res)) {
 		if (( (*(res+cur) >= '0') && (*(res+cur) <= '9')) || ( (*(res+cur) >= 'a') && (*(res+cur) <= 'z')) || ( (*(res+cur) >= 'A') && (*(res+cur) <= 'Z')) ) {
 			cur++;
@@ -45,37 +38,31 @@ static TCHAR *parseUrlEnc(ARGUMENTSINFO *ai) {
 		if (res == NULL)
 			return NULL;
 
+		char hex[8];
 		MoveMemory(res+cur+3, res+cur+1, strlen(res+cur+1)+1);
-		_snprintf(hex, sizeof(hex), "%%%x", *(res+cur));
+		mir_snprintf(hex, sizeof(hex), "%%%x", *(res+cur));
 		strncpy(res+cur, hex, strlen(hex));
 		cur+=strlen(hex);
 	}
 
-	tres = mir_a2t(res);
-
+	TCHAR *tres = mir_a2t(res);
 	mir_free(res);
-
 	return tres;
 }
 
-static TCHAR *parseUrlDec(ARGUMENTSINFO *ai) {
-
-	char *res, hex[8];
-	TCHAR *tres;
-	unsigned int cur;
-
-	if (ai->argc != 2) {
+static TCHAR *parseUrlDec(ARGUMENTSINFO *ai)
+{
+	if (ai->argc != 2)
 		return NULL;
-	}
 
-	res = mir_t2a(ai->targv[1]);
-
-	if (res == NULL) {
+	char *res = mir_t2a(ai->targv[1]);
+	if (res == NULL)
 		return NULL;
-	}
-	cur = 0;
+
+	unsigned int cur = 0;
 	while (cur < strlen(res)) {
 		if ((*(res+cur) == '%') && (strlen(res+cur) >= 3)) {
+			char hex[8];
 			memset(hex, '\0', sizeof(hex));
 			strncpy(hex, res+cur+1, 2);
 			*(res+cur) = (char)strtol(hex, NULL, 16);
@@ -83,61 +70,38 @@ static TCHAR *parseUrlDec(ARGUMENTSINFO *ai) {
 		}
 		cur++;
 	}
+
 	res = ( char* )mir_realloc(res, strlen(res)+1);
-
-	tres = mir_a2t(res);
-
+	TCHAR *tres = mir_a2t(res);
 	mir_free(res);
-	
 	return tres;
 }
 
-static TCHAR *parseNToA(ARGUMENTSINFO *ai) {
-
-	char *res;
-	struct in_addr in;
-
-	if (ai->argc != 2) {
+static TCHAR *parseNToA(ARGUMENTSINFO *ai)
+{
+	if (ai->argc != 2)
 		return NULL;
-	}
 	
+	struct in_addr in;
 	in.s_addr = ttoi(ai->targv[1]);
-	res = inet_ntoa(in);
-	if (res != NULL) {
-
-		return mir_a2t(res);
-
-	}
-
-	return NULL;
+	return mir_a2t( inet_ntoa(in));
 }
 
-static TCHAR *parseHToA(ARGUMENTSINFO *ai) {
-
-	char *res;
-	struct in_addr in;
-
-	if (ai->argc != 2) {
+static TCHAR *parseHToA(ARGUMENTSINFO *ai)
+{
+	if (ai->argc != 2)
 		return NULL;
-	}
 	
+	struct in_addr in;
 	in.s_addr = htonl(ttoi(ai->targv[1]));
-	res = inet_ntoa(in);
-	if (res != NULL) {
-
-		return mir_a2t(res);
-
-	}
-
-	return NULL;
+	return mir_a2t( inet_ntoa(in));
 }
 
-int registerInetTokens() {
-
-	registerIntToken(_T(URLENC), parseUrlEnc, TRF_FUNCTION, "Internet Related\t(x)\tconverts each non-html character into hex format");
-	registerIntToken(_T(URLDEC), parseUrlDec, TRF_FUNCTION, "Internet Related\t(x)\tconverts each hex value into non-html character");
-	registerIntToken(_T(NTOA), parseNToA, TRF_FUNCTION, "Internet Related\t(x)\tconverts a 32-bit number to IPv4 dotted notation");
-	registerIntToken(_T(HTOA), parseHToA, TRF_FUNCTION, "Internet Related\t(x)\tconverts a 32-bit number (in host byte order) to IPv4 dotted notation");
-
-	return 0;
+int registerInetTokens()
+{
+	registerIntToken(_T(URLENC), parseUrlEnc, TRF_FUNCTION, LPGEN("Internet Related")"\t(x)\t"LPGEN("converts each non-html character into hex format"));
+	registerIntToken(_T(URLDEC), parseUrlDec, TRF_FUNCTION, LPGEN("Internet Related")"\t(x)\t"LPGEN("converts each hex value into non-html character"));
+	registerIntToken(_T(NTOA), parseNToA, TRF_FUNCTION, LPGEN("Internet Related")"\t(x)\t"LPGEN("converts a 32-bit number to IPv4 dotted notation"));
+	registerIntToken(_T(HTOA), parseHToA, TRF_FUNCTION, LPGEN("Internet Related")"\t(x)\t"LPGEN("converts a 32-bit number (in host byte order) to IPv4 dotted notation"));
+ 	return 0;
 }

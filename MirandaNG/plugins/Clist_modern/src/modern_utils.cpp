@@ -90,7 +90,7 @@ DWORD exceptFunction(LPEXCEPTION_POINTERS EP)
 		EP->ExceptionRecord->ExceptionAddress);
 
 	TRACE(buf);
-	MessageBoxA(0,buf,"clist_mw Exception",0);
+	MessageBoxA(0, buf,"clist_mw Exception",0);
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
@@ -110,7 +110,7 @@ void TRACE_ERROR()
 		t,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
 		(LPTSTR) &lpMsgBuf,
-		0,
+		0, 
 		NULL ))
 	{
 		// Handle the error.
@@ -135,13 +135,13 @@ BOOL DebugDeleteObject(HGDIOBJ a)
 #endif
 
 // load small icon (not shared) it IS NEED to be destroyed
-HICON LoadSmallIcon(HINSTANCE hInstance, LPCTSTR lpIconName)
+HICON LoadSmallIcon(HINSTANCE hInstance, int index)
 {
-	HICON hIcon = NULL;				  // icon handle
-	int index = -(int)lpIconName;
 	TCHAR filename[MAX_PATH] = {0};
-	GetModuleFileName(hInstance,filename,MAX_PATH);
- 	ExtractIconEx(filename,index,NULL,&hIcon,1);
+	GetModuleFileName(hInstance, filename, MAX_PATH);
+
+	HICON hIcon = NULL;
+ 	ExtractIconEx(filename, index, NULL, &hIcon, 1);
 	return hIcon;
 }
 
@@ -149,13 +149,4 @@ BOOL DestroyIcon_protect(HICON icon)
 {
 	if (icon) return DestroyIcon(icon);
 	return FALSE;
-}
-
-void li_ListDestruct(SortedList *pList, ItemDestuctor pItemDestructor)
-{
-	int i=0;
-	if ( !pList) return;
-	for (i=0; i < pList->realCount; i++)	pItemDestructor(pList->items[i]);
-	List_Destroy(pList);
-   mir_free(pList);
 }

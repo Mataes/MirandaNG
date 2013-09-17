@@ -16,7 +16,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="res\Proto_Jabber.rc">
+    <ResourceCompile Include="res\Proto_Vkontakte.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

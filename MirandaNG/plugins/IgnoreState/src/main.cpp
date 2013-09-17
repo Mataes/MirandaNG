@@ -57,8 +57,8 @@ PLUGININFOEX pluginInfo={
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,
+	// A6872BCD-F2A1-41B8-B2F1-DD7CEC055734
 	{0xa6872bcd, 0xf2a1, 0x41b8, {0xb2, 0xf1, 0xdd, 0x7c, 0xec, 0x05, 0x57, 0x34}}
-	// a6872bcd-f2a1-41b8-b2f1-dd7cec055734
 };
 
 extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
@@ -71,8 +71,6 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 {
 	return &pluginInfo;
 }
-
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_IGNORESRATE, MIID_LAST};
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -119,9 +117,9 @@ static IconItem iconList[] =
 
 VOID fill_filter(void)
 {
-	bUseMirandaSettings = DBGetContactSettingByte(NULL, MODULENAME, "UseMirandaSettings", 0);
+	bUseMirandaSettings = db_get_b(NULL, MODULENAME, "UseMirandaSettings", 0);
 
-	currentFilter = bUseMirandaSettings ? DBGetContactSettingDword(NULL, "Ignore", "Default1", 0) : DBGetContactSettingDword(NULL, MODULENAME, "Filter", 0x8);
+	currentFilter = bUseMirandaSettings ? db_get_dw(NULL, "Ignore", "Default1", 0) : db_get_dw(NULL, MODULENAME, "Filter", 0x8);
 
 	for (int i=0; i < SIZEOF(ii); i++) {
 		if (checkState((ii[i].type)))
@@ -136,18 +134,15 @@ int onModulesLoaded(WPARAM wParam,LPARAM lParam)
 	HookEvent(ME_OPT_INITIALISE, onOptInitialise);
 
 	//IcoLib support
-	Icon_Register(g_hInst, MODULENAME, iconList, SIZEOF(iconList));
+	Icon_Register(g_hInst, LPGEN("Ignore State"), iconList, SIZEOF(iconList));
 
 	fill_filter();
 
-	hExtraIcon = ExtraIcon_Register("ignore", "IgnoreState", "ignore_full");
+	hExtraIcon = ExtraIcon_Register("ignore", LPGEN("Ignore State"), "ignore_full");
 
 	// Set initial value for all contacts
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
 		applyExtraImage(hContact);
-		hContact = db_find_next(hContact);
-	}
 
 	return 0;
 }
@@ -157,11 +152,11 @@ int onContactSettingChanged(WPARAM wParam,LPARAM lParam)
 	DBCONTACTWRITESETTING *cws = (DBCONTACTWRITESETTING*)lParam;
 	HANDLE hContact = (HANDLE)wParam;
 
-	if ( !lstrcmpA(cws->szModule,"Ignore") && !lstrcmpA(cws->szSetting,"Mask1"))
+	if ( !lstrcmpA(cws->szModule, "Ignore") && !lstrcmpA(cws->szSetting, "Mask1"))
 		applyExtraImage(hContact);
 	else if (hContact == 0) {
-		if (( !lstrcmpA(cws->szModule,MODULENAME) && !lstrcmpA(cws->szSetting,"Filter")) ||
-			(bUseMirandaSettings && !lstrcmpA(cws->szModule,"Ignore") && !lstrcmpA(cws->szSetting,"Default1")))
+		if (( !lstrcmpA(cws->szModule, MODULENAME) && !lstrcmpA(cws->szSetting, "Filter")) ||
+			(bUseMirandaSettings && !lstrcmpA(cws->szModule, "Ignore") && !lstrcmpA(cws->szSetting, "Default1")))
 		{
 			fill_filter();
 		}

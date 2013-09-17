@@ -41,9 +41,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define TM_WINDOWUPDATE             100
 #define TM_STATUSBARUPDATE          200
 
-
-
-
 #define MS_CLUI_SHOWMAINMENU    "CList/ShowMainMenu"
 #define MS_CLUI_SHOWSTATUSMENU  "CList/ShowStatusMenu"
 
@@ -70,7 +67,6 @@ int CListSettings_SetToCache(ClcCacheEntry *pSrc, DWORD flag);
 
 int CLUIServices_LoadModule(void);
 INT_PTR CLUIServices_SortList(WPARAM wParam,LPARAM lParam);
-INT_PTR CLUIServices_ProtocolStatusChanged(WPARAM wParam,LPARAM lParam);
 
 void Docking_GetMonitorRectFromWindow(HWND hWnd,RECT *rc);
 
@@ -97,33 +93,6 @@ HWND StatusBar_Create(HWND parent);
 void RowHeight_InitModernRow();
 
 int UnhookAll();
-
-
-/* External variables */
-
-
-/* Global variables */
-
-
-DWORD   g_dwMainThreadID=0,
-        g_dwAwayMsgThreadID=0,
-        g_dwGetTextAsyncThreadID=0,
-        g_dwSmoothAnimationThreadID=0,
-        g_dwFillFontListThreadID=0;
-        
-HMENU   g_hMenuMain;
-BOOL    g_bTransparentFlag=FALSE;
-
-BOOL    g_mutex_bChangingMode=FALSE,
-        g_mutex_bSizing=FALSE;        
-        
-BOOL    g_flag_bOnModulesLoadedCalled=FALSE;
-
-RECT    g_rcEdgeSizingRect={0};
-
-BOOL (WINAPI *g_proc_SetLayeredWindowAttributes)(HWND,COLORREF,BYTE,DWORD);
-BOOL (WINAPI *g_proc_SetLayeredWindowAttributesNew)(HWND,COLORREF,BYTE,DWORD);
-BOOL (WINAPI *g_proc_AnimateWindow)(HWND hWnd,DWORD dwTime,DWORD dwFlags);
 
 /* Module function prototypes */
 
@@ -153,51 +122,6 @@ typedef struct tagCHECKFILLING
 	RECT rcRect;
 } CHECKFILLING;
 
-/* Module global variables */
-
-static BYTE bAlphaEnd;
-static BYTE bOldHideOffline;
-static BYTE bOldUseGroups;
-
-static WORD wBehindEdgeShowDelay,
-            wBehindEdgeHideDelay,
-            wBehindEdgeBorderSize;
-
-static BOOL mutex_bAnimationInProgress=FALSE,
-            mutex_bShowHideCalledFromAnimation=FALSE,
-            mutex_bIgnoreActivation=FALSE,
-            mutex_bDisableAutoUpdate=TRUE,
-            mutex_bDuringSizing=FALSE,
-            mutex_bDelayedSizing=FALSE;  //TBC is it need?
-            
-static BOOL flag_bFirstTimeCall=FALSE;
-
-static BOOL bTransparentFocus=TRUE,
-            bNeedFixSizingRect=FALSE,
-            bShowEventStarted=FALSE;
-
-static HANDLE hRenameMenuItem,
-              hShowAvatarMenuItem,
-              hHideAvatarMenuItem;
-
-static UINT uMsgGetProfile=0;
-
-static int nLastRequiredHeight=0,
-           nRequiredHeight=0,
-           nMirMenuState=0,
-           nStatusMenuState=0;
- 
-static RECT rcNewWindowRect={0},
-            rcOldWindowRect ={0},
-            rcSizingRect={0},
-            rcCorrectSizeRect={0};
-
-static HANDLE hFrameContactTree;
-
-static PROTOTICKS CycleStartTick[64]={0};//max 64 protocols 
-
-static int nAnimatedIconStep=100;
-
 int CheckFramesPos(RECT *wr);			//cluiframes.c
 int CLUIFrames_ApplyNewSizes(int mode); //cluiframes.c
 int CLUIFrames_GetTotalHeight();		//cluiframes.c
@@ -210,33 +134,3 @@ int InitSkinHotKeys();
 BOOL amWakeThread();
 BOOL gtaWakeThread();
 void CreateViewModeFrame();
-
-HIMAGELIST hAvatarOverlays=NULL;
-
-OVERLAYICONINFO g_pAvatarOverlayIcons[ID_STATUS_OUTTOLUNCH - ID_STATUS_OFFLINE + 1] = 
-{
-	{ "AVATAR_OVERLAY_OFFLINE",		LPGEN("Offline"),		IDI_AVATAR_OVERLAY_OFFLINE,   -1},
-	{ "AVATAR_OVERLAY_ONLINE",		LPGEN("Online"),		IDI_AVATAR_OVERLAY_ONLINE,	  -1},
-	{ "AVATAR_OVERLAY_AWAY",		LPGEN("Away"),			IDI_AVATAR_OVERLAY_AWAY,	  -1},
-	{ "AVATAR_OVERLAY_DND",			LPGEN("DND"),			IDI_AVATAR_OVERLAY_DND,		  -1},
-	{ "AVATAR_OVERLAY_NA",			LPGEN("NA"),			IDI_AVATAR_OVERLAY_NA,	 	  -1},
-	{ "AVATAR_OVERLAY_OCCUPIED",	LPGEN("Occupied"),		IDI_AVATAR_OVERLAY_OCCUPIED,  -1},
-	{ "AVATAR_OVERLAY_CHAT",		LPGEN("Free for chat"), IDI_AVATAR_OVERLAY_CHAT,	  -1},
-	{ "AVATAR_OVERLAY_INVISIBLE",	LPGEN("Invisible"),		IDI_AVATAR_OVERLAY_INVISIBLE, -1},
-	{ "AVATAR_OVERLAY_PHONE",		LPGEN("On the phone"),	IDI_AVATAR_OVERLAY_PHONE,	  -1},
-	{ "AVATAR_OVERLAY_LUNCH",		LPGEN("Out to lunch"),	IDI_AVATAR_OVERLAY_LUNCH,	  -1}
-};
-
-OVERLAYICONINFO g_pStatusOverlayIcons[ID_STATUS_OUTTOLUNCH - ID_STATUS_OFFLINE + 1] = 
-{
-	{ "STATUS_OVERLAY_OFFLINE", LPGEN("Offline"), IDI_STATUS_OVERLAY_OFFLINE, -1},
-	{ "STATUS_OVERLAY_ONLINE", LPGEN("Online"), IDI_STATUS_OVERLAY_ONLINE, -1},
-	{ "STATUS_OVERLAY_AWAY", LPGEN("Away"), IDI_STATUS_OVERLAY_AWAY, -1},
-	{ "STATUS_OVERLAY_DND", LPGEN("DND"), IDI_STATUS_OVERLAY_DND, -1},
-	{ "STATUS_OVERLAY_NA", LPGEN("NA"), IDI_STATUS_OVERLAY_NA, -1},
-	{ "STATUS_OVERLAY_OCCUPIED", LPGEN("Occupied"), IDI_STATUS_OVERLAY_OCCUPIED, -1},
-	{ "STATUS_OVERLAY_CHAT", LPGEN("Free for chat"), IDI_STATUS_OVERLAY_CHAT, -1},
-	{ "STATUS_OVERLAY_INVISIBLE", LPGEN("Invisible"), IDI_STATUS_OVERLAY_INVISIBLE, -1},
-	{ "STATUS_OVERLAY_PHONE", LPGEN("On the phone"), IDI_STATUS_OVERLAY_PHONE, -1},
-	{ "STATUS_OVERLAY_LUNCH", LPGEN("Out to lunch"), IDI_STATUS_OVERLAY_LUNCH, -1}
-};

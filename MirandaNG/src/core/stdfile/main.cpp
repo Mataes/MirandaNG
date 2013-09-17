@@ -2,7 +2,7 @@
 
 Standard file transfers' plugin for Myranda IM
 
-Copyright (C) 2012 George Hazan
+Copyright (C) 2012-13 George Hazan
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -62,8 +62,7 @@ extern "C" int __declspec(dllexport) Load(void)
 {
 	mir_getLP(&pluginInfo);
 	mir_getTMI(&tmi);
-
-	pcli = ( CLIST_INTERFACE* )CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)hInst);
+	mir_getCLI();
 
 	if ( IsWinVer7Plus())
 		CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_ALL, IID_ITaskbarList3, (void**)&pTaskbarInterface);

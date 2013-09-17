@@ -26,8 +26,6 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: translator.cpp 12999 2010-10-22 07:32:53Z silvercircle $
- *
  * handle pretranslated strings
  *
  */
@@ -41,7 +39,6 @@ TOptionListGroup m_lvGroupsModPlus[] = {
 };
 
 TOptionListItem m_lvItemsModPlus[] = {
-	0, LPGENT("Show client icon in status bar (fingerprint plugin required)"), 0, LOI_TYPE_SETTING, (UINT_PTR)"adv_ClientIconInStatusBar", 0,
 	0, LPGENT("Show skinnable tooltip in chat (tipper plugin required)"), 1, LOI_TYPE_SETTING, (UINT_PTR)"adv_TipperTooltip", 0,
 	0, LPGENT("Enable typing sounds"), 1, LOI_TYPE_SETTING, (UINT_PTR)"adv_soundontyping", 0,
 	0, LPGENT("Disable animated GIF avatars (will not affect already open message windows)"), 0, LOI_TYPE_SETTING, (UINT_PTR)"adv_DisableAniAvatars", 0,
@@ -49,6 +46,7 @@ TOptionListItem m_lvItemsModPlus[] = {
 	0, LPGENT("Disable error popups on sending failures"), 0, LOI_TYPE_SETTING, (UINT_PTR)"adv_noErrorPopups", 1,
 	0, LPGENT("Automatic keyboard layout: Do not load the system default for new contacts"), 1, LOI_TYPE_SETTING, (UINT_PTR)"adv_leaveKeyboardAlone", 0,
 	0, LPGENT("Enable unattended send (experimental feature, required for multisend and send later) (*)"), 1, LOI_TYPE_SETTING, (UINT_PTR)"sendLaterAvail", 0,
+	0, LPGENT("Show client description in info panel"), 1, LOI_TYPE_SETTING, (UINT_PTR)"ShowClientDescription", 0,
 	0, NULL, 0, 0, 0, 0
 };
 
@@ -113,29 +111,28 @@ TOptionListItem m_lvItemsMsg[] = {
 	0, LPGENT("Enable \"Paste and send\" feature"), 0, LOI_TYPE_SETTING, (UINT_PTR)"pasteandsend", 1,
 	0, LPGENT("Allow BBCode formatting in outgoing messages"), 0, LOI_TYPE_SETTING, (UINT_PTR)"sendformat", 1,
 	0, LPGENT("Automatically split long messages (experimental, use with care)"), 1, LOI_TYPE_SETTING, (UINT_PTR)"autosplit", 2,
+	0, LPGENT("Log status changes"), 0, LOI_TYPE_SETTING, (UINT_PTR)"logstatuschanges", 2,
+	0, LPGENT("Automatically copy selected text"), 1, LOI_TYPE_SETTING, (UINT_PTR)"autocopy", 2,
 	0, NULL, 0, 0, 0, 0
 };
 
 TOptionListGroup m_lvGroupsLog[] = {
 	0, LPGENT("Message log appearance"),
 	0, LPGENT("Support for external plugins"),
-	0, LPGENT("Other options"),
-	0, LPGENT("Additional events to show"),
 	0, LPGENT("Timestamp settings (note: timstamps also depend on your templates)"),
 	0, LPGENT("Message log icons"),
 	0, NULL
 };
 
 TOptionListItem m_lvItemsLog[] = {
-	0, LPGENT("Show file events"), 1, LOI_TYPE_SETTING, (UINT_PTR)SRMSGSET_SHOWFILES, 3,
-	0, LPGENT("Show timestamps"), 1, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_SHOWTIME, 4,
-	0, LPGENT("Show dates in timestamps"), 1, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_SHOWDATES, 4,
-	0, LPGENT("Show seconds in timestamps"), 1, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_SHOWSECONDS, 4,
-	0, LPGENT("Use contacts local time (if timezone info available)"), 0, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_LOCALTIME, 4,
+	0, LPGENT("Show timestamps"), 1, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_SHOWTIME, 2,
+	0, LPGENT("Show dates in timestamps"), 1, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_SHOWDATES, 2,
+	0, LPGENT("Show seconds in timestamps"), 1, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_SHOWSECONDS, 2,
+	0, LPGENT("Use contacts local time (if timezone info available)"), 0, LOI_TYPE_FLAG, (UINT_PTR)MWF_LOG_LOCALTIME, 2,
 	0, LPGENT("Draw grid lines"), 1, LOI_TYPE_FLAG,  MWF_LOG_GRID, 0,
-	0, LPGENT("Event type icons in the message log"), 1, LOI_TYPE_FLAG, MWF_LOG_SHOWICONS, 5,
-	0, LPGENT("Text symbols as event markers"), 0, LOI_TYPE_FLAG, MWF_LOG_SYMBOLS, 5,
-	0, LPGENT("Use Incoming/Outgoing Icons"), 1, LOI_TYPE_FLAG, MWF_LOG_INOUTICONS, 5,
+	0, LPGENT("Event type icons in the message log"), 1, LOI_TYPE_FLAG, MWF_LOG_SHOWICONS, 3,
+	0, LPGENT("Text symbols as event markers"), 0, LOI_TYPE_FLAG, MWF_LOG_SYMBOLS, 3,
+	0, LPGENT("Use Incoming/Outgoing Icons"), 1, LOI_TYPE_FLAG, MWF_LOG_INOUTICONS, 3,
 	0, LPGENT("Use Message Grouping"), 1, LOI_TYPE_FLAG, MWF_LOG_GROUPMODE, 0,
 	0, LPGENT("Indent message body"), 1, LOI_TYPE_FLAG, MWF_LOG_INDENT, 0,
 	0, LPGENT("Simple text formatting (*bold* etc.)"), 0, LOI_TYPE_FLAG, MWF_LOG_TEXTFORMAT, 0,
@@ -149,8 +146,6 @@ TOptionListItem m_lvItemsLog[] = {
 	0, LPGENT("Underline timestamp/nickname (IEView Compatibility Mode)"), 0, LOI_TYPE_FLAG, MWF_LOG_UNDERLINE, 1,
 	0, LPGENT("Show timestamp after nickname (IEView Compatibility Mode)"), 0, LOI_TYPE_FLAG, MWF_LOG_SWAPNICK, 1,
 //
-	0, LPGENT("Log status changes"), 0, LOI_TYPE_FLAG, MWF_LOG_STATUSCHANGES, 2,
-	0, LPGENT("Automatically copy selected text"), 1, LOI_TYPE_SETTING, (UINT_PTR)"autocopy", 2,
 	0, LPGENT("Use normal templates (uncheck to use simple templates if your template set supports them)"), 1, LOI_TYPE_FLAG, MWF_LOG_NORMALTEMPLATES, 0,
 	0, NULL, 0, 0, 0, 0
 };

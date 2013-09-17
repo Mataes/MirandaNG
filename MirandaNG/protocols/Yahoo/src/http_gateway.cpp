@@ -25,8 +25,6 @@ int YAHOO_httpGatewayInit(HANDLE hConn, NETLIBOPENCONNECTION *nloc, NETLIBHTTPRE
 	nlhpi.cbSize = sizeof(nlhpi);
 	nlhpi.szHttpPostUrl = "http://shttp.msg.yahoo.com/notify/";
 	
-	//CallService( MS_NETLIB_SETPOLLINGTIMEOUT, (WPARAM) hConn, 15 );
-	
 	return CallService(MS_NETLIB_SETHTTPPROXYINFO, (WPARAM)hConn, (LPARAM)&nlhpi);
 }
 
@@ -42,7 +40,7 @@ int YAHOO_httpGatewayWrapSend(HANDLE hConn, PBYTE buf, int len, int flags, MIRAN
 		if (z != NULL) {
 			DebugLog("YAHOO_httpGatewayWrapSend!!! Got Len: %d", n);
 			NETLIBBUFFER tBuf = { ( char* )z, n, flags };
-			ret = pfnNetlibSend(( LPARAM )hConn, (WPARAM) &tBuf );
+			ret = pfnNetlibSend((LPARAM)hConn, (WPARAM) &tBuf );
 			FREE(z);
 		} else {
 			DebugLog("YAHOO_httpGatewayWrapSend!!! GOT NULL???");
@@ -52,7 +50,7 @@ int YAHOO_httpGatewayWrapSend(HANDLE hConn, PBYTE buf, int len, int flags, MIRAN
 	} else {
 		NETLIBBUFFER tBuf = { ( char* )buf, len, flags };
 		
-		return pfnNetlibSend(( LPARAM )hConn, (WPARAM) &tBuf );
+		return pfnNetlibSend((LPARAM)hConn, (WPARAM) &tBuf );
 	}
 }
 

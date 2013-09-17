@@ -1,5 +1,5 @@
 /*
-   Splash Screen Plugin for Miranda-IM (www.miranda-im.org)
+   Splash Screen Plugin for Miranda NG (www.miranda-ng.org)
    (c) 2004-2007 nullbie, (c) 2005-2007 Thief
 
    This program is free software; you can redistribute it and/or modify
@@ -15,12 +15,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-   File name      : $URL: http://svn.miranda.im/mainrepo/splashscreen/trunk/src/main.cpp $
-   Revision       : $Rev: 1586 $
-   Last change on : $Date: 2010-04-09 13:34:01 +0400 (Пт, 09 апр 2010) $
-   Last change by : $Author: Thief $
-
 */
 
 #include "headers.h"
@@ -29,7 +23,6 @@ HINSTANCE hInst = 0;
 
 int hLangpack;
 
-static HMODULE hUserDll = NULL;
 static HMODULE hAdvaimg = NULL;
 
 pfnConvertPng2dib png2dibConvertor = NULL;
@@ -43,16 +36,12 @@ BOOL png2dibavail = true; // can we use png2dib service?
 TCHAR szDllName[MAX_PATH], szSplashFile[MAX_PATH], szSoundFile[MAX_PATH], szhAdvaimgPath[MAX_PATH], szPrefix[128], inBuf[80];
 TCHAR * szMirDir;
 char szVersion[MAX_PATH];
-HANDLE hShowSplashService, hTestService;
 #ifdef _DEBUG
 	TCHAR szLogFile[MAX_PATH];
 #endif
 SPLASHOPTS options;
 HWND hwndSplash;
-BOOL (WINAPI *MyUpdateLayeredWindow)
-   (HWND hwnd, HDC hdcDST, POINT *pptDst, SIZE *psize, HDC hdcSrc, POINT *pptSrc,
-    COLORREF crKey, BLENDFUNCTION *pblend, DWORD dwFlags);
-HANDLE hSplashThread, hModulesLoaded, hPlugDisableHook, hOptInit, hSystemOKToExit;
+HANDLE hSplashThread;
 
 PLUGININFOEX pluginInfo={
 	sizeof(PLUGININFOEX),
@@ -64,10 +53,11 @@ PLUGININFOEX pluginInfo={
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,
-	MIID_SPLASHSCREEN
+	// C64CC8E0-CF03-474A-8B11-8BD4565CCF04
+	{0xc64cc8e0, 0xcf03, 0x474a, {0x8b, 0x11, 0x8b, 0xd4, 0x56, 0x5c, 0xcf, 0x04}}
 };
 
-extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	hInst = hinstDLL;
 	return TRUE;
@@ -83,7 +73,7 @@ void SplashMain()
 		CallService(MS_SYSTEM_GETVERSIONTEXT, MAX_PATH, (LPARAM)szVersion);
 
 		#ifdef _DEBUG
-			mir_sntprintf(szLogFile, SIZEOF(szLogFile), _T("%s\\%s.log"), szMirDir, _T(__INTERNAL_NAME));
+			mir_sntprintf(szLogFile, SIZEOF(szLogFile), _T("%s\\%s.log"), szMirDir, _T(__PLUGIN_NAME));
 			initLog();
 			TCHAR* mirandaVerString = mir_a2t(szVersion);
 			logMessage(_T("Miranda version"), mirandaVerString);
@@ -92,24 +82,11 @@ void SplashMain()
 			logMessage(_T("Advaimg path"), szhAdvaimgPath);
 		#endif
 
-		ReadIniConfig();
+		ReadDbConfig();
 	}
 
 	if (bstartup & (options.active == 1))
 	{
-		if (options.runonce)
-		{
-			DBWriteContactSettingByte(NULL, MODNAME, "Active", 0);
-			DBWriteContactSettingByte(NULL, MODNAME, "DisableAfterStartup", 0);
-		}
-
-		if (hUserDll == NULL)
-		{
-			hUserDll = LoadLibrary(_T("user32.dll"));
-			if (hUserDll)
-				MyUpdateLayeredWindow = (BOOL (WINAPI *)(HWND, HDC, POINT *, SIZE *, HDC, POINT *, COLORREF, BLENDFUNCTION *, DWORD))GetProcAddress(hUserDll, "UpdateLayeredWindow");
-		}
-
 		if (hAdvaimg == NULL)
 		{
 			hAdvaimg = LoadLibrary(szhAdvaimgPath);
@@ -125,8 +102,8 @@ void SplashMain()
 				{
 					FreeLibrary(hAdvaimg); hAdvaimg = NULL;
 					MessageBox(NULL,
-					_T("Your advaimg.dll is either obsolete or damaged. Get latest from Miranda alpha builds."),
-					_T("Error"),
+					TranslateT("Your advaimg.dll is either obsolete or damaged. Get latest from Miranda alpha builds."),
+					TranslateT("Error"),
 					MB_OK | MB_ICONSTOP);
 				}
 				#ifdef _DEBUG
@@ -137,23 +114,22 @@ void SplashMain()
 		}
 
 		//for 9x "alfa" testing
-		//MyUpdateLayeredWindow = 0;
 		DBVARIANT dbv = {0};
-		DBGetContactSettingTString(NULL, MODNAME, "VersionPrefix", &dbv);
+		db_get_ts(NULL, MODNAME, "VersionPrefix", &dbv);
 		if (lstrcmp(dbv.ptszVal, NULL) == 0)
 		{
 			_tcscpy_s(szPrefix, _T(""));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 		else
 			_tcscpy_s(szPrefix, dbv.ptszVal);
 		dbv.ptszVal = NULL;
 
-		DBGetContactSettingTString(NULL, MODNAME, "Path", &dbv);
+		db_get_ts(NULL, MODNAME, "Path", &dbv);
 		if (lstrcmp(dbv.ptszVal, NULL) == 0)
 		{
 			_tcscpy_s(inBuf, _T("splash\\splash.png"));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 		else
 			_tcscpy_s(inBuf, dbv.ptszVal);
@@ -161,34 +137,34 @@ void SplashMain()
 
 		TCHAR szExpandedSplashFile[MAX_PATH];
 		ExpandEnvironmentStrings(inBuf, szExpandedSplashFile, SIZEOF(szExpandedSplashFile));
-		lstrcpy(inBuf, szExpandedSplashFile);
+		_tcscpy_s(inBuf, szExpandedSplashFile);
 
 		TCHAR *pos3 = 0;
 		pos3 = _tcsrchr(inBuf, _T(':'));
 		if (pos3 == NULL)
 			mir_sntprintf(szSplashFile, SIZEOF(szSplashFile), _T("%s\\%s"), szMirDir, inBuf);
 		else
-			lstrcpy(szSplashFile, inBuf);
+			_tcscpy_s(szSplashFile, inBuf);
 
-		DBGetContactSettingTString(NULL, MODNAME, "Sound", &dbv);
+		db_get_ts(NULL, MODNAME, "Sound", &dbv);
 		if (lstrcmp(dbv.ptszVal, NULL) == 0)
 		{
 			_tcscpy_s(inBuf, _T("sounds\\startup.wav"));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 		else
 			_tcscpy_s(inBuf, dbv.ptszVal);
 
 		TCHAR szExpandedSoundFile[MAX_PATH];
 		ExpandEnvironmentStrings(inBuf, szExpandedSoundFile, SIZEOF(szExpandedSoundFile));
-		lstrcpy(inBuf, szExpandedSoundFile);
+		_tcscpy_s(inBuf, szExpandedSoundFile);
 
 		TCHAR *pos2;
 		pos2 = _tcschr(inBuf, _T(':'));
 		if (pos2 == NULL)
 			mir_sntprintf(szSoundFile, SIZEOF(szSoundFile), _T("%s\\%s"), szMirDir, inBuf);
 		else
-			lstrcpy(szSoundFile, inBuf);
+			_tcscpy_s(szSoundFile, inBuf);
 
 		#ifdef _DEBUG
 			logMessage(_T("SoundFilePath"), szSoundFile);
@@ -203,8 +179,8 @@ void SplashMain()
 			TCHAR* p = 0;
 			TCHAR files [255][50]; //TODO: make memory allocation dynamic
 
-			lstrcpy(szSplashDir, szSplashFile);
-			lstrcpy(szOldPath, szSplashFile);
+			_tcscpy_s(szSplashDir, szSplashFile);
+			_tcscpy_s(szOldPath, szSplashFile);
 			// find the last \ and null it out, this leaves no trailing slash
 			p = _tcsrchr(szSplashDir, _T('\\'));
 			if (p) *p = 0;
@@ -261,22 +237,6 @@ void SplashMain()
 	bstartup = false;
 }
 
-int onSystemOKToExit(WPARAM wParam,LPARAM lParam)
-{
-	// Hooked events need to be unhooked
-	UnhookEvent(hModulesLoaded);
-	UnhookEvent(hSystemOKToExit);
-	UnhookEvent(hPlugDisableHook);
-	UnhookEvent(hOptInit);
-
-	DestroyServiceFunction(hShowSplashService);
-	#ifdef _DEBUG
-		DestroyServiceFunction(hTestService);
-	#endif
-
-	return 0;
-}
-
 int PlugDisableHook(WPARAM wParam, LPARAM lParam)
 {
 	#ifdef _DEBUG
@@ -288,7 +248,7 @@ int PlugDisableHook(WPARAM wParam, LPARAM lParam)
 	{
 		if (!lstrcmp(tszModule, _T("Skin")) & !lstrcmp(tszSetting, _T("UseSound")))
 		{
-			DBWriteContactSettingByte(NULL, MODNAME, "PlaySound", cws->value.bVal);
+			db_set_b(NULL, MODNAME, "PlaySound", cws->value.bVal);
 			#ifdef _DEBUG
 				cws->value.bVal ? _DebugPopup(NULL, _T("Sounds enabled."), _T("")) : _DebugPopup(NULL, _T("Sounds disabled."), _T(""));
 				logMessage(_T("Module"), tszModule);
@@ -298,7 +258,7 @@ int PlugDisableHook(WPARAM wParam, LPARAM lParam)
 		}
 		if (!lstrcmp(tszModule, _T("PluginDisable")) & (!lstrcmp(tszSetting, szDllName)))
 		{
-			DBWriteContactSettingByte(NULL, MODNAME, "Active", cws->value.bVal);
+			db_set_b(NULL, MODNAME, "Active", cws->value.bVal);
 			#ifdef _DEBUG
 				cws->value.bVal ? _DebugPopup(NULL, _T("Disabled."), "") : _DebugPopup(NULL, _T("Enabled."), _T(""));
 				logMessage(_T("PlugDisableHook"), _T("Triggered"));
@@ -329,22 +289,21 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	}
 
 	// Options initialize hook
-	hOptInit = HookEvent(ME_OPT_INITIALISE, OptInit);
-
-	hPlugDisableHook = HookEvent(ME_DB_CONTACT_SETTINGCHANGED, PlugDisableHook);
+	HookEvent(ME_OPT_INITIALISE, OptInit);
+	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, PlugDisableHook);
 
 	// Service to call splash
-	hShowSplashService = CreateServiceFunction(MS_SHOWSPLASH, ShowSplashService);
+	CreateServiceFunction(MS_SHOWSPLASH, ShowSplashService);
 
 	#ifdef _DEBUG
-		hTestService = CreateServiceFunction("Splash/Test", TestService);
+		CreateServiceFunction("Splash/Test", TestService);
 
 		CLISTMENUITEM mi = { sizeof(mi) };
 		mi.flags = CMIF_TCHAR;
 		mi.hIcon = LoadSkinnedIcon(SKINICON_OTHER_MIRANDA);
 		mi.hotKey = 0;
 		mi.position = -0x7FFFFFFF;
-		mi.ptszName = _T("Call Splash Service");
+		mi.ptszName = LPGENT("Call Splash Service");
 		mi.pszService = "Splash/Test";
 		Menu_AddMainMenuItem(&mi);
 	#endif
@@ -363,11 +322,9 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 
 extern "C" int __declspec(dllexport) Load(void)
 {
-
 	mir_getLP(&pluginInfo);
 
-	hModulesLoaded = HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
-	hSystemOKToExit = HookEvent(ME_SYSTEM_OKTOEXIT,onSystemOKToExit);
+	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
 
 	SplashMain();
 	mir_free(szMirDir);
@@ -377,13 +334,14 @@ extern "C" int __declspec(dllexport) Load(void)
 
 extern "C" int __declspec(dllexport) Unload(void)
 {
-	if (hSplashThread) CloseHandle(hSplashThread);
+	if (hSplashThread)
+		CloseHandle(hSplashThread);
 
 	UnregisterClass(_T(SPLASH_CLASS), hInst);
 
 	// Freeing loaded libraries
-	if (hUserDll) FreeLibrary(hUserDll);
-	if (hAdvaimg) FreeLibrary(hAdvaimg);
+	if (hAdvaimg)
+		FreeLibrary(hAdvaimg);
 
 	#ifdef _DEBUG
 		logMessage(_T("Unload"), _T("Job done"));

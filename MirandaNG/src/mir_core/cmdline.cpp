@@ -2,7 +2,7 @@
 
 Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2012 Miranda NG project,
+Copyright (C) 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -79,6 +79,9 @@ MIR_CORE_DLL(void) CmdLine_Parse(LPTSTR ptszCmdLine)
 
 		p--; // the cycle will wipe this space automatically
 	}
+
+	if ( CmdLine_GetOption( _T("debug")))
+		g_bDebugMode = true;
 }
 
 MIR_CORE_DLL(LPCTSTR) CmdLine_GetOption(const TCHAR* ptszParameter)

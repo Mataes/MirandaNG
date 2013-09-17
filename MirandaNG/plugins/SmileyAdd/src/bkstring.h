@@ -16,14 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#pragma once 
-
-#include <tchar.h>
-#include <string.h>
-
-#ifndef min
-#define min(A, B) ((A) < (B) ? (A) : (B)) 
-#endif
 
 class bkstring
 {
@@ -33,11 +25,7 @@ public:
 	typedef value_type* iterator;
 	typedef const value_type* const_iterator;
 
-#if defined(_MSC_VER) && (_MSC_VER <= 1200)
-	enum { npos = -1 };
-#else
 	static const size_type npos = size_type(-1);
-#endif
 
 private:
 	value_type* buf;
@@ -167,7 +155,7 @@ public:
 	bkstring& operator += (const value_type _Ch)
 	{ return append(1, _Ch); }
 
-	value_type& operator[] (int ind) const
+	value_type& operator[] (size_t ind) const
 	{ return buf[ind]; }
 
 	friend bkstring operator+ (const bkstring& _Str1, const bkstring& _Str2)

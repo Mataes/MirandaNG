@@ -5,8 +5,6 @@
  */
 
 #include "..\yamn.h"
-#include "m_netlib.h"
-#include "netlib.h"
 
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
@@ -14,16 +12,13 @@
 BOOL SSLLoaded=FALSE;
 HANDLE hNetlibUser=NULL;
 
-extern PVOID TLSCtx;
-extern PVOID SSLCtx;
-
 void __stdcall	SSL_DebugLog(const char *fmt, ...)
 {
-	char		str[ 4096 ];
+	char str[4096];
 	va_list	vararg;
 
 	va_start( vararg, fmt );
-	int tBytes = _vsnprintf( str, sizeof(str)-1, fmt, vararg );
+	int tBytes = mir_vsnprintf(str, SIZEOF(str), fmt, vararg);
 	if ( tBytes == 0 )
 		return;
 
@@ -41,7 +36,7 @@ HANDLE RegisterNLClient(const char *name)
 	static NETLIBUSER nlu={0};
 	char desc[128];
 
-	sprintf(desc, Translate("%s connection"),name);
+	mir_snprintf(desc, SIZEOF(desc), Translate("%s connection"), name);
 
 #ifdef DEBUG_COMM
 	DebugLog(CommFile,"<Register PROXY support>");
@@ -62,7 +57,7 @@ HANDLE RegisterNLClient(const char *name)
 }
 
 //Move connection to SSL
-void CNLClient::SSLify() throw(DWORD){
+void CNLClient::SSLify() throw(DWORD) {
 #ifdef DEBUG_COMM
 	SSL_DebugLog("Staring SSL...");
 #endif
@@ -151,7 +146,7 @@ void CNLClient::Send(const char *query) throw(DWORD)
 #endif
 	try
 	{
-		if ((SOCKET_ERROR==(Sent=LocalNetlib_Send(hConnection,query,(int)strlen(query),MSG_DUMPASTEXT))) || Sent!=(unsigned int)strlen(query))
+		if ((SOCKET_ERROR==(Sent=LocalNetlib_Send(hConnection,query,(int)strlen(query),MSG_DUMPASTEXT))) || Sent != (unsigned int)strlen(query))
 		{
 			SystemError=WSAGetLastError();
 			throw NetworkError=(DWORD)ENL_SEND;

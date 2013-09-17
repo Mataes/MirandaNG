@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by jabber.rc
+// Used by C:\Users\xx\Documents\Visual Studio 2010\Projects\miranda-ng\protocols\JabberG\res\jabber.rc
 //
 #define IDD_OPT_JABBER                  101
 #define IDI_JABBER                      102
@@ -8,7 +8,6 @@
 #define IDD_OPT_REGISTER                105
 #define IDD_AGENTS                      106
 #define IDD_FORM                        107
-#define IDI_ADDROSTER                   108
 #define IDI_USER2ROOM                   109
 #define IDI_REFRESH                     110
 #define IDD_PASSWORD                    111
@@ -28,9 +27,7 @@
 #define IDD_CHANGEPASSWORD              136
 #define IDD_SEARCHUSER                  138
 #define IDD_OPT_JABBER2                 140
-#define IDI_REQUEST                     141
 #define IDD_GROUPCHAT                   141
-#define IDI_GRANT                       142
 #define IDI_KEYS                        144
 #define IDI_GROUP                       147
 #define IDD_GROUPCHAT_JOIN              148
@@ -44,7 +41,6 @@
 #define IDD_GROUPCHAT_INVITE_ACCEPT     184
 #define IDD_OPT_JABBER3                 185
 #define IDI_LOGIN                       186
-#define IDI_AUTHREVOKE                  187
 #define IDI_COMMAND                     188
 #define IDI_DISCO_OK                    190
 #define IDI_DISCO_FAIL                  191
@@ -319,6 +315,7 @@
 #define IDC_HEADERBAR                   1320
 #define IDC_USEDOMAINLOGIN              1323
 #define IDC_TXT_ALTNICK                 1323
+#define IDC_SAVE_PERM                   1324
 #define IDI_BOOKMARKS                   3000
 #define IDD_BOOKMARKS                   3001
 #define IDC_BM_LIST                     3002
@@ -352,7 +349,7 @@
 #define _APS_NO_MFC                     1
 #define _APS_NEXT_RESOURCE_VALUE        235
 #define _APS_NEXT_COMMAND_VALUE         40017
-#define _APS_NEXT_CONTROL_VALUE         1324
+#define _APS_NEXT_CONTROL_VALUE         1325
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

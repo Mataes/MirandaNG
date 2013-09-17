@@ -96,10 +96,10 @@ void TopButtonInt::LoadSettings()
 		AS(buf2, "Launch", buf1);
 
 		mir_free(pszName);
-		pszName = DBGetString(0, TTB_OPTDIR, AS(buf, buf2, "_name"));
+		pszName = db_get_sa(0, TTB_OPTDIR, AS(buf, buf2, "_name"));
 		
 		mir_free(ptszProgram);
-		ptszProgram = DBGetStringT(0, TTB_OPTDIR, AS(buf, buf2, "_lpath"));
+		ptszProgram = db_get_tsa(0, TTB_OPTDIR, AS(buf, buf2, "_lpath"));
 
 		arrangedpos = db_get_b(0, TTB_OPTDIR, AS(buf, buf2, "_Position"), Buttons.getCount());
 		if ( db_get_b(0, TTB_OPTDIR, AS(buf, buf2, "_Visible"), oldv) > 0 )
@@ -134,8 +134,8 @@ void TopButtonInt::SaveSettings(int *SepCnt, int *LaunchCnt)
 		char buf2[20];
 		AS(buf2, "Launch", buf1);
 
-		DBWriteContactSettingString(0, TTB_OPTDIR, AS(buf, buf2, "_name"), pszName);
-		DBWriteContactSettingTString(0, TTB_OPTDIR, AS(buf, buf2, "_lpath"), ptszProgram);
+		db_set_s(0, TTB_OPTDIR, AS(buf, buf2, "_name"), pszName);
+		db_set_ts(0, TTB_OPTDIR, AS(buf, buf2, "_lpath"), ptszProgram);
 		db_set_b(0, TTB_OPTDIR, AS(buf, buf2, "_Position"), arrangedpos);
 		db_set_b(0, TTB_OPTDIR, AS(buf, buf2, "_Visible"), isVisible());
 	}

@@ -31,7 +31,7 @@ CLIST_INTERFACE *pcli;
 int hLangpack;
 HINSTANCE g_hInst;
 
-static LIST<CSWindow> arWindows(3, LIST<CSWindow>::FTSortFunc(HandleKeySort));
+static LIST<CSWindow> arWindows(3, HandleKeySortT);
 
 PLUGININFOEX pluginInfoEx =
 {
@@ -45,7 +45,7 @@ PLUGININFOEX pluginInfoEx =
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {C8CC7414-6507-4AF6-925A-83C1D2F7BE8C}
-	{ 0xc8cc7414, 0x6507, 0x4af6, { 0x92, 0x5a, 0x83, 0xc1, 0xd2, 0xf7, 0xbe, 0x8c } }
+	{0xc8cc7414, 0x6507, 0x4af6, {0x92, 0x5a, 0x83, 0xc1, 0xd2, 0xf7, 0xbe, 0x8c}}
 };
 
 // ====[ MAIN ]===============================================================
@@ -100,12 +100,9 @@ static int OnCreateMenuItems(WPARAM, LPARAM)
 	PROTOACCOUNT** pdesc;
 	ProtoEnumAccounts(&protoCount, &pdesc);
 
-	for (int i = 0; i < protoCount; i++) {
-		char szService[100];
-		mir_snprintf(szService, SIZEOF(szService), "%s%s", pdesc[i]->szModuleName, PS_SETCUSTOMSTATUSEX);
-		if ( ServiceExists(szService))
+	for (int i = 0; i < protoCount; i++)
+		if ( ProtoServiceExists(pdesc[i]->szModuleName, PS_SETCUSTOMSTATUSEX))
 			addProtoStatusMenuItem(pdesc[i]->szModuleName);
-	}
 
 	return 0;
 }
@@ -120,7 +117,7 @@ static int OnPreshutdown(WPARAM wparam, LPARAM lparam)
 extern "C" __declspec(dllexport) int Load()
 {
 	mir_getLP(&pluginInfoEx);
-	pcli = ( CLIST_INTERFACE* )CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, 0);
+	mir_getCLI();
 	
 	// support for ComboBoxEx
 	INITCOMMONCONTROLSEX icc;
@@ -140,7 +137,7 @@ extern "C" __declspec(dllexport) int Load()
 
 	for (int i=0; i < SIZEOF(forms); i++) {
 		char szSettingName[64];
-		mir_snprintf(szSettingName, SIZEOF(szSettingName), "%s_%s", __INTERNAL_NAME, forms[i].pszIconIcoLib);
+		mir_snprintf(szSettingName, SIZEOF(szSettingName), "%s_%s", MODNAME, forms[i].pszIconIcoLib);
 
 		sid.pszName = szSettingName;
 		sid.ptszDescription = forms[i].ptszDescr;
@@ -189,9 +186,7 @@ void SetStatus(WORD code, StatusItem* item,  char *szAccName)
 	if (pdescr == NULL)
 		return;
 
-	char szService[100];
-	mir_snprintf(szService, SIZEOF(szService), "%s%s", szAccName, PS_SETCUSTOMSTATUSEX);
-	if ( !ServiceExists(szService))
+	if ( !ProtoServiceExists(szAccName, PS_SETCUSTOMSTATUSEX))
 		return;
 
 	int statusToSet;
@@ -212,7 +207,7 @@ void SetStatus(WORD code, StatusItem* item,  char *szAccName)
 	else return;
 
 	ics.status = &statusToSet;
-	CallService(szService, 0, (LPARAM)&ics);
+	ProtoCallService(szAccName, PS_SETCUSTOMSTATUSEX, 0, (LPARAM)&ics);
 }
 
 INT_PTR showList(WPARAM wparam, LPARAM lparam, LPARAM param)
@@ -247,7 +242,7 @@ void addProtoStatusMenuItem(char *protoName)
 		CreateServiceFunctionParam(buf, showList, (LPARAM)protoName);
 
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_CHILDPOPUP | CMIF_TCHAR | CMIF_ICONFROMICOLIB;
+	mi.flags = CMIF_CHILDPOPUP | CMIF_TCHAR;
 	mi.icolibItem = forms[0].hIcoLibItem;
 	mi.ptszName = _T(MODULENAME);
 	mi.position = 2000040000;
@@ -270,14 +265,14 @@ void importCustomStatuses(CSWindow* csw, int result)
 		si->m_iIcon = i-1;
 
 		mir_snprintf(bufTitle, 32, "XStatus%dName", i);
-		if ( !DBGetContactSettingTString( NULL, protoName, bufTitle, &dbv )) {
+		if ( !db_get_ts( NULL, protoName, bufTitle, &dbv )) {
 			lstrcpy(si->m_tszTitle, dbv.ptszVal);
 			db_free(&dbv);
 		}
 		else si->m_tszTitle[0] = 0;
 
 		mir_snprintf(bufMessage, 32, "XStatus%dMsg", i);
-		if ( !DBGetContactSettingTString( NULL, protoName, bufMessage, &dbv )) {
+		if ( !db_get_ts( NULL, protoName, bufMessage, &dbv )) {
 			lstrcpy(si->m_tszMessage, dbv.ptszVal);
 			db_free(&dbv);
 		}
@@ -310,6 +305,15 @@ CSWindow::CSWindow(char *protoName)
 	m_addModifyDlg = NULL;
 	m_bSomethingChanged = FALSE;
 	m_filterString = NULL;
+}
+
+void __fastcall SAFE_FREE(void** p)
+{
+	if (*p)
+	{
+		free(*p);
+		*p = NULL;
+	}
 }
 
 CSWindow::~CSWindow()
@@ -372,8 +376,8 @@ void CSWindow::initButtons()
 
 void CSWindow::loadWindowPosition()
 {
-	if ( getByte( "RememberWindowPosition", DEFAULT_REMEMBER_WINDOW_POSITION ))
-		Utils_RestoreWindowPosition(m_handle,NULL,__INTERNAL_NAME,"Position");
+	if (getByte("RememberWindowPosition", DEFAULT_REMEMBER_WINDOW_POSITION))
+		Utils_RestoreWindowPosition(m_handle, NULL, MODNAME, "Position");
 }
 
 void CSWindow::toggleEmptyListMessage()

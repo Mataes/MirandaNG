@@ -68,7 +68,6 @@ uses
   hpp_richedit in 'hpp_richedit.pas',
   hpp_olesmileys in 'hpp_olesmileys.pas',
   HistoryControls in 'HistoryControls.pas',
-  Base64 in 'Base64.pas',
   Checksum in 'Checksum.pas',
   hpp_JclSysUtils in 'hpp_JclSysUtils.pas',
   hpp_puny in 'hpp_puny.pas';
@@ -149,14 +148,13 @@ begin
 end;
 
 var
-  PluginInterfaces: array[0..2] of TGUID;
+  PluginInterfaces: array[0..1] of TGUID;
 
 // tell Miranda about supported interfaces
 function MirandaPluginInterfaces:PMUUID; cdecl;
 begin
   PluginInterfaces[0]:=MIID_UIHISTORY;
-  PluginInterfaces[1]:=MIID_LOGWINDOW;
-  PluginInterfaces[2]:=MIID_LAST;
+  PluginInterfaces[1]:=MIID_LAST;
   Result := @PluginInterfaces;
 end;
 
@@ -497,7 +495,7 @@ var
   res: Integer;
 begin
   Result := 0;
-  count := CallService(MS_DB_EVENT_GETCOUNT, awParam, 0);
+  count := db_event_count(THandle(awParam));
   if (PrevShowHistoryCount xor ShowHistoryCount) or (count <> MenuCount) then
   begin
     ZeroMemory(@menuitem, SizeOf(menuItem));
@@ -574,6 +572,7 @@ exports
   Unload;
 
 begin
+  DisableThreadLibraryCalls(hInstance);
 
   // decreasing ref count to oleaut32.dll as said
   // in plugins doc

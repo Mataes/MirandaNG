@@ -29,6 +29,8 @@ LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 IDI_MENU                ICON                    "menu.ico"
 IDI_OK                  ICON                    "btnOk.ico"
 IDI_CANCEL              ICON                    "btnClose.ico"
+IDI_INFO                ICON                    "info.ico"
+IDI_PLGLIST             ICON                    "PlgList.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -40,14 +42,14 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_SETFOREGROUND | DS_FIXEDSYS | DS_CENTER | 
 CAPTION "Updates found!"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    CTEXT           "PluginUpdater has detected updated versions of some Miranda components. Click on Details button to view more information",IDC_UPDATETEXT,9,9,223,22
+    CTEXT           "PluginUpdater has detected updated versions of some Miranda components. Click on Details button to view more information.",IDC_UPDATETEXT,9,7,223,24
     DEFPUSHBUTTON   "Update",IDOK,32,36,50,14
     PUSHBUTTON      "Details >>",IDC_DETAILS,95,36,50,14,NOT WS_TABSTOP
     PUSHBUTTON      "Cancel",IDCANCEL,157,36,50,14
     CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDHORZ,1,58,236,1
     CONTROL         "",IDC_LIST_UPDATES,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,6,64,229,149
-    PUSHBUTTON      "Select &all",IDC_SELALL,129,218,50,14,NOT WS_TABSTOP
-    PUSHBUTTON      "Select &none",IDC_SELNONE,185,218,50,14,NOT WS_TABSTOP
+    PUSHBUTTON      "Select &all",IDC_SELALL,109,218,60,14,NOT WS_TABSTOP
+    PUSHBUTTON      "Select &none",IDC_SELNONE,175,218,60,14,NOT WS_TABSTOP
 END
 
 IDD_POPUPDUMMI DIALOGEX 65526, 65526, 1, 1
@@ -56,7 +58,7 @@ FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
 END
 
-IDD_OPT_UPDATENOTIFY DIALOGEX 0, 0, 261, 181
+IDD_OPT_UPDATENOTIFY DIALOGEX 0, 0, 261, 197
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
@@ -64,19 +66,20 @@ BEGIN
     GROUPBOX        "Hotkey",IDC_STATIC,2,0,253,26
     CONTROL         "Go to Customize -> Hotkeys to change the hotkey",IDC_LINK_HOTKEY,
                     "Hyperlink",WS_TABSTOP,9,11,199,10
-    GROUPBOX        "Plugin updates options",IDC_STATIC,1,29,253,61
-    CONTROL         "On startup",IDC_UPDATEONSTARTUP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,44,52,10
+    GROUPBOX        "Plugin updates options",IDC_STATIC,1,29,253,48
+    CONTROL         "On startup",IDC_UPDATEONSTARTUP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,44,73,10
     CONTROL         "(but only once a day)",IDC_ONLYONCEADAY,"Button",BS_AUTOCHECKBOX | WS_DISABLED | WS_TABSTOP,92,44,161,10
     CONTROL         "Every",IDC_UPDATEONPERIOD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,58,52,10
     EDITTEXT        IDC_PERIOD,65,56,28,14,ES_AUTOHSCROLL | ES_NUMBER | WS_DISABLED
     CONTROL         "",IDC_PERIODSPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | WS_DISABLED,92,56,10,15
     COMBOBOX        IDC_PERIODMEASURE,114,56,58,30,CBS_DROPDOWNLIST | CBS_SORT | WS_DISABLED | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Update icons",IDC_UPDATEICONS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,72,198,10
-    GROUPBOX        "Files source",IDC_STATIC,1,93,253,82
-    CONTROL         "Stable version",IDC_STABLE,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,11,106,236,10
-    CONTROL         "Development version (less stable)",IDC_TRUNK,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,11,121,236,10
-    CONTROL         "Custom version",IDC_CUSTOM,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,11,136,236,10
-    EDITTEXT        IDC_CUSTOMURL,11,150,234,16,ES_AUTOHSCROLL | WS_TABSTOP
+    GROUPBOX        "Files source",IDC_STATIC,1,80,253,96
+    CONTROL         "Stable version",IDC_STABLE,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,11,93,236,10
+    CONTROL         "Development version (less stable)",IDC_TRUNK,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,11,108,236,10
+    CONTROL         "Development version with debug symbols",IDC_TRUNK_SYMBOLS,
+                    "Button",BS_AUTORADIOBUTTON | WS_TABSTOP,11,123,236,10
+    CONTROL         "Custom version",IDC_CUSTOM,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,11,138,236,10
+    EDITTEXT        IDC_CUSTOMURL,11,152,234,16,ES_AUTOHSCROLL
 END
 
 IDD_POPUP DIALOGEX 0, 0, 316, 182
@@ -122,7 +125,20 @@ BEGIN
     CONTROL         "",IDC_INFO_MESSAGES_MSG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,153,45,8,10
     CONTROL         "",IDC_PROGR_DLG_MSG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,153,59,8,10
     CTEXT           "Boxes",IDC_STATIC,146,8,23,8
-    CTEXT           "PopUps",IDC_STATIC,7,9,79,8
+    CTEXT           "Popups",IDC_STATIC,7,9,79,8
+END
+
+IDD_LIST DIALOGEX 0, 0, 240, 236
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+EXSTYLE WS_EX_CONTROLPARENT
+CAPTION "Component list"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CTEXT           "Here is the complete list of missing Miranda NG components. Check components that you want to download.\n\nClick on info icon to view component info page.",IDC_UPDATETEXT,9,9,223,44
+    DEFPUSHBUTTON   "Download",IDOK,175,218,60,14
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDHORZ,1,58,236,1
+    CONTROL         "",IDC_LIST_UPDATES,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,6,64,229,149
+    PUSHBUTTON      "Select &none",IDC_SELNONE,109,218,60,14,NOT WS_TABSTOP
 END
 
 
@@ -132,18 +148,18 @@ END
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE
+1 TEXTINCLUDE 
 BEGIN
     "..\\src\\resource.h\0"
 END
 
-2 TEXTINCLUDE
+2 TEXTINCLUDE 
 BEGIN
     "#include ""afxres.h""\r\n"
     "\0"
 END
 
-3 TEXTINCLUDE
+3 TEXTINCLUDE 
 BEGIN
     "\r\n"
     "\0"
@@ -165,17 +181,17 @@ BEGIN
         BOTTOMMARGIN, 234
     END
 
-    IDD_POPUPDUMMI, DIALOG
-    BEGIN
-    END
-
     IDD_OPT_UPDATENOTIFY, DIALOG
     BEGIN
-        BOTTOMMARGIN, 180
+        BOTTOMMARGIN, 196
     END
 
-    IDD_POPUP, DIALOG
+    IDD_LIST, DIALOG
     BEGIN
+        VERTGUIDE, 6
+        VERTGUIDE, 235
+        BOTTOMMARGIN, 234
+        HORZGUIDE, 232
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -194,3 +210,4 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
+

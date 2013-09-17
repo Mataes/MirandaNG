@@ -28,28 +28,19 @@ UPDATELIST *UpdateListTail = NULL;
 VOID CALLBACK timerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	// only run if it is not current updating and the auto update option is enabled
-	if (!ThreadRunning && !Miranda_Terminated())
-	{
+	if (!ThreadRunning && !Miranda_Terminated()) {
 		BOOL HaveUpdates = FALSE;
-		HANDLE hContact = db_find_first();
-		while (hContact != NULL) 
-		{
-			if(IsMyContact(hContact)) 
-			{
-				if (DBGetContactSettingDword(hContact, MODULE, "UpdateTime", 60))
-				{
-					double diff = difftime(time(NULL), DBGetContactSettingDword(hContact, MODULE, "LastCheck", 0));
-					if (diff >= DBGetContactSettingDword(hContact, MODULE, "UpdateTime", 60) * 60)
-					{
-						UpdateListAdd(hContact);
-						HaveUpdates = TRUE;
-					}
+		for (HANDLE hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
+			if (db_get_dw(hContact, MODULE, "UpdateTime", DEFAULT_UPDATE_TIME)) {
+				double diff = difftime(time(NULL), db_get_dw(hContact, MODULE, "LastCheck", 0));
+				if (db_get_b(NULL, MODULE, "AutoUpdate", 1) != 0 && diff >= db_get_dw(hContact, MODULE, "UpdateTime", DEFAULT_UPDATE_TIME) * 60) {
+					UpdateListAdd(hContact);
+					HaveUpdates = TRUE;
 				}
 			}
-			hContact = db_find_next(hContact);
 		}
 		if (!ThreadRunning && HaveUpdates)
-			mir_forkthread(UpdateThreadProc, NULL);
+			mir_forkthread(UpdateThreadProc, (LPVOID)FALSE);
 	}
 }
 
@@ -60,45 +51,43 @@ VOID CALLBACK timerProc2(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 	KillTimer(NULL, timerId);
 	ThreadRunning = FALSE;
 
-	if (!Miranda_Terminated())
-	{
-		CheckAllFeeds(0, 1);
+	if (db_get_b(NULL, MODULE, "AutoUpdate", 1) && !Miranda_Terminated()) {
+		if (db_get_b(NULL, MODULE, "StartupRetrieve", 1))
+			CheckAllFeeds(0, 1);
 		timerId = SetTimer(NULL, 0, 30000, (TIMERPROC)timerProc);
 	}
 }
 
 void UpdateListAdd(HANDLE hContact)
 {
-	UPDATELIST *newItem;
-
-	newItem = (UPDATELIST*)mir_alloc(sizeof(UPDATELIST));
+	UPDATELIST *newItem = (UPDATELIST*)mir_alloc(sizeof(UPDATELIST));
 	newItem->hContact = hContact;
 	newItem->next = NULL;
 
 	WaitForSingleObject(hUpdateMutex, INFINITE);
 
-	if (UpdateListTail == NULL) UpdateListHead = newItem;
+	if (UpdateListTail == NULL)
+		UpdateListHead = newItem;
 	else UpdateListTail->next = newItem;
 	UpdateListTail = newItem;
 
 	ReleaseMutex(hUpdateMutex);
 }
 
-HANDLE UpdateGetFirst() 
+HANDLE UpdateGetFirst()
 {
 	HANDLE hContact = NULL;
 
 	WaitForSingleObject(hUpdateMutex, INFINITE);
 
-	if (UpdateListHead != NULL) 
-	{
-		UPDATELIST* Item = UpdateListHead; 
-
+	if (UpdateListHead != NULL) {
+		UPDATELIST* Item = UpdateListHead;
 		hContact = Item->hContact;
 		UpdateListHead = Item->next;
 		mir_free(Item);
 
-		if (UpdateListHead == NULL) UpdateListTail = NULL; 
+		if (UpdateListHead == NULL)
+			UpdateListTail = NULL;
 	}
 
 	ReleaseMutex(hUpdateMutex);
@@ -106,17 +95,13 @@ HANDLE UpdateGetFirst()
 	return hContact;
 }
 
-void DestroyUpdateList(void) 
+void DestroyUpdateList(void)
 {
-	UPDATELIST *temp;
-
 	WaitForSingleObject(hUpdateMutex, INFINITE);
 
-	temp = UpdateListHead;
-
 	// free the list one by one
-	while (temp != NULL) 
-	{
+	UPDATELIST *temp = UpdateListHead;
+	while (temp != NULL) {
 		UpdateListHead = temp->next;
 		mir_free(temp);
 		temp = UpdateListHead;
@@ -127,20 +112,22 @@ void DestroyUpdateList(void)
 	ReleaseMutex(hUpdateMutex);
 }
 
-void UpdateThreadProc(LPVOID hWnd)
+void UpdateThreadProc(LPVOID AvatarCheck)
 {
 	WaitForSingleObject(hUpdateMutex, INFINITE);
-	if (ThreadRunning)
-	{
+	if (ThreadRunning) {
 		ReleaseMutex(hUpdateMutex);
 		return;
 	}
 	ThreadRunning = TRUE;	// prevent 2 instance of this thread running
 	ReleaseMutex(hUpdateMutex);
 
-	// update weather by getting the first station from the queue until the queue is empty
-	while (UpdateListHead != NULL && !Miranda_Terminated())	
-		CheckCurrentFeed(UpdateGetFirst());
+	// update news by getting the first station from the queue until the queue is empty
+	while (UpdateListHead != NULL && !Miranda_Terminated())
+		if ((BOOL)AvatarCheck)
+			CheckCurrentFeedAvatar(UpdateGetFirst());
+		else
+			CheckCurrentFeed(UpdateGetFirst());
 
 	// exit the update thread
 	ThreadRunning = FALSE;

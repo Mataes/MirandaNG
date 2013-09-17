@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -93,27 +93,33 @@ static LIST<THREAD_WAIT_ENTRY> threads(10, NumericKeySortT);
 
 struct FORK_ARG {
 	HANDLE hEvent;
-	pThreadFunc threadcode;
-	pThreadFuncEx threadcodeex;
+	union {
+		pThreadFunc threadcode;
+		pThreadFuncEx threadcodeex;
+	};
 	void *arg, *owner;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // forkthread - starts a new thread
 
-void __cdecl forkthread_r(void * arg)
+void __cdecl forkthread_r(void *arg)
 {
-	struct FORK_ARG * fa = (struct FORK_ARG *) arg;
-	void (*callercode)(void*)=fa->threadcode;
-	void * cookie=fa->arg;
-	Thread_Push(( HINSTANCE)callercode);
+	FORK_ARG *fa = (FORK_ARG*)arg;
+	pThreadFunc callercode = fa->threadcode;
+	void *cookie = fa->arg;
+	Thread_Push((HINSTANCE)callercode);
 	SetEvent(fa->hEvent);
-	__try
-	{
+	if (g_bDebugMode)
 		callercode(cookie);
-	}
-	__except(pMirandaExceptFilter(GetExceptionCode(), GetExceptionInformation()))
-	{
+	else {
+		__try
+		{
+			callercode(cookie);
+		}
+		__except(pMirandaExceptFilter(GetExceptionCode(), GetExceptionInformation()))
+		{
+		}
 	}
 
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
@@ -122,12 +128,11 @@ void __cdecl forkthread_r(void * arg)
 
 MIR_CORE_DLL(UINT_PTR) forkthread( void (__cdecl *threadcode)(void*), unsigned long stacksize, void *arg)
 {
-	UINT_PTR rc;
-	struct FORK_ARG fa;
-	fa.hEvent=CreateEvent(NULL, FALSE, FALSE, NULL);
-	fa.threadcode=threadcode;
-	fa.arg=arg;
-	rc=_beginthread(forkthread_r, stacksize, &fa);
+	FORK_ARG fa;
+	fa.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	fa.threadcode = threadcode;
+	fa.arg = arg;
+	UINT_PTR rc = _beginthread(forkthread_r, stacksize, &fa);
 	if ((UINT_PTR)-1L != rc)
 		WaitForSingleObject(fa.hEvent, INFINITE);
 
@@ -149,15 +154,23 @@ unsigned __stdcall forkthreadex_r(void * arg)
 
 	Thread_Push((HINSTANCE)threadcode, fa->owner);
 	SetEvent(fa->hEvent);
-	__try
-	{
+	if (g_bDebugMode) {
 		if (owner)
 			rc = threadcodeex(owner, cookie);
 		else
 			rc = threadcode(cookie);
 	}
-	__except(pMirandaExceptFilter(GetExceptionCode(), GetExceptionInformation()))
-	{
+	else {
+		__try
+		{
+			if (owner)
+				rc = threadcodeex(owner, cookie);
+			else
+				rc = threadcode(cookie);
+		}
+		__except(pMirandaExceptFilter(GetExceptionCode(), GetExceptionInformation()))
+		{
+		}
 	}
 
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
@@ -173,13 +186,12 @@ MIR_CORE_DLL(UINT_PTR) forkthreadex(
 	void *arg,
 	unsigned *thraddr)
 {
-	UINT_PTR rc;
 	struct FORK_ARG fa = { 0 };
 	fa.threadcodeex = threadcode;
 	fa.arg = arg;
 	fa.owner = owner;
-	fa.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	rc = _beginthreadex(sec, stacksize, forkthreadex_r, (void *)&fa, 0, thraddr);
+	fa.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	UINT_PTR rc = _beginthreadex(sec, stacksize, forkthreadex_r, (void *)&fa, 0, thraddr);
 	if (rc)
 		WaitForSingleObject(fa.hEvent, INFINITE);
 
@@ -231,7 +243,7 @@ static void CALLBACK KillAllThreads(HWND, UINT, UINT_PTR, DWORD)
 {
 	if ( MirandaWaitForMutex(hStackMutex)) {
 		for (int j=0; j < threads.getCount(); j++) {
-			THREAD_WAIT_ENTRY* p = threads[j];
+			THREAD_WAIT_ENTRY *p = threads[j];
 			char szModuleName[ MAX_PATH ];
 			GetModuleFileNameA(p->hOwner, szModuleName, sizeof(szModuleName));
 			TerminateThread(p->hThread, 9999);

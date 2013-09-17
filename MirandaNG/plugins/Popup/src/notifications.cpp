@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/notifications.cpp $
-Revision       : $Revision: 1610 $
-Last change on : $Date: 2010-06-23 00:55:13 +0300 (Ср, 23 июн 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #include "headers.h"
@@ -80,106 +71,100 @@ void LoadNotifications()
 	g_hntfError = RegisterNotification(&notification);
 }
 
+void FreePopupClass(POPUPTREEDATA *ptd)
+{
+	if (ptd->typ == 2) {
+		mir_free(ptd->pupClass.pszName);
+		mir_free(ptd->pupClass.pszDescription);
+	}
+	mir_free(ptd->pszTreeRoot);
+	mir_free(ptd->pszDescription);
+	mir_free(ptd);
+}
+
 void UnloadTreeData()
 {
-	for (int i=0; i < gTreeData.getCount(); ++i) {
-		if(gTreeData[i]->typ == 2) {
-			mir_free(gTreeData[i]->pupClass.pszName);
-			mir_free(gTreeData[i]->pupClass.pszDescription);
-		}
-		mir_free(gTreeData[i]->pszTreeRoot);
-		mir_free(gTreeData[i]->pszDescription);
-	}
+	for (int i=0; i < gTreeData.getCount(); ++i)
+		FreePopupClass(gTreeData[i]);
 	gTreeData.destroy();
 }
 
 void SaveNotificationSettings(POPUPTREEDATA *ptd, char* szModul)
 {
-	if(ptd->typ == 1) {
+	if (ptd->typ == 1) {
 		char setting[2*MAXMODULELABELLENGTH];
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}Timeout",
 			ptd->notification.lpzGroup,
 			ptd->notification.lpzName);
-		DBWriteContactSettingWord(NULL, szModul, setting, ptd->notification.iSeconds);
+		db_set_w(NULL, szModul, setting, ptd->notification.iSeconds);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}enabled", 
 			ptd->notification.lpzGroup, 
 			ptd->notification.lpzName);
-		DBWriteContactSettingByte(NULL, szModul, setting, ptd->enabled);
+		db_set_b(NULL, szModul, setting, ptd->enabled);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}TimeoutVal",
 			ptd->notification.lpzGroup,
 			ptd->notification.lpzName);
-		DBWriteContactSettingWord(NULL, szModul, setting, ptd->timeoutValue);
+		db_set_w(NULL, szModul, setting, ptd->timeoutValue);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}disableWhen",
 			ptd->notification.lpzGroup,
 			ptd->notification.lpzName);
-		DBWriteContactSettingByte(NULL, szModul, setting, ptd->disableWhen);
+		db_set_b(NULL, szModul, setting, ptd->disableWhen);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}leftAction",
 			ptd->notification.lpzGroup,
 			ptd->notification.lpzName);
-		DBWriteContactSettingString(NULL, szModul, setting, ptd->leftAction);
+		db_set_s(NULL, szModul, setting, ptd->leftAction);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}rightAction",
 			ptd->notification.lpzGroup,
 			ptd->notification.lpzName);
-		DBWriteContactSettingString(NULL, szModul, setting, ptd->rightAction);
+		db_set_s(NULL, szModul, setting, ptd->rightAction);
 
-		for (int i=0; i < ptd->notification.actionCount; ++i)
-		{
-			if (!lstrcmpA(ptd->leftAction, ptd->notification.lpActions[i].lpzTitle))
-			{
-				DBCONTACTWRITESETTING dbcws = {0};
-				dbcws.szModule = ptd->notification.lpActions[i].lpzLModule;
-				dbcws.szModule = ptd->notification.lpActions[i].lpzLSetting;
-				dbcws.value = ptd->notification.lpActions[i].dbvLData;
-				CallService(MS_DB_CONTACT_WRITESETTING, 0, (LPARAM)&dbcws);
-			}
-			if (!lstrcmpA(ptd->rightAction, ptd->notification.lpActions[i].lpzTitle))
-			{
-				DBCONTACTWRITESETTING dbcws = {0};
-				dbcws.szModule = ptd->notification.lpActions[i].lpzRModule;
-				dbcws.szModule = ptd->notification.lpActions[i].lpzRSetting;
-				dbcws.value = ptd->notification.lpActions[i].dbvRData;
-				CallService(MS_DB_CONTACT_WRITESETTING, 0, (LPARAM)&dbcws);
-			}
+		for (int i=0; i < ptd->notification.actionCount; ++i) {
+			POPUPNOTIFYACTION &p = ptd->notification.lpActions[i];
+			if (!lstrcmpA(ptd->leftAction, p.lpzTitle))
+				db_set(NULL, p.lpzLModule, p.lpzLSetting, &p.dbvLData);
+
+			if (!lstrcmpA(ptd->rightAction, p.lpzTitle))
+				db_set(NULL, p.lpzRModule, p.lpzRSetting, &p.dbvRData);
 		}
 	}
 }
 
 void LoadNotificationSettings(POPUPTREEDATA *ptd, char* szModul)
 {
-	if(ptd->typ == 1) {
+	if (ptd->typ == 1) {
 		char setting[2*MAXMODULELABELLENGTH];
 		char *szTmp = NULL;
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}enabled", ptd->notification.lpzGroup, ptd->notification.lpzName);
 		ptd->enabled = 
-			(signed char)DBGetContactSettingByte(NULL, szModul, setting, TRUE);
+			(signed char)db_get_b(NULL, szModul, setting, TRUE);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}Timeout", ptd->notification.lpzGroup, ptd->notification.lpzName);
 		ptd->notification.iSeconds = 
-			(signed char)DBGetContactSettingWord(NULL, szModul, setting, ptd->notification.iSeconds);
+			(signed char)db_get_w(NULL, szModul, setting, ptd->notification.iSeconds);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}TimeoutVal", ptd->notification.lpzGroup, ptd->notification.lpzName);
 		ptd->timeoutValue =
-			(signed char)DBGetContactSettingWord(NULL, szModul, setting,
+			(signed char)db_get_w(NULL, szModul, setting,
 				ptd->notification.iSeconds ? ptd->notification.iSeconds : 0);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}disableWhen", ptd->notification.lpzGroup, ptd->notification.lpzName);
 		ptd->disableWhen =
-			DBGetContactSettingByte(NULL, szModul, setting, 0);
+			db_get_b(NULL, szModul, setting, 0);
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}leftAction", ptd->notification.lpzGroup, ptd->notification.lpzName);
-		szTmp = DBGetContactSettingString(NULL, szModul, setting, ptd->notification.lpzLAction);
+		szTmp = db_get_s(NULL, szModul, setting, ptd->notification.lpzLAction);
 		lstrcpynA(ptd->leftAction, szTmp, sizeof(ptd->leftAction));
 		mir_free(szTmp); szTmp = NULL;
 
 		mir_snprintf(setting, sizeof(setting), "{%s/%s}rightAction", ptd->notification.lpzGroup, ptd->notification.lpzName);
-		szTmp = DBGetContactSettingString(NULL, szModul, setting, ptd->notification.lpzRAction);
+		szTmp = db_get_s(NULL, szModul, setting, ptd->notification.lpzRAction);
 		lstrcpynA(ptd->rightAction, szTmp, sizeof(ptd->rightAction));
 		mir_free(szTmp); szTmp = NULL;
 	}
@@ -187,7 +172,7 @@ void LoadNotificationSettings(POPUPTREEDATA *ptd, char* szModul)
 
 HANDLE RegisterNotification(POPUPNOTIFICATION *notification)
 {
-	POPUPTREEDATA *ptd = (POPUPTREEDATA *)mir_alloc(sizeof(POPUPTREEDATA));
+ 	POPUPTREEDATA *ptd = (POPUPTREEDATA *)mir_alloc(sizeof(POPUPTREEDATA));
 	ptd->signature = PopupNotificationData_SIGNATURE;
 	ptd->typ = 1;
 	ptd->pszTreeRoot = mir_a2t(notification->lpzGroup);
@@ -195,15 +180,15 @@ HANDLE RegisterNotification(POPUPNOTIFICATION *notification)
 	ptd->notification = *notification;
 	if (!ptd->notification.lpzLAction) ptd->notification.lpzLAction = POPUP_ACTION_NOTHING;
 	if (!ptd->notification.lpzRAction) ptd->notification.lpzRAction = POPUP_ACTION_DISMISS;
-	LoadNotificationSettings(ptd, "PopUpNotifications");
+	LoadNotificationSettings(ptd, "PopupNotifications");
 
 	// ugly hack to make reset always possible
-	SaveNotificationSettings(ptd,"PopUpNotifications");
+	SaveNotificationSettings(ptd,"PopupNotifications");
 
 	FontID fontid = {0};
 	fontid.cbSize = sizeof(fontid);
 	mir_snprintf(fontid.group, sizeof(fontid.group), "%s/%s", PU_FNT_AND_COLOR, notification->lpzGroup);
-	lstrcpyA(fontid.dbSettingsGroup, "PopUpNotifications");
+	lstrcpyA(fontid.dbSettingsGroup, "PopupNotifications");
 	fontid.flags = FIDF_DEFAULTVALID;
 	fontid.deffontsettings.charset = DEFAULT_CHARSET;
 	fontid.deffontsettings.colour = ptd->notification.colorText;
@@ -218,14 +203,14 @@ HANDLE RegisterNotification(POPUPNOTIFICATION *notification)
 	ColourID colourid = {0};
 	colourid.cbSize = sizeof(colourid);
 	mir_snprintf(colourid.group, sizeof(colourid.group), "%s/%s", PU_FNT_AND_COLOR, notification->lpzGroup);
-	lstrcpyA(colourid.dbSettingsGroup, "PopUpNotifications");
+	lstrcpyA(colourid.dbSettingsGroup, "PopupNotifications");
 	mir_snprintf(colourid.name, SIZEOF(colourid.name), "%s (colors only)", notification->lpzName);
 	mir_snprintf(colourid.setting, SIZEOF(colourid.setting), "{%s/%s}backColor", notification->lpzGroup, notification->lpzName);
 	colourid.defcolour = ptd->notification.colorBack;
 	ColourRegister(&colourid);
 
 	char section[MAXMODULELABELLENGTH], setting[MAXMODULELABELLENGTH];
-	mir_snprintf(section, sizeof(section), "PopUps/%s", notification->lpzGroup);
+	mir_snprintf(section, sizeof(section), "Popups/%s", notification->lpzGroup);
 	mir_snprintf(setting, sizeof(setting), "%s_%s_%s", MODULNAME, notification->lpzGroup, notification->lpzName);
 
 	SKINICONDESC sid = { sizeof(sid) };
@@ -243,11 +228,12 @@ HANDLE RegisterNotification(POPUPNOTIFICATION *notification)
 HANDLE FindTreeData(LPTSTR group, LPTSTR name, BYTE typ)
 {
 	for(int i=0; i < gTreeData.getCount(); i++) {
-		if (	gTreeData[i]->typ == typ &&
-				(!group || (_tcscmp(gTreeData[i]->pszTreeRoot,   group) == 0)) &&
-				(!name  || (_tcscmp(gTreeData[i]->pszDescription, name) == 0)))
+		POPUPTREEDATA *p = gTreeData[i];
+		if (p->typ == typ && 
+				(!group || (_tcscmp(p->pszTreeRoot,   group) == 0)) &&
+				(!name  || (_tcscmp(p->pszDescription, name) == 0)))
 		{
-			return gTreeData[i];
+			return p;
 		}
 	}
 	return NULL;
@@ -328,7 +314,7 @@ bool PerformAction(HANDLE hNotification, HWND hwnd, UINT message, WPARAM wparam,
 
 	if (!lstrcmpA(lpzAction, POPUP_ACTION_DISMISS))
 	{
-		PUDeletePopUp(hwnd);
+		PUDeletePopup(hwnd);
 		return true;
 	}
 

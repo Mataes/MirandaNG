@@ -19,7 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "commonheaders.h"
-#include "notifiers.h"
 
 void FillPopupData(POPUPDATAT &pd, int dtb)
 {
@@ -38,7 +37,7 @@ void PopupNotifyNoBirthdays()
 
 	_tcscpy(pd.lptzContactName, TranslateT("WhenWasIt"));
 	_tcscpy(pd.lptzText, TranslateT("No upcoming birthdays."));
-	PUAddPopUpT(&pd);
+	PUAddPopupT(&pd);
 }
 
 TCHAR *BuildDTBText(int dtb, TCHAR *name, TCHAR *text, int size)
@@ -106,7 +105,7 @@ int PopupNotifyBirthday(HANDLE hContact, int dtb, int age)
 	else
 		mir_sntprintf(pd.lptzText, MAX_SECONDLINE, TranslateT("%s\n%s just turned %d."), text, sex, age);
 
-	PUAddPopUpT(&pd);
+	PUAddPopupT(&pd);
 
 	free(name);
 	return 0;
@@ -150,7 +149,7 @@ int PopupNotifyMissedBirthday(HANDLE hContact, int dab, int age)
 	else
 		mir_sntprintf(pd.lptzText, MAX_SECONDLINE, TranslateT("%s\n%s just turned %d."), text, sex, age);
 	
-	PUAddPopUpT(&pd);
+	PUAddPopupT(&pd);
 
 	free(name);
 	return 0;
@@ -222,13 +221,11 @@ int SoundNotifyBirthday(int dtb)
 //called with oldClistIcon != -1 from dlg_handlers whtn the extra icon slot changes.
 int RefreshAllContactListIcons(int oldClistIcon)
 {
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		if (oldClistIcon != -1)
 			ExtraIcon_Clear(hWWIExtraIcons, hContact);
 
 		RefreshContactListIcons(hContact); //will change bBirthdayFound if needed
-		hContact = db_find_next(hContact);
 	}
 	return 0;
 }

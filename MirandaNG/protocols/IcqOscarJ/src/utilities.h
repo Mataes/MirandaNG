@@ -75,13 +75,11 @@ int __fastcall strlennull(const char *string);
 int __fastcall strcmpnull(const char *str1, const char *str2);
 int __fastcall stricmpnull(const char *str1, const char *str2);
 char* __fastcall strstrnull(const char *str, const char *substr);
-int null_snprintf(char *buffer, size_t count, const char *fmt, ...);
 char* __fastcall null_strdup(const char *string);
 char* __fastcall null_strcpy(char *dest, const char *src, size_t maxlen);
 int __fastcall null_strcut(char *string, int maxlen);
 
 int __fastcall strlennull(const WCHAR *string);
-int null_snprintf(WCHAR *buffer, size_t count, const WCHAR *fmt, ...);
 WCHAR* __fastcall null_strdup(const WCHAR *string);
 WCHAR* __fastcall null_strcpy(WCHAR *dest, const WCHAR *src, size_t maxlen);
 
@@ -186,7 +184,6 @@ int  ListBoxAddStringUtf(HWND hList, const char *szString);
 int  MessageBoxUtf(HWND hWnd, const char *szText, const char *szCaption, UINT uType);
 
 void InitXStatusIcons();
-void UninitXStatusIcons();
 void setContactExtraIcon(HANDLE hContact, int xstatus);
 int  OnReloadIcons(WPARAM wParam, LPARAM lParam);
 

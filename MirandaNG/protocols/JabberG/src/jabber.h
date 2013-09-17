@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -24,13 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef _JABBER_H_
 #define _JABBER_H_
 
-#ifdef _MSC_VER
-	#pragma warning(disable:4706 4121 4127)
-#endif
-
-#define MIRANDA_VER 0x0A00
-
-#include "m_stdhdr.h"
+#pragma warning(disable:4706 4121 4127)
 
 #define LISTFOREACH(var__, obj__, list__)	\
 	for (int var__ = 0; (var__ = obj__->ListFindNext(list__, var__)) >= 0; ++var__)
@@ -42,51 +37,76 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  *******************************************************************/
 #define _WIN32_WINNT 0x501
 #define _WIN32_IE 0x501
+
 #include <windows.h>
 #include <commctrl.h>
 #include <uxtheme.h>
-#include <process.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <time.h>
-#include <limits.h>
+#include <richedit.h>
+
 #include <ctype.h>
+#include <fcntl.h>
+#include <io.h>
+#include <limits.h>
+#include <locale.h>
+#include <malloc.h>
+#include <process.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <newpluginapi.h>
 #include <m_system.h>
 #include <m_system_cpp.h>
+
+#include <m_avatars.h>
+#include <m_awaymsg.h>
+#include <m_button.h>
+#include <m_chat.h>
+#include <m_clist.h>
+#include <m_clistint.h>
+#include <m_cluiframes.h>
+#include <m_contacts.h>
+#include <m_database.h>
+#include <m_extraicons.h>
+#include <m_file.h>
+#include <m_fontservice.h>
+#include <m_genmenu.h>
+#include <m_hotkeys.h>
+#include <m_icolib.h>
+#include <m_idle.h>
+#include <m_langpack.h>
+#include <m_message.h>
 #include <m_netlib.h>
+#include <m_options.h>
 #include <m_protomod.h>
 #include <m_protosvc.h>
 #include <m_protoint.h>
-#include <m_clist.h>
-#include <m_clui.h>
-#include <m_options.h>
-#include <m_userinfo.h>
-#include <m_database.h>
-#include <m_langpack.h>
-#include <m_utils.h>
-#include <m_message.h>
 #include <m_skin.h>
-#include <m_chat.h>
-#include <m_clc.h>
-#include <m_clistint.h>
-#include <m_button.h>
-#include <m_avatars.h>
-#include <m_idle.h>
+#include <m_string.h>
 #include <m_timezones.h>
-#include <m_jabber.h>
-#include <m_fingerprint.h>
+#include <m_toptoolbar.h>
+#include <m_userinfo.h>
+#include <m_utils.h>
 #include <m_xstatus.h>
-#include <m_extraicons.h>
 #include <win2k.h>
+#include <m_imgsrvc.h>
+
+#include <m_addcontact.h>
+#include <m_folders.h>
+#include <m_fingerprint.h>
+#include <m_jabber.h>
+#include <m_modernopt.h>
+#include <m_popup.h>
+#include <m_proto_listeningto.h>
+#include <m_nudge.h>
+#include <m_skin_eng.h>
 
 #include "../../plugins/zlib/src/zlib.h"
 
 #include "resource.h"
 #include "version.h"
-
-#include "MString.h"
 
 #include "jabber_xml.h"
 #include "jabber_byte.h"
@@ -236,10 +256,6 @@ enum {
 // Services and Events
 #define JS_PARSE_XMPP_URI          "/ParseXmppURI"
 
-// XEP-0224 support (Attention/Nudge)
-#define JS_SEND_NUDGE              "/SendNudge"
-#define JE_NUDGE                   "/Nudge"
-
 // Called when contact changes custom status and extra icon is set to clist_mw
 //wParam = hContact    // contact changing status
 //lParam = hIcon       // HANDLE to clist extra icon set as custom status
@@ -372,8 +388,8 @@ struct ThreadData
 	void  close(void);
 	void  shutdown(void);
 	int   recv(char* buf, size_t len);
-	int   send(char* buffer, int bufsize);
-	int   send(const char* fmt, ...);
+	int   send(char* buffer, int bufsize = -1);
+//	int   send(const char* fmt, ...);
 	int   send(HXML node);
 
 	int   recvws(char* buffer, size_t bufsize, int flags);
@@ -382,21 +398,21 @@ struct ThreadData
 
 struct JABBER_MODEMSGS
 {
-	TCHAR* szOnline;
-	TCHAR* szAway;
-	TCHAR* szNa;
-	TCHAR* szDnd;
-	TCHAR* szFreechat;
+	TCHAR *szOnline;
+	TCHAR *szAway;
+	TCHAR *szNa;
+	TCHAR *szDnd;
+	TCHAR *szFreechat;
 };
 
 struct JABBER_REG_ACCOUNT
 {
 	TCHAR username[512];
 	TCHAR password[512];
-	char server[128];
-	char manualHost[128];
-	WORD port;
-	BOOL useSSL;
+	char  server[128];
+	char  manualHost[128];
+	WORD  port;
+	BOOL  useSSL;
 };
 
 typedef enum { FT_SI, FT_OOB, FT_BYTESTREAM, FT_IBB } JABBER_FT_TYPE;
@@ -413,14 +429,13 @@ struct filetransfer
 
 	PROTOFILETRANSFERSTATUS std;
 
-//	HANDLE hContact;
 	JABBER_FT_TYPE type;
 	JABBER_SOCKET s;
 	JABBER_FILE_STATE state;
-	TCHAR* jid;
+	TCHAR *jid;
 	int    fileId;
-	TCHAR* iqId;
-	TCHAR* sid;
+	TCHAR *iqId;
+	TCHAR *sid;
 	int    bCompleted;
 	HANDLE hWaitEvent;
 
@@ -432,15 +447,15 @@ struct filetransfer
 	// Used by file receiving only
 	char* httpHostName;
 	WORD httpPort;
-	TCHAR* httpPath;
+	TCHAR *httpPath;
 	unsigned __int64 dwExpectedRecvFileSize;
 
 	// Used by file sending only
 	HANDLE hFileEvent;
 	unsigned __int64 *fileSize;
-	TCHAR* szDescription;
+	TCHAR *szDescription;
 
-	CJabberProto* ppro;
+	CJabberProto *ppro;
 };
 
 struct JABBER_SEARCH_RESULT
@@ -479,11 +494,11 @@ struct JABBER_MUC_JIDLIST_INFO
 	~JABBER_MUC_JIDLIST_INFO();
 
 	JABBER_MUC_JIDLIST_TYPE type;
-	TCHAR* roomJid;	// filled-in by the WM_JABBER_REFRESH code
+	TCHAR *roomJid;	// filled-in by the WM_JABBER_REFRESH code
 	HXML   iqNode;
-	CJabberProto* ppro;
+	CJabberProto *ppro;
 
-	TCHAR* type2str(void) const;
+	TCHAR *type2str(void) const;
 };
 
 typedef void (CJabberProto::*JABBER_FORM_SUBMIT_FUNC)(HXML values, void *userdata);
@@ -575,7 +590,6 @@ extern BOOL (WINAPI *JabberAlphaBlend)(HDC, int, int, int, int, HDC, int, int, i
 extern BOOL (WINAPI *JabberIsThemeActive)();
 extern HRESULT (WINAPI *JabberDrawThemeParentBackground)(HWND, HDC, RECT *);
 
-extern const TCHAR xmlnsOwner[];
 extern TCHAR szCoreVersion[];
 
 extern int g_cbCountries;
@@ -640,9 +654,9 @@ HANDLE g_GetIconHandle(int iconId);
 HICON  g_LoadIconEx(const char* name, bool big = false);
 void   g_ReleaseIcon(HICON hIcon);
 
-void ImageList_AddIcon_Icolib(HIMAGELIST hIml, HICON hIcon);
-void WindowSetIcon(HWND hWnd, CJabberProto *proto, const char* name);
-void WindowFreeIcon(HWND hWnd);
+void   ImageList_AddIcon_Icolib(HIMAGELIST hIml, HICON hIcon);
+void   WindowSetIcon(HWND hWnd, CJabberProto *proto, const char* name);
+void   WindowFreeIcon(HWND hWnd);
 
 int    ReloadIconsEventHook(WPARAM wParam, LPARAM lParam);
 
@@ -660,7 +674,6 @@ int    g_OnToolbarInit(WPARAM, LPARAM);
 
 void   JabberChatDllError(void);
 int    JabberCompareJids(const TCHAR *jid1, const TCHAR *jid2);
-void   JabberContactListCreateGroup(TCHAR* groupName);
 TCHAR* EscapeChatTags(TCHAR* pszText);
 TCHAR* UnEscapeChatTags(TCHAR* str_in);
 
@@ -668,9 +681,9 @@ TCHAR* UnEscapeChatTags(TCHAR* str_in);
 
 struct CJabberAdhocStartupParams
 {
-	TCHAR* m_szJid;
-	TCHAR* m_szNode;
-	CJabberProto* m_pProto;
+	TCHAR *m_szJid;
+	TCHAR *m_szNode;
+	CJabberProto *m_pProto;
 
 	CJabberAdhocStartupParams(CJabberProto* proto, TCHAR* szJid, TCHAR* szNode = NULL)
 	{
@@ -680,10 +693,8 @@ struct CJabberAdhocStartupParams
 	}
 	~CJabberAdhocStartupParams()
 	{
-		if (m_szJid)
-			mir_free(m_szJid);
-		if (m_szNode)
-			mir_free(m_szNode);
+		mir_free(m_szJid);
+		mir_free(m_szNode);
 	}
 };
 
@@ -696,12 +707,8 @@ struct JabberAdHocData
 	RECT   frameRect;
 	HXML   AdHocNode;
 	HXML   CommandsNode;
-	TCHAR* ResponderJID;
+	TCHAR *ResponderJID;
 };
-
-//---- jabber_std.cpp -------------------------------------------------------------------
-
-char* __fastcall JTranslate(const char* str);
 
 //---- jabber_util.cpp ------------------------------------------------------------------
 
@@ -731,27 +738,28 @@ TCHAR*        __stdcall JabberStrFixLines(const TCHAR *str);
 char*         __stdcall JabberUnixToDos(const char* str);
 WCHAR*        __stdcall JabberUnixToDosW(const WCHAR* str);
 void          __stdcall JabberHttpUrlDecode(TCHAR* str);
-TCHAR*        __stdcall JabberHttpUrlEncode(const TCHAR *str);
 int           __stdcall JabberCombineStatus(int status1, int status2);
 TCHAR*        __stdcall JabberErrorStr(int errorCode);
 TCHAR*        __stdcall JabberErrorMsg(HXML errorNode, int* errorCode = NULL);
 void          __stdcall JabberUtfToTchar(const char* str, size_t cbLen, LPTSTR& dest);
-char*         __stdcall JabberBase64Encode(const char* buffer, int bufferLen);
-char*         __stdcall JabberBase64Decode(const char* buffer, int *resultLen);
-char*         __stdcall JabberBase64DecodeW(const WCHAR* buffer, int *resultLen);
 time_t        __stdcall JabberIsoToUnixTime(const TCHAR *stamp);
 void          __stdcall JabberStringAppend(char* *str, int *sizeAlloced, const char* fmt, ...);
 TCHAR*        __stdcall JabberStripJid(const TCHAR *jid, TCHAR* dest, size_t destLen);
-int           __stdcall JabberGetPictureType(const char* buf);
 int           __stdcall JabberGetPacketID(HXML n);
 
+LPCTSTR       __stdcall JabberGetPictureType(HXML node, const char *picBuf);
+
+TCHAR* time2str(time_t _time, TCHAR *buf, size_t bufLen);
+time_t str2time(const TCHAR*);
+
 #define JabberUnixToDosT JabberUnixToDosW
-#define JabberBase64DecodeT JabberBase64DecodeW
 
 const TCHAR *JabberStrIStr(const TCHAR *str, const TCHAR *substr);
 void JabberCopyText(HWND hwnd, TCHAR *text);
 void JabberBitmapPremultiplyChannels(HBITMAP hBitmap);
 CJabberProto *JabberChooseInstance(bool bIsLink=false);
+
+bool JabberReadXep203delay(HXML node, time_t &msgTime);
 
 //---- jabber_xml.cpp -------------------------------------------------------------------
 

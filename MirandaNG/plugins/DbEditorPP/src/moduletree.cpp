@@ -9,7 +9,6 @@ static ModuleTreeInfoStruct settings_mtis = {CONTACT, 0};
 int doContacts(HWND hwnd2Tree,HTREEITEM contactsRoot,ModuleSettingLL *modlist, HANDLE hSelectedContact, char *SelectedModule, char *SelectedSetting)
 {
 	TVINSERTSTRUCT tvi;
-	HANDLE hContact;
 	HTREEITEM contact;
 	ModuleTreeInfoStruct *lParam;
 	struct ModSetLinkLinkItem *module;
@@ -21,14 +20,12 @@ int doContacts(HWND hwnd2Tree,HTREEITEM contactsRoot,ModuleSettingLL *modlist, H
 
 	SetWindowText(hwnd2mainWindow, Translate("Loading contacts..."));
 
-	hContact = db_find_first();
-
 	tvi.hInsertAfter = TVI_SORT;
 	tvi.item.cChildren = 1;
 
-	while (hContact && hwnd2mainWindow) { // break after null contact
-		char *szProto = GetContactProto(hContact);
-		if (szProto) {
+	for (HANDLE hContact = db_find_first(); hContact && hwnd2mainWindow; hContact = db_find_next(hContact)) {
+		char szProto[100];
+		if (DBGetContactSettingStringStatic(hContact, "Protocol", "p", szProto, SIZEOF(szProto))) {
 			icon = GetProtoIcon(szProto);
 			loaded = (icon != DEF_ICON);
 		}
@@ -40,10 +37,8 @@ int doContacts(HWND hwnd2Tree,HTREEITEM contactsRoot,ModuleSettingLL *modlist, H
 		i++;
 
 		// filter
-		if ((loaded && Mode == MODE_UNLOADED) || (!loaded && Mode == MODE_LOADED)) {
-			hContact = db_find_next(hContact);
+		if ((loaded && Mode == MODE_UNLOADED) || (!loaded && Mode == MODE_LOADED))
 			continue;
-		}
 
 		// add the contact
 		lParam = (ModuleTreeInfoStruct *)mir_calloc(sizeof(ModuleTreeInfoStruct));
@@ -122,8 +117,6 @@ int doContacts(HWND hwnd2Tree,HTREEITEM contactsRoot,ModuleSettingLL *modlist, H
 
 			hItem = findItemInTree(hwnd2Tree, hSelectedContact, SelectedModule);
 		}
-
-		hContact = db_find_next(hContact);
 	}
 
 	if (hItem != -1) {
@@ -379,7 +372,7 @@ void replaceTreeItem(HWND hwnd, HANDLE hContact, const char *module, const char 
 
 void refreshTree(int restore)
 {
-	UseKnownModList = DBGetContactSettingByte(NULL,modname,"UseKnownModList",0);
+	UseKnownModList = db_get_b(NULL,modname,"UseKnownModList",0);
 	if (populating) return;
 	populating = 1;
 	forkthread(PopulateModuleTreeThreadFunc,0,(HWND)restore);
@@ -433,7 +426,7 @@ void __cdecl PopulateModuleTreeThreadFunc(LPVOID di)
 		}
 	case 2: // restore saved
 		if (GetValue(NULL,modname,"LastModule",SelectedModule,SIZEOF(SelectedModule))) {
-			hSelectedContact = (HANDLE)DBGetContactSettingDword(NULL,modname,"LastContact",(DWORD)INVALID_HANDLE_VALUE);
+			hSelectedContact = (HANDLE)db_get_dw(NULL,modname,"LastContact",(DWORD)INVALID_HANDLE_VALUE);
 			if (hSelectedContact != INVALID_HANDLE_VALUE)
 				Select = 1;
 			GetValue(NULL,modname,"LastSetting",SelectedSetting,SIZEOF(SelectedSetting));
@@ -527,7 +520,7 @@ void __cdecl PopulateModuleTreeThreadFunc(LPVOID di)
 			module = (struct ModSetLinkLinkItem *)module->next;
 		}
 
-		if (DBGetContactSettingByte(NULL,modname,"ExpandSettingsOnOpen",0))
+		if (db_get_b(NULL,modname,"ExpandSettingsOnOpen",0))
 			TreeView_Expand(hwnd2Tree,contact,TVE_EXPAND);
 
 		if (Select && hSelectedContact == NULL)
@@ -564,15 +557,11 @@ void __cdecl PopulateModuleTreeThreadFunc(LPVOID di)
 
 }
 
-
-static WNDPROC ModuleTreeLabelEditSubClass;
-
 static LRESULT CALLBACK ModuleTreeLabelEditSubClassProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 {
 	switch(msg) {
 	case WM_KEYUP:
-		switch (wParam)
-		{
+		switch (wParam) {
 		case VK_RETURN:
 			TreeView_EndEditLabelNow(GetParent(hwnd),0);
 			return 0;
@@ -582,8 +571,9 @@ static LRESULT CALLBACK ModuleTreeLabelEditSubClassProc(HWND hwnd,UINT msg,WPARA
 		}
 		break;
 	}
-	return CallWindowProc(ModuleTreeLabelEditSubClass,hwnd,msg,wParam,lParam);
+	return mir_callNextSubclass(hwnd, ModuleTreeLabelEditSubClassProc, msg, wParam, lParam);
 }
+
 void moduleListRightClick(HWND hwnd, WPARAM wParam,LPARAM lParam);
 
 void moduleListWM_NOTIFY(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)// hwnd here is to the main window, NOT the treview
@@ -751,7 +741,7 @@ void moduleListWM_NOTIFY(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)// hwnd 
 				SetWindowLongPtr(hwnd, DWLP_MSGRESULT, TRUE);
 				break;
 			}
-			ModuleTreeLabelEditSubClass = (WNDPROC)SetWindowLongPtr(hwnd2Edit, GWLP_WNDPROC, (LONG)ModuleTreeLabelEditSubClassProc);
+			mir_subclassWindow(hwnd2Edit, ModuleTreeLabelEditSubClassProc);
 			SetWindowLongPtr(hwnd, DWLP_MSGRESULT, FALSE);
 		}
 		break;
@@ -905,14 +895,14 @@ void moduleListRightClick(HWND hwnd, WPARAM wParam,LPARAM lParam) // hwnd here i
 									else strncat(moduletemp,&module[i],1);
 								}
 									
-								if ( !DBGetContactSetting(NULL,modname,"CoreModules",&dbv) && dbv.type == DBVT_ASCIIZ) {
+								if ( !db_get(NULL,modname,"CoreModules",&dbv) && dbv.type == DBVT_ASCIIZ) {
 									int len = (int)strlen(dbv.pszVal) + 10 + (int)strlen(moduletemp);
 									char* temp = (char*)_alloca(len);
 									mir_snprintf(temp, len, "%s, %s", dbv.pszVal, moduletemp);
-									DBWriteContactSettingString(NULL,modname,"CoreModules",temp);
-									DBFreeVariant(&dbv);
+									db_set_s(NULL,modname,"CoreModules",temp);
+									db_free(&dbv);
 								}
-								else DBWriteContactSettingString(NULL,modname,"CoreModules",moduletemp);
+								else db_set_s(NULL,modname,"CoreModules",moduletemp);
 								RegisterSingleModule((WPARAM)module,0);
 							}
 							break;
@@ -928,7 +918,7 @@ void moduleListRightClick(HWND hwnd, WPARAM wParam,LPARAM lParam) // hwnd here i
 						break;
 
 					case MENU_DELETE_CONTACT:
-						if (DBGetContactSettingByte(NULL,"CList", "ConfirmDelete",1)) {
+						if (db_get_b(NULL,"CList", "ConfirmDelete",1)) {
 							char msg[1024];
 							mir_snprintf(msg, SIZEOF(msg), Translate("Are you sure you want to delete contact \"%s\"?"), module);
 							if (MessageBox(0,msg, Translate("Confirm Contact Delete"), MB_YESNO|MB_ICONEXCLAMATION) == IDYES) {

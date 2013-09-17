@@ -8,7 +8,6 @@
 #define _CRT_NONSTDC_NO_DEPRECATE
 
 #define _WIN32_WINNT 0x0501
-#define MIRANDA_VER 0x0A00
 
 #include <tchar.h>
 
@@ -37,9 +36,6 @@
 #include <m_userinfo.h>
 #include <m_options.h>
 #include <m_protosvc.h>
-#include <m_ignore.h>
-#include <m_clc.h>
-#include <m_history.h>
 #include <m_popup.h>
 #include <m_icolib.h>
 #include <m_hotkeys.h>
@@ -61,7 +57,7 @@ int AddIconToList(HIMAGELIST hil, HICON hIcon);
 void AddProtoIconsToList(HIMAGELIST hil, int newshift);
 int GetProtoIcon(char *szProto);
 extern HANDLE hRestore;
-extern HANDLE hUserMenu;
+extern HGENMENU hUserMenu;
 /////////////////////
 
 #ifndef NDEBUG
@@ -171,7 +167,7 @@ extern int Mode;
 extern int Hex;
 extern int Order;
 
-extern BOOL usePopUps;
+extern BOOL usePopups;
 
 #define NAMEORDERCOUNT 8
 
@@ -191,7 +187,6 @@ int GetValue(HANDLE hContact, const char* szModule, const char* szSetting, char*
 int GetValueW(HANDLE hContact, const char* szModule, const char* szSetting, WCHAR* Value, int length);
 char* u2a( wchar_t* src );
 wchar_t *a2u( char* src , wchar_t *buffer, int len );
-int mir_snwprintf(WCHAR *buffer, size_t count, const WCHAR* fmt, ...);
 WCHAR *GetContactName(HANDLE hContact, const char *szProto, int unicode);
 BOOL IsProtocolLoaded(char* pszProtocolName);
 

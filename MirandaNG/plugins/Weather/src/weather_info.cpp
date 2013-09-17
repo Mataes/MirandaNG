@@ -34,13 +34,13 @@ void INIInfo(HWND hwndDlg)
 {
 	TCHAR str[16]; 
 	size_t memused = 0;
-	LVITEM lvi = {0};
 	WIDATALIST *Item = WIHead;
 
 	HWND hIniList = GetDlgItem(hwndDlg, IDC_INFOLIST);
 
 	ListView_DeleteAllItems(hIniList);
 
+	LVITEM lvi = {0};
 	lvi.mask = LVIF_TEXT;
 	lvi.iItem = 0;
 	while (Item != NULL) 
@@ -93,13 +93,13 @@ static const struct tag_Columns
 } 
 columns[] = 
 {
-	{ _T("Name"), 70 },
-	{ _T("Author"), 100 },
-	{ _T("File Version"), 70 },
-	{ _T("INI Version"), 70 },
-	{ _T("Items"), 40 },
-	{ _T("Display Name"), 200 },
-	{ _T("File Name"), 150 },
+	{ LPGENT("Name"), 70 },
+	{ LPGENT("Author"), 100 },
+	{ LPGENT("File Version"), 70 },
+	{ LPGENT("INI Version"), 70 },
+	{ LPGENT("Items"), 40 },
+	{ LPGENT("Display Name"), 200 },
+	{ LPGENT("File Name"), 150 },
 };
 
 
@@ -134,7 +134,7 @@ INT_PTR CALLBACK DlgProcINIPage(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 			LOWORD(wParam) == IDC_RELOADINI )
 		{
 			DestroyWIList();
-			LoadWIData(TRUE);
+			LoadWIData(true);
 			INIInfo(hwndDlg);
 		}
 		break;
@@ -152,13 +152,13 @@ void GetINIInfo(TCHAR *pszSvc)
 	// if the service does not exist among the loaded INI's
 	if (sData == NULL)
 	{
-		wsprintf(str2, TranslateT("The corresponding INI file for \"%s\" is not found."), pszSvc);
+		mir_sntprintf(str2, SIZEOF(str2), TranslateT("The corresponding INI file for \"%s\" is not found."), pszSvc);
 		MessageBox(NULL, str2, TranslateT("Weather INI information"), MB_OK|MB_ICONINFORMATION);
 	}
 	// if exist, get the information
 	else
 	{
-		wsprintf(str2, TranslateT("Weather INI information for \"%s\":"), pszSvc);
+		mir_sntprintf(str2, SIZEOF(str2), TranslateT("Weather INI information for \"%s\":"), pszSvc);
 		_tcscat(str2,_T("\n\n"));
 		_tcscat(str2, TranslateT("Name:"));
 		_tcscat(str2,_T("\t\t"));
@@ -192,9 +192,9 @@ void GetINIInfo(TCHAR *pszSvc)
 		_tcscat(str2, sData->ShortFileName);
 		_tcscat(str2, _T("\n"));
 		_tcscat(str2, TranslateT("Item Count:"));
-		wsprintf(str2, _T("%s\t%i\n"), str2, sData->UpdateDataCount);
+		mir_sntprintf(str2, SIZEOF(str2), _T("%s\t%i\n"), str2, sData->UpdateDataCount);
 		_tcscat(str2, TranslateT("Memory Used:"));
-		wsprintf(str2, _T("%s\t%i "), str2, sData->MemUsed);
+		mir_sntprintf(str2, SIZEOF(str2), _T("%s\t%i "), str2, sData->MemUsed);
 		_tcscat(str2, TranslateT("bytes")); 
 		_tcscat(str2,_T("\n\n")); 
 		_tcscat(str2, TranslateT("Description:"));
@@ -221,15 +221,14 @@ void MoreVarList(void)
 	// loop through all weather services to find custom variables
 	while (Item != NULL) 
 	{
-		WIDATAITEMLIST* WItem;
-		WItem = Item->Data.UpdateData;
+		WIDATAITEMLIST *WItem = Item->Data.UpdateData;
 		// loop through all update items in a service
 		while (WItem != NULL) 
 		{
 			// the custom variable is defined as "%[<variable name>]"
 			// ignore the "hi" item and hidden items
 			if ( _tcscmp(WItem->Item.Name, _T("Ignore")) && WItem->Item.Name[0] != '#') {
-				wsprintf(tempstr, _T("%c[%s]"), '%', WItem->Item.Name);
+				mir_sntprintf(tempstr, SIZEOF(tempstr), _T("%c[%s]"), '%', WItem->Item.Name);
 				TCHAR* find = _tcsstr(str, tempstr);
 				// if the custom variable does not exist in the list, add it to the list
 				if (find == NULL) {

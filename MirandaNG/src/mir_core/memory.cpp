@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people 
 listed in contributors.txt.
 
@@ -142,43 +142,54 @@ MIR_C_CORE_DLL(void) mir_free(void* ptr)
 
 /******************************************************************************/
 
-MIR_CORE_DLL(char*) mir_strdup(const char* str)
+MIR_CORE_DLL(char*) mir_strdup(const char *str)
 {
-	if (str != NULL) {
-		char* p = (char*)mir_alloc(strlen(str)+1);
-		if (p)
-			strcpy(p, str);
-		return p;
-	}
-	return NULL;
+	if (str == NULL)
+		return NULL;
+
+	char *p = (char*)mir_alloc(strlen(str)+1);
+	if (p)
+		strcpy(p, str);
+	return p;
+}
+
+MIR_CORE_DLL(WCHAR*) mir_wstrdup(const WCHAR *str)
+{
+	if (str == NULL)
+		return NULL;
+
+	WCHAR *p = (WCHAR*)mir_alloc(sizeof(WCHAR)*(wcslen(str)+1));
+	if (p)
+		wcscpy(p, str);
+	return p;
 }
 
 /******************************************************************************/
 
-MIR_CORE_DLL(char*) mir_strndup(const char* str, size_t len)
+MIR_CORE_DLL(char*) mir_strndup(const char *str, size_t len)
 {
-	if (str != NULL && len != 0) {
-		char* p = (char*)mir_alloc(len + 1);
-		if ( !p) {
-			memcpy(p, str, len);
-			p[ len ] = 0;
-		}
-		return p;
+	if (str == NULL || len == 0)
+		return NULL;
+	
+	char *p = (char*)mir_alloc(len+1);
+	if (p) {
+		memcpy(p, str, len);
+		p[ len ] = 0;
 	}
-	return NULL;
+	return p;
 }
 
-/******************************************************************************/
-
-MIR_CORE_DLL(WCHAR*) mir_wstrdup(const WCHAR* str)
+MIR_CORE_DLL(WCHAR*) mir_wstrndup(const WCHAR *str, size_t len)
 {
-	if (str != NULL) {
-		WCHAR* p = (WCHAR*)mir_alloc(sizeof(WCHAR)*(wcslen(str)+1));
-		if (p)
-			wcscpy(p, str);
-		return p;
+	if (str == NULL || len == 0)
+		return NULL;
+	
+	WCHAR *p = (WCHAR*)mir_alloc(sizeof(WCHAR)*(len+1));
+	if (p) {
+		memcpy(p, str, sizeof(WCHAR)*len);
+		p[ len ] = 0;
 	}
-	return NULL;
+	return p;
 }
 
 /******************************************************************************/
@@ -197,7 +208,7 @@ MIR_CORE_DLL(int) mir_snprintf(char *buffer, size_t count, const char* fmt, ...)
 
 /******************************************************************************/
 
-MIR_CORE_DLL(int) mir_sntprintf(TCHAR *buffer, size_t count, const TCHAR* fmt, ...)
+MIR_CORE_DLL(int) mir_snwprintf(WCHAR *buffer, size_t count, const WCHAR* fmt, ...)
 {
 	va_list va;
 	int len;
@@ -222,7 +233,7 @@ MIR_CORE_DLL(int) mir_vsnprintf(char *buffer, size_t count, const char* fmt, va_
 
 /******************************************************************************/
 
-MIR_CORE_DLL(int) mir_vsntprintf(TCHAR *buffer, size_t count, const TCHAR* fmt, va_list va)
+MIR_CORE_DLL(int) mir_vsnwprintf(WCHAR *buffer, size_t count, const WCHAR* fmt, va_list va)
 {
 	int len = _vsntprintf(buffer, count-1, fmt, va);
 	buffer[count-1] = 0;

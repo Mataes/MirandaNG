@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -26,7 +26,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "../clist/clc.h"
 
 bool CheckProtocolOrder(void);
-void 	BuildProtoMenus();
+void BuildProtoMenus();
+
+HICON Proto_GetIcon(PROTO_INTERFACE *ppro, int iconIndex);
 
 static BOOL bModuleInitialized = FALSE;
 
@@ -42,7 +44,7 @@ LIST<PROTOACCOUNT> accounts(10, CompareAccounts);
 static int EnumDbModules(const char *szModuleName, DWORD ofsModuleName, LPARAM lParam)
 {
 	DBVARIANT dbv;
-	if ( !DBGetContactSettingString(NULL, szModuleName, "AM_BaseProto", &dbv)) {
+	if ( !db_get_s(NULL, szModuleName, "AM_BaseProto", &dbv)) {
 		if ( !Proto_GetAccount(szModuleName)) {
 			PROTOACCOUNT* pa = (PROTOACCOUNT*)mir_calloc(sizeof(PROTOACCOUNT));
 			pa->cbSize = sizeof(*pa);
@@ -68,7 +70,7 @@ void LoadDbAccounts(void)
 	for (i=0; i < count; i++) {
 		char buf[10];
 		_itoa(i, buf, 10);
-		if (DBGetContactSettingString(NULL, "Protocols", buf, &dbv))
+		if (db_get_s(NULL, "Protocols", buf, &dbv))
 			continue;
 
 		PROTOACCOUNT* pa = (PROTOACCOUNT*)mir_calloc(sizeof(PROTOACCOUNT));
@@ -89,7 +91,7 @@ void LoadDbAccounts(void)
 		if (ver >= 4) {
 			db_free(&dbv);
 			_itoa(OFFSET_NAME+i, buf, 10);
-			if ( !DBGetContactSettingTString(NULL, "Protocols", buf, &dbv)) {
+			if ( !db_get_ts(NULL, "Protocols", buf, &dbv)) {
 				pa->tszAccountName = mir_tstrdup(dbv.ptszVal);
 				db_free(&dbv);
 			}
@@ -97,7 +99,7 @@ void LoadDbAccounts(void)
 			_itoa(OFFSET_ENABLED+i, buf, 10);
 			pa->bIsEnabled = db_get_dw(NULL, "Protocols", buf, 1);
 
-			if ( !DBGetContactSettingString(NULL, pa->szModuleName, "AM_BaseProto", &dbv)) {
+			if ( !db_get_s(NULL, pa->szModuleName, "AM_BaseProto", &dbv)) {
 				pa->szProtoName = mir_strdup(dbv.pszVal);
 				db_free(&dbv);
 			}
@@ -161,7 +163,7 @@ void WriteDbAccounts()
 	if (param.arrlen) {
 		int i;
 		for (i=0; i < param.arrlen; i++) {
-			DBDeleteContactSetting(0, "Protocols", param.pszSettingName[i]);
+			db_unset(0, "Protocols", param.pszSettingName[i]);
 			mir_free(param.pszSettingName[i]);
 		}
 		mir_free(param.pszSettingName);
@@ -188,7 +190,7 @@ void WriteDbAccounts()
 		db_set_ts(NULL, "Protocols", buf, pa->tszAccountName);
 	}
 
-	DBDeleteContactSetting(0, "Protocols", "ProtoCount");
+	db_unset(0, "Protocols", "ProtoCount");
 	db_set_dw(0, "Protocols", "ProtoCount", accounts.getCount());
 	db_set_dw(0, "Protocols", "PrVer", 4);
 }
@@ -282,86 +284,103 @@ int LoadAccountsModule(void)
 /////////////////////////////////////////////////////////////////////////////////////////
 
 static INT_PTR stub1(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	return (INT_PTR)ppi->AddToList(wParam, (PROTOSEARCHRESULT*)lParam);
+{
+	return (INT_PTR)ppi->AddToList(wParam, (PROTOSEARCHRESULT*)lParam);
 }
 
 static INT_PTR stub2(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	return (INT_PTR)ppi->AddToListByEvent(HIWORD(wParam), LOWORD(wParam), (HANDLE)lParam);
+{
+	return (INT_PTR)ppi->AddToListByEvent(HIWORD(wParam), LOWORD(wParam), (HANDLE)lParam);
 }
 
 static INT_PTR stub3(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM)
-{	return (INT_PTR)ppi->Authorize((HANDLE)wParam);
+{
+	return (INT_PTR)ppi->Authorize((HANDLE)wParam);
 }
 
 static INT_PTR stub4(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	return (INT_PTR)ppi->AuthDeny((HANDLE)wParam, StrConvT((const char*)lParam));
+{
+	return (INT_PTR)ppi->AuthDeny((HANDLE)wParam, StrConvT((const char*)lParam));
 }
 
 static INT_PTR stub7(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	return (INT_PTR)ppi->ChangeInfo(wParam, (void*)lParam);
+{
+	return (INT_PTR)ppi->ChangeInfo(wParam, (void*)lParam);
 }
 
 static INT_PTR stub11(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	PROTOFILERESUME* pfr = (PROTOFILERESUME*)lParam;
+{
+	PROTOFILERESUME* pfr = (PROTOFILERESUME*)lParam;
 	return (INT_PTR)ppi->FileResume((HANDLE)wParam, &pfr->action, (const PROTOCHAR**)&pfr->szFilename);
 }
 
 static INT_PTR stub12(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	return (INT_PTR)ppi->GetCaps(wParam, (HANDLE)lParam);
+{
+	return (INT_PTR)ppi->GetCaps(wParam, (HANDLE)lParam);
 }
 
 static INT_PTR stub13(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM)
-{	return (INT_PTR)ppi->GetIcon(wParam);
+{
+	return (INT_PTR)Proto_GetIcon(ppi, wParam);
 }
 
 static INT_PTR stub15(PROTO_INTERFACE* ppi, WPARAM, LPARAM lParam)
-{	return (INT_PTR)ppi->SearchBasic(StrConvT((char*)lParam));
+{
+	return (INT_PTR)ppi->SearchBasic(StrConvT((char*)lParam));
 }
 
 static INT_PTR stub16(PROTO_INTERFACE* ppi, WPARAM, LPARAM lParam)
-{	return (INT_PTR)ppi->SearchByEmail(StrConvT((char*)lParam));
+{
+	return (INT_PTR)ppi->SearchByEmail(StrConvT((char*)lParam));
 }
 
 static INT_PTR stub17(PROTO_INTERFACE* ppi, WPARAM, LPARAM lParam)
-{	PROTOSEARCHBYNAME* psbn = (PROTOSEARCHBYNAME*)lParam;
+{
+	PROTOSEARCHBYNAME* psbn = (PROTOSEARCHBYNAME*)lParam;
 	return (INT_PTR)ppi->SearchByName(StrConvT((char*)psbn->pszNick), 
 		StrConvT((char*)psbn->pszFirstName), StrConvT((char*)psbn->pszLastName));
 }
 
 static INT_PTR stub18(PROTO_INTERFACE* ppi, WPARAM, LPARAM lParam)
-{	return (INT_PTR)ppi->SearchAdvanced((HWND)lParam);
+{
+	return (INT_PTR)ppi->SearchAdvanced((HWND)lParam);
 }
 
 static INT_PTR stub19(PROTO_INTERFACE* ppi, WPARAM, LPARAM lParam)
-{	return (INT_PTR)ppi->CreateExtendedSearchUI ((HWND)lParam);
+{
+	return (INT_PTR)ppi->CreateExtendedSearchUI ((HWND)lParam);
 }
 
 static INT_PTR stub22(PROTO_INTERFACE* ppi, WPARAM, LPARAM lParam)
-{	CCSDATA *ccs = (CCSDATA*)lParam;
+{
+	CCSDATA *ccs = (CCSDATA*)lParam;
 	ppi->RecvMsg(ccs->hContact, (PROTORECVEVENT*)ccs->lParam);
 	return 0;
 }
 
 static INT_PTR stub29(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM)
-{	return (INT_PTR)ppi->SetStatus(wParam);
+{
+	return (INT_PTR)ppi->SetStatus(wParam);
 }
 
 static INT_PTR stub33(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	return (INT_PTR)ppi->SetAwayMsg(wParam, StrConvT((const char*)lParam));
+{
+	return (INT_PTR)ppi->SetAwayMsg(wParam, StrConvT((const char*)lParam));
 }
 
 static INT_PTR stub41(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	lstrcpynA((char*)lParam, ppi->m_szModuleName, wParam);
+{
+	lstrcpynA((char*)lParam, ppi->m_szModuleName, wParam);
 	return 0;
 }
 
 static INT_PTR stub42(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	return ppi->m_iStatus;
+{
+	return ppi->m_iStatus;
 }
 
-
 static INT_PTR stub43(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	
+{
 	PROTO_AVATAR_INFORMATION* p = (PROTO_AVATAR_INFORMATION*)lParam;
 
 	PROTO_AVATAR_INFORMATIONW tmp = { 0 };
@@ -380,7 +399,7 @@ static INT_PTR stub43(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
 }
 
 static INT_PTR stub44(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	
+{
 	wchar_t* buf = (wchar_t*)_alloca(sizeof(wchar_t) * (lParam + 1));
 	int result = CallProtoServiceInt(NULL,ppi->m_szModuleName, PS_GETMYAVATARW, WPARAM(buf), lParam);
 	if (result == 0)
@@ -396,10 +415,9 @@ static INT_PTR stub44(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
 }
 
 static INT_PTR stub45(PROTO_INTERFACE* ppi, WPARAM wParam, LPARAM lParam)
-{	
+{
 	return CallProtoServiceInt(NULL,ppi->m_szModuleName, PS_SETMYAVATARW, wParam, (LPARAM)(LPCTSTR)StrConvT((char*)lParam));
 }
-
 
 static HANDLE CreateProtoServiceEx(const char* szModule, const char* szService, MIRANDASERVICEOBJ pFunc, void* param)
 {
@@ -443,27 +461,17 @@ BOOL ActivateAccount(PROTOACCOUNT* pa)
 	CreateProtoServiceEx(pa->szModuleName, PS_GETNAME, (MIRANDASERVICEOBJ)stub41, pa->ppro);
 	CreateProtoServiceEx(pa->szModuleName, PS_GETSTATUS, (MIRANDASERVICEOBJ)stub42, pa->ppro);
 
-	char szServiceName[ 200 ];
-	mir_snprintf(szServiceName, SIZEOF(szServiceName), "%s%s", pa->szModuleName, PS_GETAVATARINFO);
-	if ( !ServiceExists(szServiceName)) {
-		mir_snprintf(szServiceName, SIZEOF(szServiceName), "%s%s", pa->szModuleName, PS_GETAVATARINFOW);
-		if (ServiceExists(szServiceName))
+	if ( !ProtoServiceExists(pa->szModuleName, PS_GETAVATARINFO))
+		if ( ProtoServiceExists(pa->szModuleName, PS_GETAVATARINFOW))
 			CreateProtoServiceEx(pa->szModuleName, PS_GETAVATARINFO, (MIRANDASERVICEOBJ)stub43, pa->ppro);
-	}
 
-	mir_snprintf(szServiceName, SIZEOF(szServiceName), "%s%s", pa->szModuleName, PS_GETMYAVATAR);
-	if ( !ServiceExists(szServiceName)) {
-		mir_snprintf(szServiceName, SIZEOF(szServiceName), "%s%s", pa->szModuleName, PS_GETMYAVATARW);
-		if (ServiceExists(szServiceName))
+	if ( !ProtoServiceExists(pa->szModuleName, PS_GETMYAVATAR))
+		if ( ProtoServiceExists(pa->szModuleName, PS_GETMYAVATARW))
 			CreateProtoServiceEx(pa->szModuleName, PS_GETMYAVATAR, (MIRANDASERVICEOBJ)stub44, pa->ppro);
-	}
 
-	mir_snprintf(szServiceName, SIZEOF(szServiceName), "%s%s", pa->szModuleName, PS_SETMYAVATAR);
-	if ( !ServiceExists(szServiceName)) {
-		mir_snprintf(szServiceName, SIZEOF(szServiceName), "%s%s", pa->szModuleName, PS_SETMYAVATARW);
-		if (ServiceExists(szServiceName))
+	if ( !ProtoServiceExists(pa->szModuleName, PS_SETMYAVATAR))
+		if ( ProtoServiceExists(pa->szModuleName, PS_SETMYAVATARW))
 			CreateProtoServiceEx(pa->szModuleName, PS_SETMYAVATAR, (MIRANDASERVICEOBJ)stub45, pa->ppro);
-	}
 
 	return TRUE;
 }
@@ -472,17 +480,17 @@ BOOL ActivateAccount(PROTOACCOUNT* pa)
 
 struct DeactivationThreadParam
 {
-	tagPROTO_INTERFACE* ppro;
-	pfnUninitProto      fnUninit;
-	bool                bIsDynamic;
-	bool                bErase;
+	PROTO_INTERFACE *ppro;
+	pfnUninitProto   fnUninit;
+	bool             bIsDynamic;
+	bool             bErase;
 };
 
 pfnUninitProto GetProtocolDestructor(char* szProto);
 
 static int DeactivationThread(DeactivationThreadParam* param)
 {
-	tagPROTO_INTERFACE* p = (tagPROTO_INTERFACE*)param->ppro;
+	PROTO_INTERFACE* p = (PROTO_INTERFACE*)param->ppro;
 	p->SetStatus(ID_STATUS_OFFLINE);
 
 	char * szModuleName = NEWSTR_ALLOCA(p->m_szModuleName);
@@ -532,7 +540,7 @@ void DeactivateAccount(PROTOACCOUNT* pa, bool bIsDynamic, bool bErase)
 	pa->ppro = NULL;
 	if (bIsDynamic)
 		mir_forkthread((pThreadFunc)DeactivationThread, param);
-	else 
+	else
 		DeactivationThread(param);
 }
 
@@ -568,7 +576,6 @@ void EraseAccount(const char* pszModuleName)
 	// remove all protocol settings
 	CallService(MS_DB_MODULE_DELETE, 0, (LPARAM)pszModuleName);
 }
-
 
 /////////////////////////////////////////////////////////////////////////////////////////
 

@@ -19,13 +19,14 @@ namespace Langpack_Suite
         private CultureInfo culture;
         public FolderBrowserDialog LangpackFolder;
         public String[] arguments;
-        public bool vitype, quiet = false;
-        public string output = ""; 
+        public bool vitype, quiet = false, outfile = false;
+        public string output = "", exepath = ""; 
         Searcher search;
         ToolTip tipper;
         public MainForm()
         {
             arguments = Environment.GetCommandLineArgs();
+            exepath = arguments[0];
             InitializeComponent();
             search = new Searcher(this);
             tipper = new ToolTip();
@@ -33,7 +34,19 @@ namespace Langpack_Suite
             tipper.InitialDelay = 1000;
             tipper.ReshowDelay = 500;
             tipper.ShowAlways = true;
- 
+
+            DirectoryInfo root = Directory.GetParent(Directory.GetParent(exepath).ToString());
+            string[] dirs = Directory.GetDirectories(root.ToString());
+            foreach (string dir in dirs)
+            {
+                if (!dir.Equals(Directory.GetCurrentDirectory()) && File.Exists(dir + "\\=HEAD=.txt"))
+                {
+                    int pos = dir.LastIndexOf('\\');
+                    string item = dir.Substring(pos + 1);
+                    LangpacksComboBox.Items.Add(item);
+                }
+            }
+
             for (int i = 1; i < arguments.Length; i++)
             {
                 string key = arguments[i].Substring(0, 2);
@@ -44,6 +57,11 @@ namespace Langpack_Suite
                 if (key.Equals("\\n"))
                 {
                     LangpackNameEdit.Text = arguments[i].Substring(2);
+                    if (LangpackNameEdit.Text.Contains(":\\") || LangpackNameEdit.Text.Contains(".\\"))
+                    {
+                        output = arguments[i].Substring(2);
+                        outfile = true;
+                    }
                 }
                 if (key.Equals("\\o"))
                 {
@@ -51,7 +69,7 @@ namespace Langpack_Suite
                     if (fname.Contains("\\"))
                         OwnFileEdit.Text = fname;
                     else
-                        OwnFileEdit.Text = Directory.GetCurrentDirectory() + "\\" + fname;
+                        OwnFileEdit.Text = Directory.GetParent(Directory.GetParent(exepath).ToString()).ToString() + "\\" + LangpacksComboBox.Text + "\\" + fname;
                     OwnFileCheckBox.Checked = true;
                     OwnFilesCheckBoxChange();
                 }
@@ -62,9 +80,11 @@ namespace Langpack_Suite
                     GetVICheckBox.Checked = true;
                     GetVICheckBoxChange();
                 }
-                if (key.Equals("\\l"))
+                if (key.Equals("\\p"))
                 {
-                    output = arguments[i].Substring(2);
+                    string fname = arguments[i].Substring(2);
+                    LangpacksComboBox.Text = fname;
+                    LangpacksComboBoxChange();
                 }
             }
             if (quiet)
@@ -79,9 +99,25 @@ namespace Langpack_Suite
             {
                 LanguageComboBox.SelectedIndex = 1;
             }
+            else if (culture.ToString() == "uk-UA")
+            {
+                LanguageComboBox.SelectedIndex = 2;
+            }
+            else if (culture.ToString() == "be-BY")
+            {
+                LanguageComboBox.SelectedIndex = 3;
+            }
+            else if (culture.ToString() == "de-DE")
+            {
+                LanguageComboBox.SelectedIndex = 4;
+            }
+			else if (culture.ToString() == "cs-CZ")
+            {
+                LanguageComboBox.SelectedIndex = 5;
+            }
             else
             {
-                culture = CultureInfo.CreateSpecificCulture("en-EN");
+                culture = CultureInfo.CreateSpecificCulture("en-US");
                 LanguageComboBox.SelectedIndex = 0;
             }
             adjustCulture();
@@ -143,7 +179,8 @@ namespace Langpack_Suite
             NotTranslFindBtn.Text = CurrentText;
             CurrentText = rm.GetString("CommentFindBtn", culture);
             CommentFindBtn.Text = CurrentText;
-            
+            CurrentText = rm.GetString("AvailLangpacks", culture);
+            label7.Text = CurrentText;
         }
 
         private void GenerateLang()
@@ -161,9 +198,13 @@ namespace Langpack_Suite
 
             InfMessageLangBox.Text = LocaleText + "\r\n";
 
-            FolderName = Directory.GetCurrentDirectory();
-            if (output == "")
-                output = FolderName + "\\" + LangpackNameEdit.Text + ".txt";
+            FolderName = Directory.GetParent(Directory.GetParent(exepath).ToString()).ToString() + "\\" + LangpacksComboBox.Text;
+            if (!outfile)
+                if (LangpackNameEdit.Text.Contains(":\\") || LangpackNameEdit.Text.Contains(".\\"))
+                    output = LangpackNameEdit.Text;
+                else
+                    output = FolderName + "\\" + LangpackNameEdit.Text + ".txt";
+                
             if (File.Exists(output))
                 File.Delete(output);
 
@@ -209,7 +250,7 @@ namespace Langpack_Suite
             if (vitype)
                 vipath = VIURLTextBox.Text;
             else
-                vipath = FolderName + "\\VersionInfo.txt";
+                vipath = Directory.GetCurrentDirectory() + "\\VersionInfo.txt";
 
             if (File.Exists(vipath))
             {
@@ -311,6 +352,8 @@ namespace Langpack_Suite
                     InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText + "\r\n";
                     LocaleText = rm.GetString("GenStop", culture);
                     InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText;
+                    LangPack.Close();
+                    ReadFile.Close();
                     return;
                 }
 
@@ -328,9 +371,6 @@ namespace Langpack_Suite
                 {
                     LocaleText = rm.GetString("DupesNotFound", culture);
                     InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText + "\r\n";
-                    LocaleText = rm.GetString("GenStop", culture);
-                    InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText;
-                    return;
                 }
 
                 rf = new FileStream(vipath, FileMode.Open, FileAccess.Read);
@@ -383,9 +423,11 @@ namespace Langpack_Suite
                                     {
                                         if (st.StartsWith("Weather ini files:"))
                                         {
-                                            st = plug_in.ReadLine().Trim();
-                                            st = plug_in.ReadLine().Trim();
-                                            while (st != "")
+                                            st = plug_in.ReadLine();
+                                            st = plug_in.ReadLine();
+                                            if (st != "" && st != null)
+                                                st = st.Trim();
+                                            while (st != "" && st != null)
                                             {
                                                 int w = st.IndexOf(".");
                                                 st = st.Substring(0, w);
@@ -405,7 +447,7 @@ namespace Langpack_Suite
                                                     string LocaleText2 = rm.GetString("File2NotFound", culture);
                                                     InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText + st + LocaleText2 + "\r\n";
                                                 }
-                                                st = plug_in.ReadLine().Trim();
+                                                st = plug_in.ReadLine();
                                             }
                                         }
                                     }
@@ -529,6 +571,7 @@ namespace Langpack_Suite
                     InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText + "\r\n";
                     LocaleText = rm.GetString("GenStop", culture);
                     InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText;
+                    LangPack.Close();
                     return;
                 }
 
@@ -546,9 +589,6 @@ namespace Langpack_Suite
                 {
                     LocaleText = rm.GetString("DupesNotFound", culture);
                     InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText + "\r\n";
-                    LocaleText = rm.GetString("GenStop", culture);
-                    InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText;
-                    return;
                 }
 
                 DirectoryInfo PluginsDir = new DirectoryInfo(FolderName + "\\Plugins");
@@ -566,15 +606,23 @@ namespace Langpack_Suite
                         ReadFile.Close();
 
                         DirectoryInfo WeatherDir = new DirectoryInfo(FolderName + "\\Weather");
-                        foreach (FileInfo wi in WeatherDir.GetFiles())
+                        if (Directory.Exists(WeatherDir.ToString()))
                         {
-                            LangPack.WriteLine("");
-                            ReadFile = new StreamReader(wi.FullName);
-                            while ((s = ReadFile.ReadLine()) != null)
+                            foreach (FileInfo wi in WeatherDir.GetFiles())
                             {
-                                LangPack.WriteLine(s);
+                                LangPack.WriteLine("");
+                                ReadFile = new StreamReader(wi.FullName);
+                                while ((s = ReadFile.ReadLine()) != null)
+                                {
+                                    LangPack.WriteLine(s);
+                                }
+                                ReadFile.Close();
                             }
-                            ReadFile.Close();
+                        }
+                        else
+                        {
+                            LocaleText = rm.GetString("WeatherLinkNotFound", culture);
+                            InfMessageLangBox.Text = InfMessageLangBox.Text + LocaleText + "\r\n";
                         }
                         continue;
                     }
@@ -623,7 +671,7 @@ namespace Langpack_Suite
             SelectOwnFilesOpenFileDialog.Filter = "txt files (*.txt)|*.txt|All files (*.*)|*.*";
             SelectOwnFilesOpenFileDialog.FilterIndex = 1;
             SelectOwnFilesOpenFileDialog.RestoreDirectory = true;
-            SelectOwnFilesOpenFileDialog.InitialDirectory = Directory.GetCurrentDirectory();
+            SelectOwnFilesOpenFileDialog.InitialDirectory = Directory.GetParent(Directory.GetParent(exepath).ToString()).ToString() + "\\" + LangpacksComboBox.Text;
             if (SelectOwnFilesOpenFileDialog.ShowDialog() == DialogResult.OK)
             {
                 try
@@ -657,7 +705,7 @@ namespace Langpack_Suite
             string LocaleText = rm.GetString("LinkListGen", culture);
             InfMessageLinkBox.Text = LocaleText + "\r\n";
 
-            FolderName = Directory.GetCurrentDirectory();
+            FolderName = Directory.GetParent(Directory.GetParent(exepath).ToString()).ToString() + "\\" + LangpacksComboBox.Text;
             if (File.Exists(FolderName + "\\LinkList.txt"))
                 File.Delete(FolderName + "\\LinkList.txt");
 
@@ -728,7 +776,7 @@ namespace Langpack_Suite
             string FolderName = "";
             InfMessageFindBox.Text = "";
 
-            FolderName = Directory.GetCurrentDirectory();
+            FolderName = Directory.GetParent(Directory.GetParent(exepath).ToString()).ToString() + "\\" + LangpacksComboBox.Text;
             DirectoryInfo RootDir = new DirectoryInfo(FolderName);
             ResourceManager rm = new ResourceManager("LangpackSuite.myRes", typeof(MainForm).Assembly);
             string LocaleText = rm.GetString("FindLang", culture);
@@ -780,9 +828,17 @@ namespace Langpack_Suite
         private void LanguageComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (LanguageComboBox.SelectedIndex == 0)
-                culture = CultureInfo.CreateSpecificCulture("en-EN");
+                culture = CultureInfo.CreateSpecificCulture("en-US");
             if (LanguageComboBox.SelectedIndex == 1)
                 culture = CultureInfo.CreateSpecificCulture("ru-RU");
+            if (LanguageComboBox.SelectedIndex == 2)
+                culture = CultureInfo.CreateSpecificCulture("uk-UA");
+            if (LanguageComboBox.SelectedIndex == 3)
+                culture = CultureInfo.CreateSpecificCulture("be-BY");
+            if (LanguageComboBox.SelectedIndex == 4)
+                culture = CultureInfo.CreateSpecificCulture("de-DE");
+			if (LanguageComboBox.SelectedIndex == 5)
+                culture = CultureInfo.CreateSpecificCulture("cs-CZ");
             adjustCulture();
 
         }
@@ -810,6 +866,17 @@ namespace Langpack_Suite
             string LocaleText = rm.GetString("VarText", culture);
             string LocaleHead = rm.GetString("VarHead", culture);
             MessageBox.Show(LocaleText, LocaleHead);
+        }
+
+        private void LangpacksComboBoxChange()
+        {
+            LangpackNameEdit.Text = "Langpack_" + LangpacksComboBox.Text;
+            CreateLangpackBtn.Enabled = true;
+        }
+
+        private void LangpacksComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            LangpacksComboBoxChange();
         }
     }
 }

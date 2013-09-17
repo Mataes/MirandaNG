@@ -1,18 +1,4 @@
 #include "StdAfx.h"
-#include "QuotesProviderGoogleFinance.h"
-#include "QuotesProviderVisitor.h"
-#include "EconomicRateInfo.h"
-#include "DBUtils.h"
-#include "resource.h"
-#include "ModuleInfo.h"
-// #include "QuotesProviders.h"
-// #include "CommonOptionDlg.h"
-// #include "WinCtrlHelper.h"
-#include "IHTMLParser.h"
-#include "IHTMLEngine.h"
-#include "HTTPSession.h"
-#include "Log.h"
-#include "Locale.h"
 
 CQuotesProviderGoogleFinance::CQuotesProviderGoogleFinance()
 {
@@ -342,7 +328,7 @@ void CQuotesProviderGoogleFinance::RefreshQuotes(TContracts& anContacts)
 						}
 						if(false == Info.m_sCmpName.empty())
 						{
-							DBWriteContactSettingTString(hContact,QUOTES_MODULE_NAME,DB_STR_QUOTE_DESCRIPTION,Info.m_sCmpName.c_str());
+							db_set_ts(hContact,QUOTES_MODULE_NAME,DB_STR_QUOTE_DESCRIPTION,Info.m_sCmpName.c_str());
 						}
 
 						WriteContactRate(hContact,Info.m_dRate);

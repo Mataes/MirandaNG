@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "clc.h"
 
@@ -54,9 +55,6 @@ struct ProtoIconIndex
 };
 
 OBJLIST<ProtoIconIndex> protoIconIndex(5);
-
-static HANDLE hProtoAckHook;
-static HANDLE hContactSettingChanged;
 
 TCHAR* fnGetStatusModeDescription(int mode, int flags)
 {
@@ -140,19 +138,17 @@ static int ProtocolAck(WPARAM, LPARAM lParam)
 	ACKDATA *ack = (ACKDATA *) lParam;
 	if (ack->type != ACKTYPE_STATUS)
 		return 0;
-	
-	CallService(MS_CLUI_PROTOCOLSTATUSCHANGED, ack->lParam, (LPARAM) ack->szModule);
+
+	cli.pfnCluiProtocolStatusChanged(lParam, ack->szModule);
 
 	if ((int)ack->hProcess < ID_STATUS_ONLINE && ack->lParam >= ID_STATUS_ONLINE) {
 		DWORD caps = (DWORD)CallProtoServiceInt(NULL,ack->szModule, PS_GETCAPS, PFLAGNUM_1, 0);
 		if (caps & PF1_SERVERCLIST) {
-			HANDLE hContact = db_find_first();
-			while (hContact) {
-				char *szProto = GetContactProto(hContact);
-				if (szProto != NULL && !strcmp(szProto, ack->szModule))
-					if (db_get_b(hContact, "CList", "Delete", 0))
-						CallService(MS_DB_CONTACT_DELETE, (WPARAM) hContact, 0);
-				hContact = db_find_next(hContact);
+			for (HANDLE hContact = db_find_first(ack->szModule); hContact; ) {
+				HANDLE hNext = db_find_next(hContact, ack->szModule);
+				if (db_get_b(hContact, "CList", "Delete", 0))
+					CallService(MS_DB_CONTACT_DELETE, (WPARAM)hContact, 0);
+				hContact = hNext;
 			}
 		}
 	}
@@ -185,13 +181,16 @@ int fnIconFromStatusMode(const char *szProto, int status, HANDLE)
 	return 1;
 }
 
+int fnGetContactIcon(HANDLE hContact)
+{
+	char *szProto = GetContactProto(hContact);
+	return cli.pfnIconFromStatusMode(szProto,
+		szProto == NULL ? ID_STATUS_OFFLINE : db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE), hContact);
+}
+
 static INT_PTR GetContactIcon(WPARAM wParam, LPARAM)
 {
-	char *szProto = GetContactProto((HANDLE)wParam);
-	HANDLE hContact = (HANDLE)wParam;
-
-	return cli.pfnIconFromStatusMode(szProto, 
-		szProto == NULL ? ID_STATUS_OFFLINE : db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE), hContact);
+	return cli.pfnGetContactIcon((HANDLE)wParam);
 }
 
 static void AddProtoIconIndex(PROTOACCOUNT* pa)
@@ -208,7 +207,7 @@ static void AddProtoIconIndex(PROTOACCOUNT* pa)
 
 static void RemoveProtoIconIndex(PROTOACCOUNT* pa)
 {
-	for (int i=0; i < protoIconIndex.getCount(); i++) 
+	for (int i=0; i < protoIconIndex.getCount(); i++)
 		if (strcmp(protoIconIndex[i].szProto, pa->szModuleName) == 0) {
 			protoIconIndex.remove(i);
 			break;
@@ -217,11 +216,6 @@ static void RemoveProtoIconIndex(PROTOACCOUNT* pa)
 
 static int ContactListModulesLoaded(WPARAM, LPARAM)
 {
-	if ( !ServiceExists(MS_DB_CONTACT_GETSETTING_STR)) {
-		MessageBox(NULL, TranslateT("This plugin requires db3x plugin version 0.5.1.0 or later"), _T("CList"), MB_OK);
-		return 1;
-	}
-
 	RebuildMenuOrder();
 	for (int i=0; i < accounts.getCount(); i++)
 		AddProtoIconIndex(accounts[i]);
@@ -237,7 +231,7 @@ static int ContactListModulesLoaded(WPARAM, LPARAM)
 
 static int ContactListAccountsChanged(WPARAM eventCode, LPARAM lParam)
 {
-	switch (eventCode) { 
+	switch (eventCode) {
 	case PRAC_ADDED:
 		AddProtoIconIndex((PROTOACCOUNT*)lParam);
 		break;
@@ -364,7 +358,7 @@ int fnGetWindowVisibleState(HWND hWnd, int iStepX, int iStepY)
 
 	if (iNotCoveredDots == 0)  //They're all covered!
 		return GWVS_COVERED;
-		
+
 	//There are dots which are visible, but they are not as many as the ones we counted: it's partially covered.
 	return GWVS_PARTIALLY_COVERED;
 }
@@ -407,12 +401,12 @@ int fnShowHide(WPARAM, LPARAM)
 		//this forces the window onto the visible screen
 		GetWindowRect(cli.hwndContactList, &rcWindow);
 		if (Utils_AssertInsideScreen(&rcWindow) == 1) {
-			MoveWindow(cli.hwndContactList, rcWindow.left, rcWindow.top, 
+			MoveWindow(cli.hwndContactList, rcWindow.left, rcWindow.top,
 				rcWindow.right - rcWindow.left, rcWindow.bottom - rcWindow.top, TRUE);
 		}
 	}
 	else {                      //It needs to be hidden
-		if (db_get_b(NULL, "CList", "ToolWindow", SETTING_TOOLWINDOW_DEFAULT) || 
+		if (db_get_b(NULL, "CList", "ToolWindow", SETTING_TOOLWINDOW_DEFAULT) ||
 			db_get_b(NULL, "CList", "Min2Tray", SETTING_MIN2TRAY_DEFAULT)) {
 			ShowWindow(cli.hwndContactList, SW_HIDE);
 			db_set_b(NULL, "CList", "State", SETTING_STATE_HIDDEN);
@@ -486,8 +480,6 @@ static INT_PTR CompareContacts(WPARAM wParam, LPARAM lParam)
 
 /***************************************************************************************/
 
-static INT_PTR TrayIconProcessMessageStub(WPARAM wParam, LPARAM lParam) {	return cli.pfnTrayIconProcessMessage(wParam, lParam); }
-static INT_PTR TrayIconPauseAutoHideStub(WPARAM wParam, LPARAM lParam) { return cli.pfnTrayIconPauseAutoHide(wParam, lParam); }
 static INT_PTR ShowHideStub(WPARAM wParam, LPARAM lParam) { return cli.pfnShowHide(wParam, lParam); }
 static INT_PTR SetHideOfflineStub(WPARAM wParam, LPARAM lParam) { return cli.pfnSetHideOffline(wParam, lParam); }
 static INT_PTR Docking_ProcessWindowMessageStub(WPARAM wParam, LPARAM lParam) { return cli.pfnDocking_ProcessWindowMessage(wParam, lParam); }
@@ -497,10 +489,10 @@ int LoadContactListModule2(void)
 {
 	HookEvent(ME_SYSTEM_MODULESLOADED, ContactListModulesLoaded);
 	HookEvent(ME_PROTO_ACCLISTCHANGED, ContactListAccountsChanged);
-	hContactSettingChanged = HookEvent(ME_DB_CONTACT_SETTINGCHANGED, ContactSettingChanged);
+	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, ContactSettingChanged);
 	HookEvent(ME_DB_CONTACT_ADDED, ContactAdded);
 	HookEvent(ME_DB_CONTACT_DELETED, ContactDeleted);
-	hProtoAckHook = (HANDLE) HookEvent(ME_PROTO_ACK, ProtocolAck);
+	HookEvent(ME_PROTO_ACK, ProtocolAck);
 
 	hContactDoubleClicked = CreateHookableEvent(ME_CLIST_DOUBLECLICKED);
 	hContactIconChangedEvent = CreateHookableEvent(ME_CLIST_CONTACTICONCHANGED);
@@ -512,8 +504,6 @@ int LoadContactListModule2(void)
 	CreateServiceFunction(MS_CLIST_GETSTATUSMODEDESCRIPTION, GetStatusModeDescription);
 	CreateServiceFunction(MS_CLIST_GETCONTACTDISPLAYNAME, GetContactDisplayName);
 	CreateServiceFunction(MS_CLIST_INVALIDATEDISPLAYNAME, InvalidateDisplayName);
-	CreateServiceFunction(MS_CLIST_TRAYICONPROCESSMESSAGE, TrayIconProcessMessageStub);
-	CreateServiceFunction(MS_CLIST_PAUSEAUTOHIDE, TrayIconPauseAutoHideStub);
 	CreateServiceFunction(MS_CLIST_CONTACTSCOMPARE, CompareContacts);
 	CreateServiceFunction(MS_CLIST_CONTACTCHANGEGROUP, ContactChangeGroup);
 	CreateServiceFunction(MS_CLIST_SHOWHIDE, ShowHideStub);
@@ -552,17 +542,14 @@ void UnloadContactListModule()
 		return;
 
 	//remove transitory contacts
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) {
+	for (HANDLE hContact = db_find_first(); hContact != NULL; ) {
 		HANDLE hNext = db_find_next(hContact);
 		if (db_get_b(hContact, "CList", "NotOnList", 0))
 			CallService(MS_DB_CONTACT_DELETE, (WPARAM) hContact, 0);
 		hContact = hNext;
 	}
 	ImageList_Destroy(hCListImages);
-	UnhookEvent(hProtoAckHook);
 	UninitCListEvents();
 	protoIconIndex.destroy();
 	DestroyHookableEvent(hContactDoubleClicked);
-	UnhookEvent(hContactSettingChanged);
 }

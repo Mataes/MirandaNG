@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by d:\Myranda\plugins\WhenWasIt\res\WhenWasIt.rc
+// Used by ..\res\WhenWasIt.rc
 //
 #define IDD_OPT_WWI                     101
 #define IDI_BIRTHDAYS                   102

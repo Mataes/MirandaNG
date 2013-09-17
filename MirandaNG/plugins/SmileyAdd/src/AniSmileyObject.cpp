@@ -17,13 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "general.h"
-#include "SmileyBase.h"
-#include "m_smileyadd.h"
-#include "smileys.h"
-#include "options.h"
-
-#include <richole.h>
-
 
 class CAniSmileyObject;
 
@@ -118,8 +111,7 @@ public:
 	{
 		regAniSmileys.remove(this);
 
-		if (timerId && (timerId+1) && regAniSmileys.getCount() == 0) 
-		{
+		if (timerId && (timerId+1) && regAniSmileys.getCount() == 0) {
 			KillTimer(NULL, timerId);
 			timerId = 0;
 		}
@@ -434,17 +426,19 @@ ISmileyBase* CreateAniSmileyObject(SmileyType* sml, COLORREF clr, bool ishpp)
 
 static void CALLBACK timerProc(HWND, UINT, UINT_PTR, DWORD) 
 {
-	for (int i=0; i<regAniSmileys.getCount(); ++i)
+	for (int i=0; i < regAniSmileys.getCount(); i++)
 		regAniSmileys[i]->ProcessTimerTick();
 }
 
 void DestroyAniSmileys(void)
 {
-	if (timerId && (timerId+1)) 
-	{
+	if (timerId && (timerId+1)) {
 		KillTimer(NULL, timerId);
 		timerId = 0;
 	}
+
+	for (int i=0; i < regAniSmileys.getCount(); i++)
+		delete regAniSmileys[i];
 	regAniSmileys.destroy();
 }
 

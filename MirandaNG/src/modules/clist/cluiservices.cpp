@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "clc.h"
 
@@ -33,18 +34,6 @@ static INT_PTR GetHwndTree(WPARAM, LPARAM)
 	return (INT_PTR)cli.hwndContactTree;
 }
 
-static INT_PTR CluiProtocolStatusChanged(WPARAM wParam, LPARAM lParam)
-{
-	cli.pfnCluiProtocolStatusChanged(wParam, (const char*)lParam);
-	return 0;
-}
-
-INT_PTR SortList(WPARAM, LPARAM)
-{
-	//unnecessary: CLC does this automatically
-	return 0;
-}
-
 static INT_PTR GroupAdded(WPARAM wParam, LPARAM lParam)
 {
 	//CLC does this automatically unless it's a new group
@@ -54,7 +43,7 @@ static INT_PTR GroupAdded(WPARAM wParam, LPARAM lParam)
 		HWND hwndFocus = GetFocus();
 
 		GetClassName(hwndFocus, szFocusClass, SIZEOF(szFocusClass));
-		if ( !lstrcmp(szFocusClass, CLISTCONTROL_CLASS)) {
+		if ( !lstrcmp(szFocusClass, _T(CLISTCONTROL_CLASS))) {
 			hItem = (HANDLE) SendMessage(hwndFocus, CLM_FINDGROUP, wParam, 0);
 			if (hItem)
 				SendMessage(hwndFocus, CLM_EDITLABEL, (WPARAM) hItem, 0);
@@ -138,7 +127,6 @@ void LoadCluiServices(void)
 {
 	CreateServiceFunction(MS_CLUI_GETHWND, GetHwnd);
 	CreateServiceFunction(MS_CLUI_GETHWNDTREE, GetHwndTree);
-	CreateServiceFunction(MS_CLUI_PROTOCOLSTATUSCHANGED, CluiProtocolStatusChanged);
 	CreateServiceFunction(MS_CLUI_GROUPADDED, GroupAdded);
 	CreateServiceFunction(MS_CLUI_CONTACTSETICON, ContactSetIcon);
 	CreateServiceFunction(MS_CLUI_CONTACTADDED, ContactAdded);
@@ -146,7 +134,6 @@ void LoadCluiServices(void)
 	CreateServiceFunction(MS_CLUI_CONTACTRENAMED, ContactRenamed);
 	CreateServiceFunction(MS_CLUI_LISTBEGINREBUILD, ListBeginRebuild);
 	CreateServiceFunction(MS_CLUI_LISTENDREBUILD, ListEndRebuild);
-	CreateServiceFunction(MS_CLUI_SORTLIST, SortList);
 	CreateServiceFunction(MS_CLUI_GETCAPS, GetCaps);
 }
 

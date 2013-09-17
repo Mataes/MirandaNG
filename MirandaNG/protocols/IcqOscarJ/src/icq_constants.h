@@ -63,6 +63,7 @@
 
 #define DEFAULT_SECURE_LOGIN        1
 #define DEFAULT_SECURE_CONNECTION   1
+#define DEFAULT_LEGACY_FIX          0
 #define DEFAULT_KEEPALIVE_ENABLED   1
 #define DEFAULT_AIM_ENABLED         0
 #define DEFAULT_UTF_ENABLED         2 // everything unicode is default
@@ -74,7 +75,7 @@
 #define DEFAULT_LOAD_AVATARS        1
 #define DEFAULT_BIGGER_AVATARS      1
 #define DEFAULT_AVATARS_CHECK       1
-#define DEFAULT_XSTATUS_ENABLED     0
+#define DEFAULT_XSTATUS_ENABLED     1
 #define DEFAULT_XSTATUS_AUTO        1
 #define DEFAULT_XSTATUS_RESET       0
 #define DEFAULT_MOODS_ENABLED       1

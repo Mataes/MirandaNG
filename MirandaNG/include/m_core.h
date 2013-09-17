@@ -84,30 +84,219 @@ typedef struct {
 	};
 } DBVARIANT;
 
+#define DBEF_FIRST    1    //this is the first event in the chain;
+                           //internal only: *do not* use this flag
+#define DBEF_SENT     2    //this event was sent by the user. If not set this
+                           //event was received.
+#define DBEF_READ     4    //event has been read by the user. It does not need
+                           //to be processed any more except for history.
+#define DBEF_RTL      8    //event contains the right-to-left aligned text
+#define DBEF_UTF     16    //event contains a text in utf-8
+
+typedef struct {
+	int cbSize;       //size of the structure in bytes
+	char *szModule;	  //pointer to name of the module that 'owns' this
+                      //event, ie the one that is in control of the data format
+	DWORD timestamp;  //seconds since 00:00, 01/01/1970. Gives us times until
+	                  //2106 unless you use the standard C library which is
+					  //signed and can only do until 2038. In GMT.
+	DWORD flags;	  //the omnipresent flags
+	WORD eventType;	  //module-defined event type field
+	DWORD cbBlob;	  //size of pBlob in bytes
+	PBYTE pBlob;	  //pointer to buffer containing module-defined event data
+} DBEVENTINFO;
+
 MIR_CORE_DLL(INT_PTR) db_free(DBVARIANT *dbv);
-MIR_CORE_DLL(INT_PTR) db_unset(HANDLE hContact, const char *szModule, const char *szSetting);
+
+/******************************************************************************
+ * DATABASE CONTACTS
+ */
+
+/*
+Gets the handle of the first contact in the database. This handle can be used
+with loads of functions. It does not need to be closed.
+You can specify szProto to find only its contacts
+Returns a handle to the first contact in the db on success, or NULL if there
+are no contacts in the db.
+*/
 
 #if defined(__cplusplus)
-MIR_CORE_DLL(HANDLE)  db_find_first(const char *szProto = NULL);
-MIR_CORE_DLL(HANDLE)  db_find_next(HANDLE hContact, const char *szProto = NULL);
+	MIR_CORE_DLL(HANDLE) db_find_first(const char *szProto = NULL);
 #else
-MIR_CORE_DLL(HANDLE)  db_find_first(const char *szProto);
-MIR_CORE_DLL(HANDLE)  db_find_next(HANDLE hContact, const char *szProto);
+	MIR_CORE_DLL(HANDLE) db_find_first(const char *szProto);
 #endif
 
+/*
+Gets the handle of the next contact after hContact in the database. This handle
+can be used with loads of functions. It does not need to be closed.
+You can specify szProto to find only its contacts
+Returns a handle to the contact after hContact in the db on success or NULL if
+hContact was the last contact in the db or hContact was invalid.
+*/
+
+#if defined(__cplusplus)
+	MIR_CORE_DLL(HANDLE) db_find_next(HANDLE hContact, const char *szProto = NULL);
+#else
+	MIR_CORE_DLL(HANDLE) db_find_next(HANDLE hContact, const char *szProto);
+#endif
+
+/******************************************************************************
+ * DATABASE EVENTS
+ */
+
+/* 
+Adds a new event to a contact's event list
+Returns a handle to the newly added event, or NULL on failure
+Triggers a db/event/added event just before it returns.
+Events are sorted chronologically as they are entered, so you cannot guarantee
+that the new hEvent is the last event in the chain, however if a new event is
+added that has a timestamp less than 90 seconds *before* the event that should
+be after it, it will be added afterwards, to allow for protocols that only
+store times to the nearest minute, and slight delays in transports.
+There are a few predefined eventTypes below for easier compatibility, but
+modules are free to define their own, beginning at 2000
+DBEVENTINFO.timestamp is in GMT, as returned by time(). There are services
+db/time/x below with useful stuff for dealing with it.
+*/
+
+#define EVENTTYPE_MESSAGE         0
+#define EVENTTYPE_URL             1
+#define EVENTTYPE_CONTACTS        2   //v0.1.2.2+
+#define EVENTTYPE_ADDED         1000  //v0.1.1.0+: these used to be module-
+#define EVENTTYPE_AUTHREQUEST   1001  //specific codes, hence the module-
+#define EVENTTYPE_FILE          1002  //specific limit has been raised to 2000
+
+MIR_CORE_DLL(HANDLE) db_event_add(HANDLE hContact, DBEVENTINFO *dbei);
+
+/*
+Gets the number of events in the chain belonging to a contact in the database.
+Returns the number of events in the chain owned by hContact or -1 if hContact
+is invalid. They can be retrieved using the db_event_first/last() services.
+*/
+
+MIR_CORE_DLL(int) db_event_count(HANDLE hContact);
+
+/*
+Removes a single event from the database
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns 0 on success, or nonzero if hDbEvent was invalid
+Triggers a db/event/deleted event just *before* the event is deleted
+*/
+
+MIR_CORE_DLL(int) db_event_delete(HANDLE hContact, HANDLE hDbEvent);
+
+/*
+Retrieves a handle to the first event in the chain for hContact
+Returns the handle, or NULL if hContact is invalid or has no events
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(HANDLE) db_event_first(HANDLE hContact);
+
+/* 
+Retrieves a handle to the first unread event in the chain for hContact
+Returns the handle, or NULL if hContact is invalid or all its events have been
+read
+
+Events in a chain are sorted chronologically automatically, but this does not
+necessarily mean that all events after the first unread are unread too. They
+should be checked individually with db_event_next() and db_event_get()
+This service is designed for startup, reloading all the events that remained
+unread from last time
+*/
+
+MIR_CORE_DLL(HANDLE) db_event_firstUnread(HANDLE hContact);
+
+/*
+Retrieves all the information stored in hDbEvent
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns 0 on success or nonzero if hDbEvent is invalid
+Don't forget to set dbe.cbSize, dbe.pBlob and dbe.cbBlob before calling this
+service
+The correct value dbe.cbBlob can be got using db/event/getblobsize
+If successful, all the fields of dbe are filled. dbe.cbBlob is set to the
+actual number of bytes retrieved and put in dbe.pBlob
+If dbe.cbBlob is too small, dbe.pBlob is filled up to the size of dbe.cbBlob
+and then dbe.cbBlob is set to the required size of data to go in dbe.pBlob
+On return, dbe.szModule is a pointer to the database module's own internal list
+of modules. Look but don't touch.
+*/
+
+MIR_CORE_DLL(int) db_event_get(HANDLE hDbEvent, DBEVENTINFO *dbei);
+
+/*
+Retrieves the space in bytes required to store the blob in hDbEvent
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns the space required in bytes, or -1 if hDbEvent is invalid
+*/
+
+MIR_CORE_DLL(int) db_event_getBlobSize(HANDLE hDbEvent);
+
+/*
+Retrieves a handle to the contact that owns hDbEvent.
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+NULL is a valid return value, meaning, as usual, the user.
+Returns (HANDLE)(-1) if hDbEvent is invalid, or the handle to the contact on
+success
+This service is exceptionally slow. Use only when you have no other choice at
+all.
+*/
+
+MIR_CORE_DLL(HANDLE) db_event_getContact(HANDLE hDbEvent);
+
+/*
+Retrieves a handle to the last event in the chain for hContact
+Returns the handle, or NULL if hContact is invalid or has no events
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(HANDLE) db_event_last(HANDLE hDbEvent);
+
+/*
+Changes the flags for an event to mark it as read.
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns the entire flag DWORD for the event after the change, or -1 if hDbEvent
+is invalid.
+This is the one database write operation that does not trigger an event.
+Modules should not save flags states for any length of time.
+*/
+
+MIR_CORE_DLL(int) db_event_markRead(HANDLE hContact, HANDLE hDbEvent);
+
+/*
+Retrieves a handle to the next event in a chain after hDbEvent
+Returns the handle, or NULL if hDbEvent is invalid or is the last event
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(HANDLE) db_event_next(HANDLE hDbEvent);
+
+/*
+Retrieves a handle to the previous event in a chain before hDbEvent
+Returns the handle, or NULL if hDbEvent is invalid or is the first event
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(HANDLE) db_event_prev(HANDLE hDbEvent);
+
+/******************************************************************************
+ * DATABASE SETTINGS
+ */
+
+MIR_CORE_DLL(INT_PTR) db_get(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv);
 MIR_CORE_DLL(int)     db_get_b(HANDLE hContact, const char *szModule, const char *szSetting, int errorValue);
 MIR_CORE_DLL(int)     db_get_w(HANDLE hContact, const char *szModule, const char *szSetting, int errorValue);
 MIR_CORE_DLL(DWORD)   db_get_dw(HANDLE hContact, const char *szModule, const char *szSetting, DWORD errorValue);
-MIR_CORE_DLL(INT_PTR) db_get(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv);
 MIR_CORE_DLL(char*)   db_get_sa(HANDLE hContact, const char *szModule, const char *szSetting);
 MIR_CORE_DLL(WCHAR*)  db_get_wsa(HANDLE hContact, const char *szModule, const char *szSetting);
 
 #if defined(__cplusplus)
-MIR_CORE_DLL(INT_PTR) db_get_s(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv, const int nType=DBVT_ASCIIZ);
+	MIR_CORE_DLL(INT_PTR) db_get_s(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv, const int nType=DBVT_ASCIIZ);
 #else
-MIR_CORE_DLL(INT_PTR) db_get_s(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv, const int nType);
+	MIR_CORE_DLL(INT_PTR) db_get_s(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv, const int nType);
 #endif
 
+MIR_CORE_DLL(INT_PTR) db_set(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv);
 MIR_CORE_DLL(INT_PTR) db_set_b(HANDLE hContact, const char *szModule, const char *szSetting, BYTE val);
 MIR_CORE_DLL(INT_PTR) db_set_w(HANDLE hContact, const char *szModule, const char *szSetting, WORD val);
 MIR_CORE_DLL(INT_PTR) db_set_dw(HANDLE hContact, const char *szModule, const char *szSetting, DWORD val);
@@ -115,6 +304,14 @@ MIR_CORE_DLL(INT_PTR) db_set_s(HANDLE hContact, const char *szModule, const char
 MIR_CORE_DLL(INT_PTR) db_set_ws(HANDLE hContact, const char *szModule, const char *szSetting, const WCHAR *val);
 MIR_CORE_DLL(INT_PTR) db_set_utf(HANDLE hContact, const char *szModule, const char *szSetting, const char *val);
 MIR_CORE_DLL(INT_PTR) db_set_blob(HANDLE hContact, const char *szModule, const char *szSetting, void *val, unsigned len);
+
+MIR_CORE_DLL(INT_PTR) db_unset(HANDLE hContact, const char *szModule, const char *szSetting);
+
+#if defined(__cplusplus)
+	MIR_CORE_DLL(BOOL) db_set_resident(const char *szModule, const char *szService, BOOL bEnable=TRUE);
+#else
+	MIR_CORE_DLL(BOOL) db_set_resident(const char *szModule, const char *szService, BOOL bEnable);
+#endif
 
 #define db_get_ws(a,b,c,d)  db_get_s(a,b,c,d,DBVT_WCHAR)
 #define db_get_utf(a,b,c,d) db_get_s(a,b,c,d,DBVT_UTF8)
@@ -144,34 +341,34 @@ typedef INT_PTR (*MIRANDASERVICEPARAM)(WPARAM, LPARAM, LPARAM);
 typedef INT_PTR (*MIRANDASERVICEOBJ)(void*, LPARAM, LPARAM);
 typedef INT_PTR (*MIRANDASERVICEOBJPARAM)(void*, WPARAM, LPARAM, LPARAM);
 
-#ifdef WIN64
+#ifdef _WIN64
 	#define CALLSERVICE_NOTFOUND      ((INT_PTR)0x8000000000000000)
 #else
 	#define CALLSERVICE_NOTFOUND      ((int)0x80000000)
 #endif
 
-MIR_CORE_DLL(HANDLE) CreateHookableEvent(const char *name);
-MIR_CORE_DLL(int)    DestroyHookableEvent(HANDLE hEvent);
-MIR_CORE_DLL(int)    SetHookDefaultForHookableEvent(HANDLE hEvent, MIRANDAHOOK pfnHook);
-MIR_CORE_DLL(int)    CallPluginEventHook(HINSTANCE hInst, HANDLE hEvent, WPARAM wParam, LPARAM lParam);
-MIR_CORE_DLL(int)    NotifyEventHooks(HANDLE hEvent, WPARAM wParam, LPARAM lParam);
-MIR_CORE_DLL(int)    NotifyFastHook(HANDLE hEvent, WPARAM wParam, LPARAM lParam);
+MIR_CORE_DLL(HANDLE)  CreateHookableEvent(const char *name);
+MIR_CORE_DLL(int)     DestroyHookableEvent(HANDLE hEvent);
+MIR_CORE_DLL(int)     SetHookDefaultForHookableEvent(HANDLE hEvent, MIRANDAHOOK pfnHook);
+MIR_CORE_DLL(int)     CallPluginEventHook(HINSTANCE hInst, HANDLE hEvent, WPARAM wParam, LPARAM lParam);
+MIR_CORE_DLL(int)     NotifyEventHooks(HANDLE hEvent, WPARAM wParam, LPARAM lParam);
+MIR_CORE_DLL(int)     NotifyFastHook(HANDLE hEvent, WPARAM wParam, LPARAM lParam);
 
-MIR_CORE_DLL(HANDLE) HookEvent(const char* name, MIRANDAHOOK hookProc);
-MIR_CORE_DLL(HANDLE) HookEventParam(const char* name, MIRANDAHOOKPARAM hookProc, LPARAM lParam);
-MIR_CORE_DLL(HANDLE) HookEventObj(const char* name, MIRANDAHOOKOBJ hookProc, void* object);
-MIR_CORE_DLL(HANDLE) HookEventObjParam(const char* name, MIRANDAHOOKOBJPARAM hookProc, void* object, LPARAM lParam);
-MIR_CORE_DLL(HANDLE) HookEventMessage(const char* name, HWND hwnd, UINT message);
-MIR_CORE_DLL(int)    UnhookEvent(HANDLE hHook);
-MIR_CORE_DLL(void)   KillObjectEventHooks(void* pObject);
-MIR_CORE_DLL(void)   KillModuleEventHooks(HINSTANCE pModule);
+MIR_CORE_DLL(HANDLE)  HookEvent(const char* name, MIRANDAHOOK hookProc);
+MIR_CORE_DLL(HANDLE)  HookEventParam(const char* name, MIRANDAHOOKPARAM hookProc, LPARAM lParam);
+MIR_CORE_DLL(HANDLE)  HookEventObj(const char* name, MIRANDAHOOKOBJ hookProc, void* object);
+MIR_CORE_DLL(HANDLE)  HookEventObjParam(const char* name, MIRANDAHOOKOBJPARAM hookProc, void* object, LPARAM lParam);
+MIR_CORE_DLL(HANDLE)  HookEventMessage(const char* name, HWND hwnd, UINT message);
+MIR_CORE_DLL(int)     UnhookEvent(HANDLE hHook);
+MIR_CORE_DLL(void)    KillObjectEventHooks(void* pObject);
+MIR_CORE_DLL(void)    KillModuleEventHooks(HINSTANCE pModule);
 
-MIR_CORE_DLL(HANDLE) CreateServiceFunction(const char *name, MIRANDASERVICE serviceProc);
-MIR_CORE_DLL(HANDLE) CreateServiceFunctionParam(const char *name, MIRANDASERVICEPARAM serviceProc, LPARAM lParam);
-MIR_CORE_DLL(HANDLE) CreateServiceFunctionObj(const char *name, MIRANDASERVICEOBJ serviceProc, void* object);
-MIR_CORE_DLL(HANDLE) CreateServiceFunctionObjParam(const char *name, MIRANDASERVICEOBJPARAM serviceProc, void* object, LPARAM lParam);
-MIR_CORE_DLL(int)    DestroyServiceFunction(HANDLE hService);
-MIR_CORE_DLL(int)    ServiceExists(const char *name);
+MIR_CORE_DLL(HANDLE)  CreateServiceFunction(const char *name, MIRANDASERVICE serviceProc);
+MIR_CORE_DLL(HANDLE)  CreateServiceFunctionParam(const char *name, MIRANDASERVICEPARAM serviceProc, LPARAM lParam);
+MIR_CORE_DLL(HANDLE)  CreateServiceFunctionObj(const char *name, MIRANDASERVICEOBJ serviceProc, void* object);
+MIR_CORE_DLL(HANDLE)  CreateServiceFunctionObjParam(const char *name, MIRANDASERVICEOBJPARAM serviceProc, void* object, LPARAM lParam);
+MIR_CORE_DLL(int)     DestroyServiceFunction(HANDLE hService);
+MIR_CORE_DLL(int)     ServiceExists(const char *name);
 
 MIR_CORE_DLL(INT_PTR) CallService(const char *name, WPARAM wParam, LPARAM lParam);
 MIR_CORE_DLL(INT_PTR) CallServiceSync(const char *name, WPARAM wParam, LPARAM lParam);
@@ -195,6 +392,11 @@ typedef DWORD (__cdecl *pfnExceptionFilter)(DWORD code, EXCEPTION_POINTERS* info
 
 MIR_CORE_DLL(pfnExceptionFilter) GetExceptionFilter(void);
 MIR_CORE_DLL(pfnExceptionFilter) SetExceptionFilter(pfnExceptionFilter pMirandaExceptFilter);
+
+///////////////////////////////////////////////////////////////////////////////
+// http support
+
+MIR_CORE_DLL(char*) mir_urlEncode(const char *szUrl);
 
 ///////////////////////////////////////////////////////////////////////////////
 // icons support
@@ -319,22 +521,33 @@ MIR_CORE_DLL(void)        List_Copy(SortedList* s, SortedList* d, size_t itemSiz
 MIR_CORE_DLL(void)        List_ObjCopy(SortedList* s, SortedList* d, size_t itemSize);
 
 ///////////////////////////////////////////////////////////////////////////////
+// logging functions
+
+MIR_CORE_DLL(HANDLE) mir_createLog(const char *pszName, const TCHAR *ptszDescr, const TCHAR *ptszFile, unsigned options);
+
+MIR_C_CORE_DLL(int) mir_writeLogA(HANDLE logger, const char *format, ...);
+MIR_C_CORE_DLL(int) mir_writeLogW(HANDLE logger, const WCHAR *format, ...);
+
+MIR_CORE_DLL(int) mir_writeLogVA(HANDLE logger, const char *format, va_list args);
+MIR_CORE_DLL(int) mir_writeLogVW(HANDLE logger, const WCHAR *format, va_list args);
+
+///////////////////////////////////////////////////////////////////////////////
 // md5 functions
 
 /* Define the state of the MD5 Algorithm. */
-typedef unsigned char mir_md5_byte_t; /* 8-bit byte */
-typedef unsigned int mir_md5_word_t; /* 32-bit word */
+typedef unsigned char BYTE; /* 8-bit byte */
+typedef unsigned int UINT32; /* 32-bit word */
 
 typedef struct mir_md5_state_s {
-	mir_md5_word_t count[2];  /* message length in bits, lsw first */
-	mir_md5_word_t abcd[4];    /* digest buffer */
-	mir_md5_byte_t buf[64];    /* accumulate block */
+	UINT32 count[2];  /* message length in bits, lsw first */
+	UINT32 abcd[4];    /* digest buffer */
+	BYTE   buf[64];    /* accumulate block */
 } mir_md5_state_t;
 
 MIR_CORE_DLL(void) mir_md5_init(mir_md5_state_t *pms);
-MIR_CORE_DLL(void) mir_md5_append(mir_md5_state_t *pms, const mir_md5_byte_t *data, int nbytes);
-MIR_CORE_DLL(void) mir_md5_finish(mir_md5_state_t *pms, mir_md5_byte_t digest[16]);
-MIR_CORE_DLL(void) mir_md5_hash(const mir_md5_byte_t *data, int len, mir_md5_byte_t digest[16]);
+MIR_CORE_DLL(void) mir_md5_append(mir_md5_state_t *pms, const BYTE *data, int nbytes);
+MIR_CORE_DLL(void) mir_md5_finish(mir_md5_state_t *pms, BYTE digest[16]);
+MIR_CORE_DLL(void) mir_md5_hash(const BYTE *data, int len, BYTE digest[16]);
 
 ///////////////////////////////////////////////////////////////////////////////
 // memory functions
@@ -346,7 +559,9 @@ MIR_C_CORE_DLL(void)   mir_free(void* ptr);
 
 MIR_CORE_DLL(char*)  mir_strdup(const char* str);
 MIR_CORE_DLL(WCHAR*) mir_wstrdup(const WCHAR* str);
+
 MIR_CORE_DLL(char*)  mir_strndup(const char* str, size_t len);
+MIR_CORE_DLL(WCHAR*) mir_wstrndup(const WCHAR *str, size_t len);
 
 ///////////////////////////////////////////////////////////////////////////////
 // modules
@@ -361,13 +576,19 @@ MIR_CORE_DLL(HINSTANCE) GetInstByAddress(void* codePtr);
 
 MIR_CORE_DLL(void)   CreatePathToFile(char* wszFilePath);
 MIR_CORE_DLL(int)    CreateDirectoryTree(const char* szDir);
-MIR_CORE_DLL(int)    PathToAbsolute(const char *pSrc, char *pOut, char* base);
 MIR_CORE_DLL(int)    PathToRelative(const char *pSrc, char *pOut);
 
 MIR_CORE_DLL(void)   CreatePathToFileW(WCHAR* wszFilePath);
 MIR_CORE_DLL(int)    CreateDirectoryTreeW(const WCHAR* szDir);
-MIR_CORE_DLL(int)    PathToAbsoluteW(const WCHAR *pSrc, WCHAR *pOut, WCHAR* base);
 MIR_CORE_DLL(int)    PathToRelativeW(const WCHAR *pSrc, WCHAR *pOut);
+
+#if defined( __cplusplus )
+	MIR_CORE_DLL(int) PathToAbsolute(const char *pSrc, char *pOut, char* base=0);
+	MIR_CORE_DLL(int) PathToAbsoluteW(const WCHAR *pSrc, WCHAR *pOut, WCHAR* base=0);
+#else
+	MIR_CORE_DLL(int) PathToAbsolute(const char *pSrc, char *pOut, char* base);
+	MIR_CORE_DLL(int) PathToAbsoluteW(const WCHAR *pSrc, WCHAR *pOut, WCHAR* base);
+#endif
 
 #define CreatePathToFileT CreatePathToFileW
 #define CreateDirectoryTreeT CreateDirectoryTreeW
@@ -378,56 +599,116 @@ MIR_CORE_DLL(int)    PathToRelativeW(const WCHAR *pSrc, WCHAR *pOut);
 // print functions
 
 MIR_CORE_DLL(int)    mir_snprintf(char *buffer, size_t count, const char* fmt, ...);
-MIR_CORE_DLL(int)    mir_sntprintf(TCHAR *buffer, size_t count, const TCHAR* fmt, ...);
+MIR_CORE_DLL(int)    mir_snwprintf(WCHAR *buffer, size_t count, const WCHAR* fmt, ...);
 MIR_CORE_DLL(int)    mir_vsnprintf(char *buffer, size_t count, const char* fmt, va_list va);
-MIR_CORE_DLL(int)    mir_vsntprintf(TCHAR *buffer, size_t count, const TCHAR* fmt, va_list va);
+MIR_CORE_DLL(int)    mir_vsnwprintf(WCHAR *buffer, size_t count, const WCHAR* fmt, va_list va);
+
+///////////////////////////////////////////////////////////////////////////////
+// protocol functions
+
+MIR_CORE_DLL(INT_PTR) ProtoCallService(const char *szModule, const char *szService, WPARAM wParam, LPARAM lParam);
+MIR_CORE_DLL(int)     ProtoServiceExists(const char *szModule, const char *szService);
+MIR_CORE_DLL(INT_PTR) ProtoBroadcastAck(const char *szModule, HANDLE hContact, int type, int result, HANDLE hProcess, LPARAM lParam);
+
+// Call it in the very beginning of your proto's constructor
+MIR_CORE_DLL(void) ProtoConstructor(struct PROTO_INTERFACE *pThis, const char *pszModuleName, const TCHAR *ptszUserName);
+
+// Call it in the very end of your proto's destructor
+MIR_CORE_DLL(void) ProtoDestructor(struct PROTO_INTERFACE *pThis);
+
+#if defined( __cplusplus )
+typedef void (__cdecl PROTO_INTERFACE::*ProtoThreadFunc)(void*);
+MIR_CORE_DLL(void)   ProtoForkThread(struct PROTO_INTERFACE *pThis, ProtoThreadFunc, void *param);
+MIR_CORE_DLL(HANDLE) ProtoForkThreadEx(struct PROTO_INTERFACE *pThis, ProtoThreadFunc, void *param, UINT* threadID);
+
+typedef int (__cdecl PROTO_INTERFACE::*ProtoEventFunc)(WPARAM, LPARAM);
+MIR_CORE_DLL(void)   ProtoHookEvent(struct PROTO_INTERFACE *pThis, const char* szName, ProtoEventFunc pFunc);
+MIR_CORE_DLL(HANDLE) ProtoCreateHookableEvent(struct PROTO_INTERFACE *pThis, const char* szService);
+
+typedef INT_PTR (__cdecl PROTO_INTERFACE::*ProtoServiceFunc)(WPARAM, LPARAM);
+MIR_CORE_DLL(void) ProtoCreateService(struct PROTO_INTERFACE *pThis, const char* szService, ProtoServiceFunc);
+
+typedef INT_PTR (__cdecl PROTO_INTERFACE::*ProtoServiceFuncParam)(WPARAM, LPARAM, LPARAM);
+MIR_CORE_DLL(void) ProtoCreateServiceParam(struct PROTO_INTERFACE *pThis, const char* szService, ProtoServiceFuncParam, LPARAM);
+#endif
+
+// avatar support functions
+
+// returns image extension by a PA_* constant or empty string for PA_FORMAT_UNKNOWN
+MIR_CORE_DLL(const TCHAR*) ProtoGetAvatarExtension(int format);
+
+// detects image format by extension
+MIR_CORE_DLL(int) ProtoGetAvatarFormat(const TCHAR *ptszFileName);
+
+// detects image format by its contents
+MIR_CORE_DLL(int) ProtoGetAvatarFileFormat(const TCHAR *ptszFileName);
+
+// returns the image format and extension by the first bytes of picture
+// ptszExtension might be NULL
+#if defined( __cplusplus )
+	MIR_CORE_DLL(int) ProtoGetBufferFormat(const void *buf, const TCHAR **ptszExtension = NULL);
+#else
+	MIR_CORE_DLL(int) ProtoGetBufferFormat(const void *buf, const TCHAR **ptszExtension);
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // sha1 functions
 
-typedef unsigned char mir_sha1_byte_t;
-typedef unsigned long mir_sha1_long_t;
-
 #define MIR_SHA1_HASH_SIZE 20
 
 typedef struct {
-  mir_sha1_long_t H[5];
-  mir_sha1_long_t W[80];
+  ULONG H[5];
+  ULONG W[80];
   int lenW;
-  mir_sha1_long_t sizeHi, sizeLo;
+  ULONG sizeHi, sizeLo;
 } mir_sha1_ctx;
 
 MIR_CORE_DLL(void) mir_sha1_init(mir_sha1_ctx *ctx);
-MIR_CORE_DLL(void) mir_sha1_append(mir_sha1_ctx *ctx, mir_sha1_byte_t *dataIn, int len);
-MIR_CORE_DLL(void) mir_sha1_finish(mir_sha1_ctx *ctx, mir_sha1_byte_t hashout[20]);
-MIR_CORE_DLL(void) mir_sha1_hash(mir_sha1_byte_t *dataIn, int len, mir_sha1_byte_t hashout[20]);
+MIR_CORE_DLL(void) mir_sha1_append(mir_sha1_ctx *ctx, const BYTE *dataIn, int len);
+MIR_CORE_DLL(void) mir_sha1_finish(mir_sha1_ctx *ctx, BYTE hashout[MIR_SHA1_HASH_SIZE]);
+MIR_CORE_DLL(void) mir_sha1_hash(BYTE *dataIn, int len, BYTE hashout[MIR_SHA1_HASH_SIZE]);
+
+MIR_CORE_DLL(void) mir_hmac_sha1(BYTE hashout[MIR_SHA1_HASH_SIZE], const BYTE *key, size_t keylen, const BYTE *text, size_t textlen);
 
 ///////////////////////////////////////////////////////////////////////////////
 // strings
 
+MIR_CORE_DLL(void*) mir_base64_decode(const char *input, unsigned *outputLen);
+MIR_CORE_DLL(char*) mir_base64_encode(const BYTE *input, unsigned inputLen);
+MIR_CORE_DLL(char*) mir_base64_encodebuf(const BYTE *input, unsigned inputLen, char *output, unsigned outLen);
+
+__forceinline unsigned mir_base64_encode_bufsize(unsigned inputLen)
+{
+	return 4 * ((inputLen + 2) / 3) + 1;
+}
+
 MIR_CORE_DLL(char*)  rtrim(char *str);
-MIR_CORE_DLL(WCHAR*) wrtrim(WCHAR *str);
+MIR_CORE_DLL(WCHAR*) rtrimw(WCHAR *str);
 
-#ifdef _UNICODE
-	#define trtrim wrtrim
-#else
-	#define trtrim rtrim
-#endif
+MIR_CORE_DLL(char*)  ltrim(char *str);   // returns pointer to the beginning of string
+MIR_CORE_DLL(WCHAR*) ltrimw(WCHAR *str);
 
-MIR_CORE_DLL(char*) ltrim(char *str);   // returns pointer to the beginning of string
-MIR_CORE_DLL(char*) ltrimp(char *str);  // returns pointer to the trimmed portion of string
+MIR_CORE_DLL(char*)  ltrimp(char *str);  // returns pointer to the trimmed portion of string
+MIR_CORE_DLL(WCHAR*) ltrimpw(WCHAR *str);
 
-MIR_CORE_DLL(int)   wildcmp(char *name, char *mask);
+MIR_CORE_DLL(int) wildcmp(const char *name, const char *mask);
+MIR_CORE_DLL(int) wildcmpw(const WCHAR *name, const WCHAR *mask);
 
-__forceinline char* lrtrim(char* str) { return ltrim(rtrim(str)); };
-__forceinline char* lrtrimp(char* str) { return ltrimp(rtrim(str)); };
+MIR_CORE_DLL(int) wildcmpi(const char *name, const char *mask);
+MIR_CORE_DLL(int) wildcmpiw(const WCHAR *name, const WCHAR *mask);
+
+MIR_CORE_DLL(char*)  bin2hex(const void *pData, size_t len, char *dest);
+MIR_CORE_DLL(WCHAR*) bin2hexW(const void *pData, size_t len, WCHAR *dest);
+
+__forceinline char* lrtrim(char *str) { return ltrim(rtrim(str)); };
+__forceinline char* lrtrimp(char *str) { return ltrimp(rtrim(str)); };
 
 #if defined( __cplusplus )
-	MIR_CORE_DLL(char*) replaceStr( char* &dest, const char *src );
-	MIR_CORE_DLL(WCHAR*) replaceStrW( WCHAR* &dest, const WCHAR *src );
+	MIR_CORE_DLL(char*) replaceStr(char* &dest, const char *src);
+	MIR_CORE_DLL(WCHAR*) replaceStrW(WCHAR* &dest, const WCHAR *src);
 #else
-	MIR_CORE_DLL(char*) replaceStr( char **dest, const char *src );
-	MIR_CORE_DLL(WCHAR*) replaceStrW( WCHAR **dest, const WCHAR *src );
+	MIR_CORE_DLL(char*) replaceStr(char **dest, const char *src);
+	MIR_CORE_DLL(WCHAR*) replaceStrW(WCHAR **dest, const WCHAR *src);
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -444,8 +725,24 @@ __forceinline char* lrtrimp(char* str) { return ltrimp(rtrim(str)); };
 	#define mir_t2u_cp(s,c) mir_wstrdup(s)
 	#define mir_u2t_cp(s,c) mir_wstrdup(s)
 
-	#define mir_tstrdup mir_wstrdup
+	#define mir_tstrdup  mir_wstrdup
+	#define mir_tstrndup mir_wstrndup
+
 	#define replaceStrT replaceStrW
+	#define bin2hexT    bin2hexW
+
+	#define rtrimt  rtrimw
+	#define ltrimt  ltrimw
+	#define ltrimpt ltrimpw
+
+	#define wildcmpt  wildcmpw
+	#define wildcmpit wildcmpiw
+
+	#define mir_sntprintf  mir_snwprintf
+	#define mir_vsntprintf mir_vsnwprintf
+
+	#define mir_writeLogT  mir_writeLogW
+	#define mir_writeLogVT mir_writeLogVW
 #else
 	#define mir_t2a(s) mir_strdup(s)
 	#define mir_a2t(s) mir_strdup(s)
@@ -457,8 +754,24 @@ __forceinline char* lrtrimp(char* str) { return ltrimp(rtrim(str)); };
 	#define mir_t2u_cp(s,c) mir_a2u_cp(s,c)
 	#define mir_u2t_cp(s,c) mir_u2a_cp(s,c)
 
-	#define mir_tstrdup mir_strdup
+	#define mir_tstrdup  mir_strdup
+	#define mir_tstrndup mir_strndup
+
 	#define replaceStrT replaceStr
+	#define bin2hexT    bin2hex
+
+	#define rtrimt rtrim
+	#define ltrimt ltrim
+	#define ltrimpt ltrimp
+
+	#define wildcmpt wildcmp
+	#define wildcmpit wildcmpi
+
+	#define mir_sntprintf  mir_snprintf
+	#define mir_vsntprintf mir_vsnprintf
+
+	#define mir_writeLogT  mir_writeLogA
+	#define mir_writeLogVT mir_writeLogVA
 #endif
 
 MIR_CORE_DLL(WCHAR*) mir_a2u_cp(const char* src, int codepage);
@@ -506,9 +819,9 @@ typedef unsigned (__stdcall *pThreadFuncEx)(void*);
 typedef unsigned (__cdecl *pThreadFuncOwner)(void *owner, void* param);
 
 #if defined( __cplusplus )
-MIR_CORE_DLL(INT_PTR) Thread_Push(HINSTANCE hInst, void* pOwner=NULL);
+	MIR_CORE_DLL(INT_PTR) Thread_Push(HINSTANCE hInst, void* pOwner=NULL);
 #else
-MIR_CORE_DLL(INT_PTR) Thread_Push(HINSTANCE hInst, void* pOwner);
+	MIR_CORE_DLL(INT_PTR) Thread_Push(HINSTANCE hInst, void* pOwner);
 #endif
 MIR_CORE_DLL(INT_PTR) Thread_Pop(void);
 MIR_CORE_DLL(void)    Thread_Wait(void);
@@ -575,6 +888,16 @@ __forceinline char* mir_utf8decodeA(const char* src)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
+// Window subclassing
+
+MIR_CORE_DLL(void)    mir_subclassWindow(HWND hWnd, WNDPROC wndProc);
+MIR_CORE_DLL(void)    mir_subclassWindowFull(HWND hWnd, WNDPROC wndProc, WNDPROC oldWndProc);
+MIR_CORE_DLL(LRESULT) mir_callNextSubclass(HWND hWnd, WNDPROC wndProc, UINT uMsg, WPARAM wParam, LPARAM lParam);
+MIR_CORE_DLL(void)    mir_unsubclassWindow(HWND hWnd, WNDPROC wndProc);
+
+MIR_CORE_DLL(void)    KillModuleSubclassing(HMODULE hInst);
+
+///////////////////////////////////////////////////////////////////////////////
 
 MIR_CORE_DLL(void) UnloadCoreModule(void);
 
@@ -583,7 +906,7 @@ MIR_CORE_DLL(void) UnloadCoreModule(void);
 #endif
 
 #ifndef MIR_CORE_EXPORTS
-	#if !defined( WIN64 )
+	#if !defined( _WIN64 )
 		#pragma comment(lib, "mir_core.lib")
 	#else
 		#pragma comment(lib, "mir_core64.lib")

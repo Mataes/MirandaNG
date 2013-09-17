@@ -206,7 +206,7 @@ void CSmileyString::ReplaceSmileys(struct SHORTDATA *dat, ClcCacheEntry *pdnce, 
 	if (dat->text_use_protocol_smileys) {
 		sp.Protocolname = pdnce->m_cache_cszProto;
 
-		if (db_get_b(NULL,"CLC","Meta",SETTING_USEMETAICON_DEFAULT) != 1 && pdnce->m_cache_cszProto != NULL && g_szMetaModuleName && strcmp(pdnce->m_cache_cszProto, g_szMetaModuleName) == 0) {
+		if ( db_get_b(NULL,"CLC","Meta",SETTING_USEMETAICON_DEFAULT) != 1 && pdnce->m_cache_cszProto != NULL && g_szMetaModuleName && strcmp(pdnce->m_cache_cszProto, g_szMetaModuleName) == 0) {
 			HANDLE hContact = (HANDLE)CallService(MS_MC_GETMOSTONLINECONTACT, (LPARAM)pdnce->hContact, 0);
 			if (hContact != 0)
 				sp.Protocolname = GetContactProto(hContact);
@@ -299,7 +299,7 @@ int GetStatusName(TCHAR *text, int text_size, ClcCacheEntry *pdnce, BOOL xstatus
 	// Get XStatusName
 	if ( !noAwayMsg &&  !noXstatus &&  xstatus_has_priority && pdnce->hContact && pdnce->m_cache_cszProto) {
 		DBVARIANT dbv = {0};
-		if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
+		if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
 			//lstrcpyn(text, dbv.pszVal, text_size);
 			CopySkipUnprintableChars(text, dbv.ptszVal, text_size-1);
 			db_free(&dbv);
@@ -311,7 +311,7 @@ int GetStatusName(TCHAR *text, int text_size, ClcCacheEntry *pdnce, BOOL xstatus
 
 	// Get Status name
 	{
-		TCHAR *tmp = (TCHAR *)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)nStatus, GSMDF_TCHAR_MY);
+		TCHAR *tmp = (TCHAR *)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)nStatus, GSMDF_TCHAR);
 		lstrcpyn(text, tmp, text_size);
 		//CopySkipUnprintableChars(text, dbv.pszVal, text_size-1);
 		if (text[0] != '\0')
@@ -321,7 +321,7 @@ int GetStatusName(TCHAR *text, int text_size, ClcCacheEntry *pdnce, BOOL xstatus
 	// Get XStatusName
 	if ( !noAwayMsg && !noXstatus && !xstatus_has_priority && pdnce->hContact && pdnce->m_cache_cszProto) {
 		DBVARIANT dbv = {0};
-		if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
+		if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
 			//lstrcpyn(text, dbv.pszVal, text_size);
 			CopySkipUnprintableChars(text, dbv.ptszVal, text_size-1);
 			db_free(&dbv);
@@ -347,7 +347,7 @@ void GetListeningTo(TCHAR *text, int text_size,  ClcCacheEntry *pdnce)
 	if (wStatus == ID_STATUS_OFFLINE || wStatus == 0)
 		return;
 
-	if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "ListeningTo", &dbv)) {
+	if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "ListeningTo", &dbv)) {
 		CopySkipUnprintableChars(text, dbv.ptszVal, text_size-1);
 		db_free(&dbv);
 	}
@@ -370,7 +370,7 @@ int GetStatusMessage(TCHAR *text, int text_size,  ClcCacheEntry *pdnce, BOOL xst
 	// Get XStatusMsg
 	if ( !noAwayMsg  && xstatus_has_priority && pdnce->hContact && pdnce->m_cache_cszProto) {
 		// Try to get XStatusMsg
-		if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusMsg", &dbv)) {
+		if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusMsg", &dbv)) {
 			//lstrcpyn(text, dbv.pszVal, text_size);
 			CopySkipUnprintableChars(text, dbv.ptszVal, text_size-1);
 			db_free(&dbv);
@@ -382,7 +382,7 @@ int GetStatusMessage(TCHAR *text, int text_size,  ClcCacheEntry *pdnce, BOOL xst
 
 	// Get StatusMsg
 	if (pdnce->hContact && text[0] == '\0') {
-		if ( !DBGetContactSettingTString(pdnce->hContact, "CList", "StatusMsg", &dbv)) {
+		if ( !db_get_ts(pdnce->hContact, "CList", "StatusMsg", &dbv)) {
 			//lstrcpyn(text, dbv.pszVal, text_size);
 			CopySkipUnprintableChars(text, dbv.ptszVal, text_size-1);
 			db_free(&dbv);
@@ -395,7 +395,7 @@ int GetStatusMessage(TCHAR *text, int text_size,  ClcCacheEntry *pdnce, BOOL xst
 	// Get XStatusMsg
 	if ( !noAwayMsg && !xstatus_has_priority && pdnce->hContact && pdnce->m_cache_cszProto && text[0] == '\0') {
 		// Try to get XStatusMsg
-		if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusMsg", &dbv)) {
+		if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusMsg", &dbv)) {
 			//lstrcpyn(text, dbv.pszVal, text_size);
 			CopySkipUnprintableChars(text, dbv.ptszVal, text_size-1);
 			db_free(&dbv);
@@ -424,7 +424,7 @@ int Cache_GetLineText(
 			DBVARIANT dbv = {0};
 
 			// Try to get XStatusMsg
-			if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusMsg", &dbv)) {
+			if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusMsg", &dbv)) {
 				if (dbv.ptszVal != NULL && dbv.ptszVal[0] != 0) {
 					TCHAR *tmp = NEWTSTR_ALLOCA(text);
 					mir_sntprintf(text, text_size, _T("%s: %s"), tmp, dbv.ptszVal);
@@ -439,7 +439,7 @@ int Cache_GetLineText(
 	case TEXT_NICKNAME:
 		if (pdnce->hContact && pdnce->m_cache_cszProto) {
 			DBVARIANT dbv = {0};
-			if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "Nick", &dbv)) {
+			if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "Nick", &dbv)) {
 				lstrcpyn(text, dbv.ptszVal, text_size);
 				db_free(&dbv);
 				CopySkipUnprintableChars(text, text, text_size-1);
@@ -453,7 +453,7 @@ int Cache_GetLineText(
 			DBVARIANT dbv = {0};
 
 			// Try to get XStatusName
-			if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
+			if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
 				if (dbv.pszVal != NULL && dbv.pszVal[0] != 0) {
 					TCHAR *tmp = NEWTSTR_ALLOCA(text);
 					mir_sntprintf(text, text_size, _T("%s: %s"), dbv.pszVal, tmp);                        
@@ -465,7 +465,7 @@ int Cache_GetLineText(
 		else if (use_name_and_message_for_xstatus && xstatus_has_priority) {
 			DBVARIANT dbv = {0};
 			// Try to get XStatusName
-			if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
+			if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "XStatusName", &dbv)) {
 				if (dbv.pszVal != NULL && dbv.pszVal[0] != 0)
 					mir_sntprintf(text, text_size, _T("%s"), dbv.pszVal);
 				CopySkipUnprintableChars(text, text, text_size-1);
@@ -525,7 +525,7 @@ void Cache_GetFirstLineText(ClcData *dat, ClcContact *contact)
 	TCHAR *name = pcli->pfnGetContactDisplayName(contact->hContact,0);
 	if (dat->first_line_append_nick && (!dat->force_in_dialog)) {
 		DBVARIANT dbv = {0};
-		if ( !DBGetContactSettingTString(pdnce->hContact, pdnce->m_cache_cszProto, "Nick", &dbv)) {
+		if ( !db_get_ts(pdnce->hContact, pdnce->m_cache_cszProto, "Nick", &dbv)) {
 			TCHAR nick[SIZEOF(contact->szText)];
 			lstrcpyn(nick, dbv.ptszVal, SIZEOF(contact->szText));
 			db_free(&dbv);
@@ -754,7 +754,7 @@ void Cache_ProceedAvatarInList(ClcData *dat, ClcContact *contact)
 		else
 			height_clip = width_clip * ace->bmHeight / ace->bmWidth;					
 
-		if (wildcmpi(contact->avatar_data->szFilename,_T("*.gif"))) {
+		if (wildcmpit(contact->avatar_data->szFilename,_T("*.gif"))) {
 			if (old_pos == AVATAR_POS_ANIMATED)
 				AniAva_RemoveAvatar(contact->hContact);
 
@@ -774,16 +774,16 @@ void Cache_ProceedAvatarInList(ClcData *dat, ClcContact *contact)
 		HBITMAP oldBmp = (HBITMAP)SelectObject(hdc, hDrawBmp);
 		//need to draw avatar bitmap here
 		{
-			RECT real_rc = {0,0,width_clip, height_clip};
+			RECT real_rc = {0, 0, width_clip, height_clip};
 
 			int w = width_clip;
 			int h = height_clip;
 			if ( !g_CluiData.fGDIPlusFail) //Use gdi+ engine
-				DrawAvatarImageWithGDIp(hdc, 0, 0, w, h,ace->hbmPic,0,0,ace->bmWidth,ace->bmHeight,ace->dwFlags,255);
+				DrawAvatarImageWithGDIp(hdc, 0, 0, w, h,ace->hbmPic, 0, 0, ace->bmWidth,ace->bmHeight,ace->dwFlags,255);
 			else {
 				if ( !(ace->dwFlags & AVS_PREMULTIPLIED)) {
 					HDC hdcTmp = CreateCompatibleDC(hdc);
-					RECT r = {0,0,w,h};
+					RECT r = {0, 0, w,h};
 					HDC hdcTmp2 = CreateCompatibleDC(hdc);
 					HBITMAP bmo = (HBITMAP)SelectObject(hdcTmp,ace->hbmPic);
 					HBITMAP b2 = ske_CreateDIB32(w,h);
@@ -795,7 +795,7 @@ void Cache_ProceedAvatarInList(ClcData *dat, ClcContact *contact)
 						SRCCOPY);
 
 					ske_SetRectOpaque(hdcTmp2,&r);
-					BitBlt(hdc, rc.left, rc.top, w, h,hdcTmp2,0,0,SRCCOPY);
+					BitBlt(hdc, rc.left, rc.top, w, h,hdcTmp2, 0, 0, SRCCOPY);
 					SelectObject(hdcTmp2,bmo2);
 					SelectObject(hdcTmp,bmo);
 					DeleteDC(hdcTmp);
@@ -803,11 +803,11 @@ void Cache_ProceedAvatarInList(ClcData *dat, ClcContact *contact)
 					DeleteObject(b2);
 				}
 				else {
-					BLENDFUNCTION bf = {AC_SRC_OVER, 0,255, AC_SRC_ALPHA };
+					BLENDFUNCTION bf = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
 					HDC hdcTempAv = CreateCompatibleDC(hdc);
 					HBITMAP hbmTempAvOld;
 					hbmTempAvOld = (HBITMAP)SelectObject(hdcTempAv,ace->hbmPic);
-					ske_AlphaBlend(hdc, rc.left, rc.top, w, h, hdcTempAv, 0, 0,ace->bmWidth,ace->bmHeight, bf);
+					ske_AlphaBlend(hdc, rc.left, rc.top, w, h, hdcTempAv, 0, 0, ace->bmWidth,ace->bmHeight, bf);
 					SelectObject(hdcTempAv, hbmTempAvOld);
 					DeleteDC(hdcTempAv);
 				}
@@ -856,7 +856,7 @@ void Cache_GetAvatar(ClcData *dat, ClcContact *contact)
 		contact->avatar_pos = AVATAR_POS_DONT_HAVE;
 		if (dat->avatars_show && !db_get_b(contact->hContact, "CList", "HideContactAvatar", 0)) {
 			DBVARIANT dbv;
-			if ( !DBGetContactSettingTString(contact->hContact, "ContactPhoto", "File", &dbv)) {
+			if ( !db_get_ts(contact->hContact, "ContactPhoto", "File", &dbv)) {
 				HBITMAP hBmp = (HBITMAP) CallService(MS_UTILS_LOADBITMAPT, 0, (LPARAM)dbv.ptszVal);
 				if (hBmp != NULL) {
 					// Make bounds

@@ -53,9 +53,10 @@ END
 // remains consistent on all systems.
 IDI_FACEBOOK            ICON                    "facebook.ico"
 IDI_MIND                ICON                    "mind.ico"
-IDI_AUTH_GRANT          ICON                    "auth_grant.ico"
-IDI_AUTH_ASK            ICON                    "auth_ask.ico"
-IDI_AUTH_REVOKE         ICON                    "auth_revoke.ico"
+IDI_POKE                ICON                    "poke.ico"
+IDI_NOTIFICATION        ICON                    "notification.ico"
+IDI_NEWSFEED            ICON                    "feeds.ico"
+IDI_FRIENDS             ICON                    "friends.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -75,16 +76,27 @@ BEGIN
                     "Hyperlink",WS_TABSTOP,0,40,174,12
 END
 
-IDD_MIND DIALOGEX 0, 0, 267, 62
+IDD_MIND DIALOGEX 0, 0, 418, 113
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_TOPMOST
 CAPTION "What's on your mind?"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    EDITTEXT        IDC_MINDMSG,4,4,259,36,ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL
-    LTEXT           "420",IDC_CHARACTERS,4,48,19,10
-    DEFPUSHBUTTON   "Share",IDOK,213,44,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,159,44,50,14
+    LTEXT           "Wall:",IDC_STATIC,4,7,44,8,0,WS_EX_RIGHT
+    COMBOBOX        IDC_WALL,53,4,79,14,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Visibility:",IDC_STATIC,140,6,40,8,0,WS_EX_RIGHT
+    COMBOBOX        IDC_PRIVACY,186,4,77,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Text:",IDC_STATIC,4,23,44,8,0,WS_EX_RIGHT
+    EDITTEXT        IDC_MINDMSG,53,21,210,36,ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL
+    LTEXT           "URL:",IDC_STATIC,4,63,44,8,0,WS_EX_RIGHT
+    EDITTEXT        IDC_URL,53,60,210,14,ES_AUTOHSCROLL
+    LTEXT           "Place:",IDC_STATIC,4,80,44,8,0,WS_EX_RIGHT
+    EDITTEXT        IDC_PLACE,53,77,210,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_CCLIST,"CListControl",WS_TABSTOP | 0x16f,268,17,143,90
+    DEFPUSHBUTTON   "Share",IDOK,53,94,54,15
+    PUSHBUTTON      "Cancel",IDCANCEL,110,94,44,15
+    PUSHBUTTON      "Contacts >>",IDC_EXPAND,202,94,61,15
+    GROUPBOX        "Attach contacts:",IDC_CCLIST_LABEL,266,4,148,105
 END
 
 IDD_OPTIONS DIALOGEX 0, 0, 305, 210
@@ -98,7 +110,7 @@ BEGIN
     LTEXT           "Password:",IDC_STATIC,17,35,61,8
     EDITTEXT        IDC_PW,84,33,123,13,ES_PASSWORD | ES_AUTOHSCROLL
     CONTROL         "Create a new Facebook account",IDC_NEWACCOUNTLINK,
-                    "Hyperlink",WS_TABSTOP,84,52,123,10
+                    "Hyperlink",WS_TABSTOP,84,52,189,10
     LTEXT           "Default group:",IDC_STATIC,17,85,61,8
     EDITTEXT        IDC_GROUP,84,84,123,13,ES_AUTOHSCROLL
     CONTROL         "Automatically set 'Ignore status change' flag",IDC_SET_IGNORE_STATUS,
@@ -114,41 +126,16 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    GROUPBOX        "Event notifications",IDC_STATIC,6,7,293,115
-    CTEXT           "Colors",IDC_STATIC,106,14,68,8
-    RTEXT           "Back",IDC_STATIC,106,24,31,8
-    LTEXT           "Text",IDC_STATIC,143,24,31,8
-    CONTROL         "Notifications",IDC_NOTIFICATIONS_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,37,84,8
-    CONTROL         "",IDC_COLBACK,"ColourPicker",WS_TABSTOP,113,35,24,13
-    CONTROL         "",IDC_COLTEXT,"ColourPicker",WS_TABSTOP,143,35,24,13
-    CONTROL         "Default",IDC_NOTIFICATIONS_DEFAULT,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,174,37,63,8
-    CONTROL         "News feeds",IDC_FEEDS_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,57,84,8
-    CONTROL         "",IDC_COLBACK2,"ColourPicker",WS_TABSTOP,113,55,24,13
-    CONTROL         "",IDC_COLTEXT2,"ColourPicker",WS_TABSTOP,143,55,24,13
-    CONTROL         "Default",IDC_FEEDS_DEFAULT,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,174,57,63,8
-    CONTROL         "Other events",IDC_OTHER_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,77,84,8
-    CONTROL         "",IDC_COLBACK3,"ColourPicker",WS_TABSTOP,113,75,24,13
-    CONTROL         "",IDC_COLTEXT3,"ColourPicker",WS_TABSTOP,143,75,24,13
-    CONTROL         "Default",IDC_OTHER_DEFAULT,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,174,77,63,8
-    CONTROL         "Client notifications",IDC_CLIENT_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,97,84,8
-    CONTROL         "",IDC_COLBACK4,"ColourPicker",WS_TABSTOP,113,95,24,13
-    CONTROL         "",IDC_COLTEXT4,"ColourPicker",WS_TABSTOP,143,95,24,13
-    CONTROL         "Default",IDC_CLIENT_DEFAULT,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,174,97,63,8
-    RTEXT           "Timeout (sec.)",IDC_STATIC,174,14,113,8
-    RTEXT           "(0 = default, -1 = infinite)",IDC_STATIC,174,24,113,8
-    EDITTEXT        IDC_TIMEOUT,243,35,34,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_TIMEOUT_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,266,35,11,14
-    EDITTEXT        IDC_TIMEOUT2,243,55,34,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_TIMEOUT_SPIN2,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,266,55,11,14
-    EDITTEXT        IDC_TIMEOUT3,243,75,34,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_TIMEOUT_SPIN3,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,266,75,11,14
-    EDITTEXT        IDC_TIMEOUT4,243,95,34,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_TIMEOUT_SPIN4,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,266,95,11,14
-    PUSHBUTTON      "Preview",IDC_PREVIEW,118,182,68,14
+    GROUPBOX        "Event notifications",IDC_STATIC,6,7,292,106
+    CONTROL         "Notifications",IDC_NOTIFICATIONS_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,23,84,8
+    CONTROL         "News feeds",IDC_FEEDS_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,43,84,8
+    LTEXT           "News Feed types to notify:",IDC_STATIC,33,59,112,8
+    COMBOBOX        IDC_FEED_TYPE,151,57,96,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Other events",IDC_OTHER_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,75,84,8
+    CONTROL         "Client notifications",IDC_CLIENT_ENABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,95,84,8
+    PUSHBUTTON      "Preview",IDC_PREVIEW,117,137,68,14
     CONTROL         "Use balloon notifications in system tray instead of popups",IDC_SYSTRAY_NOTIFY,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,49,132,208,8
-    LTEXT           "News Feed types to notify:",IDC_STATIC,51,155,112,8
-    COMBOBOX        IDC_FEED_TYPE,169,153,90,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,47,121,228,8
 END
 
 IDD_OPTIONS_ADVANCED DIALOGEX 0, 0, 305, 210
@@ -156,7 +143,7 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    GROUPBOX        "Advanced Settings",IDC_STATIC,7,7,291,104
+    GROUPBOX        "Advanced Settings",IDC_STATIC,7,7,291,148
     CONTROL         "Force secure (HTTPS) connection",IDC_SECURE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,32,267,10
     CONTROL         "Post Miranda statuses to Wall",IDC_SET_STATUS,"Button",BS_AUTOCHECKBOX | BS_TOP | WS_TABSTOP,17,56,267,10
     CONTROL         "Enable logging for debugging purposes",IDC_LOGGING,
@@ -169,6 +156,12 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,81,267,10
     CONTROL         "Enable support for Custom smileys (EXPERIMENTAL + BUGGY!)",IDC_CUSTOM_SMILEYS,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,95,267,10
+    CONTROL         "Use local time for received messages",IDC_USE_LOCAL_TIME,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,108,267,10
+    COMBOBOX        IDC_URL_SERVER,156,135,96,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Use this server for opening links:",IDC_STATIC,17,137,135,8
+    CONTROL         "Allow posting statuses to my pages (may slow down login)",IDC_LOAD_PAGES,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,17,122,267,10
 END
 
 
@@ -187,13 +180,21 @@ BEGIN
     IDD_MIND, DIALOG
     BEGIN
         LEFTMARGIN, 4
-        RIGHTMARGIN, 263
-        VERTGUIDE, 209
-        VERTGUIDE, 213
+        RIGHTMARGIN, 414
+        VERTGUIDE, 48
+        VERTGUIDE, 53
+        VERTGUIDE, 132
+        VERTGUIDE, 160
+        VERTGUIDE, 210
+        VERTGUIDE, 214
+        VERTGUIDE, 263
         TOPMARGIN, 4
-        BOTTOMMARGIN, 58
+        BOTTOMMARGIN, 109
+        HORZGUIDE, 21
         HORZGUIDE, 40
-        HORZGUIDE, 44
+        HORZGUIDE, 57
+        HORZGUIDE, 94
+        HORZGUIDE, 109
     END
 
     IDD_OPTIONS, DIALOG
@@ -212,26 +213,10 @@ BEGIN
     IDD_OPTIONS_EVENTS, DIALOG
     BEGIN
         LEFTMARGIN, 6
-        RIGHTMARGIN, 299
+        RIGHTMARGIN, 298
         VERTGUIDE, 22
-        VERTGUIDE, 106
-        VERTGUIDE, 113
-        VERTGUIDE, 137
-        VERTGUIDE, 143
-        VERTGUIDE, 167
-        VERTGUIDE, 174
-        VERTGUIDE, 237
-        VERTGUIDE, 277
         TOPMARGIN, 7
-        BOTTOMMARGIN, 203
-        HORZGUIDE, 35
-        HORZGUIDE, 37
-        HORZGUIDE, 55
-        HORZGUIDE, 57
-        HORZGUIDE, 75
-        HORZGUIDE, 77
-        HORZGUIDE, 95
-        HORZGUIDE, 97
+        BOTTOMMARGIN, 202
     END
 
     IDD_OPTIONS_ADVANCED, DIALOG
@@ -240,8 +225,8 @@ BEGIN
         RIGHTMARGIN, 298
         VERTGUIDE, 17
         VERTGUIDE, 32
-        VERTGUIDE, 119
-        VERTGUIDE, 122
+        VERTGUIDE, 152
+        VERTGUIDE, 156
         VERTGUIDE, 284
         TOPMARGIN, 7
         BOTTOMMARGIN, 203

@@ -1,8 +1,8 @@
 /*
 Chat module plugin for Miranda IM
 
-Copyright 2000-2010 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "chat.h"
 
 extern TCHAR* pszActiveWndID ;
@@ -129,16 +130,14 @@ int SM_RemoveSession(const TCHAR* pszID, const char* pszModule, BOOL removeConta
 			pTemp->nUsersInNicklist = 0;
 
 			// contact may have been deleted here already, since function may be called after deleting
-			// contact so the handle may be invalid, therefore DBGetContactSettingByte shall return 0
-			if (pTemp->hContact && DBGetContactSettingByte( pTemp->hContact, pTemp->pszModule, "ChatRoom", 0 ) != 0)
+			// contact so the handle may be invalid, therefore db_get_b shall return 0
+			if (pTemp->hContact && db_get_b( pTemp->hContact, pTemp->pszModule, "ChatRoom", 0 ) != 0)
 			{
 				CList_SetOffline(pTemp->hContact, pTemp->iType == GCW_CHATROOM?TRUE:FALSE);
-/*				if (pTemp->iType != GCW_SERVER)
-					DBWriteContactSettingByte(pTemp->hContact, "CList", "Hidden", 1);*/
-				DBWriteContactSettingString(pTemp->hContact, pTemp->pszModule, "Topic", "");
-				DBWriteContactSettingString(pTemp->hContact, pTemp->pszModule, "StatusBar", "");
-				DBDeleteContactSetting(pTemp->hContact, "CList", "StatusMsg");
-				
+				db_set_s(pTemp->hContact, pTemp->pszModule, "Topic", "");
+				db_set_s(pTemp->hContact, pTemp->pszModule, "StatusBar", "");
+				db_unset(pTemp->hContact, "CList", "StatusMsg");
+
 				if (removeContact)
 					CallService(MS_DB_CONTACT_DELETE, (WPARAM)pTemp->hContact, 0);
 			}
@@ -150,7 +149,7 @@ int SM_RemoveSession(const TCHAR* pszID, const char* pszModule, BOOL removeConta
 			mir_free( pTemp->ptszTopic );
 			mir_free( pTemp->pszID );
 			mir_free( pTemp->pszName );
-			
+
 			// delete commands
 			pCurComm = pTemp->lpCommands;
 			while (pCurComm != NULL)
@@ -295,7 +294,8 @@ BOOL SM_AddEventToAllMatchingUID(GCEVENT * gce)
 						g_TabSession.pLogEnd = pTemp->pLogEnd;
 						SendMessage(pTemp->hWnd, GC_REDRAWLOG2, 0, 0);
 					}
-					DoSoundsFlashPopupTrayStuff(pTemp, gce, FALSE, bManyFix);
+					if (!(gce->dwFlags & GCEF_NOTNOTIFY))
+						DoSoundsFlashPopupTrayStuff(pTemp, gce, FALSE, bManyFix);
 					bManyFix ++;
 					if ((gce->dwFlags & GCEF_ADDTOLOG) && g_Settings.LoggingEnabled)
 						LogToFile(pTemp, gce);
@@ -606,9 +606,9 @@ BOOL SM_SetStatus(const TCHAR* pszID, const char* pszModule, int wStatus)
 
 			if ( pTemp->hContact ) {
 				if ( pTemp->iType != GCW_SERVER && wStatus != ID_STATUS_OFFLINE )
-						DBDeleteContactSetting(pTemp->hContact, "CList", "Hidden");
+						db_unset(pTemp->hContact, "CList", "Hidden");
 
-				DBWriteContactSettingWord(pTemp->hContact, pTemp->pszModule, "Status", (WORD)wStatus);
+				db_set_w(pTemp->hContact, pTemp->pszModule, "Status", (WORD)wStatus);
 			}
 
 			if ( g_Settings.TabsEnable && g_TabSession.hWnd )
@@ -773,9 +773,9 @@ BOOL SM_RemoveAll (void)
 		DoEventHook(m_WndList->ptszID, m_WndList->pszModule, GC_SESSION_TERMINATE, NULL, NULL, (DWORD)m_WndList->dwItemData);
 		if (m_WndList->hContact)
 			CList_SetOffline(m_WndList->hContact, m_WndList->iType == GCW_CHATROOM?TRUE:FALSE);
-		DBWriteContactSettingString(m_WndList->hContact, m_WndList->pszModule , "Topic", "");
-		DBDeleteContactSetting(m_WndList->hContact, "CList", "StatusMsg");
-		DBWriteContactSettingString(m_WndList->hContact, m_WndList->pszModule, "StatusBar", "");
+		db_set_s(m_WndList->hContact, m_WndList->pszModule , "Topic", "");
+		db_unset(m_WndList->hContact, "CList", "StatusMsg");
+		db_set_s(m_WndList->hContact, m_WndList->pszModule, "StatusBar", "");
 
 		UM_RemoveAll(&m_WndList->pUsers);
 		TM_RemoveAll(&m_WndList->pStatuses);
@@ -790,7 +790,7 @@ BOOL SM_RemoveAll (void)
 		mir_free( m_WndList->ptszTopic );
 		mir_free( m_WndList->pszID );
 		mir_free( m_WndList->pszName );
-		
+
 		while (m_WndList->lpCommands != NULL) {
 			COMMAND_INFO *pNext = m_WndList->lpCommands->next;
 			mir_free(m_WndList->lpCommands->lpCommand);
@@ -1325,7 +1325,7 @@ USERINFO* UM_AddUser(STATUSINFO* pStatusList, USERINFO** ppUserList, const TCHAR
 {
 	USERINFO * pTemp = *ppUserList, *pLast = NULL;
 
-	if (!pStatusList || !ppUserList || !ppUserList)
+	if (!pStatusList || !ppUserList)
 		return NULL;
 
 	while(pTemp && UM_CompareItem(pTemp, pszNick, wStatus) <= 0)

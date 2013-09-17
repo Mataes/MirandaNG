@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -29,20 +29,34 @@ HWND hAPCWindow = NULL;
 int  InitPathUtils(void);
 void (*RecalculateTime)(void);
 
+void CheckLogs();
+void InitLogs();
+void UninitLogs();
+
 int hLangpack = 0;
 HINSTANCE hInst = 0;
 
 HANDLE hStackMutex, hThreadQueueEmpty;
 DWORD mir_tls = 0;
+bool g_bDebugMode = false;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // module init
 
 static LRESULT CALLBACK APCWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	if (msg == WM_NULL) SleepEx(0, TRUE);
+	if (msg == WM_USER+1) {
+		PAPCFUNC pFunc = (PAPCFUNC)wParam;
+		pFunc((ULONG_PTR)lParam);
+		return 0;
+	}
+
+	if (msg == WM_TIMER)
+		CheckLogs();
+
 	if (msg == WM_TIMECHANGE && RecalculateTime)
 		RecalculateTime();
+
 	return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
@@ -62,10 +76,11 @@ static void LoadCoreModule(void)
 
 	hAPCWindow = CreateWindowEx(0, _T("STATIC"), NULL, 0, 0, 0, 0, 0, NULL, NULL, NULL, NULL);
 	SetWindowLongPtr(hAPCWindow, GWLP_WNDPROC, (LONG_PTR)APCWndProc);
+	SetTimer(hAPCWindow, 1, 60*1000, NULL);
 	hStackMutex = CreateMutex(NULL, FALSE, NULL);
 	hThreadQueueEmpty = CreateEvent(NULL, TRUE, TRUE, NULL);
 
-	#ifdef WIN64
+	#ifdef _WIN64
 		HMODULE mirInst = GetModuleHandleA("miranda64.exe");
 	#else
 		HMODULE mirInst = GetModuleHandleA("miranda32.exe");
@@ -73,7 +88,9 @@ static void LoadCoreModule(void)
 	RecalculateTime = (void (*)()) GetProcAddress(mirInst, "RecalculateTime");
 
 	InitPathUtils();
+	InitLogs();
 	InitialiseModularEngine();
+	InitProtocols();
 }
 
 MIR_CORE_DLL(void) UnloadCoreModule(void)
@@ -83,7 +100,10 @@ MIR_CORE_DLL(void) UnloadCoreModule(void)
 	CloseHandle(hThreadQueueEmpty);
 	TlsFree(mir_tls);
 
+	UninitSubclassing();
+	UninitProtocols();
 	DestroyModularEngine();
+	UninitLogs();
 	UnloadLangPackModule();
 }
 

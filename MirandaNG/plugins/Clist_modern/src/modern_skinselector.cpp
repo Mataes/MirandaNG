@@ -30,8 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "m_api/m_skin_eng.h"
 #include "m_api/m_skinbutton.h"
 #include "hdr/modern_commonprototypes.h"
-LISTMODERNMASK * MainModernMaskList = NULL;
-
 
 /// IMPLEMENTATIONS
 char * ModernMaskToString(MODERNMASK *mm, char * buf, UINT bufsize)
@@ -41,11 +39,12 @@ char * ModernMaskToString(MODERNMASK *mm, char * buf, UINT bufsize)
 	{
 		if (mm->pl_Params[i].bMaskParamFlag)
 		{
-			if (i>0) _snprintf(buf,bufsize,"%s%%",buf);
+			if (i>0)
+				mir_snprintf(buf, bufsize, "%s%%", buf);
 			if (mm->pl_Params[i].bMaskParamFlag &MPF_DIFF)
-				_snprintf(buf,bufsize,"%s = %s",mm->pl_Params[i].szName,mm->pl_Params[i].szValue);
+				mir_snprintf(buf, bufsize, "%s = %s", mm->pl_Params[i].szName, mm->pl_Params[i].szValue);
 			else
-				_snprintf(buf,bufsize,"%s^%s",mm->pl_Params[i].szName,mm->pl_Params[i].szValue);
+				mir_snprintf(buf, bufsize, "%s^%s", mm->pl_Params[i].szName, mm->pl_Params[i].szValue);
 		}
 		else break;
 	}
@@ -62,70 +61,6 @@ int SkinSelector_DeleteMask(MODERNMASK *mm)
 	}
 	free(mm->pl_Params);
 	return 1;
-}
-
-#define _qtoupper(_c) (((_c) >= 'a' && (_c) <= 'z')?((_c)-('a'+'A')):(_c))
-BOOL wildcmpi(TCHAR* name, TCHAR* mask)
-{
-	TCHAR* last = '\0';
-	for (;; mask++, name++)
-	{
-		if (*mask != '?' && _qtoupper(*mask) != _qtoupper(*name)) break;
-		if (*name == '\0') return ((BOOL)!*mask);
-	}
-	if (*mask != '*') return FALSE;
-	for (;; mask++, name++)
-	{
-		while(*mask == '*')
-		{
-			last = mask++;
-			if (*mask == '\0') return ((BOOL)!*mask);   /* true */
-		}
-		if (*name == '\0') return ((BOOL)!*mask);      /* *mask == EOS */
-		if (*mask != '?' && _qtoupper(*mask)  != _qtoupper(*name)) name -= (size_t)(mask - last) - 1, mask = last;
-	}
-}
-
-BOOL wildcmpi(char * name, char * mask)
-{
-	char * last = '\0';
-	for (;; mask++, name++)
-	{
-		if (*mask != '?' && _qtoupper(*mask) != _qtoupper(*name)) break;
-		if (*name == '\0') return ((BOOL)!*mask);
-	}
-	if (*mask != '*') return FALSE;
-	for (;; mask++, name++)
-	{
-		while(*mask == '*')
-		{
-			last = mask++;
-			if (*mask == '\0') return ((BOOL)!*mask);   /* true */
-		}
-		if (*name == '\0') return ((BOOL)!*mask);      /* *mask == EOS */
-		if (*mask != '?' && _qtoupper(*mask)  != _qtoupper(*name)) name -= (size_t)(mask - last) - 1, mask = last;
-	}
-}
-
-BOOL __inline wildcmp(const char * name, const char * mask, BYTE option)
-{
-	const char * last = '\0';
-	for (;; mask++, name++)
-	{
-		if (*mask != '?' && *mask != *name) break;
-		if (*name == '\0') return ((BOOL)!*mask);
-	}
-	if (*mask != '*') return FALSE;
-	for (;; mask++, name++)
-	{
-		while(*mask == '*')
-		{
-			last = mask++;
-			if (*mask == '\0') return ((BOOL)!*mask);   /* true */
-		}
-		if (*name == '\0') return ((BOOL)!*mask);      /* *mask == EOS */
-		if (*mask != '?' && *mask != *name) name -= (size_t)(mask - last) - 1, mask = last;
-	}
 }
 
 BOOL MatchMask(char * name, char * mask)
@@ -295,16 +230,16 @@ int SortMaskList(LISTMODERNMASK * mmList)
 	return 1;
 }
 
-enum 
-{ 
-	EXCEPTION_EQUAL, 
-	EXCEPTION_NOT_EQUAL = 1, 
+enum
+{
+	EXCEPTION_EQUAL,
+	EXCEPTION_NOT_EQUAL = 1,
 	EXCEPTION_WILD = 2,
 };
 static BOOL _GetParamValue( char * szText, unsigned int& start, unsigned int length, char* &param, unsigned int& paramlen, char* &value, unsigned int& valuelen, int& except )
 {
 	char * curChar = szText + start;
-	char * lastChar = szText + length;	
+	char * lastChar = szText + length;
 
 	enum { STATE_PARAM, STATE_VALUE };
 	int state = STATE_PARAM;
@@ -330,7 +265,7 @@ static BOOL _GetParamValue( char * szText, unsigned int& start, unsigned int len
 			except |= EXCEPTION_NOT_EQUAL;
 			exitLoop = TRUE;
 			//fall trough
-		case '=': 
+		case '=':
 			if ( state == STATE_VALUE ) break;
 			//search value end
 			paramlen = curChar - param;
@@ -338,7 +273,7 @@ static BOOL _GetParamValue( char * szText, unsigned int& start, unsigned int len
 			break;
 
 		case ',':
-		default: 
+		default:
 			if ( *curChar != ',' && curChar < lastChar ) break;
 			if ( state == STATE_PARAM )
 			{
@@ -346,7 +281,7 @@ static BOOL _GetParamValue( char * szText, unsigned int& start, unsigned int len
 				value = param;
 				param = NULL;
 				paramlen = 0;
-				state = STATE_VALUE; 
+				state = STATE_VALUE;
 			}
 			exitLoop = TRUE;
 			break;
@@ -381,23 +316,23 @@ static BOOL _GetParamValue( char * szText, unsigned int& start, unsigned int len
 	// skip spaces
 	if ( value && valuelen )
 	{
-		while ( *value == ' ' || *value == '\t' ) 
-		{ 
-			value++; 
-			valuelen--; 
+		while ( *value == ' ' || *value == '\t' )
+		{
+			value++;
+			valuelen--;
 		}
-		while ( *( value + valuelen - 1) == ' ' || *( value + valuelen -1 ) == '\t' ) 
+		while ( *( value + valuelen - 1) == ' ' || *( value + valuelen -1 ) == '\t' )
 			valuelen--;
 	}
 
 	if ( param && paramlen )
 	{
-		while (*param == ' ' || *param == '\t' ) 
+		while (*param == ' ' || *param == '\t' )
 		{
-			param++; 
-			paramlen--; 
+			param++;
+			paramlen--;
 		}
-		while (*(param+paramlen-1) == ' ' || *(param+paramlen-1) == '\t' ) 
+		while (*(param+paramlen-1) == ' ' || *(param+paramlen-1) == '\t' )
 			paramlen--;
 	}
 
@@ -421,8 +356,8 @@ int ParseToModernMask(MODERNMASK *mm, char * szText)
 	int except;
 
 	while ( _GetParamValue( szText, startPos, textLen, pszParam, paramlen, pszValue, valuelen, except))
-	{        
-		if ( except & EXCEPTION_NOT_EQUAL ) 
+	{
+		if ( except & EXCEPTION_NOT_EQUAL )
 			param.bMaskParamFlag = MPF_NOT_EQUAL;
 		else
 			param.bMaskParamFlag = MPF_EQUAL;
@@ -435,8 +370,8 @@ int ParseToModernMask(MODERNMASK *mm, char * szText)
 		}
 		else //ParamName = 'Module'
 		{
-			param.szName = _strdup( "Module");
-			param.dwId = mod_CalcHash( param.szName );                    
+			param.szName = _strdup("Module");
+			param.dwId = mod_CalcHash( param.szName );
 		}
 
 
@@ -454,7 +389,7 @@ int ParseToModernMask(MODERNMASK *mm, char * szText)
 		}
 		memmove(&(mm->pl_Params[curParam]),&param,sizeof(MASKPARAM));
 		curParam++;
-		memset(&param,0,sizeof(MASKPARAM));
+		memset(&param, 0, sizeof(MASKPARAM));
 	}
 	return 0;
 };
@@ -489,7 +424,7 @@ BOOL CompareModernMask(MODERNMASK *mmValue,MODERNMASK *mmTemplate)
 			{
 				if (mmValue->pl_Params[pVal].dwId == ph)
 				{
-					if (wildcmp(mmValue->pl_Params[pVal].szValue,p.szValue,0)){finded = 1; break;}
+					if (wildcmp(mmValue->pl_Params[pVal].szValue,p.szValue)){finded = 1; break;}
 					else {finded = 0; break;}
 				}
 				pVal++;
@@ -559,9 +494,9 @@ SKINOBJECTDESCRIPTOR *  skin_FindObjectByRequest(char * szValue,LISTMODERNMASK *
 	if ( !mmTemplateList)
 		if (g_SkinObjectList.pMaskList)
 			mmTemplateList = g_SkinObjectList.pMaskList;
-		else 
+		else
 			return NULL;
-	
+
 	if ( !mmTemplateList) return NULL;
 	ParseToModernMask(&mm,szValue);
 	res = skin_FindObjectByMask(&mm,mmTemplateList);
@@ -573,8 +508,42 @@ TCHAR * GetParamNT(char * string, TCHAR * buf, int buflen, BYTE paramN, char Del
 {
 	char *ansibuf = (char*)mir_alloc(buflen/sizeof(TCHAR));
 	GetParamN(string, ansibuf, buflen/sizeof(TCHAR), paramN, Delim, SkipSpaces);
-	MultiByteToWideChar(CP_UTF8,0,ansibuf,-1,buf,buflen);
+	MultiByteToWideChar(CP_UTF8, 0, ansibuf,-1,buf,buflen);
 	mir_free(ansibuf);
+	return buf;
+}
+
+WCHAR* GetParamN(WCHAR *string, WCHAR *buf, int buflen, BYTE paramN, WCHAR Delim, BOOL SkipSpaces)
+{
+	int i=0;
+	DWORD start = 0;
+	DWORD end = 0;
+	DWORD CurentCount = 0;
+	DWORD len;
+	while (i < lstrlen(string))
+	{
+		if (string[i] == Delim)
+		{
+			if (CurentCount == paramN) break;
+			start = i+1;
+			CurentCount++;
+		}
+		i++;
+	}
+	if (CurentCount == paramN)
+	{
+		if (SkipSpaces)
+		{ //remove spaces
+			while (string[start] == ' ' && (int)start < lstrlen(string))
+				start++;
+			while (i>1 && string[i-1] == ' ' && i>(int)start)
+				i--;
+		}
+		len = ((int)(i-start) < buflen)?i-start:buflen;
+		_tcsncpy(buf, string+start, len);
+		buf[len] = '\0';
+	}
+	else buf[0] = '\0';
 	return buf;
 }
 
@@ -617,7 +586,7 @@ int RegisterButtonByParce(char * ObjectName, char * Params)
 {
 	char buf [255];
 	int res;
-	GetParamN(Params,buf, SIZEOF(buf),0,',',0);
+	GetParamN(Params,buf, SIZEOF(buf), 0, ',',0);
 	// if (boolstrcmpi("Push",buf)
 	{   //Push type
 		char buf2[20] = {0};
@@ -677,7 +646,7 @@ int RegisterObjectByParce(char * ObjectName, char * Params)
 		SKINOBJECTDESCRIPTOR obj = {0};
 		char buf[250];
 		obj.szObjectID = mir_strdup(ObjectName);
-		GetParamN(Params,buf, SIZEOF(buf),0,',',0);
+		GetParamN(Params,buf, SIZEOF(buf), 0, ',',0);
 		if (mir_bool_strcmpi(buf,"Glyph"))
 			obj.bType = OT_GLYPHOBJECT;
 		else if (mir_bool_strcmpi(buf,"Font"))
@@ -729,7 +698,7 @@ int RegisterObjectByParce(char * ObjectName, char * Params)
 
 					gl.dwLeft = atoi(GetParamN(Params,buf, SIZEOF(buf),8,',',0));
 					gl.dwTop = atoi(GetParamN(Params,buf, SIZEOF(buf),9,',',0));
-					gl.dwRight = atoi(GetParamN(Params,buf, SIZEOF(buf),10,',',0));
+					gl.dwRight = atoi(GetParamN(Params,buf, SIZEOF(buf),10, ',',0));
 					gl.dwBottom = atoi(GetParamN(Params,buf, SIZEOF(buf),11,',',0));
 					gl.dwAlpha  = atoi(GetParamN(Params,buf, SIZEOF(buf),12,',',0));
 					GetParamN(Params,buf, SIZEOF(buf),7,',',0);
@@ -763,7 +732,7 @@ int SkinDrawGlyphMask(HDC hdc, RECT *rcSize, RECT *rcClip, MODERNMASK *ModernMas
 	SKINDRAWREQUEST rq;
 	rq.hDC = hdc;
 	rq.rcDestRect = *rcSize;
-	rq.rcClipRect = *rcClip;  
+	rq.rcClipRect = *rcClip;
 	strncpy(rq.szObjectID,"Masked draw",SIZEOF("Masked draw"));
 	return ske_Service_DrawGlyph((WPARAM)&rq,(LPARAM)ModernMask);
 }
@@ -775,7 +744,7 @@ int __inline SkinDrawWindowBack(HWND hwndIn, HDC hdc, RECT *rcClip, char * objec
 	POINT pt = {0};
 	RECT rc,r1;
 
-	HWND hwnd = (HWND)CallService(MS_CLUI_GETHWND,0,0);
+	HWND hwnd = (HWND)CallService(MS_CLUI_GETHWND, 0, 0);
 	if ( !objectID) return 0;
 	GetWindowRect(hwndIn,&r1);
 	pt.x = r1.left;

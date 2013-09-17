@@ -503,14 +503,14 @@ HANDLE CIcqProto::HContactFromUIN(DWORD dwUin, int *Added)
 			return INVALID_HANDLE_VALUE;
 		}
 
-		setSettingDword(hContact, UNIQUEIDSETTING, dwUin);
+		setDword(hContact, UNIQUEIDSETTING, dwUin);
 
 		if (!bIsSyncingCL)
 		{
 			db_set_b(hContact, "CList", "NotOnList", 1);
 			setContactHidden(hContact, 1);
 
-			setSettingWord(hContact, "Status", ID_STATUS_OFFLINE);
+			setWord(hContact, "Status", ID_STATUS_OFFLINE);
 
 			icq_QueueUser(hContact);
 
@@ -555,7 +555,7 @@ HANDLE CIcqProto::HContactFromUID(DWORD dwUin, const char *szUid, int *Added)
 			{
 				if (strcmpnull(szContactUid, szUid))
 				{ // fix case in SN
-					setSettingString(hContact, UNIQUEIDSETTING, szUid);
+					setString(hContact, UNIQUEIDSETTING, szUid);
 				}
 				return hContact;
 			}
@@ -569,14 +569,14 @@ HANDLE CIcqProto::HContactFromUID(DWORD dwUin, const char *szUid, int *Added)
 		hContact = (HANDLE)CallService(MS_DB_CONTACT_ADD, 0, 0);
 		CallService(MS_PROTO_ADDTOCONTACT, (WPARAM)hContact, (LPARAM)m_szModuleName);
 
-		setSettingString(hContact, UNIQUEIDSETTING, szUid);
+		setString(hContact, UNIQUEIDSETTING, szUid);
 
 		if (!bIsSyncingCL)
 		{
 			db_set_b(hContact, "CList", "NotOnList", 1);
 			setContactHidden(hContact, 1);
 
-			setSettingWord(hContact, "Status", ID_STATUS_OFFLINE);
+			setWord(hContact, "Status", ID_STATUS_OFFLINE);
 
 			if (icqOnline())
 				icq_sendNewContact(0, szUid);
@@ -599,7 +599,7 @@ HANDLE CIcqProto::HContactFromAuthEvent(HANDLE hEvent)
 	dbei.cbBlob = sizeof(DWORD)*2;
 	dbei.pBlob = (PBYTE)&body;
 
-	if (CallService(MS_DB_EVENT_GET, (WPARAM)hEvent, (LPARAM)&dbei))
+	if (db_event_get(hEvent, &dbei))
 		return INVALID_HANDLE_VALUE;
 
 	if (dbei.eventType != EVENTTYPE_AUTHREQUEST)
@@ -687,31 +687,6 @@ char* __fastcall strstrnull(const char *str, const char *substr)
 
 	return NULL;
 }
-
-int null_snprintf(char *buffer, size_t count, const char *fmt, ...)
-{
-	va_list va;
-	int len;
-
-	ZeroMemory(buffer, count);
-	va_start(va, fmt);
-	len = _vsnprintf(buffer, count-1, fmt, va);
-	va_end(va);
-	return len;
-}
-
-int null_snprintf(WCHAR *buffer, size_t count, const WCHAR *fmt, ...)
-{
-	va_list va;
-	int len;
-
-	ZeroMemory(buffer, count * sizeof(WCHAR));
-	va_start(va, fmt);
-	len = _vsnwprintf(buffer, count, fmt, va);
-	va_end(va);
-	return len;
-}
-
 
 char* __fastcall null_strdup(const char *string)
 {
@@ -959,25 +934,25 @@ char *ApplyEncoding(const char *string, const char *pszEncoding)
 void CIcqProto::ResetSettingsOnListReload()
 {
 	// Reset a bunch of session specific settings
-	setSettingWord(NULL, DBSETTING_SERVLIST_PRIVACY, 0);
-	setSettingWord(NULL, DBSETTING_SERVLIST_METAINFO, 0);
-	setSettingWord(NULL, DBSETTING_SERVLIST_AVATAR, 0);
-	setSettingWord(NULL, DBSETTING_SERVLIST_PHOTO, 0);
-	setSettingWord(NULL, "SrvRecordCount", 0);
-	deleteSetting(NULL, DBSETTING_SERVLIST_UNHANDLED);
+	setWord(DBSETTING_SERVLIST_PRIVACY, 0);
+	setWord(DBSETTING_SERVLIST_METAINFO, 0);
+	setWord(DBSETTING_SERVLIST_AVATAR, 0);
+	setWord(DBSETTING_SERVLIST_PHOTO, 0);
+	setWord("SrvRecordCount", 0);
+	delSetting(DBSETTING_SERVLIST_UNHANDLED);
 
 	HANDLE hContact = FindFirstContact();
 
 	while (hContact)
 	{
 		// All these values will be restored during the serv-list receive
-		setSettingWord(hContact, DBSETTING_SERVLIST_ID, 0);
-		setSettingWord(hContact, DBSETTING_SERVLIST_GROUP, 0);
-		setSettingWord(hContact, DBSETTING_SERVLIST_PERMIT, 0);
-		setSettingWord(hContact, DBSETTING_SERVLIST_DENY, 0);
-		deleteSetting(hContact, DBSETTING_SERVLIST_IGNORE);
-		setSettingByte(hContact, "Auth", 0);
-		deleteSetting(hContact, DBSETTING_SERVLIST_DATA);
+		setWord(hContact, DBSETTING_SERVLIST_ID, 0);
+		setWord(hContact, DBSETTING_SERVLIST_GROUP, 0);
+		setWord(hContact, DBSETTING_SERVLIST_PERMIT, 0);
+		setWord(hContact, DBSETTING_SERVLIST_DENY, 0);
+		delSetting(hContact, DBSETTING_SERVLIST_IGNORE);
+		setByte(hContact, "Auth", 0);
+		delSetting(hContact, DBSETTING_SERVLIST_DATA);
 
 		hContact = FindNextContact(hContact);
 	}
@@ -988,21 +963,21 @@ void CIcqProto::ResetSettingsOnListReload()
 void CIcqProto::ResetSettingsOnConnect()
 {
 	// Reset a bunch of session specific settings
-	setSettingByte(NULL, "SrvVisibility", 0);
-	setSettingDword(NULL, "IdleTS", 0);
+	setByte("SrvVisibility", 0);
+	setDword("IdleTS", 0);
 
 	HANDLE hContact = FindFirstContact();
 
 	while (hContact)
 	{
-		setSettingDword(hContact, "LogonTS", 0);
-		setSettingDword(hContact, "IdleTS", 0);
-		setSettingDword(hContact, "TickTS", 0);
-		setSettingByte(hContact, "TemporaryVisible", 0);
+		setDword(hContact, "LogonTS", 0);
+		setDword(hContact, "IdleTS", 0);
+		setDword(hContact, "TickTS", 0);
+		setByte(hContact, "TemporaryVisible", 0);
 
 		// All these values will be restored during the login
 		if (getContactStatus(hContact) != ID_STATUS_OFFLINE)
-			setSettingWord(hContact, "Status", ID_STATUS_OFFLINE);
+			setWord(hContact, "Status", ID_STATUS_OFFLINE);
 
 		hContact = FindNextContact(hContact);
 	}
@@ -1010,25 +985,25 @@ void CIcqProto::ResetSettingsOnConnect()
 
 void CIcqProto::ResetSettingsOnLoad()
 {
-	setSettingDword(NULL, "IdleTS", 0);
-	setSettingDword(NULL, "LogonTS", 0);
+	setDword("IdleTS", 0);
+	setDword("LogonTS", 0);
 
 	HANDLE hContact = FindFirstContact();
 
 	while (hContact)
 	{
-		setSettingDword(hContact, "LogonTS", 0);
-		setSettingDword(hContact, "IdleTS", 0);
-		setSettingDword(hContact, "TickTS", 0);
+		setDword(hContact, "LogonTS", 0);
+		setDword(hContact, "IdleTS", 0);
+		setDword(hContact, "TickTS", 0);
 		if (getContactStatus(hContact) != ID_STATUS_OFFLINE)
 		{
-			setSettingWord(hContact, "Status", ID_STATUS_OFFLINE);
+			setWord(hContact, "Status", ID_STATUS_OFFLINE);
 
-			deleteSetting(hContact, DBSETTING_XSTATUS_ID);
-			deleteSetting(hContact, DBSETTING_XSTATUS_NAME);
-			deleteSetting(hContact, DBSETTING_XSTATUS_MSG);
+			delSetting(hContact, DBSETTING_XSTATUS_ID);
+			delSetting(hContact, DBSETTING_XSTATUS_NAME);
+			delSetting(hContact, DBSETTING_XSTATUS_MSG);
 		}
-		setSettingByte(hContact, "DCStatus", 0);
+		setByte(hContact, "DCStatus", 0);
 
 		hContact = FindNextContact(hContact);
 	}
@@ -1067,7 +1042,7 @@ void __cdecl CIcqProto::ProtocolAckThread(icq_ack_args* pArguments)
 	else if (pArguments->nAckResult == ACKRESULT_FAILED)
 		NetLog_Server("Message delivery failed");
 
-	BroadcastAck(pArguments->hContact, pArguments->nAckType, pArguments->nAckResult, pArguments->hSequence, pArguments->pszMessage);
+	ProtoBroadcastAck(pArguments->hContact, pArguments->nAckType, pArguments->nAckResult, pArguments->hSequence, pArguments->pszMessage);
 
 	SAFE_FREE((void**)(char **)&pArguments->pszMessage);
 	SAFE_FREE((void**)&pArguments);
@@ -1082,7 +1057,7 @@ void CIcqProto::SendProtoAck(HANDLE hContact, DWORD dwCookie, int nAckResult, in
 	pArgs->nAckType = nAckType;
 	pArgs->pszMessage = (LPARAM)null_strdup(pszMessage);
 
-	ForkThread(( IcqThreadFunc )&CIcqProto::ProtocolAckThread, pArgs );
+	ForkThread((MyThreadFunc)&CIcqProto::ProtocolAckThread, pArgs );
 }
 
 void CIcqProto::SetCurrentStatus(int nStatus)
@@ -1090,7 +1065,7 @@ void CIcqProto::SetCurrentStatus(int nStatus)
 	int nOldStatus = m_iStatus;
 
 	m_iStatus = nStatus;
-	BroadcastAck(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)nOldStatus, nStatus);
+	ProtoBroadcastAck(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)nOldStatus, nStatus);
 }
 
 
@@ -1221,7 +1196,7 @@ void __cdecl CIcqProto::SetStatusNoteThread(void *pDelay)
 			char *szCurrentStatusMood = NULL;
 			DBVARIANT dbv = {DBVT_DELETED};
 
-			if (m_bMoodsEnabled && !getSettingString(NULL, DBSETTING_STATUS_MOOD, &dbv))
+			if (m_bMoodsEnabled && !getString(DBSETTING_STATUS_MOOD, &dbv))
 				szCurrentStatusMood = dbv.pszVal;
 
 			if (!setStatusNoteText && szCurrentStatusNote)
@@ -1231,9 +1206,9 @@ void __cdecl CIcqProto::SetStatusNoteThread(void *pDelay)
 
 			if (strcmpnull(szCurrentStatusNote, setStatusNoteText) || (m_bMoodsEnabled && strcmpnull(szCurrentStatusMood, setStatusMoodData)))
 			{
-				setSettingStringUtf(NULL, DBSETTING_STATUS_NOTE, setStatusNoteText);
+				db_set_utf(NULL, m_szModuleName, DBSETTING_STATUS_NOTE, setStatusNoteText);
 				if (m_bMoodsEnabled)
-					setSettingString(NULL, DBSETTING_STATUS_MOOD, setStatusMoodData);
+					setString(DBSETTING_STATUS_MOOD, setStatusMoodData);
 
 				WORD wStatusNoteLen = strlennull(setStatusNoteText);
 				WORD wStatusMoodLen = m_bMoodsEnabled ? strlennull(setStatusMoodData) : 0;
@@ -1328,7 +1303,7 @@ int CIcqProto::SetStatusMood(const char *szMoodData, DWORD dwDelay)
 		char *szCurrentStatusMood = NULL;
 		DBVARIANT dbv = {DBVT_DELETED};
 
-		if (!getSettingString(NULL, DBSETTING_STATUS_MOOD, &dbv))
+		if (!getString(DBSETTING_STATUS_MOOD, &dbv))
 			szCurrentStatusMood = dbv.pszVal;
 
 		if (strcmpnull(szCurrentStatusMood, szMoodData))
@@ -1366,27 +1341,10 @@ void CIcqProto::writeDbInfoSettingTLVStringUtf(HANDLE hContact, const char *szSe
 
 		memcpy(str, pTLV->pData, pTLV->wLen);
 		str[pTLV->wLen] = '\0';
-		setSettingStringUtf(hContact, szSetting, str);
+		db_set_utf(hContact, m_szModuleName, szSetting, str);
 	}
 	else
-		deleteSetting(hContact, szSetting);
-}
-
-
-void CIcqProto::writeDbInfoSettingTLVString(HANDLE hContact, const char *szSetting, oscar_tlv_chain *chain, WORD wTlv)
-{
-	oscar_tlv *pTLV = chain->getTLV(wTlv, 1);
-
-	if (pTLV && pTLV->wLen > 0)
-	{
-		char *str = (char*)_alloca(pTLV->wLen + 1); 
-
-		memcpy(str, pTLV->pData, pTLV->wLen);
-		str[pTLV->wLen] = '\0';
-		setSettingString(hContact, szSetting, str);
-	}
-	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 }
 
 
@@ -1395,9 +1353,9 @@ void CIcqProto::writeDbInfoSettingTLVWord(HANDLE hContact, const char *szSetting
 	int num = chain->getNumber(wTlv, 1);
 
 	if (num > 0)
-		setSettingWord(hContact, szSetting, num);
+		setWord(hContact, szSetting, num);
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 }
 
 
@@ -1406,9 +1364,9 @@ void CIcqProto::writeDbInfoSettingTLVByte(HANDLE hContact, const char *szSetting
 	int num = chain->getNumber(wTlv, 1);
 
 	if (num > 0)
-		setSettingByte(hContact, szSetting, num);
+		setByte(hContact, szSetting, num);
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 }
 
 
@@ -1419,7 +1377,7 @@ void CIcqProto::writeDbInfoSettingTLVDouble(HANDLE hContact, const char *szSetti
 	if (num > 0)
 		setSettingDouble(hContact, szSetting, num);
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 }
 
 void CIcqProto::writeDbInfoSettingTLVDate(HANDLE hContact, const char* szSettingYear, const char* szSettingMonth, const char* szSettingDay, oscar_tlv_chain* chain, WORD wTlv)
@@ -1431,22 +1389,22 @@ void CIcqProto::writeDbInfoSettingTLVDate(HANDLE hContact, const char* szSetting
 		SYSTEMTIME sTime = {0};
 		if (VariantTimeToSystemTime(time + 2, &sTime))
 		{
-			setSettingWord(hContact, szSettingYear, sTime.wYear);
-			setSettingByte(hContact, szSettingMonth, (BYTE)sTime.wMonth);
-			setSettingByte(hContact, szSettingDay, (BYTE)sTime.wDay);
+			setWord(hContact, szSettingYear, sTime.wYear);
+			setByte(hContact, szSettingMonth, (BYTE)sTime.wMonth);
+			setByte(hContact, szSettingDay, (BYTE)sTime.wDay);
 		}
 		else
 		{
-			deleteSetting(hContact, szSettingYear);
-			deleteSetting(hContact, szSettingMonth);
-			deleteSetting(hContact, szSettingDay);
+			delSetting(hContact, szSettingYear);
+			delSetting(hContact, szSettingMonth);
+			delSetting(hContact, szSettingDay);
 		}
 	}
 	else
 	{
-		deleteSetting(hContact, szSettingYear);
-		deleteSetting(hContact, szSettingMonth);
-		deleteSetting(hContact, szSettingDay);
+		delSetting(hContact, szSettingYear);
+		delSetting(hContact, szSettingMonth);
+		delSetting(hContact, szSettingDay);
 	}
 }
 
@@ -1458,7 +1416,7 @@ void CIcqProto::writeDbInfoSettingTLVBlob(HANDLE hContact, const char *szSetting
 	if (pTLV && pTLV->wLen > 0)
 		setSettingBlob(hContact, szSetting, pTLV->pData, pTLV->wLen);
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 }
 
 
@@ -1477,7 +1435,7 @@ BOOL CIcqProto::writeDbInfoSettingString(HANDLE hContact, const char* szSetting,
 
 	if ((wLen > 0) && (**buf) && ((*buf)[wLen-1]==0)) // Make sure we have a proper string
 	{
-		WORD wCp = getSettingWord(hContact, "InfoCodePage", getSettingWord(hContact, "InfoCP", CP_ACP));
+		WORD wCp = getWord(hContact, "InfoCodePage", getWord(hContact, "InfoCP", CP_ACP));
 
 		if (wCp != CP_ACP)
 		{
@@ -1485,17 +1443,17 @@ BOOL CIcqProto::writeDbInfoSettingString(HANDLE hContact, const char* szSetting,
 
 			if (szUtf)
 			{
-				setSettingStringUtf(hContact, szSetting, szUtf);
+				db_set_utf(hContact, m_szModuleName, szSetting, szUtf);
 				SAFE_FREE((void**)&szUtf);
 			}
 			else
-				setSettingString(hContact, szSetting, *buf);
+				setString(hContact, szSetting, *buf);
 		}
 		else
-			setSettingString(hContact, szSetting, *buf);
+			setString(hContact, szSetting, *buf);
 	}
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 
 	*buf += wLen;
 	*pwLength -= wLen;
@@ -1515,9 +1473,9 @@ BOOL CIcqProto::writeDbInfoSettingWord(HANDLE hContact, const char *szSetting, c
 	*pwLength -= 2;
 
 	if (wVal != 0)
-		setSettingWord(hContact, szSetting, wVal);
+		setWord(hContact, szSetting, wVal);
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 
 	return TRUE;
 }
@@ -1536,9 +1494,9 @@ BOOL CIcqProto::writeDbInfoSettingWordWithTable(HANDLE hContact, const char *szS
 
 	text = LookupFieldNameUtf(table, wVal, sbuf, MAX_PATH);
 	if (text)
-		setSettingStringUtf(hContact, szSetting, text);
+		db_set_utf(hContact, m_szModuleName, szSetting, text);
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 
 	return TRUE;
 }
@@ -1554,9 +1512,9 @@ BOOL CIcqProto::writeDbInfoSettingByte(HANDLE hContact, const char *pszSetting, 
 	*pwLength -= 1;
 
 	if (byVal != 0)
-		setSettingByte(hContact, pszSetting, byVal);
+		setByte(hContact, pszSetting, byVal);
 	else
-		deleteSetting(hContact, pszSetting);
+		delSetting(hContact, pszSetting);
 
 	return TRUE;
 }
@@ -1575,9 +1533,9 @@ BOOL CIcqProto::writeDbInfoSettingByteWithTable(HANDLE hContact, const char *szS
 
 	text = LookupFieldNameUtf(table, byVal, sbuf, MAX_PATH);
 	if (text)
-		setSettingStringUtf(hContact, szSetting, text);
+		db_set_utf(hContact, m_szModuleName, szSetting, text);
 	else
-		deleteSetting(hContact, szSetting);
+		delSetting(hContact, szSetting);
 
 	return TRUE;
 }
@@ -1600,7 +1558,7 @@ char* time2text(time_t time)
 BOOL CIcqProto::validateStatusMessageRequest(HANDLE hContact, WORD byMessageType)
 {
 	// Privacy control
-	if (getSettingByte(NULL, "StatusMsgReplyCList", 0))
+	if (getByte("StatusMsgReplyCList", 0))
 	{
 		// Don't send statusmessage to unknown contacts
 		if (hContact == INVALID_HANDLE_VALUE)
@@ -1612,7 +1570,7 @@ BOOL CIcqProto::validateStatusMessageRequest(HANDLE hContact, WORD byMessageType
 			return FALSE;
 
 		// Don't send statusmessage to invisible contacts
-		if (getSettingByte(NULL, "StatusMsgReplyVisible", 0))
+		if (getByte("StatusMsgReplyVisible", 0))
 		{
 			WORD wStatus = getContactStatus(hContact);
 			if (wStatus == ID_STATUS_OFFLINE)
@@ -1622,7 +1580,7 @@ BOOL CIcqProto::validateStatusMessageRequest(HANDLE hContact, WORD byMessageType
 
 	// Dont send messages to people you are hiding from
 	if (hContact != INVALID_HANDLE_VALUE &&
-		getSettingWord(hContact, "ApparentMode", 0) == ID_STATUS_OFFLINE)
+		getWord(hContact, "ApparentMode", 0) == ID_STATUS_OFFLINE)
 	{
 		return FALSE;
 	}
@@ -1639,9 +1597,9 @@ BOOL CIcqProto::validateStatusMessageRequest(HANDLE hContact, WORD byMessageType
 	}
 
 	if (hContact != INVALID_HANDLE_VALUE && m_iStatus==ID_STATUS_INVISIBLE &&
-		getSettingWord(hContact, "ApparentMode", 0) != ID_STATUS_ONLINE)
+		getWord(hContact, "ApparentMode", 0) != ID_STATUS_ONLINE)
 	{
-		if (!getSettingByte(hContact, "TemporaryVisible", 0))
+		if (!getByte(hContact, "TemporaryVisible", 0))
 		{ // Allow request to temporary visible contacts
 			return FALSE;
 		}
@@ -1811,20 +1769,6 @@ int CIcqProto::NetLog_Uni(BOOL bDC, const char *fmt,...)
 	return CallService(MS_NETLIB_LOG,(WPARAM)hNetlib,(LPARAM)szText);
 }
 
-int CIcqProto::BroadcastAck(HANDLE hContact,int type,int result,HANDLE hProcess,LPARAM lParam)
-{
-	ACKDATA ack={0};
-
-	ack.cbSize = sizeof(ACKDATA);
-	ack.szModule = m_szModuleName;
-	ack.hContact = hContact;
-	ack.type = type;
-	ack.result = result;
-	ack.hProcess = hProcess;
-	ack.lParam = lParam;
-	return CallService(MS_PROTO_BROADCASTACK,0,(LPARAM)&ack);
-}
-
 char* __fastcall ICQTranslateUtf(const char *src)
 { // this takes UTF-8 strings only!!!
 	char *szRes = NULL;
@@ -1860,17 +1804,6 @@ char* __fastcall ICQTranslateUtfStatic(const char *src, char *buf, size_t bufsiz
 	return buf;
 }
 
-void CIcqProto::ForkThread( IcqThreadFunc pFunc, void* arg )
-{
-	CloseHandle(( HANDLE )mir_forkthreadowner(( pThreadFuncOwner )*( void** )&pFunc, this, arg, NULL ));
-}
-
-HANDLE CIcqProto::ForkThreadEx( IcqThreadFunc pFunc, void* arg, UINT* threadID )
-{
-	return ( HANDLE )mir_forkthreadowner(( pThreadFuncOwner )*( void** )&pFunc, this, arg, threadID );
-}
-
-
 char* CIcqProto::GetUserStoredPassword(char *szBuffer, int cbSize)
 {
 	if (!getSettingStringStatic(NULL, "Password", szBuffer, cbSize))
@@ -1905,11 +1838,11 @@ WORD CIcqProto::GetMyStatusFlags()
 	WORD wFlags = 0;
 
 	// Webaware setting bit flag
-	if (getSettingByte(NULL, "WebAware", 0))
+	if (getByte("WebAware", 0))
 		wFlags |= STATUS_WEBAWARE;
 
 	// DC setting bit flag
-	switch (getSettingByte(NULL, "DCType", 0))
+	switch (getByte("DCType", 0))
 	{
 	case 0:
 		break;
@@ -2131,7 +2064,7 @@ int MessageBoxUtf(HWND hWnd, const char *szText, const char *szCaption, UINT uTy
 
 char* CIcqProto::ConvertMsgToUserSpecificAnsi(HANDLE hContact, const char* szMsg)
 { // this takes utf-8 encoded message
-	WORD wCP = getSettingWord(hContact, "CodePage", m_wAnsiCodepage);
+	WORD wCP = getWord(hContact, "CodePage", m_wAnsiCodepage);
 	char* szAnsi = NULL;
 
 	if (wCP != CP_ACP) // convert to proper codepage
@@ -2147,37 +2080,4 @@ DWORD CIcqProto::ReportGenericSendError(HANDLE hContact, int nType, const char* 
 	DWORD dwCookie = GenerateCookie(0);
 	SendProtoAck(hContact, dwCookie, ACKRESULT_FAILED, nType, Translate(szErrorMsg));
 	return dwCookie;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-
-void CIcqProto::CreateProtoService(const char* szService, IcqServiceFunc serviceProc)
-{
-	char temp[MAX_PATH*2];
-
-	null_snprintf(temp, sizeof(temp), "%s%s", m_szModuleName, szService);
-	CreateServiceFunctionObj( temp, ( MIRANDASERVICEOBJ )*( void** )&serviceProc, this );
-}
-
-void CIcqProto::CreateProtoServiceParam(const char* szService, IcqServiceFuncParam serviceProc, LPARAM lParam)
-{
-	char temp[MAX_PATH*2];
-
-	null_snprintf(temp, sizeof(temp), "%s%s", m_szModuleName, szService);
-	CreateServiceFunctionObjParam( temp, ( MIRANDASERVICEOBJPARAM )*( void** )&serviceProc, this, lParam );
-}
-
-
-HANDLE CIcqProto::HookProtoEvent(const char* szEvent, IcqEventFunc pFunc)
-{
-	return ::HookEventObj(szEvent, (MIRANDAHOOKOBJ)*(void**)&pFunc, this);
-}
-
-
-HANDLE CIcqProto::CreateProtoEvent(const char* szEvent)
-{
-	char str[MAX_PATH + 32];
-	strcpy(str, m_szModuleName);
-	strcat(str, szEvent);
-	return CreateHookableEvent(str);
 }

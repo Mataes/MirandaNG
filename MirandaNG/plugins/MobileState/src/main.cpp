@@ -1,6 +1,6 @@
 /*
    Mobile State plugin for Miranda NG (www.miranda-ng.org)
-   (c) 2012 by Robert Pösel
+   (c) 2012-13 by Robert Pösel
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 */
 
 #include "commonheaders.h"
-#include "clients.h"
 
 HINSTANCE g_hInst;
 int hLangpack;
@@ -35,7 +34,7 @@ PLUGININFOEX pluginInfo = {
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {F0BA32D0-CD07-4A9C-926B-5A1FF21C3C10}
-	{0xf0ba32d0, 0xcd07, 0x4a9c, { 0x92, 0x6b, 0x5a, 0x1f, 0xf2, 0x1c, 0x3c, 0x10 }}
+	{0xf0ba32d0, 0xcd07, 0x4a9c, {0x92, 0x6b, 0x5a, 0x1f, 0xf2, 0x1c, 0x3c, 0x10}}
 };
 
 static IconItem icon = { LPGEN("Mobile State"), "mobile_icon", IDI_MOBILE };
@@ -56,11 +55,11 @@ bool hasMobileClient(HANDLE hContact, LPARAM lParam)
 	char *proto = GetContactProto(hContact);
 
 	DBVARIANT dbv;
-	if (!DBGetContactSettingTString(hContact, proto, "MirVer", &dbv)) {
+	if (!db_get_ts(hContact, proto, "MirVer", &dbv)) {
 		TCHAR *client = _tcslwr(NEWTSTR_ALLOCA(dbv.ptszVal));
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 
-		for (size_t i=0; i<(sizeof(clients) / sizeof(TCHAR*)); i++)
+		for (size_t i = 0; i < SIZEOF(clients); i++)
 			if (_tcsstr(client, clients[i]))
 				return true;
 	}
@@ -97,15 +96,12 @@ int onModulesLoaded(WPARAM wParam,LPARAM lParam)
 	// IcoLib support
 	Icon_Register(g_hInst, "Mobile State", &icon, 1);
 
-	// extra icons
-	hExtraIcon = ExtraIcon_Register("mobilestate", "Mobile State", "mobile_icon");
+	// Extra icons
+	hExtraIcon = ExtraIcon_Register("mobilestate", LPGEN("Mobile State"), "mobile_icon");
 
 	// Set initial value for all contacts
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
 		ExtraIconsApply((WPARAM)hContact, 1);
-		hContact = db_find_next(hContact);
-	}
 
 	return 0;
 }

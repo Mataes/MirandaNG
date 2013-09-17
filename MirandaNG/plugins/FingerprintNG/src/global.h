@@ -41,33 +41,25 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 //Start of header
 // Native include
 #include <windows.h>
-#include <windowsx.h>
 #include <malloc.h>
 
 // Miranda IM SDK includes
 #include <newpluginapi.h>
 #include <win2k.h>
-#include <m_cluiframes.h>
 #include <m_database.h>
-#include <m_options.h>
 #include <m_langpack.h>
 #include <m_icolib.h>
 #include <m_protocols.h>
 #include <m_userinfo.h>
 #include <m_extraicons.h>
+#include <m_message.h>
+
+#include <m_fingerprint.h>
 
 //plugins header
 #include "version.h"
-#include "m_fingerprint.h"
 #include "resource.h"
 #include "utilities.h"
-
-#if defined(__GNUC__)
-#define _alloca alloca
-//#define FASTCALL
-#else
-#define FASTCALL __fastcall
-#endif
 
 typedef struct {
 	BYTE	b;
@@ -119,7 +111,8 @@ typedef struct _foundInfo
 #define OVERLAYS_RESOURCE_CASE		3020	//	resource overlays
 #define OVERLAYS_PLATFORM_CASE		3021	//	platforms overlays
 #define OVERLAYS_PROTO_CASE			3022	//	protocols overlays
-//#define OVERLAYS_SECURITY_CASE		3023	//	security overlays
+#define OVERLAYS_UNICODE_CASE		3023	//	unicode overlay
+#define OVERLAYS_SECURITY_CASE		3024	//	security overlays
 
 /*
 #define OVERLAYS_RESOURCE_ALT_CASE	24		//	alternative (old style) overlays
@@ -131,35 +124,26 @@ typedef struct _foundInfo
 #define LIB_REG		2
 #define LIB_USE		3
 
+#define MODULENAME   "Finger"
+
 #define DEFAULT_SKIN_FOLDER		_T("Icons\\Fp_icons.dll")
 
 void ClearFI();
 
-int OnIconsChanged(WPARAM wParam, LPARAM lParam);
-int OnExtraIconClick(WPARAM wParam, LPARAM lParam,LPARAM);
-int OnExtraIconListRebuild(WPARAM wParam, LPARAM lParam);
-int OnExtraImageApply(WPARAM wParam, LPARAM lParam);
-int OnContactSettingChanged(WPARAM wParam, LPARAM lParam);
-int OnOptInitialise(WPARAM wParam, LPARAM lParam);
-int OnModulesLoaded(WPARAM wParam, LPARAM lParam);
-int OnPreShutdown(WPARAM wParam, LPARAM lParam);
+void InitFingerModule(void);
+void UninitFingerModule(void);
 
-INT_PTR ServiceSameClientsA(WPARAM wParam, LPARAM lParam);
-INT_PTR ServiceGetClientIconA(WPARAM wParam, LPARAM lParam);
-INT_PTR ServiceSameClientsW(WPARAM wParam, LPARAM lParam);
-INT_PTR ServiceGetClientIconW(WPARAM wParam, LPARAM lParam);
+int  OnOptInitialise(WPARAM wParam, LPARAM lParam);
+int  OnExtraImageApply(WPARAM wParam, LPARAM lParam);
 
-HICON FASTCALL CreateJoinedIcon(HICON hBottom, HICON hTop);
+HICON __fastcall CreateJoinedIcon(HICON hBottom, HICON hTop);
 HBITMAP __inline CreateBitmap32(int cx, int cy);
-HBITMAP FASTCALL CreateBitmap32Point(int cx, int cy, LPVOID* bits);
-HANDLE FASTCALL GetIconIndexFromFI(LPTSTR szMirVer);
+HBITMAP __fastcall CreateBitmap32Point(int cx, int cy, LPVOID* bits);
+HANDLE __fastcall GetIconIndexFromFI(LPTSTR szMirVer);
 
-BOOL FASTCALL WildCompareA(LPSTR name, LPSTR mask);
-BOOL FASTCALL WildCompareW(LPWSTR name, LPWSTR mask);
-BOOL __inline WildCompareProcA(LPSTR name, LPSTR mask);
-BOOL __inline WildCompareProcW(LPWSTR name, LPWSTR mask);
+BOOL __fastcall WildCompareW(LPWSTR name, LPWSTR mask);
 
-void FASTCALL Prepare(KN_FP_MASK* mask);
+void __fastcall Prepare(KN_FP_MASK* mask);
 void RegisterIcons();
 
 #define WildCompare		WildCompareW
@@ -167,18 +151,19 @@ void RegisterIcons();
 
 extern HINSTANCE g_hInst;
 extern HANDLE hHeap;
-extern LPSTR g_szClientDescription;
 
 extern KN_FP_MASK 
 	def_kn_fp_mask[], 
 	def_kn_fp_overlays_mask[], 
 	def_kn_fp_overlays1_mask[], 
 	def_kn_fp_overlays2_mask[],
-	def_kn_fp_overlays3_mask[];
+	def_kn_fp_overlays3_mask[],
+	def_kn_fp_overlays4_mask[];
 
-extern int DEFAULT_KN_FP_MASK_COUNT, DEFAULT_KN_FP_OVERLAYS_COUNT, DEFAULT_KN_FP_OVERLAYS2_COUNT, DEFAULT_KN_FP_OVERLAYS3_COUNT;
+extern int DEFAULT_KN_FP_MASK_COUNT, DEFAULT_KN_FP_OVERLAYS_COUNT, DEFAULT_KN_FP_OVERLAYS2_COUNT, DEFAULT_KN_FP_OVERLAYS3_COUNT, DEFAULT_KN_FP_OVERLAYS4_COUNT;
 
 #define UNKNOWN_MASK_NUMBER (DEFAULT_KN_FP_MASK_COUNT - 2)								// second from end
 #define NOTFOUND_MASK_NUMBER (DEFAULT_KN_FP_MASK_COUNT - 3)								// third from end
 // the last count is how many masks from 2nd layer is used as Miranda version overlays	(counting from the end)
 #define DEFAULT_KN_FP_OVERLAYS2_NO_VER_COUNT (DEFAULT_KN_FP_OVERLAYS2_COUNT - 13)
+#define DEFAULT_KN_FP_OVERLAYS3_NO_UNICODE_COUNT (DEFAULT_KN_FP_OVERLAYS3_COUNT - 1)

@@ -2,8 +2,8 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include <ctype.h>
 
@@ -36,9 +37,10 @@ static void OpenURLThread(void *arg)
 		return;
 
 	//wack a protocol on it
-	TCHAR *szResult = (TCHAR*)mir_alloc(sizeof(TCHAR)*(lstrlen(hUrlInfo->szUrl)+9));
+	size_t size = lstrlen(hUrlInfo->szUrl)+9;
+	TCHAR *szResult = (TCHAR*)mir_alloc(sizeof(TCHAR)*size);
 	if ((isalpha(hUrlInfo->szUrl[0]) && hUrlInfo->szUrl[1] == ':') || hUrlInfo->szUrl[0] == '\\') {
-		wsprintf(szResult, _T("file:///%s"), hUrlInfo->szUrl);
+		mir_sntprintf(szResult, size, _T("file:///%s"), hUrlInfo->szUrl);
 	}
 	else {
 		int i;
@@ -47,15 +49,15 @@ static void OpenURLThread(void *arg)
 			szResult = mir_tstrdup(hUrlInfo->szUrl);
 		else {
 			if ( !_tcsnicmp(hUrlInfo->szUrl, _T("ftp."), 4))
-				wsprintf(szResult, _T("ftp://%s"), hUrlInfo->szUrl);
+				mir_sntprintf(szResult, size, _T("ftp://%s"), hUrlInfo->szUrl);
 			else
-				wsprintf(szResult, _T("http://%s"), hUrlInfo->szUrl);
+				mir_sntprintf(szResult, size, _T("http://%s"), hUrlInfo->szUrl);
 		}
 	}
 
 	// check user defined browser for opening urls
 	DBVARIANT dbv;
-	if (!DBGetContactSettingTString(NULL, "Miranda", "OpenUrlBrowser", &dbv)) {
+	if (!db_get_ts(NULL, "Miranda", "OpenUrlBrowser", &dbv)) {
 		ShellExecute(NULL, _T("open"), dbv.ptszVal, szResult, NULL, (hUrlInfo->newWindow) ? SW_NORMAL : SW_SHOWDEFAULT);
 		db_free(&dbv);
 	}

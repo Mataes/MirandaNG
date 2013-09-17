@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -21,9 +21,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-// to enable all 0.9.0 core functions
-#define MIRANDA_VER 0x0A00
-
 #define _ALPHA_BASE_ 1	// defined for CVS builds
 #define _ALPHA_FUSE_ 1	// defined for fuse powered core
 
@@ -32,8 +29,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define _WIN32_IE 0x0601
 
 #define INCL_WINSOCK_API_TYPEDEFS 1
-
-#include "m_stdhdr.h"
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -85,17 +80,13 @@ using namespace std;
 #include <m_contacts.h>
 #include <m_message.h>
 #include <m_userinfo.h>
-#include <m_history.h>
 #include <m_addcontact.h>
 #include <m_findadd.h>
 #include <m_file.h>
-#include <m_email.h>
 #include <m_awaymsg.h>
-#include <m_idle.h>
 #include <m_ignore.h>
 #include <m_icolib.h>
 #include <m_modernopt.h>
-#include <m_help.h>
 #include <m_timezones.h>
 #include <m_extraicons.h>
 #include <m_xstatus.h>

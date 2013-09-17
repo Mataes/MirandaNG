@@ -3,19 +3,13 @@
 
 #include "hdr/modern_commonheaders.h"
 
-
 typedef INT_PTR (*PSYNCCALLBACKPROC)(WPARAM,LPARAM);
 
 int SyncCall(void * vproc, int count, ... );
-int SyncCallProxy( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam, CRITICAL_SECTION * cs = NULL );
-HRESULT SyncCallWinProcProxy( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam, int& nReturn );
-HRESULT SyncCallAPCProxy( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam, int& hReturn );
-
-LRESULT SyncOnWndProcCall( WPARAM wParam );
 
 // Experimental sync caller
 
-int DoCall( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam );
+int DoCall( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam);
 
 // Have to be here due to MS Visual C++ does not support 'export' keyword
 
@@ -28,7 +22,7 @@ template<class RET, class A, class B, class C> class PARAMS3
 
 public:
 	PARAMS3( proc_t __proc, A __a, B __b, C __c ): _proc( __proc), _a (__a), _b(__b), _c(__c){};
-	static int DoSyncCall( WPARAM wParam, LPARAM lParam )
+	static int DoSyncCall(WPARAM wParam, LPARAM lParam)
 	{
 		PARAMS3 * params = (PARAMS3 *) lParam;	
 		params->_ret = params->_proc( params->_a, params->_b, params->_c );
@@ -54,7 +48,7 @@ template<class RET, class A, class B> class PARAMS2
 
 public:
 	PARAMS2( proc_t __proc, A __a, B __b ): _proc( __proc), _a (__a), _b(__b){};
-	static int DoSyncCall( WPARAM wParam, LPARAM lParam )
+	static int DoSyncCall(WPARAM wParam, LPARAM lParam)
 	{
 		PARAMS2 * params = (PARAMS2 *) lParam;	
 		params->_ret = params->_proc( params->_a, params->_b );
@@ -79,7 +73,7 @@ template<class RET, class A> class PARAMS1
 
 public:
 	PARAMS1( proc_t __proc, A __a): _proc( __proc), _a (__a){};
-	static int DoSyncCall( WPARAM, LPARAM lParam )
+	static int DoSyncCall(WPARAM, LPARAM lParam)
 	{
 		PARAMS1 * params = (PARAMS1 *) lParam;	
 		params->_ret = params->_proc( params->_a );

@@ -1,7 +1,5 @@
 {$IFDEF M_API_UNIT}
 
-function ProtoServiceExists(const proto,service: PAnsiChar): int;
-
 function CreateVersionString(version:dword;buf:PAnsiChar):PAnsiChar;
 function CreateVersionStringPlugin(pluginInfo:PPluginInfoEx;buf:PAnsiChar):PAnsiChar;
 function PLUGIN_MAKE_VERSION(a,b,c,d: Cardinal): int;
@@ -40,10 +38,18 @@ procedure TranslateDialogDefault(hwndDlg: THandle);
 procedure TranslateMenu(hMenu: HMENU);
 function Langpack_Register:int_ptr;
 
-function ProtoBroadcastAck(const szModule: PAnsiChar; hContact: THandle; type_: int; result_: int; hProcess: THandle; lParam: LPARAM): int_ptr;
 function CreateProtoServiceFunction(const szModule, szService: PAnsiChar; serviceProc: TMIRANDASERVICE): int_ptr;
 
-function LoadSkinnedIcon(id: int): THandle;
+function  Srmm_AddIcon   (sid: PStatusIconData):int_ptr;
+procedure Srmm_RemoveIcon(sid: PStatusIconData);
+procedure Srmm_ModifyIcon(hContact:THANDLE; sid:PStatusIconData);
+function  Srmm_GetNthIcon(hContact:THANDLE; index:int):pStatusIconData;
+
+function LoadSkinnedIcon      (id: int): HICON;
+function LoadSkinnedIconHandle(id: int): THandle;
+function LoadSkinnedIconBig   (id: int): HICON;
+function LoadSkinnedIconName  (id: int): PAnsiChar;
+
 function LoadSkinnedProtoIcon(const szProto: PAnsiChar; status: int): THandle;
 function SkinAddNewSound(const name, description, defaultFile: PAnsiChar): int_ptr;
 function SkinPlaySound (const name: PAnsiChar): int_ptr;
@@ -60,7 +66,10 @@ function Menu_AddTrayMenuItem(mi:PCLISTMENUITEM):HGENMENU;
 function UserInfo_AddPage(wParam:WPARAM; odp:POPTIONSDIALOGPAGE):int_ptr;
 function Options_AddPage(wParam:WPARAM; odp:POPTIONSDIALOGPAGE):int_ptr;
 function Hotkey_Register(hk:PHOTKEYDESC):int_ptr;
+
 function Skin_AddIcon(si:PSKINICONDESC):THANDLE;
+procedure Icon_Register(hInst:HINST; const szSection:pAnsiChar; pIcons:pIconItem ; iCount:size_t; prefix:PAnsiChar=nil);
+procedure Icon_RegisterW(hInst:HINST; const szSection:pWideChar; pIcons:pIconItemW; iCount:size_t; prefix:PAnsiChar=nil);
 
 procedure FontRegister(pFontID:pFontID);
 procedure FontRegisterW(pFontID:pFontIDW);
@@ -77,21 +86,6 @@ function Options_Open(ood:POPENOPTIONSDIALOG):int_ptr;
 function Options_OpenPage(ood:POPENOPTIONSDIALOG):HWND;
 
 {$ELSE}
-
-function ProtoServiceExists(const proto,service: PAnsiChar): int;
-var
-  buf:array [0..127] of AnsiChar;
-begin
-  if (proto=nil) or (service=nil) then
-  begin
-    result:=0;
-    exit;
-  end;
-  lStrCpyA(@buf,proto);
-  lStrCatA(@buf,service);
-  result:=ServiceExists(@buf);
-end;
-
 
 function CreateVersionString(version:dword;buf:PAnsiChar):PAnsiChar;
 var
@@ -335,21 +329,6 @@ begin
   result:=CallService(MS_LANGPACK_REGISTER,WPARAM(@hLangpack),LPARAM(@PluginInfo));
 end;
 
-
-function ProtoBroadcastAck(const szModule: PAnsiChar; hContact: THandle; type_: int; result_: int; hProcess: THandle; lParam: LPARAM): int_ptr;
-var
-  ack: TACKDATA;
-begin
-  ack.cbSize   := sizeof(TACKDATA);
-  ack.szModule := szModule;
-  ack.hContact := hContact;
-  ack._type    := type_;
-  ack._result  := result_;
-  ack.hProcess := hProcess;
-  ack.lParam   := lParam;
-  Result := CallService(MS_PROTO_BROADCASTACK, 0, tlParam(@ack));
-end;
-
 function CreateProtoServiceFunction(const szModule, szService: PAnsiChar; serviceProc: TMIRANDASERVICE): int_ptr;
 var
   szStr: array[0..MAXMODULELABELLENGTH*2] of AnsiChar;
@@ -364,11 +343,51 @@ begin
   Result := CreateServiceFunction(szStr, @serviceProc);
 end;
 
+function Srmm_AddIcon(sid: PStatusIconData):int_ptr;
+begin
+  result:=CallService(MS_MSG_ADDICON, hLangpack, LPARAM(sid));
+end;
 
-function LoadSkinnedIcon(id: int): THandle;
+procedure Srmm_RemoveIcon(sid: PStatusIconData);
   {$IFDEF AllowInline}inline;{$ENDIF}
 begin
-  Result := CallService(MS_SKIN_LOADICON, id, 0);
+  CallService(MS_MSG_REMOVEICON, 0, LPARAM(sid));
+end;
+
+procedure Srmm_ModifyIcon(hContact:THANDLE; sid:PStatusIconData);
+  {$IFDEF AllowInline}inline;{$ENDIF}
+begin
+  CallService(MS_MSG_GETNTHICON, hContact, LPARAM(sid));
+end;
+
+function Srmm_GetNthIcon(hContact:THANDLE; index:int):PStatusIconData;
+  {$IFDEF AllowInline}inline;{$ENDIF}
+begin
+  result:=PStatusIconData(CallService(MS_MSG_GETNTHICON, hContact, index));
+end;
+
+function LoadSkinnedIcon(id: int): HICON;
+  {$IFDEF AllowInline}inline;{$ENDIF}
+begin
+  Result := HICON(CallService(MS_SKIN_LOADICON, id, 0));
+end;
+
+function LoadSkinnedIconHandle(id: int): THandle;
+  {$IFDEF AllowInline}inline;{$ENDIF}
+begin
+  Result := THANDLE(CallService(MS_SKIN_LOADICON, id, 1));
+end;
+
+function LoadSkinnedIconBig(id: int): HICON;
+  {$IFDEF AllowInline}inline;{$ENDIF}
+begin
+  Result := HICON(CallService(MS_SKIN_LOADICON, id, 2));
+end;
+
+function LoadSkinnedIconName(id: int): PAnsiChar;
+  {$IFDEF AllowInline}inline;{$ENDIF}
+begin
+  Result := PAnsiChar(CallService(MS_SKIN_LOADICON, id, 3));
 end;
 
 function LoadSkinnedProtoIcon(const szProto: PAnsiChar; status: int): THandle;
@@ -465,6 +484,16 @@ end;
 function Skin_AddIcon(si:PSKINICONDESC):THANDLE;
 begin
   result:=CallService(MS_SKIN2_ADDICON, hLangpack, LPARAM(si));
+end;
+
+procedure Icon_Register(hInst:HINST; const szSection:pAnsiChar; pIcons:pIconItem; iCount:size_t; prefix:PAnsiChar);
+begin
+	mir_Icon_Register(hInst, szSection, pIcons, iCount, prefix, hLangpack);
+end;
+
+procedure Icon_RegisterW(hInst:HINST; const szSection:pWideChar; pIcons:pIconItemW; iCount:size_t; prefix:PAnsiChar);
+begin
+	mir_Icon_RegisterW(hInst, szSection, pIcons, iCount, prefix, hLangpack);
 end;
 
 procedure FontRegister(pFontID:pFontID);

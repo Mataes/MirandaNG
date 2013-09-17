@@ -126,7 +126,6 @@ function GetContactID(hContact: THandle; Proto: AnsiString = ''; Contact: boolea
 var
   uid: PAnsiChar;
   dbv: TDBVARIANT;
-  cgs: TDBCONTACTGETSETTING;
   tmp: String;
 begin
   Result := '';
@@ -135,12 +134,9 @@ begin
     if Proto = '' then
       Proto := GetContactProto(hContact);
     uid := PAnsiChar(CallProtoService(PAnsiChar(Proto), PS_GETCAPS, PFLAG_UNIQUEIDSETTING, 0));
-    if (uint_ptr(uid) <> CALLSERVICE_NOTFOUND) and (uid <> nil) then
+    if (uid <> pAnsiChar(CALLSERVICE_NOTFOUND)) and (uid <> nil) then
     begin
-      cgs.szModule := PAnsiChar(Proto);
-      cgs.szSetting := uid;
-      cgs.pValue := @dbv;
-      if CallService(MS_DB_CONTACT_GETSETTING, hContact, LPARAM(@cgs)) = 0 then
+      if db_get(hContact, PAnsiChar(Proto), uid, @dbv) = 0 then
       begin
         case dbv._type of
           DBVT_BYTE:

@@ -1,14 +1,4 @@
 #include "StdAfx.h"
-#include "QuoteInfoDlg.h"
-#include "EconomicRateInfo.h"
-#include "resource.h"
-#include "ModuleInfo.h"
-#include "QuotesProviders.h"
-#include "IconLib.h"
-#include "DBUtils.h"
-#include "IQuotesProvider.h"
-#include "Locale.h"
-#include "SettingsDlg.h"
 
 // extern HANDLE g_hWindowListEditSettings;
 extern HGENMENU g_hMenuEditSettings;
@@ -41,16 +31,8 @@ namespace
 	bool get_fetch_time(time_t& rTime,HANDLE hContact)
 	{
 		DBVARIANT dbv;
-		DBCONTACTGETSETTING cgs;
-
-		cgs.szModule=QUOTES_PROTOCOL_NAME;
-		cgs.szSetting=DB_STR_QUOTE_FETCH_TIME;
-		cgs.pValue=&dbv;
-		if(CallService(MS_DB_CONTACT_GETSETTING,reinterpret_cast<WPARAM>(hContact),reinterpret_cast<LPARAM>(&cgs))
-			|| (DBVT_DWORD != dbv.type))
-		{
+		if (db_get(hContact, QUOTES_PROTOCOL_NAME, DB_STR_QUOTE_FETCH_TIME, &dbv) || (DBVT_DWORD != dbv.type))
 			return false;
-		}
 
 		rTime = dbv.dVal;
 		return true;
@@ -302,14 +284,14 @@ int Quotes_OnContactDoubleClick(WPARAM wp,LPARAM/* lp*/)
 
 namespace
 {
-	void enable_menu(HANDLE hMenu,bool bEnable)
+	void enable_menu(HGENMENU hMenu,bool bEnable)
 	{
 		CLISTMENUITEM clmi = { sizeof(clmi) };
 		clmi.flags = CMIM_FLAGS;
 		if(false == bEnable)
 			clmi.flags |= CMIF_GRAYED;
 
-		CallService(MS_CLIST_MODIFYMENUITEM,reinterpret_cast<WPARAM>(hMenu),reinterpret_cast<LPARAM>(&clmi));
+		Menu_ModifyItem(hMenu, &clmi);
 	}
 }
 

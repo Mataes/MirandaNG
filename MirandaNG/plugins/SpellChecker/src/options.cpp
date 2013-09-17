@@ -98,7 +98,7 @@ void LoadOptions()
 	DBVARIANT dbv;
 	if (!db_get_ts(NULL, MODULE_NAME, "DefaultLanguage", &dbv)) {
 		lstrcpyn(opts.default_language, dbv.ptszVal, SIZEOF(opts.default_language));
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 	}
 
 	int i;
@@ -215,7 +215,7 @@ static INT_PTR CALLBACK OptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 				int sel = SendDlgItemMessage(hwndDlg, IDC_DEF_LANG, CB_GETCURSEL, 0, 0);
 				if (sel >= languages.getCount())
 					sel = 0;
-				DBWriteContactSettingTString(NULL, MODULE_NAME, "DefaultLanguage", 
+				db_set_ts(NULL, MODULE_NAME, "DefaultLanguage", 
 					(TCHAR *) languages[sel]->language);
 				lstrcpy(opts.default_language, languages[sel]->language);
 			}
@@ -312,7 +312,7 @@ static void LoadReplacements(HWND hwndDlg)
 		item.iItem = i;
 		item.iSubItem = 0;
 		item.pszText = (TCHAR *) it->first.c_str();
-		item.cchTextMax = it->first.length();
+		item.cchTextMax = (int)it->first.length();
 		item.lParam = i;
 		
 		ListView_InsertItem(hList, &item);

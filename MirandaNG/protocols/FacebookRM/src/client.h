@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,9 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include "constants.h"
+
 #pragma once
 
-#define FORCE_DISCONNECT true
+#define FORCE_DISCONNECT 1
+#define FORCE_QUIT 2
 
 class facebook_client
 {
@@ -32,7 +35,7 @@ public:
 
 	// Client definition
 
-	facebook_client( )
+	facebook_client()
 	{
 		username_ = password_ = \
 		chat_sequence_num_ = chat_channel_host_ = chat_channel_partition_ = \
@@ -82,7 +85,7 @@ public:
 
 	// Client vs protocol communication
 
-	void    client_notify( TCHAR* message );
+	void    client_notify(TCHAR* message);
 
 	////////////////////////////////////////////////////////////
 
@@ -90,13 +93,16 @@ public:
 
 	HANDLE cookies_lock_;
 
-	std::map< std::string, std::string >    cookies;
+	std::map<std::string, std::string> cookies;
+	std::map<std::string, std::string> pages;
 
-	std::string get_newsfeed_type( );
+	std::string get_newsfeed_type();
+	std::string get_server_type();
+	std::string get_privacy_type();
 
-	char*   load_cookies( );
-	void    store_headers( http::response* resp, NETLIBHTTPHEADER* headers, int headers_count );
-	void    clear_cookies( );
+	char*   load_cookies();
+	void    store_headers(http::response* resp, NETLIBHTTPHEADER* headers, int headers_count);
+	void    clear_cookies();
 
 	////////////////////////////////////////////////////////////
 
@@ -104,22 +110,22 @@ public:
 
 	unsigned int error_count_;
 
-	bool    validate_response( http::response* );
+	bool    validate_response(http::response*);
 
-	bool    handle_entry( std::string method );
-	bool    handle_success( std::string method );
-	bool    handle_error( std::string method, bool force_disconnect = false );
+	bool    handle_entry(std::string method);
+	bool    handle_success(std::string method);
+	bool    handle_error(std::string method, int force_disconnect = 0);
 
-	void __inline increment_error( ) { this->error_count_++; }
-	void __inline decrement_error( ) { if ( error_count_ > 0 ) error_count_--; }
-	void __inline reset_error( ) { error_count_ = 0; }
+	void __inline increment_error() { this->error_count_++; }
+	void __inline decrement_error() { if (error_count_ > 0) error_count_--; }
+	void __inline reset_error() { error_count_ = 0; }
 
 	////////////////////////////////////////////////////////////
 
 	// Login handling
 
-	bool    login( const std::string &username, const std::string &password );
-	bool    logout( );
+	bool    login(const std::string &username, const std::string &password);
+	bool    logout();
 
 	const std::string & get_username() const;
 
@@ -127,52 +133,51 @@ public:
 
 	// Session handling
 
-	bool    home( );
-	bool    reconnect( );
-	bool    chat_state( bool online = true );
+	bool    home();
+	bool    reconnect();
+	bool    chat_state(bool online = true);
 
 	////////////////////////////////////////////////////////////
 
 	// Updates handling
 
-	List::List< facebook_user > buddies;
+	List::List<facebook_user> buddies;
 	HANDLE  buddies_lock_;
 	HANDLE  send_message_lock_;
 
-	bool    buddy_list( );
-	bool	load_friends( );
-	bool    feeds( );
+	bool    buddy_list();
+	bool	load_friends();
+	bool	load_pages();
+	bool    feeds();
 
 	////////////////////////////////////////////////////////////
 
 	// Messages handling
 
-	bool    channel( );
-	bool    send_message( std::string message_recipient, std::string message_text, std::string *error_text, int method );
-	void    close_chat( std::string message_recipient );
-	void    chat_mark_read( std::string message_recipient );
+	std::map<std::string, bool> messages_ignore;
 
+	bool    channel();
+	bool    send_message(std::string message_recipient, std::string message_text, std::string *error_text, MessageMethod method);
 	////////////////////////////////////////////////////////////
 
 	// Status handling
 
-	bool    set_status(const std::string &text);
+	bool    post_status(status_data *data);
 
 	////////////////////////////////////////////////////////////
 
 	// HTTP communication
 
-	http::response  flap( const int request_type, std::string* request_data = NULL, std::string* request_get_data = NULL, int method = 0 );
+	http::response flap(RequestType request_type, std::string* request_data = NULL, std::string* request_get_data = NULL, int method = 0);
 	bool    save_url(const std::string &url,const std::tstring &filename, HANDLE &nlc);
 
-	DWORD   choose_security_level( int );
-	int     choose_method( int );
-	std::string choose_proto( int );
-	std::string choose_server( int, std::string* data = NULL, std::string* get_data = NULL );
-	std::string choose_action( int, std::string* data = NULL, std::string* get_data = NULL );
-	std::string choose_request_url( int, std::string* data = NULL, std::string* get_data = NULL );
+	DWORD   choose_security_level(RequestType);
+	int     choose_method(RequestType);
+	std::string choose_proto(RequestType);
+	std::string choose_server(RequestType, std::string* data = NULL, std::string* get_data = NULL);
+	std::string choose_action(RequestType, std::string* data = NULL, std::string* get_data = NULL);
 
-	NETLIBHTTPHEADER*   get_request_headers( int request_type, int* headers_count );
+	NETLIBHTTPHEADER*   get_request_headers(int request_type, int* headers_count);
 
 	////////////////////////////////////////////////////////////
 

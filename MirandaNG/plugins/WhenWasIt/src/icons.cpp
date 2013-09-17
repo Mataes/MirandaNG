@@ -19,7 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "commonheaders.h"
-#include "icons.h"
 
 HANDLE hCheckMenu, hListMenu, hAddBirthdayContact, hRefreshUserDetails;
 HANDLE hImportBirthdays, hExportBirthdays;
@@ -34,7 +33,7 @@ static HANDLE AddIcon(char *name, char *description, TCHAR *tszPath, int iDefaul
 {
 	SKINICONDESC sid = { sizeof(sid) };
 	sid.flags = SIDF_PATH_TCHAR;
-	sid.pszSection = "WhenWasIt";
+	sid.pszSection = LPGEN("WhenWasIt");
 	sid.cx = sid.cy = 16;
 	sid.pszDescription = description;
 	sid.pszName = name;
@@ -48,27 +47,27 @@ int AddIcons()
 	TCHAR tszPath[MAX_PATH];
 	GetModuleFileName(hInstance, tszPath, SIZEOF(tszPath));
 
-	hCheckMenu = AddIcon("MenuCheck", "Check birthdays menu item", tszPath, IDI_CHECK);
-	hListMenu = AddIcon("MenuList", "List birthdays menu item", tszPath, IDI_LIST);
-	hAddBirthdayContact = AddIcon("AddBirthday", "Add/change birthday", tszPath, IDI_ADD);
-	hRefreshUserDetails = AddIcon("RefreshUserDetails", "Refresh user details", tszPath, IDI_REFRESH_USERDETAILS);
+	hCheckMenu = AddIcon("MenuCheck", LPGEN("Check birthdays menu item"), tszPath, IDI_CHECK);
+	hListMenu = AddIcon("MenuList", LPGEN("List birthdays menu item"), tszPath, IDI_LIST);
+	hAddBirthdayContact = AddIcon("AddBirthday", LPGEN("Add/change birthday"), tszPath, IDI_ADD);
+	hRefreshUserDetails = AddIcon("RefreshUserDetails", LPGEN("Refresh user details"), tszPath, IDI_REFRESH_USERDETAILS);
 
-	hImportBirthdays = AddIcon("ImportBirthdays", "Import birthdays", tszPath, IDI_IMPORT_BIRTHDAYS);
-	hExportBirthdays = AddIcon("ExportBirthdays", "Export birthdays", tszPath, IDI_EXPORT_BIRTHDAYS);
+	hImportBirthdays = AddIcon("ImportBirthdays", LPGEN("Import birthdays"), tszPath, IDI_IMPORT_BIRTHDAYS);
+	hExportBirthdays = AddIcon("ExportBirthdays", LPGEN("Export birthdays"), tszPath, IDI_EXPORT_BIRTHDAYS);
 
 	char name[1024];
 	char description[1024];
-	hDTB[0] = AddIcon("DTB0", "Birthday today", tszPath, IDI_DTB0);
-	hDTB[1] = AddIcon("DTB1", "1 day to birthday", tszPath, IDI_DTB1);
+	hDTB[0] = AddIcon("DTB0", LPGEN("Birthday today"), tszPath, IDI_DTB0);
+	hDTB[1] = AddIcon("DTB1", LPGEN("1 day to birthday"), tszPath, IDI_DTB1);
 	for (int i = 2; i < cDTB; i++) {
-		sprintf(name, "DTB%d", i);
-		sprintf(description, "%d days to birthday", i);
+		mir_snprintf(name, SIZEOF(name), "DTB%d", i);
+		mir_snprintf(description, SIZEOF(description), Translate("%d days to birthday"), i);
 		hDTB[i] = AddIcon(name, description, tszPath, IDI_DTB0+i);
 	}
-	sprintf(description, "More than %d days to birthday", cDTB - 1);
+	mir_snprintf(description, SIZEOF(description), Translate("More than %d days to birthday"), cDTB - 1);
 	hDTBMore = AddIcon("DTBMore", description, tszPath, IDI_DTBMORE);
 
-	hWWIExtraIcons = ExtraIcon_Register("WhenWasIt", "WhenWasIt birthday reminder", "MenuCheck");
+	hWWIExtraIcons = ExtraIcon_Register("WhenWasIt", LPGEN("WhenWasIt birthday reminder"), "MenuCheck");
 	return 0;
 }
 

@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2006-2012 Boris Krasnovskiy.
 Copyright (c) 2003-2005 George Hazan.
 Copyright (c) 2002-2003 Richard Hughes (original version).
@@ -300,15 +302,11 @@ void CMsnProto::sttCustomSmiley(const char* msgBody, char* email, char* nick, in
 			ft->p2p_object[sz] = 0;
 
 			size_t slen = strlen(lastsml);
-			size_t rlen = Netlib_GetBase64EncodedBufferSize(slen);
-			char* buf = (char*)mir_alloc(rlen);
-
-			NETLIBBASE64 nlb = { buf, (int)rlen, (PBYTE)lastsml, (int)slen };
-			CallService(MS_NETLIB_BASE64ENCODE, 0, LPARAM(&nlb));
+			ptrA buf( mir_base64_encode((PBYTE)lastsml, (unsigned)slen));
+			int rlen = lstrlenA(buf);
 
 			char* smileyName = (char*)mir_alloc(rlen*3);
 			UrlEncode(buf, smileyName, rlen*3);
-			mir_free(buf);
 
 			TCHAR path[MAX_PATH];
 			MSN_GetCustomSmileyFileName(hContact, path, SIZEOF(path), smileyName, iSmileyType);
@@ -421,7 +419,7 @@ void CMsnProto::MSN_ReceiveMessage(ThreadData* info, char* cmdString, char* para
 		if (hContact != NULL && mirver != NULL)
 		{
 			setString(hContact, "MirVer", mirver);
-			deleteSetting(hContact, "StdMirVer");
+			delSetting(hContact, "StdMirVer");
 		}
 	}
 	else if (!ubmMsg && !info->firstMsgRecv)
@@ -521,7 +519,7 @@ void CMsnProto::MSN_ReceiveMessage(ThreadData* info, char* cmdString, char* para
 				dbei.timestamp = time(NULL);
 				dbei.cbBlob = (unsigned)strlen(msgBody) + 1;
 				dbei.pBlob = (PBYTE)msgBody;
-				CallService(MS_DB_EVENT_ADD, (WPARAM)hContact, (LPARAM)&dbei);
+				db_event_add(hContact, &dbei);
 			}
 		}
 	}
@@ -534,7 +532,7 @@ void CMsnProto::MSN_ReceiveMessage(ThreadData* info, char* cmdString, char* para
 
 		if (!MSN_RefreshContactList())
 		{
-			SendBroadcast(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_NOSERVER);
+			ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_NOSERVER);
 			info->sendTerminate();
 		}
 		else
@@ -663,10 +661,10 @@ void CMsnProto::sttProcessYFind(char* buf, size_t len)
 			isr.nick = szEmailT;
 			isr.email = szEmailT;
 
-			SendBroadcast(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, msnSearchId, (LPARAM)&isr);
+			ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, msnSearchId, (LPARAM)&isr);
 			mir_free(szEmailT);
 		}
-		SendBroadcast(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, msnSearchId, 0);
+		ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, msnSearchId, 0);
 
 		msnSearchId = NULL;
 	}
@@ -681,7 +679,7 @@ void CMsnProto::sttProcessYFind(char* buf, size_t len)
 				MSN_AddUser(hContact, szEmail, netId, LIST_PL + LIST_REMOVE);
 				MSN_AddUser(hContact, szEmail, netId, LIST_BL + LIST_REMOVE);
 				MSN_AddUser(hContact, szEmail, netId, LIST_AL);
-				DBDeleteContactSetting(hContact, "CList", "Hidden");
+				db_unset(hContact, "CList", "Hidden");
 			}
 			MSN_SetContactDb(hContact, szEmail);
 		}
@@ -820,20 +818,20 @@ void CMsnProto::sttProcessStatusMessage(char* buf, unsigned len, const char* wli
 	{
 		stripBBCode((char*)szStatMsg);
 		stripColorCode((char*)szStatMsg);
-		DBWriteContactSettingStringUtf(hContact, "CList", "StatusMsg", szStatMsg);
+		db_set_utf(hContact, "CList", "StatusMsg", szStatMsg);
 	}
-	else DBDeleteContactSetting(hContact, "CList", "StatusMsg");
+	else db_unset(hContact, "CList", "StatusMsg");
 
 	{
-		mir_ptr<TCHAR> tszStatus( mir_utf8decodeT(szStatMsg));
-		SendBroadcast(hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, NULL, tszStatus);
+		ptrT tszStatus( mir_utf8decodeT(szStatMsg));
+		ProtoBroadcastAck(hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, NULL, tszStatus);
 	}
 
 	// Process current media info
 	const char* szCrntMda = ezxml_txt(ezxml_child(xmli, "CurrentMedia"));
 	if (!*szCrntMda)
 	{
-		deleteSetting(hContact, "ListeningTo");
+		delSetting(hContact, "ListeningTo");
 		ezxml_free(xmli);
 		return;
 	}
@@ -857,7 +855,7 @@ void CMsnProto::sttProcessStatusMessage(char* buf, unsigned len, const char* wli
 	// Now let's mount the final string
 	if (pCount <= 4)
 	{
-		deleteSetting(hContact, "ListeningTo");
+		delSetting(hContact, "ListeningTo");
 		ezxml_free(xmli);
 		return;
 	}
@@ -874,7 +872,7 @@ void CMsnProto::sttProcessStatusMessage(char* buf, unsigned len, const char* wli
 	}
 	if (!foundUsefullInfo)
 	{
-		deleteSetting(hContact, "ListeningTo");
+		delSetting(hContact, "ListeningTo");
 		ezxml_free(xmli);
 		return;
 	}
@@ -1042,7 +1040,7 @@ void CMsnProto::MSN_InitSB(ThreadData* info, const char* szEmail)
 			else if (E.msgSize == 0)
 			{
 				info->sendMessage(E.msgType, NULL, 1, E.message, E.flags);
-				SendBroadcast(cont->hContact, ACKTYPE_MESSAGE, ACKRESULT_SUCCESS, (HANDLE)E.seq, 0);
+				ProtoBroadcastAck(cont->hContact, ACKTYPE_MESSAGE, ACKRESULT_SUCCESS, (HANDLE)E.seq, 0);
 			}
 			else
 			{
@@ -1112,7 +1110,7 @@ int CMsnProto::MSN_HandleCommands(ThreadData* info, char* cmdString)
 			ReleaseSemaphore(info->hWaitEvent, 1, NULL);
 
 			if (info->mJoinedContactsWLID.getCount() > 0 && MyOptions.SlowSend)
-				SendBroadcast(info->getContactHandle(), ACKTYPE_MESSAGE, ACKRESULT_SUCCESS, (HANDLE)trid, 0);
+				ProtoBroadcastAck(info->getContactHandle(), ACKTYPE_MESSAGE, ACKRESULT_SUCCESS, (HANDLE)trid, 0);
 			break;
 
 		case ' YQF':	//********* FQY: Find Yahoo User
@@ -1271,7 +1269,7 @@ LBL_InvalidCommand:
 			if (newStatus != ID_STATUS_IDLE)
 			{
 				m_iStatus = newStatus;
-				SendBroadcast(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)oldStatus, newStatus);
+				ProtoBroadcastAck(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)oldStatus, newStatus);
 				MSN_DebugLog("Status change acknowledged: %s", params);
 				MSN_RemoveEmptyGroups();
 			}
@@ -1342,7 +1340,7 @@ LBL_InvalidCommand:
 				{
 					int oldMode = m_iStatus;
 					m_iDesiredStatus = m_iStatus = newStatus;
-					SendBroadcast(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)oldMode, m_iStatus);
+					ProtoBroadcastAck(NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)oldMode, m_iStatus);
 				}
 			}
 
@@ -1363,75 +1361,67 @@ LBL_InvalidCommand:
 				setStringUtf(hContact, "Nick", data.userNick);
 				lastStatus = getWord(hContact, "Status", ID_STATUS_OFFLINE);
 				if (lastStatus == ID_STATUS_OFFLINE || lastStatus == ID_STATUS_INVISIBLE)
-					DBDeleteContactSetting(hContact, "CList", "StatusMsg");
+					db_unset(hContact, "CList", "StatusMsg");
 
 				int newStatus = MSNStatusToMiranda(params);
 				setWord(hContact, "Status",  newStatus != ID_STATUS_IDLE ? newStatus : ID_STATUS_AWAY);
 				setDword(hContact, "IdleTS", newStatus != ID_STATUS_IDLE ? 0 : time(NULL));
 			}
 
-			if (tArgs > 3 && tArgs <= 5 && cont)
-			{
+			if (tArgs > 3 && tArgs <= 5 && cont) {
 				UrlDecode(data.cmdstring);
 
 				char* end = NULL;
 				cont->cap1 = strtoul(data.objid, &end, 10);
 				cont->cap2 = end && *end == ':' ? strtoul(end + 1, NULL, 10) : 0;
 
-				if (lastStatus == ID_STATUS_OFFLINE)
-				{
+				if (lastStatus == ID_STATUS_OFFLINE) {
 					DBVARIANT dbv;
 					bool always = getString(hContact, "MirVer", &dbv) != 0;
-					if (!always) MSN_FreeVariant(&dbv);
+					if (!always) db_free(&dbv);
 					sttSetMirVer(hContact, cont->cap1, always);
 				}
 
-				if (/*(cont->cap1 & 0xf0000000) &&*/ data.cmdstring[0] && strcmp(data.cmdstring, "0"))
-				{
-					char* szAvatarHash = MSN_GetAvatarHash(data.cmdstring);
-					if (szAvatarHash == NULL) goto remove;
+				if (data.cmdstring[0] && strcmp(data.cmdstring, "0")) {
+					char *pszUrl, *pszAvatarHash = MSN_GetAvatarHash(data.cmdstring, &pszUrl);
+					if (pszAvatarHash == NULL)
+						goto remove;
 
 					setString(hContact, "PictContext", data.cmdstring);
-					setString(hContact, "AvatarHash", szAvatarHash);
+					setString(hContact, "AvatarHash", pszAvatarHash);
+					if (pszUrl)
+						setString(hContact, "AvatarUrl", pszUrl);
+					else
+						delSetting(hContact, "AvatarUrl");
 
-					if (hContact != NULL)
-					{
+					if (hContact != NULL) {
 						char szSavedHash[64] = "";
 						getStaticString(hContact, "AvatarSavedHash", szSavedHash, sizeof(szSavedHash));
-						if (stricmp(szSavedHash, szAvatarHash))
-						{
-							SendBroadcast(hContact, ACKTYPE_AVATAR, ACKRESULT_STATUS, NULL, 0);
-						}
-						else
-						{
+						if (stricmp(szSavedHash, pszAvatarHash))
+							pushAvatarRequest(hContact, pszUrl);
+						else {
 							char szSavedContext[64];
 							int result = getStaticString(hContact, "PictSavedContext", szSavedContext, sizeof(szSavedContext));
 							if (result || strcmp(szSavedContext, data.cmdstring))
-								SendBroadcast(hContact, ACKTYPE_AVATAR, ACKRESULT_STATUS, NULL, 0);
+								pushAvatarRequest(hContact, pszUrl);
 						}
-						mir_free(szAvatarHash);
 					}
+					mir_free(pszAvatarHash);
+					mir_free(pszUrl);
 				}
-				else
-				{
+				else {
 remove:
-					deleteSetting(hContact, "AvatarHash");
-					deleteSetting(hContact, "AvatarSavedHash");
-					deleteSetting(hContact, "PictContext");
-					deleteSetting(hContact, "PictSavedContext");
+					delSetting(hContact, "AvatarHash");
+					delSetting(hContact, "AvatarSavedHash");
+					delSetting(hContact, "AvatarUrl");
+					delSetting(hContact, "PictContext");
+					delSetting(hContact, "PictSavedContext");
 
-//					char tFileName[MAX_PATH];
-//					MSN_GetAvatarFileName(hContact, tFileName, sizeof(tFileName));
-//					remove(tFileName);
-
-					SendBroadcast(hContact, ACKTYPE_AVATAR, ACKRESULT_STATUS, NULL, 0);
+					ProtoBroadcastAck(hContact, ACKTYPE_AVATAR, ACKRESULT_STATUS, NULL, 0);
 				}
 			}
-			else
-			{
-				if (lastStatus == ID_STATUS_OFFLINE)
-					deleteSetting(hContact, "MirVer");
-			}
+			else if (lastStatus == ID_STATUS_OFFLINE)
+				delSetting(hContact, "MirVer");
 
 			break;
 		}
@@ -1610,9 +1600,9 @@ remove:
 
 		case ' KAN':   //********* NAK: section 8.7 Instant Messages
 			if (info->mJoinedContactsWLID.getCount() > 0 && MyOptions.SlowSend)
-				SendBroadcast(info->getContactHandle(),
+				ProtoBroadcastAck(info->getContactHandle(),
 					ACKTYPE_MESSAGE, ACKRESULT_FAILED,
-					(HANDLE)trid, (LPARAM)MSN_Translate("Message delivery failed"));
+					(HANDLE)trid, (LPARAM)Translate("Message delivery failed"));
 			MSN_DebugLog("Message send failed (trid=%d)", trid);
 			break;
 
@@ -1631,7 +1621,7 @@ remove:
 		case ' TUO':   //********* OUT: sections 7.10 Connection Close, 8.6 Leaving a Switchboard Session
 			if (!_stricmp(params, "OTH"))
 			{
-				SendBroadcast(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_OTHERLOCATION);
+				ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_OTHERLOCATION);
 				MSN_DebugLog("You have been disconnected from the MSN server because you logged on from another location using the same MSN passport.");
 			}
 
@@ -1755,7 +1745,7 @@ remove:
 
 				case 4:
 				case 8:
-					SendBroadcast( NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_OTHERLOCATION );
+					ProtoBroadcastAck( NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_OTHERLOCATION );
 					MSN_DebugLog( "You have been disconnected from the MSN server because you logged on from another location using the same MSN passport." );
 					break;
 
@@ -1831,7 +1821,7 @@ remove:
 
 					if (info->mType == SERVER_NOTIFICATION)
 					{
-						SendBroadcast(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_WRONGPROTOCOL);
+						ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_WRONGPROTOCOL);
 					}
 					return 1;
 				}
@@ -1878,7 +1868,7 @@ remove:
 
 				if (info->mType == SERVER_NOTIFICATION)
 				{
-					SendBroadcast(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_WRONGPROTOCOL);
+					ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_WRONGPROTOCOL);
 				}
 				return 1;
 			}

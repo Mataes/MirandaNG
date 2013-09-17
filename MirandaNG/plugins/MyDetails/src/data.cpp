@@ -19,7 +19,6 @@ Boston, MA 02111-1307, USA.
 
 
 #include "commons.h"
-#include "data.h"
 
 static char *StatusModeToDbSetting(int status,const char *suffix);
 
@@ -60,13 +59,6 @@ Protocol::Protocol(const char *aName, const TCHAR* descr)
 	lstrcpynA(name, aName, SIZEOF(name));
 	lstrcpyn(description, descr, SIZEOF(description));
 
-	nickname[0] = _T('\0');
-	status_message[0] = _T('\0');
-	listening_to[0] = _T('\0');
-	ace = NULL;
-	avatar_file[0] = _T('\0');
-	avatar_bmp = NULL;
-	custom_status = 0;
 	data_changed = true;
 
 	// Load services
@@ -80,16 +72,9 @@ Protocol::Protocol(const char *aName, const TCHAR* descr)
 
 	can_have_listening_to = (ProtoServiceExists(name, PS_SET_LISTENINGTO) != 0);
 
+	PF3 = CallProtoService(name, PS_GETCAPS, (WPARAM)PFLAGNUM_3, 0);
 	caps = CallProtoService(name, PS_GETCAPS, PFLAGNUM_4, 0);
 	can_have_avatar = (caps & PF4_AVATARS) != 0;
-
-	PF3 = CallProtoService(name, PS_GETCAPS, (WPARAM)PFLAGNUM_3, 0);
-
-	avatar_max_width = 0;
-	avatar_max_height = 0;
-	if (ProtoServiceExists(name, PS_GETMYAVATARMAXSIZE))
-		CallProtoService(name, PS_GETMYAVATARMAXSIZE, (WPARAM) &avatar_max_width, (LPARAM) &avatar_max_height);
-
 	can_set_nick = ProtoServiceExists(name, PS_SETMYNICKNAME) != FALSE;
 
 	// Initial value
@@ -105,10 +90,9 @@ Protocol::~Protocol()
 
 void Protocol::lcopystr(TCHAR *dest, TCHAR *src, size_t maxlen)
 {
-	if (lstrcmp(dest, src) != 0)
-	{
+	if (lstrcmp(dest, src) != 0) {
 		data_changed = true;
-		lstrcpyn(dest, src, maxlen);
+		lstrcpyn(dest, src, (DWORD)maxlen);
 	}
 }
 
@@ -119,56 +103,43 @@ bool Protocol::IsValid()
 
 int Protocol::GetStatus()
 {
-	int old_status = status;
 	INT_PTR iStatus = CallProtoService(name, PS_GETSTATUS, 0, 0);
 	if (iStatus == CALLSERVICE_NOTFOUND)
 		return status = ID_STATUS_OFFLINE;
 
-	status = (int)iStatus;
-
-	if (old_status != status)
+	if (iStatus != status)
 		data_changed = true;
+
+	status = (int)iStatus;
 
 	// check if protocol supports custom status
 	CUSTOM_STATUS css = { sizeof(css) };
+	TCHAR tszXStatusName[256], tszXStatusMessage[1024];
 	if ( ProtoServiceExists(name, PS_GETCUSTOMSTATUSEX)) {
 		// check if custom status is set
 		css.flags = CSSF_TCHAR | CSSF_MASK_STATUS | CSSF_MASK_NAME | CSSF_MASK_MESSAGE | CSSF_DEFAULT_NAME;
 		css.status = &custom_status;
-		css.ptszName = status_name;
-		css.ptszMessage = status_message;
+		css.ptszName = tszXStatusName;
+		css.ptszMessage = tszXStatusMessage;
 		if ( CallProtoService(name, PS_GETCUSTOMSTATUSEX, 0, (LPARAM)&css) != 0)
-			status_message[0] = status_name[0] = 0, custom_status = 0;
+			tszXStatusMessage[0] = tszXStatusName[0] = 0, custom_status = 0;
 	}
 	else custom_status = 0;
 
 	// if protocol supports custom status, but it is not set (custom_status will be -1), show normal status
-	if (custom_status < 0) custom_status = 0;
+	if (custom_status < 0)
+		custom_status = 0;
 
 	if (custom_status == 0) {
-		TCHAR *tmp = (TCHAR*) CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, status, GSMDF_TCHAR);
+		TCHAR *tmp = (TCHAR*)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, status, GSMDF_TCHAR);
 		lcopystr(status_name, tmp, SIZEOF(status_name));
 	}
 	else {
-		TCHAR tmp[256]; tmp[0] = 0;
-
-		if (status_name[0] != '\0')
-			lstrcpyn(tmp, status_name, SIZEOF(tmp));
+		TCHAR *p = (tszXStatusName[0] != 0) ? TranslateTS(tszXStatusName) : TranslateT("<no status name>");
+		if (tszXStatusMessage[0])
+			mir_sntprintf(status_name, SIZEOF(status_name), _T("%s: %s"), p, tszXStatusMessage);
 		else
-			lstrcpyn(tmp, TranslateT("<no status name>"), SIZEOF(tmp));
-
-		if (status_message[0] != '\0') {
-			int len = lstrlen(tmp);
-			if (len < SIZEOF(tmp))
-				lstrcpyn(&tmp[len], _T(": "), SIZEOF(tmp) - len);
-
-			len += 2;
-
-			if (len < SIZEOF(tmp))
-				lstrcpyn(&tmp[len], status_message, SIZEOF(tmp) - len);
-		}
-
-		lcopystr(status_name, tmp, SIZEOF(status_name));
+			lcopystr(status_name, p, SIZEOF(status_name));
 	}
 
 	return status;
@@ -254,26 +225,14 @@ bool Protocol::CanSetStatusMsg(int aStatus)
 void Protocol::GetStatusMsg(int aStatus, TCHAR *msg, size_t msg_size)
 {
 	if ( !CanGetStatusMsg())
-	{
 		lcopystr(msg, _T(""), msg_size);
-		return;
-	}
-
-	if (aStatus == status && ProtoServiceExists(name, PS_GETMYAWAYMSG) )
-	{
-		TCHAR *tmp = (TCHAR*) CallProtoService(name, PS_GETMYAWAYMSG, 0, SGMA_TCHAR);
+	else if (aStatus == status && ProtoServiceExists(name, PS_GETMYAWAYMSG)) {
+		ptrT tmp((TCHAR*)CallProtoService(name, PS_GETMYAWAYMSG, 0, SGMA_TCHAR));
 		lcopystr(msg, tmp == NULL ? _T("") : tmp, msg_size);
 	}
-
-	else if (ServiceExists(MS_AWAYMSG_GETSTATUSMSG))
-	{
-		TCHAR *tmp = (TCHAR*) CallService(MS_AWAYMSG_GETSTATUSMSGT, (WPARAM)aStatus, 0);
-		if (tmp != NULL)
-		{
-			lcopystr(msg, tmp, msg_size);
-			mir_free(tmp);
-		}
-		else lcopystr(msg, _T(""), msg_size);
+	else if (ServiceExists(MS_AWAYMSG_GETSTATUSMSG)) {
+		ptrT tmp((TCHAR*)CallService(MS_AWAYMSG_GETSTATUSMSGT, (WPARAM)aStatus, 0));
+		lcopystr(msg, tmp == NULL ? _T("") : tmp, msg_size);
 	}
 }
 
@@ -438,7 +397,7 @@ TCHAR * Protocol::GetListeningTo()
 	}
 
 	DBVARIANT dbv = {0};
-	if ( DBGetContactSettingTString(NULL, name, "ListeningTo", &dbv))
+	if ( db_get_ts(NULL, name, "ListeningTo", &dbv))
 	{
 		lcopystr(listening_to, _T(""), SIZEOF(listening_to));
 		return listening_to;
@@ -563,7 +522,7 @@ void ProtocolArray::SetNicks(const TCHAR *nick)
 
 	lstrcpyn(default_nick, nick, SIZEOF(default_nick));
 
-	DBWriteContactSettingTString(0, MODULE_NAME, SETTING_DEFAULT_NICK, nick);
+	db_set_ts(0, MODULE_NAME, SETTING_DEFAULT_NICK, nick);
 
 	for ( int i = 0 ; i < buffer_len ; i++ )
 		buffer[i]->SetNick(default_nick);
@@ -583,11 +542,11 @@ void ProtocolArray::SetStatusMsgs(const TCHAR *message)
 
 void ProtocolArray::SetStatusMsgs(int status, const TCHAR *message)
 {
-	DBWriteContactSettingTString(NULL,"SRAway",StatusModeToDbSetting(status,"Msg"),message);
+	db_set_ts(NULL,"SRAway",StatusModeToDbSetting(status,"Msg"),message);
 
 	// Save default also
 	if ( !db_get_b(NULL,"SRAway",StatusModeToDbSetting(status,"UsePrev"),0))
-		DBWriteContactSettingTString(NULL,"SRAway",StatusModeToDbSetting(status,"Default"),message);
+		db_set_ts(NULL,"SRAway",StatusModeToDbSetting(status,"Default"),message);
 
 	for ( int i = 0 ; i < buffer_len ; i++ )
 		if (buffer[i]->status == status)
@@ -597,7 +556,7 @@ void ProtocolArray::SetStatusMsgs(int status, const TCHAR *message)
 void ProtocolArray::GetDefaultNick()
 {
 	DBVARIANT dbv;
-	if ( !DBGetContactSettingTString(0, MODULE_NAME, SETTING_DEFAULT_NICK, &dbv)) {
+	if ( !db_get_ts(0, MODULE_NAME, SETTING_DEFAULT_NICK, &dbv)) {
 		lstrcpyn(default_nick, dbv.ptszVal, SIZEOF(default_nick));
 		db_free(&dbv);
 	}
@@ -607,7 +566,7 @@ void ProtocolArray::GetDefaultNick()
 void ProtocolArray::GetDefaultAvatar()
 {
 	DBVARIANT dbv;
-	if ( !DBGetContactSettingTString(0, "ContactPhoto", "File", &dbv)) {
+	if ( !db_get_ts(0, "ContactPhoto", "File", &dbv)) {
 		lstrcpyn(default_avatar_file, dbv.ptszVal, SIZEOF(default_avatar_file));
 		db_free(&dbv);
 	}

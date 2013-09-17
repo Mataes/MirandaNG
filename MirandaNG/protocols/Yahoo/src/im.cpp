@@ -23,7 +23,7 @@ void CYahooProto::send_msg(const char *id, int protocol, const char *msg, int ut
 {
 	LOG(("[send_msg] Who: %s: protocol: %d Msg: '%s', utf: %d", id, protocol, msg, utf8));
 	
-	int buddy_icon = (GetDword("AvatarHash", 0) != 0) ? 2: 0;
+	int buddy_icon = (getDword("AvatarHash", 0) != 0) ? 2: 0;
 	yahoo_send_im(m_id, NULL, id, protocol, msg, utf8, buddy_icon);
 }
 
@@ -34,18 +34,15 @@ void CYahooProto::ext_got_im(const char *me, const char *who, int protocol, cons
 	char 		*umsg;
 	const char	*c = msg;
 	int 		oidx = 0;
-	PROTORECVEVENT 	pre;
-	HANDLE 			hContact;
-
 
 	LOG(("YAHOO_GOT_IM id:%s %s: %s (len: %d) tm:%lu stat:%i utf8:%i buddy_icon: %i", me, who, msg, lstrlenA(msg), tm, stat, utf8, buddy_icon));
 
-	if(stat == 2) {
+	if (stat == 2) {
 		char z[1024];
 
-		snprintf(z, sizeof z, "Error sending message to %s", who);
+		mir_snprintf(z, SIZEOF(z), "Error sending message to %s", who);
 		LOG((z));
-		ShowError(Translate("Yahoo Error"), z);
+		ShowError( TranslateT("Yahoo Error"), _A2T(z));
 		return;
 	}
 
@@ -54,7 +51,7 @@ void CYahooProto::ext_got_im(const char *me, const char *who, int protocol, cons
 		return;
 	}
 
-	if (GetByte( "IgnoreUnknown", 0 )) {
+	if (getByte("IgnoreUnknown", 0)) {
 
 		/*
 		* Check our buddy list to see if we have it there. And if it's not on the list then we don't accept any IMs.
@@ -103,22 +100,22 @@ void CYahooProto::ext_got_im(const char *me, const char *who, int protocol, cons
 	/* Need to strip off formatting stuff first. Then do all decoding/converting */
 	LOG(("%s: %s", who, umsg));
 
-	//SetWord(hContact, "yprotoid", protocol);
+	HANDLE hContact = add_buddy(who, who, protocol, PALF_TEMPORARY);
+	//setWord(hContact, "yprotoid", protocol);
 	Set_Protocol(hContact, protocol);
 
+	PROTORECVEVENT pre;
 	pre.flags = (utf8) ? PREF_UTF : 0;
 
 	if (tm) {
-		HANDLE hEvent = (HANDLE)CallService(MS_DB_EVENT_FINDLAST, (WPARAM)hContact, 0);
+		HANDLE hEvent = db_event_last(hContact);
 
 		if (hEvent) { // contact has events
-			DBEVENTINFO dbei;
 			DWORD dummy;
-
-			dbei.cbSize = sizeof (DBEVENTINFO);
+			DBEVENTINFO dbei = { sizeof (dbei) };
 			dbei.pBlob = (BYTE*)&dummy;
 			dbei.cbBlob = 2;
-			if (!CallService(MS_DB_EVENT_GET, (WPARAM)hEvent, (LPARAM)&dbei)) 
+			if (!db_event_get(hEvent, &dbei)) 
 				// got that event, if newer than ts then reset to current time
 				if ((DWORD)tm < dbei.timestamp) tm = (long)time(NULL);
 		}
@@ -128,8 +125,8 @@ void CYahooProto::ext_got_im(const char *me, const char *who, int protocol, cons
 		if ((DWORD)tm < pre.timestamp)
 			pre.timestamp = tm;
 		
-	} else
-		pre.timestamp = (DWORD)time(NULL);
+	}
+	else pre.timestamp = (DWORD)time(NULL);
 
 	pre.szMessage = umsg;
 	pre.lParam = 0;
@@ -145,13 +142,11 @@ void CYahooProto::ext_got_im(const char *me, const char *who, int protocol, cons
 	if (buddy_icon < 0) return;
 
 	//?? Don't generate floods!!
-	DBWriteContactSettingByte(hContact, m_szModuleName, "AvatarType", (BYTE)buddy_icon);
-	if (buddy_icon != 2) {
+	setByte(hContact, "AvatarType", (BYTE)buddy_icon);
+	if (buddy_icon != 2)
 		reset_avatar(hContact);
-	} else if (DBGetContactSettingDword(hContact, m_szModuleName,"PictCK", 0) == 0) {
-		/* request the buddy image */
+	else if (getDword(hContact, "PictCK", 0) == 0) /* request the buddy image */
 		request_avatar(who); 
-	} 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -159,61 +154,50 @@ void CYahooProto::ext_got_im(const char *me, const char *who, int protocol, cons
 
 void __cdecl CYahooProto::im_sendacksuccess(HANDLE hContact)
 {
-	ProtoBroadcastAck(m_szModuleName, hContact, ACKTYPE_MESSAGE, ACKRESULT_SUCCESS, (HANDLE) 1, 0);
+	ProtoBroadcastAck(hContact, ACKTYPE_MESSAGE, ACKRESULT_SUCCESS, (HANDLE) 1, 0);
 }
 
 void __cdecl CYahooProto::im_sendackfail(HANDLE hContact)
 {
 	SleepEx(1000, TRUE);
-	ProtoBroadcastAck(m_szModuleName, hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE) 1, 
+	ProtoBroadcastAck(hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE) 1, 
 						(LPARAM) Translate("The message send timed out."));
 }
 
 void __cdecl CYahooProto::im_sendackfail_longmsg(HANDLE hContact)
 {
 	SleepEx(1000, TRUE);
-	ProtoBroadcastAck(m_szModuleName, hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE) 1, 
+	ProtoBroadcastAck(hContact, ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE) 1, 
 						(LPARAM)Translate("Message is too long: Yahoo messages are limited by 800 UTF8 chars"));
 }
 
 int __cdecl CYahooProto::SendMsg( HANDLE hContact, int flags, const char* pszSrc )
 {
-	DBVARIANT dbv;
-	char *msg;
-	int  bANSI;
-
-	bANSI = 0;/*GetByte( "DisableUTF8", 0 );*/
-
 	if (!m_bLoggedIn) {/* don't send message if we not connected! */
-		YForkThread( &CYahooProto::im_sendackfail, hContact );
+		ForkThread( &CYahooProto::im_sendackfail, hContact );
 		return 1;
 	}
 
-	if (bANSI) 
-		/* convert to ANSI */
-		msg = ( char* )pszSrc;
-	else if ( flags & PREF_UNICODE )
-		/* convert to utf8 */
+	ptrA msg;
+	if (flags & PREF_UNICODE) /* convert to utf8 */
 		msg = mir_utf8encodeW(( wchar_t* )&pszSrc[ strlen(pszSrc)+1 ] );
 	else if ( flags & PREF_UTF )
-		msg = mir_strdup(( char* )pszSrc );
+		msg = mir_strdup(pszSrc);
 	else
-		msg = mir_utf8encode(( char* )pszSrc );
+		msg = mir_utf8encode(pszSrc);
 
 	if (lstrlenA(msg) > 800) {
-		YForkThread( &CYahooProto::im_sendackfail_longmsg, hContact );
+		ForkThread( &CYahooProto::im_sendackfail_longmsg, hContact );
 		return 1;
 	}
 
-	if (!GetString( hContact, YAHOO_LOGINID, &dbv)) {
-		send_msg(dbv.pszVal, GetWord( hContact, "yprotoid", 0), msg, (!bANSI) ? 1 : 0);
+	DBVARIANT dbv;
+	if (!getString( hContact, YAHOO_LOGINID, &dbv)) {
+		send_msg(dbv.pszVal, getWord( hContact, "yprotoid", 0), msg, 1);
 
-		if (!bANSI)
-			mir_free(msg);
+		ForkThread( &CYahooProto::im_sendacksuccess, hContact );
 
-		YForkThread( &CYahooProto::im_sendacksuccess, hContact );
-
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		return 1;
 	}
 
@@ -225,7 +209,7 @@ int __cdecl CYahooProto::SendMsg( HANDLE hContact, int flags, const char* pszSrc
 
 int __cdecl CYahooProto::RecvMsg( HANDLE hContact, PROTORECVEVENT* pre )
 {
-	DBDeleteContactSetting(hContact, "CList", "Hidden");
+	db_unset(hContact, "CList", "Hidden");
 
 	// NUDGES
 	if ( !lstrcmpA(pre->szMessage, "<ding>")  && ServiceExists("NUDGE/Send")) {
@@ -248,16 +232,16 @@ INT_PTR __cdecl CYahooProto::SendNudge(WPARAM wParam, LPARAM lParam)
 	DebugLog("[YAHOO_SENDNUDGE]");
 
 	if (!m_bLoggedIn) {/* don't send nudge if we not connected! */
-		YForkThread( &CYahooProto::im_sendackfail, hContact );
+		ForkThread( &CYahooProto::im_sendackfail, hContact );
 		return 1;
 	}
 
 	DBVARIANT dbv;
-	if (!GetString(hContact, YAHOO_LOGINID, &dbv)) {
-		send_msg(dbv.pszVal, GetWord(hContact, "yprotoid", 0), "<ding>", 0);
-		DBFreeVariant(&dbv);
+	if (!getString(hContact, YAHOO_LOGINID, &dbv)) {
+		send_msg(dbv.pszVal, getWord(hContact, "yprotoid", 0), "<ding>", 0);
+		db_free(&dbv);
 
-		YForkThread( &CYahooProto::im_sendacksuccess, hContact );
+		ForkThread( &CYahooProto::im_sendacksuccess, hContact );
 		return 1;
 	}
 

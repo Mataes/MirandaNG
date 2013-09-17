@@ -26,14 +26,11 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: utils.cpp 13428 2011-03-10 13:15:44Z borkra $
- *
  * generic utility functions
  *
  */
 
 #include "commonheaders.h"
-#include <string>
 
 #define MWF_LOG_BBCODE 1
 #define MWF_LOG_TEXTFORMAT 0x2000000
@@ -61,7 +58,7 @@ LRESULT TSAPI _dlgReturn(HWND hWnd, LRESULT result)
 void* Utils::safeAlloc(const size_t size)
 {
 	__try {
-		unsigned char* _p = reinterpret_cast<unsigned char*>(malloc(size));
+		unsigned char* _p = reinterpret_cast<unsigned char*>(mir_alloc(size));
 		*_p = 0;
 
 		return(reinterpret_cast<void*>(_p));
@@ -146,7 +143,7 @@ TCHAR* Utils::FilterEventMarkers(TCHAR *wszText)
 /**
  * this translates formatting tags into rtf sequences...
  * flags: loword = words only for simple  * /_ formatting
- *        hiword = bbcode support (strip bbcodes if 0)
+         *hiword = bbcode support (strip bbcodes if 0)
  */
 const TCHAR* Utils::FormatRaw(TWindowData *dat, const TCHAR *msg, int flags, BOOL isSent)
 {
@@ -200,7 +197,7 @@ search_again:
 					int ii = 0;
 					TCHAR szTemp[5];
 					for (ii = 0; ii < rtf_ctable_size; ii++) {
-						if (!_tcsnicmp((TCHAR *)colorname.c_str(), rtf_ctable[ii].szName, lstrlen(rtf_ctable[ii].szName))) {
+						if (!_tcsnicmp((TCHAR*)colorname.c_str(), rtf_ctable[ii].szName, lstrlen(rtf_ctable[ii].szName))) {
 							closing = beginmark + 7 + lstrlen(rtf_ctable[ii].szName);
 							if (endmark != message.npos) {
 								message.erase(endmark, 4);
@@ -208,13 +205,13 @@ search_again:
 							}
 							message.erase(beginmark, (closing - beginmark));
 							message.insert(beginmark, _T("cxxx "));
-							_sntprintf(szTemp, 4, _T("%02d"), MSGDLGFONTCOUNT + 13 + ii);
+							mir_sntprintf(szTemp, 4, _T("%02d"), MSGDLGFONTCOUNT + 13 + ii);
 							message[beginmark + 3] = szTemp[0];
 							message[beginmark + 4] = szTemp[1];
 							clr_found = true;
 							if (was_added) {
 								TCHAR wszTemp[100];
-								_sntprintf(wszTemp, 100, _T("##col##%06u:%04u"), endmark - closing, ii);
+								mir_sntprintf(wszTemp, 100, _T("##col##%06u:%04u"), endmark - closing, ii);
 								wszTemp[99] = 0;
 								message.insert(beginmark, wszTemp);
 							}
@@ -310,9 +307,9 @@ ok:
 			smbp.cbSize = sizeof(smbp);
 			smbp.Protocolname = dat->cache->getActiveProto();
 			smbp.flag = SAFL_TCHAR | SAFL_PATH | (isSent ? SAFL_OUTGOING : 0);
-			smbp.str = (TCHAR *)smcode.c_str();
+			smbp.str = (TCHAR*)smcode.c_str();
 			smbp.hContact = dat->hContact;
-			smbpr = (SMADD_BATCHPARSERES *)CallService(MS_SMILEYADD_BATCHPARSE, 0, (LPARAM) & smbp);
+			smbpr = (SMADD_BATCHPARSERES *)CallService(MS_SMILEYADD_BATCHPARSE, 0, (LPARAM)&smbp);
 			if (smbpr) {
 				CallService(MS_SMILEYADD_BATCHFREE, 0, (LPARAM)smbpr);
 				beginmark = endmark + 1;
@@ -330,7 +327,7 @@ ok:
 
 /**
  * format the title bar string for IM chat sessions using placeholders.
- * the caller must free() the returned string
+ * the caller must mir_free() the returned string
  */
 const TCHAR* Utils::FormatTitleBar(const TWindowData *dat, const TCHAR *szFormat)
 {
@@ -355,130 +352,130 @@ const TCHAR* Utils::FormatTitleBar(const TWindowData *dat, const TCHAR *szFormat
 			break;
 
 		switch (title[curpos]) {
-			case 'n': {
-				const	TCHAR *tszNick = dat->cache->getNick();
-				if (tszNick[0])
-					title.insert(tempmark + 2, tszNick);
-				title.erase(tempmark, 2);
-				curpos = tempmark + lstrlen(tszNick);
-				break;
-			}
-			case 'p':
-			case 'a': {
-				const	TCHAR *szAcc = dat->cache->getRealAccount();
-				if (szAcc)
-					title.insert(tempmark + 2, szAcc);
-				title.erase(tempmark, 2);
-				curpos = tempmark + lstrlen(szAcc);
-				break;
-			}
-			case 's': {
-				if (dat->szStatus && dat->szStatus[0])
-					title.insert(tempmark + 2, dat->szStatus);
-				title.erase(tempmark, 2);
-				curpos = tempmark + lstrlen(dat->szStatus);
-				break;
-			}
-			case 'u': {
-				const TCHAR	*szUIN = dat->cache->getUIN();
-				if (szUIN[0])
-					title.insert(tempmark + 2, szUIN);
-				title.erase(tempmark, 2);
-				curpos = tempmark + lstrlen(szUIN);
-				break;
-			}
-			case 'c': {
-				TCHAR	*c = (!_tcscmp(dat->pContainer->szName, _T("default")) ? TranslateT("Default container") : dat->pContainer->szName);
-				title.insert(tempmark + 2, c);
-				title.erase(tempmark, 2);
-				curpos = tempmark + lstrlen(c);
-				break;
-			}
-			case 'o': {
-				const TCHAR* szProto = dat->cache->getActiveProtoT();
-				if (szProto)
-					title.insert(tempmark + 2, szProto);
-				title.erase(tempmark, 2);
-				curpos = tempmark + (szProto ? lstrlen(szProto) : 0);
-				break;
-			}
-			case 'x': {
-				TCHAR *szFinalStatus = NULL;
-				BYTE  xStatus = dat->cache->getXStatusId();
+		case 'n': {
+			const	TCHAR *tszNick = dat->cache->getNick();
+			if (tszNick[0])
+				title.insert(tempmark + 2, tszNick);
+			title.erase(tempmark, 2);
+			curpos = tempmark + lstrlen(tszNick);
+			break;
+					 }
+		case 'p':
+		case 'a': {
+			const	TCHAR *szAcc = dat->cache->getRealAccount();
+			if (szAcc)
+				title.insert(tempmark + 2, szAcc);
+			title.erase(tempmark, 2);
+			curpos = tempmark + lstrlen(szAcc);
+			break;
+					 }
+		case 's': {
+			if (dat->szStatus && dat->szStatus[0])
+				title.insert(tempmark + 2, dat->szStatus);
+			title.erase(tempmark, 2);
+			curpos = tempmark + lstrlen(dat->szStatus);
+			break;
+					 }
+		case 'u': {
+			const TCHAR	*szUIN = dat->cache->getUIN();
+			if (szUIN[0])
+				title.insert(tempmark + 2, szUIN);
+			title.erase(tempmark, 2);
+			curpos = tempmark + lstrlen(szUIN);
+			break;
+					 }
+		case 'c': {
+			TCHAR	*c = (!_tcscmp(dat->pContainer->szName, _T("default")) ? TranslateT("Default container") : dat->pContainer->szName);
+			title.insert(tempmark + 2, c);
+			title.erase(tempmark, 2);
+			curpos = tempmark + lstrlen(c);
+			break;
+					 }
+		case 'o': {
+			const TCHAR* szProto = dat->cache->getActiveProtoT();
+			if (szProto)
+				title.insert(tempmark + 2, szProto);
+			title.erase(tempmark, 2);
+			curpos = tempmark + (szProto ? lstrlen(szProto) : 0);
+			break;
+					 }
+		case 'x': {
+			TCHAR *szFinalStatus = NULL;
+			BYTE  xStatus = dat->cache->getXStatusId();
 
-				if (dat->wStatus != ID_STATUS_OFFLINE && xStatus > 0 && xStatus <= 31) {
-					DBVARIANT dbv = {0};
+			if (dat->wStatus != ID_STATUS_OFFLINE && xStatus > 0 && xStatus <= 31) {
+				DBVARIANT dbv = {0};
 
-					if (!M->GetTString(dat->hContact, (char *)dat->szProto, "XStatusName", &dbv)) {
-						_tcsncpy(szTemp, dbv.ptszVal, 500);
-						szTemp[500] = 0;
-						DBFreeVariant(&dbv);
-						title.insert(tempmark + 2, szTemp);
-						curpos = tempmark + lstrlen(szTemp);
-					}
-					else {
-						title.insert(tempmark + 2, xStatusDescr[xStatus - 1]);
-						curpos = tempmark + lstrlen(xStatusDescr[xStatus - 1]);
-					}
+				if (!db_get_ts(dat->hContact, (char *)dat->szProto, "XStatusName", &dbv)) {
+					_tcsncpy(szTemp, dbv.ptszVal, 500);
+					szTemp[500] = 0;
+					db_free(&dbv);
+					title.insert(tempmark + 2, szTemp);
+					curpos = tempmark + lstrlen(szTemp);
 				}
-				title.erase(tempmark, 2);
-				break;
+				else {
+					title.insert(tempmark + 2, xStatusDescr[xStatus - 1]);
+					curpos = tempmark + lstrlen(xStatusDescr[xStatus - 1]);
+				}
 			}
-			case 'm': {
-				TCHAR *szFinalStatus = NULL;
-				BYTE  xStatus = dat->cache->getXStatusId();
+			title.erase(tempmark, 2);
+			break;
+					 }
+		case 'm': {
+			TCHAR *szFinalStatus = NULL;
+			BYTE  xStatus = dat->cache->getXStatusId();
 
-				if (dat->wStatus != ID_STATUS_OFFLINE && xStatus > 0 && xStatus <= 31) {
-					DBVARIANT dbv = {0};
+			if (dat->wStatus != ID_STATUS_OFFLINE && xStatus > 0 && xStatus <= 31) {
+				DBVARIANT dbv = {0};
 
-					if (!M->GetTString(dat->hContact, (char *)dat->szProto, "XStatusName", &dbv)) {
-						_tcsncpy(szTemp, dbv.ptszVal, 500);
-						szTemp[500] = 0;
-						DBFreeVariant(&dbv);
-						title.insert(tempmark + 2, szTemp);
-					} else
-						szFinalStatus = xStatusDescr[xStatus - 1];
+				if (!db_get_ts(dat->hContact, (char *)dat->szProto, "XStatusName", &dbv)) {
+					_tcsncpy(szTemp, dbv.ptszVal, 500);
+					szTemp[500] = 0;
+					db_free(&dbv);
+					title.insert(tempmark + 2, szTemp);
 				} else
-					szFinalStatus = (TCHAR *)(dat->szStatus && dat->szStatus[0] ? dat->szStatus : _T("(undef)"));
+					szFinalStatus = xStatusDescr[xStatus - 1];
+			} else
+				szFinalStatus = (TCHAR*)(dat->szStatus && dat->szStatus[0] ? dat->szStatus : _T("(undef)"));
 
-				if (szFinalStatus) {
-					title.insert(tempmark + 2, szFinalStatus);
-					curpos = tempmark + lstrlen(szFinalStatus);
-				}
-
-				title.erase(tempmark, 2);
-				break;
+			if (szFinalStatus) {
+				title.insert(tempmark + 2, szFinalStatus);
+				curpos = tempmark + lstrlen(szFinalStatus);
 			}
-			/*
-			 * status message (%T will skip the "No status message" for empty
-			 * messages)
-			 */
-			case 't':
-			case 'T': {
-				TCHAR	*tszStatusMsg = dat->cache->getNormalizedStatusMsg(dat->cache->getStatusMsg(), true);
 
-				if (tszStatusMsg) {
-					title.insert(tempmark + 2, tszStatusMsg);
-					curpos = tempmark + lstrlen(tszStatusMsg);
-				}
-				else if (title[curpos] == 't') {
-					const TCHAR* tszStatusMsg = TranslateT("No status message");
-					title.insert(tempmark + 2, tszStatusMsg);
-					curpos = tempmark + lstrlen(tszStatusMsg);
-				}
-				title.erase(tempmark, 2);
-				if (tszStatusMsg)
-					mir_free(tszStatusMsg);
-				break;
+			title.erase(tempmark, 2);
+			break;
+					 }
+					 /*
+					 * status message (%T will skip the "No status message" for empty
+					 * messages)
+					 */
+		case 't':
+		case 'T': {
+			TCHAR	*tszStatusMsg = dat->cache->getNormalizedStatusMsg(dat->cache->getStatusMsg(), true);
+
+			if (tszStatusMsg) {
+				title.insert(tempmark + 2, tszStatusMsg);
+				curpos = tempmark + lstrlen(tszStatusMsg);
 			}
-			default:
-				title.erase(tempmark, 1);
-				break;
+			else if (title[curpos] == 't') {
+				const TCHAR* tszStatusMsg = TranslateT("No status message");
+				title.insert(tempmark + 2, tszStatusMsg);
+				curpos = tempmark + lstrlen(tszStatusMsg);
+			}
+			title.erase(tempmark, 2);
+			if (tszStatusMsg)
+				mir_free(tszStatusMsg);
+			break;
+					 }
+		default:
+			title.erase(tempmark, 1);
+			break;
 		}
 	}
 	length = title.length();
 
-	szResult = (TCHAR *)malloc((length + 2) * sizeof(TCHAR));
+	szResult = (TCHAR*)mir_alloc((length + 2) * sizeof(TCHAR));
 	if (szResult) {
 		_tcsncpy(szResult, title.c_str(), length);
 		szResult[length] = 0;
@@ -611,7 +608,7 @@ void Utils::RTF_CTableInit()
 {
 	int iSize = sizeof(TRTFColorTable) * RTF_CTABLE_DEFSIZE;
 
-	rtf_ctable = (TRTFColorTable *)malloc(iSize);
+	rtf_ctable = (TRTFColorTable *)mir_alloc(iSize);
 	ZeroMemory(rtf_ctable, iSize);
 	CopyMemory(rtf_ctable, _rtf_ctable, iSize);
 	rtf_ctable_size = RTF_CTABLE_DEFSIZE;
@@ -627,7 +624,7 @@ void Utils::RTF_ColorAdd(const TCHAR *tszColname, size_t length)
 	COLORREF clr;
 
 	rtf_ctable_size++;
-	rtf_ctable = (TRTFColorTable *)realloc(rtf_ctable, sizeof(TRTFColorTable) * rtf_ctable_size);
+	rtf_ctable = (TRTFColorTable *)mir_realloc(rtf_ctable, sizeof(TRTFColorTable) * rtf_ctable_size);
 	clr = _tcstol(tszColname, &stopped, 16);
 	mir_sntprintf(rtf_ctable[rtf_ctable_size - 1].szName, length + 1, _T("%06x"), clr);
 	rtf_ctable[rtf_ctable_size - 1].menuid = rtf_ctable[rtf_ctable_size - 1].index = 0;
@@ -659,7 +656,7 @@ void Utils::CreateColorMap(TCHAR *Text)
 	for (i=0; i < RTF_CTABLE_DEFSIZE; i++)
 		rtf_ctable[i].index = 0;
 
-	default_color = (COLORREF)M->GetDword(FONTMODULE, "Font16Col", 0);
+	default_color = (COLORREF)M.GetDword(FONTMODULE, "Font16Col", 0);
 
 	while (p2 && p2 < pEnd) {
 		if (_stscanf(p2, lpszFmt, &szRed, &szGreen, &szBlue) > 0) {
@@ -680,7 +677,7 @@ void Utils::CreateColorMap(TCHAR *Text)
 
 int Utils::RTFColorToIndex(int iCol)
 {
-	int i = 0;
+	int i=0;
 	for (i=0; i < RTF_CTABLE_DEFSIZE; i++) {
 		if (rtf_ctable[i].index == iCol)
 			return i + 1;
@@ -693,22 +690,20 @@ int Utils::RTFColorToIndex(int iCol)
  */
 INT_PTR CALLBACK Utils::PopupDlgProcError(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	HANDLE hContact = (HANDLE)CallService(MS_POPUP_GETPLUGINDATA, (WPARAM)hWnd, (LPARAM)&hContact);
+	HANDLE hContact = (HANDLE)PUGetPluginData(hWnd);
 
 	switch (message) {
 	case WM_COMMAND:
 		PostMessage(PluginConfig.g_hwndHotkeyHandler, DM_HANDLECLISTEVENT, (WPARAM)hContact, 0);
-		PUDeletePopUp(hWnd);
+		PUDeletePopup(hWnd);
 		break;
 	case WM_CONTEXTMENU:
 		PostMessage(PluginConfig.g_hwndHotkeyHandler, DM_HANDLECLISTEVENT, (WPARAM)hContact, 0);
-		PUDeletePopUp(hWnd);
+		PUDeletePopup(hWnd);
 		break;
 	case WM_MOUSEWHEEL:
 		break;
 	case WM_SETCURSOR:
-		break;
-	default:
 		break;
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
@@ -726,16 +721,16 @@ int Utils::ReadContainerSettingsFromDB(const HANDLE hContact, TContainerSettings
 
 	CopyMemory(cs, &PluginConfig.globalContainerSettings, sizeof(TContainerSettings));
 
-	if (0 == DBGetContactSetting(hContact, SRMSGMOD_T, szKey ? szKey : CNT_KEYNAME, &dbv)) {
+	if (0 == db_get(hContact, SRMSGMOD_T, szKey ? szKey : CNT_KEYNAME, &dbv)) {
 		if (dbv.type == DBVT_BLOB && dbv.cpbVal > 0 && dbv.cpbVal <= sizeof(TContainerSettings)) {
 			::CopyMemory((void*)cs, (void*)dbv.pbVal, dbv.cpbVal);
-			::DBFreeVariant(&dbv);
+			::db_free(&dbv);
 			if (hContact == 0 && szKey == 0)
 				cs->fPrivate = false;
 			return 0;
 		}
 		cs->fPrivate = false;
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		return 1;
 	}
 	else {
@@ -746,7 +741,7 @@ int Utils::ReadContainerSettingsFromDB(const HANDLE hContact, TContainerSettings
 
 int Utils::WriteContainerSettingsToDB(const HANDLE hContact, TContainerSettings *cs, const char *szKey)
 {
-	DBWriteContactSettingBlob(hContact, SRMSGMOD_T, szKey ? szKey : CNT_KEYNAME, cs, sizeof(TContainerSettings));
+	::db_set_blob(hContact, SRMSGMOD_T, szKey ? szKey : CNT_KEYNAME, cs, sizeof(TContainerSettings));
 	return 0;
 }
 
@@ -781,7 +776,7 @@ void Utils::ReadPrivateContainerSettings(TContainerData *pContainer, bool fForce
 	Utils::ReadContainerSettingsFromDB(0, &csTemp, szCname);
 	if (csTemp.fPrivate || fForce) {
 		if (pContainer->settings == 0 || pContainer->settings == &PluginConfig.globalContainerSettings)
-			pContainer->settings = (TContainerSettings *)malloc(sizeof(TContainerSettings));
+			pContainer->settings = (TContainerSettings *)mir_alloc(sizeof(TContainerSettings));
 		CopyMemory((void*)pContainer->settings, (void*)&csTemp, sizeof(TContainerSettings));
 		pContainer->settings->fPrivate = true;
 	}
@@ -795,19 +790,19 @@ void Utils::SaveContainerSettings(TContainerData *pContainer, const char *szSett
 
 	pContainer->dwFlags &= ~(CNT_DEFERREDCONFIGURE | CNT_CREATE_MINIMIZED | CNT_DEFERREDSIZEREQUEST | CNT_CREATE_CLONED);
 	if (pContainer->settings->fPrivate) {
-		_snprintf(szCName, 40, "%s%d_Blob", szSetting, pContainer->iContainerIndex);
+		mir_snprintf(szCName, 40, "%s%d_Blob", szSetting, pContainer->iContainerIndex);
 		WriteContainerSettingsToDB(0, pContainer->settings, szCName);
 	}
 	mir_snprintf(szCName, 40, "%s%d_theme", szSetting, pContainer->iContainerIndex);
 	if (lstrlen(pContainer->szRelThemeFile) > 1) {
 		if (pContainer->fPrivateThemeChanged == TRUE) {
-			M->pathToRelative(pContainer->szRelThemeFile, pContainer->szAbsThemeFile);
-			M->WriteTString(NULL, SRMSGMOD_T, szCName, pContainer->szAbsThemeFile);
+			M.pathToRelative(pContainer->szRelThemeFile, pContainer->szAbsThemeFile);
+			db_set_ts(NULL, SRMSGMOD_T, szCName, pContainer->szAbsThemeFile);
 			pContainer->fPrivateThemeChanged = FALSE;
 		}
 	}
 	else {
-		::DBDeleteContactSetting(NULL, SRMSGMOD_T, szCName);
+		::db_unset(NULL, SRMSGMOD_T, szCName);
 		pContainer->fPrivateThemeChanged = FALSE;
 	}
 }
@@ -887,7 +882,7 @@ HICON Utils::iconFromAvatar(const TWindowData *dat)
 
 			LONG	ix = (lIconSize - (LONG)dNewWidth) / 2;
 			LONG	iy = (lIconSize - (LONG)dNewHeight) / 2;
-			CSkin::m_default_bf.SourceConstantAlpha = M->GetByte("taskBarIconAlpha", 255);
+			CSkin::m_default_bf.SourceConstantAlpha = M.GetByte("taskBarIconAlpha", 255);
 			CMimAPI::m_MyAlphaBlend(dc, ix, iy, (LONG)dNewWidth, (LONG)dNewHeight, dcResized,
 									0, 0, (LONG)dNewWidth, (LONG)dNewHeight, CSkin::m_default_bf);
 
@@ -1011,7 +1006,7 @@ void TSAPI Utils::showDlgControl(const HWND hwnd, UINT id, int showCmd)
 DWORD CALLBACK Utils::StreamOut(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG * pcb)
 {
 	HANDLE hFile;
-	TCHAR *szFilename = (TCHAR *)dwCookie;
+	TCHAR *szFilename = (TCHAR*)dwCookie;
 	if ((hFile = CreateFile(szFilename, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) != INVALID_HANDLE_VALUE) {
 		SetFilePointer(hFile, 0, NULL, FILE_END);
 		FilterEventMarkers(reinterpret_cast<TCHAR *>(pbBuff));
@@ -1027,34 +1022,31 @@ DWORD CALLBACK Utils::StreamOut(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, LONG
  * extract a resource from the given module
  * tszPath must end with \
  */
-void TSAPI Utils::extractResource(const HMODULE h, const UINT uID, const TCHAR *tszName, const TCHAR *tszPath,
+bool TSAPI Utils::extractResource(const HMODULE h, const UINT uID, const TCHAR *tszName, const TCHAR *tszPath,
 								  const TCHAR *tszFilename, bool fForceOverwrite)
 {
-	HRSRC 	hRes;
-	HGLOBAL	hResource;
-	TCHAR	szFilename[MAX_PATH];
-
-	hRes = FindResource(h, MAKEINTRESOURCE(uID), tszName);
-
+	HRSRC hRes = FindResource(h, MAKEINTRESOURCE(uID), tszName);
 	if (hRes) {
-		hResource = LoadResource(h, hRes);
+		HGLOBAL hResource = LoadResource(h, hRes);
 		if (hResource) {
-			HANDLE  hFile;
 			char 	*pData = (char *)LockResource(hResource);
 			DWORD	dwSize = SizeofResource(g_hInst, hRes), written = 0;
+
+			TCHAR	szFilename[MAX_PATH];
 			mir_sntprintf(szFilename, MAX_PATH, _T("%s%s"), tszPath, tszFilename);
-			if (!fForceOverwrite) {
+			if (!fForceOverwrite)
 				if (PathFileExists(szFilename))
-					return;
-			}
-			if ((hFile = CreateFile(szFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0)) != INVALID_HANDLE_VALUE) {
-				WriteFile(hFile, (void*)pData, dwSize, &written, NULL);
-				CloseHandle(hFile);
-			}
-			else
-				throw(CRTException("Error while extracting aero skin images, Aero mode disabled.", szFilename));
+					return true;
+			
+			HANDLE hFile = CreateFile(szFilename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+			if (hFile == INVALID_HANDLE_VALUE)
+				return false;
+
+			WriteFile(hFile, (void*)pData, dwSize, &written, NULL);
+			CloseHandle(hFile);
 		}
 	}
+	return true;
 }
 
 /**
@@ -1068,13 +1060,13 @@ const wchar_t* Utils::extractURLFromRichEdit(const ENLINK* _e, const HWND hwndRi
 	TEXTRANGEW 	tr = {0};
 	CHARRANGE 	sel = {0};
 
-	::SendMessageW(hwndRich, EM_EXGETSEL, 0, (LPARAM) & sel);
+	::SendMessageW(hwndRich, EM_EXGETSEL, 0, (LPARAM)&sel);
 	if (sel.cpMin != sel.cpMax)
 		return 0;
 
 	tr.chrg = _e->chrg;
 	tr.lpstrText = (wchar_t *)mir_alloc(2 * (tr.chrg.cpMax - tr.chrg.cpMin + 8));
-	::SendMessageW(hwndRich, EM_GETTEXTRANGE, 0, (LPARAM) & tr);
+	::SendMessageW(hwndRich, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
 	if (wcschr(tr.lpstrText, '@') != NULL && wcschr(tr.lpstrText, ':') == NULL && wcschr(tr.lpstrText, '/') == NULL) {
 		::MoveMemory(tr.lpstrText + 7, tr.lpstrText, sizeof(wchar_t) * (tr.chrg.cpMax - tr.chrg.cpMin + 1));
 		::CopyMemory(tr.lpstrText, L"mailto:", 7 * sizeof(wchar_t));
@@ -1146,24 +1138,19 @@ HMODULE Utils::loadSystemLibrary(const wchar_t* szFilename)
 	wchar_t		sysPathName[MAX_PATH + 2];
 	HMODULE		_h = 0;
 
-	try {
-		if (0 == ::GetSystemDirectoryW(sysPathName, MAX_PATH))
-			throw(CRTException("Error while loading system library", szFilename));
-
-		sysPathName[MAX_PATH - 1] = 0;
-		if (wcslen(sysPathName) + wcslen(szFilename) >= MAX_PATH)
-			throw(CRTException("Error while loading system library", szFilename));
-
-		lstrcatW(sysPathName, szFilename);
-		_h = LoadLibraryW(sysPathName);
-		if (0 == _h)
-			throw(CRTException("Error while loading system library", szFilename));
-	}
-	catch(CRTException& ex) {
-		ex.display();
+	if (0 == ::GetSystemDirectoryW(sysPathName, MAX_PATH))
 		return 0;
-	}
-	return(_h);
+
+	sysPathName[MAX_PATH - 1] = 0;
+	if (wcslen(sysPathName) + wcslen(szFilename) >= MAX_PATH)
+		return 0;
+
+	lstrcatW(sysPathName, szFilename);
+	_h = LoadLibraryW(sysPathName);
+	if (0 == _h)
+		return 0;
+
+	return _h;
 }
 
 /**
@@ -1202,10 +1189,10 @@ static wchar_t* warnings[] = {
 	LPGENT("Loading a theme|Loading a color and font theme can overwrite the settings defined by your skin.\n\nDo you want to continue?"), /* WARN_THEME_OVERWRITE */
 };
 
-CWarning::CWarning(const wchar_t *tszTitle, const wchar_t *tszText, const UINT uId, const DWORD dwFlags)
+CWarning::CWarning(const wchar_t *tszTitle, const wchar_t *tszText, const UINT uId, const DWORD dwFlags) :
+	m_szTitle( mir_wstrdup(tszTitle)),
+	m_szText( mir_wstrdup(tszText))
 {
-	m_szTitle = new std::basic_string<wchar_t>(tszTitle);
-	m_szText = new std::basic_string<wchar_t>(tszText);
 	m_uId = uId;
 	m_hFontCaption = 0;
 	m_dwFlags = dwFlags;
@@ -1215,15 +1202,8 @@ CWarning::CWarning(const wchar_t *tszTitle, const wchar_t *tszText, const UINT u
 
 CWarning::~CWarning()
 {
-	delete m_szText;
-	delete m_szTitle;
-
 	if (m_hFontCaption)
 		::DeleteObject(m_hFontCaption);
-
-#if defined(__LOGDEBUG_)
-	_DebugTraceW(L"destroy object");
-#endif
 }
 
 LRESULT CWarning::ShowDialog() const
@@ -1232,21 +1212,18 @@ LRESULT CWarning::ShowDialog() const
 		::CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_WARNING), 0, stubDlgProc, reinterpret_cast<LPARAM>(this));
 		return 0;
 	}
-	else {
-		LRESULT res = ::DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_WARNING), 0, stubDlgProc, reinterpret_cast<LPARAM>(this));
-		return(res);
-	}
+
+	return ::DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_WARNING), 0, stubDlgProc, reinterpret_cast<LPARAM>(this));
 }
 
 __int64 CWarning::getMask()
 {
 	__int64 mask = 0;
 
-	DWORD	dwLow = M->GetDword("cWarningsL", 16);
-	DWORD	dwHigh = M->GetDword("cWarningsH", 0);
+	DWORD	dwLow = M.GetDword("cWarningsL", 16);
+	DWORD	dwHigh = M.GetDword("cWarningsH", 0);
 
 	mask = ((((__int64)dwHigh) << 32) & 0xffffffff00000000) | dwLow;
-
 	return(mask);
 }
 
@@ -1354,25 +1331,21 @@ INT_PTR CALLBACK CWarning::stubDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 		return(w->dlgProc(hwnd, msg, wParam, lParam));
 
 	switch(msg) {
-		case WM_INITDIALOG: {
-			w = reinterpret_cast<CWarning *>(lParam);
-			if (w) {
-				::SetWindowLongPtr(hwnd, GWLP_USERDATA, lParam);
-				return(w->dlgProc(hwnd, msg, wParam, lParam));
-			}
-			break;
+	case WM_INITDIALOG:
+		w = reinterpret_cast<CWarning *>(lParam);
+		if (w) {
+			::SetWindowLongPtr(hwnd, GWLP_USERDATA, lParam);
+			return(w->dlgProc(hwnd, msg, wParam, lParam));
 		}
+		break;
 
 #if defined(__LOGDEBUG_)
-		case WM_NCDESTROY:
-			_DebugTraceW(L"window destroyed");
-			break;
+	case WM_NCDESTROY:
+		_DebugTraceW(L"window destroyed");
+		break;
 #endif
-
-		default:
-			break;
 	}
-	return(FALSE);
+	return FALSE;
 }
 
 /**
@@ -1381,7 +1354,8 @@ INT_PTR CALLBACK CWarning::stubDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 INT_PTR CALLBACK CWarning::dlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch(msg) {
-		case WM_INITDIALOG: {
+	case WM_INITDIALOG:
+		{
 			HICON		hIcon = 0;
 			UINT		uResId = 0;
 			TCHAR		temp[1024];
@@ -1393,20 +1367,20 @@ INT_PTR CALLBACK CWarning::dlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 			::SetWindowTextW(hwnd, TranslateT("TabSRMM warning message"));
 			::SendMessage(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(::LoadSkinnedIconBig(SKINICON_OTHER_MIRANDA)));
 			::SendMessage(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(::LoadSkinnedIcon(SKINICON_OTHER_MIRANDA)));
-			::SendDlgItemMessage(hwnd, IDC_WARNTEXT, EM_AUTOURLDETECT, (WPARAM) TRUE, 0);
+			::SendDlgItemMessage(hwnd, IDC_WARNTEXT, EM_AUTOURLDETECT, (WPARAM)TRUE, 0);
 			::SendDlgItemMessage(hwnd, IDC_WARNTEXT, EM_SETEVENTMASK, 0, ENM_LINK);
 
 			mir_sntprintf(temp, 1024, RTF_DEFAULT_HEADER, 0, 0, 0, 30*15);
 			tstring *str = new tstring(temp);
 
-			str->append(m_szText->c_str());
+			str->append(m_szText);
 			str->append(L"}");
 
 			TranslateDialogDefault(hwnd);
 
 			/*
-			 * convert normal line breaks to rtf
-			 */
+			* convert normal line breaks to rtf
+			*/
 			while((pos = str->find(L"\n")) != str->npos) {
 				str->erase(pos, 1);
 				str->insert(pos, L"\\line ");
@@ -1417,7 +1391,7 @@ INT_PTR CALLBACK CWarning::dlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 			mir_free(utf8);
 			delete str;
 
-			::SetDlgItemTextW(hwnd, IDC_CAPTION, m_szTitle->c_str());
+			::SetDlgItemTextW(hwnd, IDC_CAPTION, m_szTitle);
 
 			if (m_dwFlags & CWF_NOALLOWHIDE)
 				Utils::showDlgControl(hwnd, IDC_DONTSHOWAGAIN, SW_HIDE);
@@ -1450,10 +1424,11 @@ INT_PTR CALLBACK CWarning::dlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 				::ShowWindow(hwnd, SW_SHOWNORMAL);
 
 			WindowList_Add(hWindowList, hwnd, hwnd);
-			return(TRUE);
 		}
+		return TRUE;
 
-		case WM_CTLCOLORSTATIC: {
+	case WM_CTLCOLORSTATIC:
+		{
 			HWND hwndChild = reinterpret_cast<HWND>(lParam);
 			UINT id = ::GetDlgCtrlID(hwndChild);
 			if (0 == m_hFontCaption) {
@@ -1475,73 +1450,61 @@ INT_PTR CALLBACK CWarning::dlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 				::SetBkColor((HDC)wParam, ::GetSysColor(COLOR_WINDOW));
 				return reinterpret_cast<INT_PTR>(::GetSysColorBrush(COLOR_WINDOW));
 			}
-			break;
 		}
+		break;
 
-		case WM_COMMAND:
-			switch(LOWORD(wParam)) {
-				case IDOK:
-				case IDCANCEL:
-				case IDYES:
-				case IDNO:
-					if (!m_fIsModal && (IDOK == LOWORD(wParam) || IDCANCEL == LOWORD(wParam))) {		// modeless dialogs can receive a IDCANCEL from destroyAll()
-						::SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-						delete this;
-						WindowList_Remove(hWindowList, hwnd);
-						::DestroyWindow(hwnd);
-					}
-					else {
-						::SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-						delete this;
-						WindowList_Remove(hWindowList, hwnd);
-						::EndDialog(hwnd, LOWORD(wParam));
-					}
-					break;
+	case WM_COMMAND:
+		switch(LOWORD(wParam)) {
+		case IDOK:
+		case IDCANCEL:
+		case IDYES:
+		case IDNO:
+			if (!m_fIsModal && (IDOK == LOWORD(wParam) || IDCANCEL == LOWORD(wParam))) {		// modeless dialogs can receive a IDCANCEL from destroyAll()
+				::SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+				delete this;
+				WindowList_Remove(hWindowList, hwnd);
+				::DestroyWindow(hwnd);
+			}
+			else {
+				::SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+				delete this;
+				WindowList_Remove(hWindowList, hwnd);
+				::EndDialog(hwnd, LOWORD(wParam));
+			}
+			break;
 
-				case IDC_DONTSHOWAGAIN: {
-					__int64 mask = getMask(), val64 = ((__int64)1L << m_uId), newVal = 0;
+		case IDC_DONTSHOWAGAIN:
+			__int64 mask = getMask(), val64 = ((__int64)1L << m_uId), newVal = 0;
+			newVal = mask | val64;
 
-					newVal = mask | val64;
+			if (::IsDlgButtonChecked(hwnd, IDC_DONTSHOWAGAIN)) {
+				DWORD val = (DWORD)(newVal & 0x00000000ffffffff);
+				db_set_dw(0, SRMSGMOD_T, "cWarningsL", val);
+				val = (DWORD)((newVal >> 32) & 0x00000000ffffffff);
+				db_set_dw(0, SRMSGMOD_T, "cWarningsH", val);
+			}
+		}
+		break;
 
-					if (::IsDlgButtonChecked(hwnd, IDC_DONTSHOWAGAIN)) {
-						DWORD val = (DWORD)(newVal & 0x00000000ffffffff);
-						M->WriteDword(SRMSGMOD_T, "cWarningsL", val);
-						val = (DWORD)((newVal >> 32) & 0x00000000ffffffff);
-						M->WriteDword(SRMSGMOD_T, "cWarningsH", val);
-					}
-					break;
+	case WM_NOTIFY:
+		switch (((NMHDR *) lParam)->code) {
+		case EN_LINK:
+			switch (((ENLINK *) lParam)->msg) {
+			case WM_LBUTTONUP:
+				ENLINK *e = reinterpret_cast<ENLINK *>(lParam);
+
+				const wchar_t*	wszUrl = Utils::extractURLFromRichEdit(e, ::GetDlgItem(hwnd, IDC_WARNTEXT));
+				if (wszUrl) {
+					char* szUrl = mir_t2a(wszUrl);
+
+					CallService(MS_UTILS_OPENURL, 1, (LPARAM)szUrl);
+					mir_free(szUrl);
+					mir_free(const_cast<TCHAR *>(wszUrl));
 				}
-				default:
-					break;
 			}
-			break;
-
-		case WM_NOTIFY: {
-			switch (((NMHDR *) lParam)->code) {
-				case EN_LINK:
-					switch (((ENLINK *) lParam)->msg) {
-						case WM_LBUTTONUP: {
-							ENLINK* 		e = reinterpret_cast<ENLINK *>(lParam);
-
-							const wchar_t*	wszUrl = Utils::extractURLFromRichEdit(e, ::GetDlgItem(hwnd, IDC_WARNTEXT));
-							if (wszUrl) {
-								char* szUrl = mir_t2a(wszUrl);
-
-								CallService(MS_UTILS_OPENURL, 1, (LPARAM)szUrl);
-								mir_free(szUrl);
-								mir_free(const_cast<TCHAR *>(wszUrl));
-							}
-							break;
-						}
-					}
-					break;
-				default:
-					break;
-			}
-			break;
 		}
-		default:
-			break;
+		break;
 	}
-	return(FALSE);
+
+	return FALSE;
 }

@@ -27,12 +27,8 @@
 // Includes all header files that should be precompiled to speed up compilation.
 //
 // -----------------------------------------------------------------------------
-#define MIRANDA_VER 0x0A00
-
 #define _WIN32_WINNT 0x0501
 #define _WIN32_IE 0x0501
-
-#include <m_stdhdr.h>
 
 // Windows includes
 #include <windows.h>
@@ -53,9 +49,7 @@
 #include <list>
 
 #ifndef _DEBUG
-#ifdef _MSC_VER
-	#include <crtdbg.h>
-#endif
+#include <crtdbg.h>
 #endif
 
 #ifndef AW_VER_POSITIVE
@@ -68,7 +62,6 @@
 
 // Miranda IM SDK includes
 #include <newpluginapi.h> // This must be included first
-#include <m_clc.h>
 #include <m_clist.h>
 #include <m_clui.h>
 #include <m_database.h>
@@ -84,10 +77,12 @@
 #include <m_userinfo.h>
 #include <m_utils.h>
 #include <m_idle.h>
+#include <m_skin.h>
 #include <m_popup.h>
 #include <m_clistint.h>
 #include <m_cluiframes.h>
 #include <m_ignore.h>
+#include <m_icolib.h>
 #include <m_avatars.h>
 #include <m_xstatus.h>
 #include <win2k.h>
@@ -97,10 +92,8 @@
 
 // ICQ plugin includes
 #include "version.h"
-#include "iconlib.h"
 #include "globals.h"
 #include "i18n.h"
-#include "icq_db.h"
 #include "cookies.h"
 #include "icq_packet.h"
 #include "utilities.h"

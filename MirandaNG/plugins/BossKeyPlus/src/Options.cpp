@@ -21,7 +21,7 @@
 
 bool g_fOptionsOpen;
 bool g_fReqRass;
-extern HANDLE g_hMenuItem;
+extern HGENMENU g_hMenuItem;
 
 //void Disable_ChildWindows(HWND hwndParent)
 //{
@@ -56,25 +56,18 @@ INT_PTR CALLBACK MainOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 				EnableWindow(GetDlgItem(hwndDlg, IDC_MAINOPT_HIDEIFLOCK), SW_HIDE);
 
 			// set icon and tooltip for variables help button
-
-			if (ServiceExists(MS_VARS_GETSKINITEM)) {
-				HICON hIcon = (HICON)CallService(MS_VARS_GETSKINITEM, 0, (LPARAM)VSI_HELPICON);
-				if (hIcon != NULL)
-					SendMessage(GetDlgItem(hwndDlg, IDC_MAINOPT_VARHELP), BM_SETIMAGE, (WPARAM)IMAGE_ICON, (LPARAM)hIcon);
-				SendMessage(GetDlgItem(hwndDlg, IDC_MAINOPT_VARHELP), BUTTONADDTOOLTIP, (WPARAM)TranslateT("Open String Formatting Help"), BATF_TCHAR);
-				SendDlgItemMessage(hwndDlg, IDC_MAINOPT_VARHELP, BUTTONSETASFLATBTN, TRUE, 0);
-			}
+			variables_skin_helpbutton(hwndDlg, IDC_MAINOPT_VARHELP);
 
 			SendDlgItemMessage(hwndDlg,IDC_MAINOPT_PASS,EM_LIMITTEXT,MAXPASSLEN,0); // limit password length
 
 			DBVARIANT dbVar;
 
-			if (!DBGetContactSettingString(NULL,MOD_NAME,"password",&dbVar))
+			if (!db_get_s(NULL,MOD_NAME,"password",&dbVar))
 			{
-				CallService( MS_DB_CRYPT_DECODESTRING, strlen( dbVar.pszVal )+1, ( LPARAM )dbVar.pszVal );
+				CallService(MS_DB_CRYPT_DECODESTRING, strlen( dbVar.pszVal )+1, ( LPARAM )dbVar.pszVal );
 
 				SetDlgItemTextA(hwndDlg,IDC_MAINOPT_PASS,dbVar.pszVal);
-				DBFreeVariant(&dbVar);
+				db_free(&dbVar);
 			}
 
 			CheckDlgButton(hwndDlg,IDC_MAINOPT_SETONLINEBACK,(g_wMask & OPT_SETONLINEBACK) ? (BST_CHECKED) : (BST_UNCHECKED));
@@ -85,12 +78,10 @@ INT_PTR CALLBACK MainOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 			CheckDlgButton(hwndDlg,IDC_MAINOPT_USEDEFMSG,(g_wMask & OPT_USEDEFMSG) ? (BST_CHECKED) : (BST_UNCHECKED));
 			CheckDlgButton(hwndDlg,IDC_MAINOPT_TRAYICON,(g_wMask & OPT_TRAYICON) ? (BST_CHECKED) : (BST_UNCHECKED));
 
-			const TCHAR *STATUS_ARR_TO_NAME[8] = { _T("Offline"), _T("Online"), _T("Away"), _T("NA"), _T("Occupied"), _T("DND"), _T("Free for chat"), _T("Invisible") };
+			for (int i = ID_STATUS_OFFLINE;i <= ID_STATUS_OUTTOLUNCH; i++)
+				SendDlgItemMessage(hwndDlg, IDC_MAINOPT_CHGSTS, CB_INSERTSTRING, -1, (LPARAM) CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION,i,GSMDF_TCHAR));
 
-			for (BYTE i = 0;i < 8; i++)
-				SendDlgItemMessage(hwndDlg,IDC_MAINOPT_CHGSTS,CB_INSERTSTRING,-1,(LPARAM)TranslateTS(STATUS_ARR_TO_NAME[i]));
-
-			SendDlgItemMessage(hwndDlg, IDC_MAINOPT_CHGSTS, CB_SETCURSEL, DBGetContactSettingByte(NULL, MOD_NAME, "stattype", 4), 0);
+			SendDlgItemMessage(hwndDlg, IDC_MAINOPT_CHGSTS, CB_SETCURSEL, db_get_b(NULL, MOD_NAME, "stattype", 4), 0);
 
 			SendMessage(hwndDlg,WM_USER + 60,0,0);
 			SendMessage(hwndDlg,WM_USER + 50,0,0);
@@ -112,7 +103,7 @@ INT_PTR CALLBACK MainOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 					// write down status type
 					if (IsDlgButtonChecked(hwndDlg,IDC_MAINOPT_CHANGESTATUSBOX) == BST_CHECKED)
 					{
-						DBWriteContactSettingByte(NULL,MOD_NAME,"stattype",(BYTE)SendDlgItemMessage(hwndDlg,IDC_MAINOPT_CHGSTS,CB_GETCURSEL,0,0));
+						db_set_b(NULL,MOD_NAME,"stattype",(BYTE)SendDlgItemMessage(hwndDlg,IDC_MAINOPT_CHGSTS,CB_GETCURSEL,0,0));
 
 						// status msg, if needed
 						if (IsWindowEnabled(GetDlgItem(hwndDlg,IDC_MAINOPT_STATMSG))) // meaning we should save it
@@ -120,9 +111,9 @@ INT_PTR CALLBACK MainOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 							TCHAR tszMsg[1025];
 							GetDlgItemText(hwndDlg,IDC_MAINOPT_STATMSG,tszMsg,1024);
 							if (lstrlen(tszMsg) != 0)
-								DBWriteContactSettingTString(NULL,MOD_NAME,"statmsg",tszMsg);
+								db_set_ts(NULL,MOD_NAME,"statmsg",tszMsg);
 							else // delete current setting
-								DBDeleteContactSetting(NULL,MOD_NAME,"statmsg");
+								db_unset(NULL,MOD_NAME,"statmsg");
 						}
 						wMask |= OPT_CHANGESTATUS;
 					}
@@ -133,8 +124,8 @@ INT_PTR CALLBACK MainOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 						char szPass[MAXPASSLEN+1];
 						GetDlgItemTextA(hwndDlg,IDC_MAINOPT_PASS,szPass,MAXPASSLEN+1);
 						if (strlen(szPass) != 0){
-							CallService( MS_DB_CRYPT_ENCODESTRING, MAXPASSLEN+1, ( LPARAM )szPass );
-							DBWriteContactSettingString(NULL,MOD_NAME,"password",szPass);
+							CallService(MS_DB_CRYPT_ENCODESTRING, MAXPASSLEN+1, ( LPARAM )szPass );
+							db_set_s(NULL,MOD_NAME,"password",szPass);
 							wMask |= OPT_REQPASS;
 						}
 					}
@@ -144,7 +135,7 @@ INT_PTR CALLBACK MainOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 					if (IsDlgButtonChecked(hwndDlg,IDC_MAINOPT_USEDEFMSG) == BST_CHECKED)  wMask |= OPT_USEDEFMSG;
 					if (IsDlgButtonChecked(hwndDlg,IDC_MAINOPT_TRAYICON) == BST_CHECKED)  wMask |= OPT_TRAYICON;
 
-					DBWriteContactSettingWord(NULL,MOD_NAME,"optsmask",wMask);
+					db_set_w(NULL,MOD_NAME,"optsmask",wMask);
 					g_wMask = wMask;
 
 					return(true);
@@ -166,10 +157,10 @@ INT_PTR CALLBACK MainOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 			{
 				DBVARIANT dbVar;
 				SendDlgItemMessage(hwndDlg,IDC_MAINOPT_STATMSG,EM_LIMITTEXT,1024,0);
-				if (!DBGetContactSettingTString(NULL,MOD_NAME,"statmsg",&dbVar))
+				if (!db_get_ts(NULL,MOD_NAME,"statmsg",&dbVar))
 				{
 					SetDlgItemText(hwndDlg,IDC_MAINOPT_STATMSG,dbVar.ptszVal);
-					DBFreeVariant(&dbVar);
+					db_free(&dbVar);
 				}
 			}
 			EnableWindow(GetDlgItem(hwndDlg,IDC_MAINOPT_STATMSG),(IsDlgButtonChecked(hwndDlg,IDC_MAINOPT_CHANGESTATUSBOX) == BST_CHECKED) && (IsDlgButtonChecked(hwndDlg,IDC_MAINOPT_USEDEFMSG) != BST_CHECKED));
@@ -283,12 +274,12 @@ INT_PTR CALLBACK AdvOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 
 			g_fOptionsOpen = true;
 
-			minutes = DBGetContactSettingByte(NULL,MOD_NAME,"time",10);
-			char szMinutes[4] = {0};
-			_itoa(minutes, szMinutes, 10);
+			minutes = db_get_b(NULL,MOD_NAME,"time",10);
+			TCHAR szMinutes[4] = {0};
+			_itot(minutes, szMinutes, 10);
 			SendDlgItemMessage(hwndDlg,IDC_MAINOPT_TIME,EM_LIMITTEXT,2,0);
 			SendDlgItemMessage(hwndDlg, IDC_MAINOPT_SPIN_TIME, UDM_SETRANGE32, (WPARAM)1, (LPARAM)99);
-			SetDlgItemTextA(hwndDlg, IDC_MAINOPT_TIME, szMinutes);			
+			SetDlgItemText(hwndDlg, IDC_MAINOPT_TIME, szMinutes);			
 			CheckDlgButton(hwndDlg,IDC_MAINOPT_HIDEIFLOCK,(g_wMaskAdv & OPT_HIDEIFLOCK) ? (BST_CHECKED) : (BST_UNCHECKED));
 			CheckDlgButton(hwndDlg,IDC_MAINOPT_MENUITEM,(g_wMaskAdv & OPT_MENUITEM) ? (BST_CHECKED) : (BST_UNCHECKED));
 			CheckDlgButton(hwndDlg,IDC_MAINOPT_HIDEIFWINIDLE,(g_wMaskAdv & OPT_HIDEIFWINIDLE) ? (BST_CHECKED) : (BST_UNCHECKED));
@@ -321,11 +312,12 @@ INT_PTR CALLBACK AdvOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 					} else 
 						if (g_hMenuItem != 0) BossKeyMenuItemUnInit();
 
-					char szMinutes[4] = {0};
-					GetDlgItemTextA(hwndDlg,IDC_MAINOPT_TIME,szMinutes,3);
-					(atoi(szMinutes) > 0) ? minutes = atoi(szMinutes) : minutes = 1;
-					DBWriteContactSettingByte(NULL,MOD_NAME,"time",minutes);
-					DBWriteContactSettingWord(NULL,MOD_NAME,"optsmaskadv",wMaskAdv);
+					TCHAR szMinutes[4] = {0};
+					GetDlgItemText(hwndDlg,IDC_MAINOPT_TIME,szMinutes,3);
+					minutes = _ttoi(szMinutes);
+					if(minutes<1) minutes = 1;
+					db_set_b(NULL,MOD_NAME,"time",minutes);
+					db_set_w(NULL,MOD_NAME,"optsmaskadv",wMaskAdv);
 					g_wMaskAdv = wMaskAdv;
 
 					return(true);
@@ -391,7 +383,7 @@ INT_PTR CALLBACK AdvOptDlg(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 	return(false);
 }
 
-int OptsDlgInit(WPARAM wParam,LPARAM lParam)
+int OptsDlgInit(WPARAM wParam,LPARAM)
 {
 	OPTIONSDIALOGPAGE optDi;
 	ZeroMemory(&optDi, sizeof(optDi));
@@ -400,16 +392,16 @@ int OptsDlgInit(WPARAM wParam,LPARAM lParam)
 	optDi.pfnDlgProc = MainOptDlg;
 	optDi.pszTemplate = MAKEINTRESOURCEA(IDD_OPTDIALOGMAIN);
 	optDi.hInstance = g_hInstance;
-	optDi.pszTitle = LPGEN("BossKey");
-	optDi.pszGroup = LPGEN("Events");
-	optDi.pszTab	= LPGEN("Main");
-	optDi.flags = ODPF_BOLDGROUPS;
+	optDi.ptszTitle = LPGENT("BossKey");
+	optDi.ptszGroup = LPGENT("Events");
+	optDi.ptszTab	= LPGENT("Main");
+	optDi.flags = ODPF_BOLDGROUPS|ODPF_TCHAR;
 
 	Options_AddPage(wParam, &optDi);
 
 	optDi.pfnDlgProc = AdvOptDlg;
 	optDi.pszTemplate = MAKEINTRESOURCEA(IDD_OPTDIALOGADV);
-	optDi.pszTab	= LPGEN("Advanced");
+	optDi.ptszTab	= LPGENT("Advanced");
 
 	Options_AddPage(wParam, &optDi);
 	return(0);

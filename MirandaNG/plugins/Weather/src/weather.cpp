@@ -56,6 +56,8 @@ BOOL ThreadRunning;
 // variable to determine if module loaded
 BOOL ModuleLoaded;
 
+HANDLE hTBButton = NULL;
+
 // plugin info
 static const PLUGININFOEX pluginInfoEx =
 {
@@ -68,17 +70,14 @@ static const PLUGININFOEX pluginInfoEx =
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,
-	// {6B612A34-DCF2-4e32-85CF-B6FD006B745E}
-	{0x6b612a34, 0xdcf2, 0x4e32, { 0x85, 0xcf, 0xb6, 0xfd, 0x0, 0x6b, 0x74, 0x5e}}
+	// {6B612A34-DCF2-4E32-85CF-B6FD006B745E}
+	{0x6b612a34, 0xdcf2, 0x4e32, {0x85, 0xcf, 0xb6, 0xfd, 0x0, 0x6b, 0x74, 0x5e}}
 };
 
 extern "C" __declspec(dllexport) const PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion) 
 {
 	return &pluginInfoEx;
 }
-
-// MirandaInterfaces - returns the protocol interface to the core
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_PROTOCOL, MIID_LAST};
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) 
 {
@@ -102,6 +101,20 @@ int WeatherShutdown(WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
+int OnToolbarLoaded(WPARAM wParam, LPARAM lParam)
+{
+	TTBButton ttb = { sizeof(ttb) };
+	ttb.name = LPGEN("Enable/disable auto update");
+	ttb.pszService = MS_WEATHER_ENABLED;
+	ttb.pszTooltipUp = LPGEN("Auto Update Enabled");
+	ttb.pszTooltipDn = LPGEN("Auto Update Disabled");
+	ttb.hIconHandleUp = GetIconHandle("main");
+	ttb.hIconHandleDn = GetIconHandle("disabled");
+	ttb.dwFlags = (db_get_b(NULL, WEATHERPROTONAME, "AutoUpdate", 1) ? 0 : TTBBF_PUSHED) | TTBBF_ASPUSHBUTTON | TTBBF_VISIBLE;
+	hTBButton = TopToolbar_AddButton(&ttb);
+	return 0;
+}
+
 // weather protocol initialization function
 // run after the event ME_SYSTEM_MODULESLOADED occurs
 int WeatherInit(WPARAM wParam,LPARAM lParam) 
@@ -120,6 +133,8 @@ int WeatherInit(WPARAM wParam,LPARAM lParam)
 
 	// weather user detail
 	HookEvent(ME_USERINFO_INITIALISE, UserInfoInit);
+
+	HookEvent(ME_TTB_MODULELOADED, OnToolbarLoaded);
 
 	hDataWindowList = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST,0,0);
 	hWindowList = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST,0,0);
@@ -176,7 +191,7 @@ extern "C" int __declspec(dllexport) Load(void)
 	EraseAllInfo();
 
 	// load weather update data
-	LoadWIData(TRUE);
+	LoadWIData(true);
 
 	// set status to online if "Do not display weather condition as protocol status" is enabled
 	old_status = status = ID_STATUS_OFFLINE;

@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "commonheaders.h"
 #include <io.h>
 #include "file.h"
@@ -31,7 +32,7 @@ static int CheckVirusScanned(HWND hwnd, struct FileDlgData *dat, int i)
 	if (dat->send) return 1;
 	if (dat->fileVirusScanned == NULL) return 0;
 	if (dat->fileVirusScanned[i]) return 1;
-	if (DBGetContactSettingByte(NULL, "SRFile", "WarnBeforeOpening", 1) == 0) return 1;
+	if (db_get_b(NULL, "SRFile", "WarnBeforeOpening", 1) == 0) return 1;
 	return IDYES == MessageBox(hwnd, TranslateT("This file has not yet been scanned for viruses. Are you certain you want to open it?"), TranslateT("File Received"), MB_YESNO|MB_DEFBUTTON2);
 }
 
@@ -92,7 +93,7 @@ void FillSendData(FileDlgData* dat, DBEVENTINFO& dbei)
 	lstrcpyA((char*)dbei.pBlob+sizeof(DWORD)+lstrlenA(szFileNames)+1, szMsg);
 
 	mir_free(szFileNames), mir_free(szMsg);
-	
+
 }
 
 static void __cdecl RunVirusScannerThread(struct virusscanthreadstartinfo *info)
@@ -102,14 +103,14 @@ static void __cdecl RunVirusScannerThread(struct virusscanthreadstartinfo *info)
 	DBVARIANT dbv;
 	TCHAR szCmdLine[768];
 
-	if ( !DBGetContactSettingTString(NULL, "SRFile", "ScanCmdLine", &dbv)) 
+	if ( !db_get_ts(NULL, "SRFile", "ScanCmdLine", &dbv))
 	{
-		if (dbv.ptszVal[0]) 
+		if (dbv.ptszVal[0])
 		{
 			TCHAR *pszReplace;
 			si.cb = sizeof(si);
 			pszReplace = _tcsstr(dbv.ptszVal, _T("%f"));
-			if (pszReplace) 
+			if (pszReplace)
 			{
 				if (info->szFile[_tcslen(info->szFile) - 1] == '\\')
 					info->szFile[_tcslen(info->szFile) - 1] = '\0';
@@ -124,7 +125,7 @@ static void __cdecl RunVirusScannerThread(struct virusscanthreadstartinfo *info)
 				CloseHandle(pi.hThread);
 			}
 		}
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 	}
 	mir_free(info->szFile);
 	mir_free(info);
@@ -146,19 +147,19 @@ static void SetFilenameControls(HWND hwndDlg, struct FileDlgData *dat, PROTOFILE
 	if (dat->hIcon) DestroyIcon(dat->hIcon); dat->hIcon = NULL;
 
 	if (fn && (fts->totalFiles > 1)) {
-		mir_sntprintf(msg, SIZEOF(msg), _T("%s: %s (%d %s %d)"), 
-			pcli->pfnGetContactDisplayName(fts->hContact, 0), 
+		mir_sntprintf(msg, SIZEOF(msg), _T("%s: %s (%d %s %d)"),
+			pcli->pfnGetContactDisplayName(fts->hContact, 0),
 			fn, fts->currentFileNumber+1, TranslateT("of"), fts->totalFiles);
 
 		SHGetFileInfo(fn, FILE_ATTRIBUTE_DIRECTORY, &shfi, sizeof(shfi), SHGFI_USEFILEATTRIBUTES|SHGFI_ICON|SHGFI_SMALLICON);
 		dat->hIcon = shfi.hIcon;
-	} 
+	}
 	else if (fn) {
 		mir_sntprintf(msg, SIZEOF(msg), _T("%s: %s"), pcli->pfnGetContactDisplayName(fts->hContact, 0), fn);
 
 		SHGetFileInfo(fn, FILE_ATTRIBUTE_NORMAL, &shfi, sizeof(shfi), SHGFI_USEFILEATTRIBUTES|SHGFI_ICON|SHGFI_SMALLICON);
 		dat->hIcon = shfi.hIcon;
-	} 
+	}
 	else {
 		lstrcpyn(msg, pcli->pfnGetContactDisplayName(fts->hContact, 0), SIZEOF(msg));
 		HICON hIcon = LoadSkinIcon(SKINICON_OTHER_DOWNARROW);
@@ -167,7 +168,7 @@ static void SetFilenameControls(HWND hwndDlg, struct FileDlgData *dat, PROTOFILE
 	}
 
 	mir_free(fnbuf);
-	
+
 	SendDlgItemMessage(hwndDlg, IDC_FILEICON, STM_SETIMAGE, IMAGE_ICON, (LPARAM)dat->hIcon);
 	SetDlgItemText(hwndDlg, IDC_CONTACTNAME, msg);
 }
@@ -254,8 +255,8 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 				CreateDirectoryTreeT(dat->szSavePath);
 				dat->fs = (HANDLE)CallContactService(dat->hContact, PSS_FILEALLOWT, (WPARAM)dat->fs, (LPARAM)dat->szSavePath);
 				dat->transferStatus.tszWorkingDir = mir_tstrdup(dat->szSavePath);
-				if (DBGetContactSettingByte(dat->hContact, "CList", "NotOnList", 0)) dat->resumeBehaviour = FILERESUME_ASK;
-				else dat->resumeBehaviour = DBGetContactSettingByte(NULL, "SRFile", "IfExists", FILERESUME_ASK);
+				if (db_get_b(dat->hContact, "CList", "NotOnList", 0)) dat->resumeBehaviour = FILERESUME_ASK;
+				else dat->resumeBehaviour = db_get_b(NULL, "SRFile", "IfExists", FILERESUME_ASK);
 				SetFtStatus(hwndDlg, LPGENT("Waiting for connection..."), FTS_TEXT);
 			}
 			{
@@ -281,7 +282,7 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 			dat->hIcon = NULL;
 
-			SendDlgItemMessage(hwndDlg, IDC_CONTACT, BM_SETIMAGE, IMAGE_ICON, 
+			SendDlgItemMessage(hwndDlg, IDC_CONTACT, BM_SETIMAGE, IMAGE_ICON,
 				(LPARAM)LoadSkinnedProtoIcon(GetContactProto(dat->hContact), ID_STATUS_ONLINE));
 			SendDlgItemMessage(hwndDlg, IDC_CONTACT, BUTTONADDTOOLTIP, (WPARAM)LPGEN("Contact menu"), 0);
 			SendDlgItemMessage(hwndDlg, IDC_CONTACT, BUTTONSETASFLATBTN, TRUE, 0);
@@ -292,7 +293,7 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 			SendDlgItemMessage(hwndDlg, IDC_OPENFOLDER, BM_SETIMAGE, IMAGE_ICON, (LPARAM)dat->hIconFolder);
 			SendDlgItemMessage(hwndDlg, IDC_OPENFOLDER, BUTTONADDTOOLTIP, (WPARAM)LPGEN("Open folder"), 0);
 			SendDlgItemMessage(hwndDlg, IDC_OPENFOLDER, BUTTONSETASFLATBTN, TRUE, 0);
-		
+
 			Button_SetIcon_IcoLib(hwndDlg, IDCANCEL, SKINICON_OTHER_DELETE, LPGEN("Cancel"));
 
 			SetDlgItemText(hwndDlg, IDC_CONTACTNAME, pcli->pfnGetContactDisplayName(dat->hContact, 0));
@@ -349,7 +350,7 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 			if (CallService(MS_CLIST_MENUPROCESSCOMMAND, MAKEWPARAM(LOWORD(wParam), MPCF_CONTACTMENU), (LPARAM)dat->hContact))
 				break;
 
-			switch (LOWORD(wParam)) 
+			switch (LOWORD(wParam))
 			{
 				case IDOK:
 				case IDCANCEL:
@@ -374,7 +375,7 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 					}
 
 				case IDC_OPENFOLDER:
-					if (dat) 
+					if (dat)
 					{
 						TCHAR *path = dat->transferStatus.tszWorkingDir;
 						if ( !path || !path[0])
@@ -492,9 +493,10 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 						if ((pszFilename = _tcsrchr(szOriginalFilename, '\\')) == NULL) pszFilename = szOriginalFilename;
 						if ((pszExtension = _tcsrchr(pszFilename+1, '.')) == NULL) pszExtension = pszFilename+lstrlen(pszFilename);
 						if (pfr->szFilename) mir_free((TCHAR*)pfr->szFilename);
-						pfr->szFilename = (TCHAR*)mir_alloc(sizeof(TCHAR)*((pszExtension-szOriginalFilename)+21+lstrlen(pszExtension)));
+						size_t size = (pszExtension-szOriginalFilename)+21+lstrlen(pszExtension);
+						pfr->szFilename = (TCHAR*)mir_alloc(sizeof(TCHAR)*size);
 						for (i = 1;;i++) {
-							_stprintf((TCHAR*)pfr->szFilename, _T("%.*s (%u)%s"), pszExtension-szOriginalFilename, szOriginalFilename, i, pszExtension);
+							mir_sntprintf((TCHAR*)pfr->szFilename, size, _T("%.*s (%u)%s"), pszExtension-szOriginalFilename, szOriginalFilename, i, pszExtension);
 							if (_taccess(pfr->szFilename, 0) != 0)
 								break;
 						}
@@ -529,7 +531,7 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 					SetDlgItemTextA(hwndDlg, IDC_FILENAME, "");
 					if (dat->transferStatus.currentFileNumber == 1 && dat->transferStatus.totalFiles>1 && !dat->send)
 						SetOpenFileButtonStyle(GetDlgItem(hwndDlg, IDC_OPENFILE), 1);
-					if (dat->transferStatus.currentFileNumber != -1 && dat->files && !dat->send && DBGetContactSettingByte(NULL, "SRFile", "UseScanner", VIRUSSCAN_DISABLE) == VIRUSSCAN_DURINGDL) {
+					if (dat->transferStatus.currentFileNumber != -1 && dat->files && !dat->send && db_get_b(NULL, "SRFile", "UseScanner", VIRUSSCAN_DISABLE) == VIRUSSCAN_DURINGDL) {
 						if (GetFileAttributes(dat->files[dat->transferStatus.currentFileNumber])&FILE_ATTRIBUTE_DIRECTORY)
 							PostMessage(hwndDlg, M_VIRUSSCANDONE, dat->transferStatus.currentFileNumber, 0);
 						else {
@@ -545,7 +547,7 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 				case ACKRESULT_FILERESUME:
 				{
 					UpdateProtoFileTransferStatus(&dat->transferStatus, (PROTOFILETRANSFERSTATUS*)ack->lParam);
-					PROTOFILETRANSFERSTATUS *fts = &dat->transferStatus; 
+					PROTOFILETRANSFERSTATUS *fts = &dat->transferStatus;
 
 					SetFilenameControls(hwndDlg, dat, fts);
 					int res = _taccess(fts->tszCurrentFile, 0);
@@ -582,7 +584,7 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 					if ( !dat->send) {
 						if (dat->files == NULL)
 							dat->files = (TCHAR**)mir_calloc((fts->totalFiles + 1) * sizeof(TCHAR*));
-						if (fts->currentFileNumber < fts->totalFiles && dat->files[fts->currentFileNumber] == NULL) 
+						if (fts->currentFileNumber < fts->totalFiles && dat->files[fts->currentFileNumber] == NULL)
 							dat->files[fts->currentFileNumber] = PFTS_StringToTchar(fts->flags, fts->tszCurrentFile);
 					}
 
@@ -630,10 +632,10 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 					if ( !dat->send)
 						SetOpenFileButtonStyle(GetDlgItem(hwndDlg, IDC_OPENFILE), 1);
 					SetDlgItemText(hwndDlg, IDCANCEL, TranslateT("Close"));
-					if (dat->hNotifyEvent) 
+					if (dat->hNotifyEvent)
 						UnhookEvent(dat->hNotifyEvent);
 					dat->hNotifyEvent = NULL;
-					
+
 					if (ack->result == ACKRESULT_DENIED)
 					{
 						dat->fs = NULL; /* protocol will free structure */
@@ -653,19 +655,19 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 							DBEVENTINFO dbei = {0};
 							FillSendData(dat, dbei);
-							CallService(MS_DB_EVENT_ADD, (WPARAM)dat->hContact, (LPARAM)&dbei);
+							db_event_add(dat->hContact, &dbei);
 							if (dbei.pBlob)
 								mir_free(dbei.pBlob);
 							dat->files = NULL;   //protocol library frees this
-						
+
 						} else {
-							SetFtStatus(hwndDlg, 
+							SetFtStatus(hwndDlg,
 								(dat->transferStatus.totalFiles == 1) ?
 								LPGENT("Transfer completed, open file.") :
-								LPGENT("Transfer completed, open folder."), 
+								LPGENT("Transfer completed, open folder."),
 								FTS_OPEN);
 
-							int useScanner = DBGetContactSettingByte(NULL, "SRFile", "UseScanner", VIRUSSCAN_DISABLE);
+							int useScanner = db_get_b(NULL, "SRFile", "UseScanner", VIRUSSCAN_DISABLE);
 							if (useScanner != VIRUSSCAN_DISABLE) {
 								struct virusscanthreadstartinfo *vstsi;
 								vstsi = (struct virusscanthreadstartinfo*)mir_alloc(sizeof(struct virusscanthreadstartinfo));
@@ -686,14 +688,14 @@ INT_PTR CALLBACK DlgProcFileTransfer(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 								SetFtStatus(hwndDlg, LPGENT("Scanning for viruses..."), FTS_TEXT);
 								if (vstsi)
 									forkthread((void (*)(void*))RunVirusScannerThread, 0, vstsi);
-							} 
+							}
 							else dat->fs = NULL; /* protocol will free structure */
 
 							dat->transferStatus.currentFileNumber = dat->transferStatus.totalFiles;
 						} // else dat->send
-						
+
 					} // else ack->result
-					
+
 					PostMessage(GetParent(hwndDlg), WM_FT_COMPLETED, ack->result, (LPARAM)hwndDlg);
 					break;
 			}

@@ -35,11 +35,12 @@ static TCHAR name1[256];
 INT_PTR WeatherAddToList(WPARAM wParam, LPARAM lParam) 
 {
 	PROTOSEARCHRESULT *psr = (PROTOSEARCHRESULT*)lParam;
-	WIDATA *sData;
+
+	if(!psr || !psr->email)
+		return 0;
 
 	// search for existing contact
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		// check if it is a weather contact
 		if ( IsMyContact(hContact)) {
 			DBVARIANT dbv;
@@ -59,12 +60,11 @@ INT_PTR WeatherAddToList(WPARAM wParam, LPARAM lParam)
 				db_free(&dbv);
 			}
 		}
-		hContact = db_find_next(hContact);
 	}
 
 	// if contact with the same ID was not found, add it
 	if (psr->cbSize < sizeof(PROTOSEARCHRESULT)) return 0;
-	hContact = (HANDLE) CallService(MS_DB_CONTACT_ADD, 0, 0);
+	HANDLE hContact = (HANDLE) CallService(MS_DB_CONTACT_ADD, 0, 0);
 	CallService(MS_PROTO_ADDTOCONTACT, (WPARAM)hContact, (LPARAM)WEATHERPROTONAME);
 	// suppress online notification for the new contact
 	CallService(MS_IGNORE_IGNORE, (WPARAM)hContact, IGNOREEVENT_USERONLINE);
@@ -75,7 +75,7 @@ INT_PTR WeatherAddToList(WPARAM wParam, LPARAM lParam)
 	GetSvc(svc);
 	// set settings by obtaining the default for the service 
 	if (psr->lastName[0] != 0) {
-		sData = GetWIData(svc);
+		WIDATA *sData = GetWIData(svc);
 		db_set_ts(hContact, WEATHERPROTONAME, "MapURL", sData->DefaultMap);
 		db_set_s(hContact, WEATHERPROTONAME, "InfoURL", sData->DefaultURL);
 	}
@@ -110,7 +110,7 @@ INT_PTR WeatherAddToList(WPARAM wParam, LPARAM lParam)
 		opt.DefStn = hContact;
 		if ( !db_get_ts(hContact, WEATHERPROTONAME, "Nick", &dbv)) {
 			// notification message box
-			wsprintf(str, TranslateT("%s is now the default weather station"), dbv.ptszVal);
+			mir_sntprintf(str, SIZEOF(str), TranslateT("%s is now the default weather station"), dbv.ptszVal);
 			db_free(&dbv);
 			MessageBox(NULL, str, TranslateT("Weather Protocol"), MB_OK|MB_ICONINFORMATION);
 		}
@@ -304,17 +304,12 @@ int IDSearch(TCHAR *sID, const int searchId)
 // svcname = the name of the weather service that is currently searching (ie. Yahoo Weather)
 int NameSearchProc(TCHAR *name, const int searchId, WINAMESEARCH *sData, TCHAR *svc, TCHAR *svcname)
 {
-	char loc[256];
 	TCHAR Name[MAX_DATA_LEN], str[MAX_DATA_LEN], sID[MAX_DATA_LEN], *szData = NULL, *search;
 
 	// replace spaces with %20
-	{
-		mir_ptr<char> szSearchName( mir_utf8encodeT(name));
-		char *pstr = (char*)CallService(MS_NETLIB_URLENCODE, 0, (LPARAM)(char*)szSearchName);
-		wsprintfA(loc, sData->SearchURL, pstr);
-		HeapFree(GetProcessHeap(), 0, pstr);
-	}
-
+	char loc[256];
+	ptrA szSearchName( mir_utf8encodeT(name));
+	mir_snprintf(loc, SIZEOF(loc), sData->SearchURL, ptrA( mir_urlEncode(szSearchName)));
 	if (InternetDownloadFile(loc, NULL, &szData) == 0) {
 		TCHAR* szInfo = szData;
 		search = _tcsstr(szInfo, sData->NotFoundStr);	// determine if data is available
@@ -327,14 +322,14 @@ int NameSearchProc(TCHAR *name, const int searchId, WINAMESEARCH *sData, TCHAR *
 				// if station ID appears first in the downloaded data
 				if ( !_tcsicmp(sData->Single.First, _T("ID"))) {
 					GetDataValue(&sData->Single.ID, str, &szInfo);
-					wsprintf(sID, _T("%s/%s"), svc, str);
+					mir_sntprintf(sID, SIZEOF(sID), _T("%s/%s"), svc, str);
 					GetDataValue(&sData->Single.Name, Name, &szInfo);
 				}
 				// if station name appears first in the downloaded data
 				else if ( !_tcsicmp(sData->Single.First, _T("NAME"))) {
 					GetDataValue(&sData->Single.Name, Name, &szInfo);
 					GetDataValue(&sData->Single.ID, str, &szInfo);
-					wsprintf(sID, _T("%s/%s"), svc, str);
+					mir_sntprintf(sID, SIZEOF(sID), _T("%s/%s"), svc, str);
 				}
 				// if no station ID is obtained, quit the search
 				if (str[0] == 0) {
@@ -365,14 +360,14 @@ int NameSearchProc(TCHAR *name, const int searchId, WINAMESEARCH *sData, TCHAR *
 					// if station ID appears first in the downloaded data
 					if ( !_tcsicmp(sData->Multiple.First, _T("ID"))) {
 						GetDataValue(&sData->Multiple.ID, str, &szInfo);
-						wsprintf(sID, _T("%s/%s"), svc, str);
+						mir_sntprintf(sID, SIZEOF(sID), _T("%s/%s"), svc, str);
 						GetDataValue(&sData->Multiple.Name, Name, &szInfo);
 					}
 					// if station name appears first in the downloaded data
 					else if ( !_tcsicmp(sData->Multiple.First, _T("NAME"))) {
 						GetDataValue(&sData->Multiple.Name, Name, &szInfo);
 						GetDataValue(&sData->Multiple.ID, str, &szInfo);
-						wsprintf(sID, _T("%s/%s"), svc, str);
+						mir_sntprintf(sID, SIZEOF(sID), _T("%s/%s"), svc, str);
 					}
 					// if no station ID is obtained, search completed and quit the search
 					if (str[0] == 0)	break;

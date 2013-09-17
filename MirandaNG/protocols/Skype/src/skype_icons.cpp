@@ -1,11 +1,16 @@
-#include "skype_proto.h"
+#include "skype.h"
 
-_tag_iconList CSkypeProto::iconList[] =
+_tag_iconList CSkypeProto::IconList[] =
 {
-	{ LPGENT("Protocol icon"),		"main",			IDI_ICON },
-	{ LPGENT("Revoke authorization"),	"authRevoke",		IDI_AUTH_REVOKE },
-	{ LPGENT("Request authorization"),	"authRequest",		IDI_AUTH_REQUEST },
-	{ LPGENT("Grant authorization"),	"authGrant",		IDI_AUTH_GRANT },
+	{ LPGENT("Protocol icon"),			"main",				IDI_SKYPE },
+
+	{ LPGENT("Call"),					"call",				IDI_CALL },
+	{ LPGENT("Invite to conference"),	"addContacts",		IDI_ADD_CONTACTS },
+	{ LPGENT("Conference"),				"conference",		IDI_CONFERENCE },
+	{ LPGENT("Send contact"),			"sendContacts",		IDI_SEND_CONTACTS },
+	{ LPGENT("Contact"),				"contact",			IDI_CONTACT },
+	{ LPGENT("Delete"),					"delete",			IDI_DELETE },
+	{ LPGENT("Block"),					"block",			IDI_BLOCK },
 };
 
 void CSkypeProto::InitIcons()
@@ -24,30 +29,38 @@ void CSkypeProto::InitIcons()
 	sid.ptszSection = szSectionName;
 
 	::mir_sntprintf(szSectionName, SIZEOF(szSectionName), _T("%s/%s"), LPGENT("Protocols"), LPGENT(MODULE));
-	for (int i = 0; i < SIZEOF(iconList); i++) 
+	for (int i = 0; i < SIZEOF(CSkypeProto::IconList); i++) 
 	{
-		::mir_snprintf(szSettingName, SIZEOF(szSettingName), "%s_%s", MODULE, iconList[i].Name);
+		::mir_snprintf(szSettingName, SIZEOF(szSettingName), "%s_%s", MODULE, CSkypeProto::IconList[i].Name);
 
-		sid.ptszDescription = iconList[i].Description;
-		sid.iDefaultIndex = -iconList[i].IconId;
-		iconList[i].Handle = ::Skin_AddIcon(&sid);
+		sid.ptszDescription = CSkypeProto::IconList[i].Description;
+		sid.iDefaultIndex = -CSkypeProto::IconList[i].IconId;
+		CSkypeProto::IconList[i].Handle = ::Skin_AddIcon(&sid);
 	}	
 }
 
 HANDLE CSkypeProto::GetIconHandle(const char* name)
 {
-	for (size_t i = 0; i < SIZEOF(CSkypeProto::iconList); i++)
+	for (size_t i = 0; i < SIZEOF(CSkypeProto::IconList); i++)
 	{
-		if (::strcmp(CSkypeProto::iconList[i].Name, name) == 0)
-			return CSkypeProto::iconList[i].Handle;
+		if (::stricmp(CSkypeProto::IconList[i].Name, name) == 0)
+			return CSkypeProto::IconList[i].Handle;
 	}
 	return 0;
 }
 
+HANDLE CSkypeProto::GetSkinIconHandle(const char* name)
+{
+	char iconName[100];
+	::mir_snprintf(iconName, SIZEOF(iconName), "%s_%s", MODULE, name);
+	HANDLE hIcon = ::Skin_GetIconHandle(iconName);
+	if ( !hIcon)
+		hIcon = CSkypeProto::GetIconHandle(name);
+	return hIcon;
+}
+
 void CSkypeProto::UninitIcons()
 {
-	for (size_t i = 0; i < SIZEOF(CSkypeProto::iconList); i++)
-	{
-		::Skin_RemoveIcon(CSkypeProto::iconList[i].Name);
-	}
+	for (size_t i = 0; i < SIZEOF(CSkypeProto::IconList); i++)
+		::Skin_RemoveIcon(CSkypeProto::IconList[i].Name);
 }

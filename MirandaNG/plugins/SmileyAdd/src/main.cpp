@@ -17,19 +17,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "smileys.h"
-#include "customsmiley.h"
-#include "services.h"
-#include "options.h"
-#include "download.h"
-#include "imagecache.h"
-#include "version.h"
-#include "m_metacontacts.h"
+#include "general.h"
 
 //globals
 HINSTANCE g_hInst;
-HANDLE hEvent1, hContactMenuItem;
-extern LIST<void> menuHandleArray;
+HANDLE    hEvent1;
+HGENMENU  hContactMenuItem;
 
 char* metaProtoName;
 
@@ -38,27 +31,22 @@ int hLangpack;
 static const PLUGININFOEX pluginInfoEx =
 {
 	sizeof(PLUGININFOEX),
-	"SmileyAdd",
-	__VERSION_DWORD,
-	"Smiley support for Miranda Instant Messanger.",
-	"Peacow, nightwish, bid, borkra",
-	"borkra@miranda-im.org",
-	"Copyright© 2004 - 2012 Boris Krasnovskiy, portions by Rein-Peter de Boer",
-	"http://miranda-ng.org/",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
-	// {BD542BB4-5AE4-4d0e-A435-BA8DBE39607F}
-	{ 0xbd542bb4, 0x5ae4, 0x4d0e, { 0xa4, 0x35, 0xba, 0x8d, 0xbe, 0x39, 0x60, 0x7f } }
+	// {BD542BB4-5AE4-4D0E-A435-BA8DBE39607F}
+	{0xbd542bb4, 0x5ae4, 0x4d0e, {0xa4, 0x35, 0xba, 0x8d, 0xbe, 0x39, 0x60, 0x7f}}
 };
 
 extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD /* mirandaVersion */)
 {
 	return (PLUGININFOEX*)&pluginInfoEx;
 }
-
-// MirandaInterfaces - returns the protocol interface to the core
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_SMILEY, MIID_LAST};
-
-/////////////////////////////////////////////////////////////////////////////////////////
 
 static IconItem icon = { LPGEN("Button Smiley"), "SmileyAdd_ButtonSmiley", IDI_SMILINGICON };
 
@@ -70,12 +58,12 @@ static int ModulesLoaded(WPARAM, LPARAM)
 	metaProtoName = mir_strdup(temp == CALLSERVICE_NOTFOUND ? NULL : (char*)temp);
 
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_ROOTPOPUP | CMIF_ICONFROMICOLIB;
+	mi.flags = CMIF_ROOTPOPUP;
 	mi.popupPosition = 2000070050;
 	mi.position = 2000070050;
 	mi.icolibItem = icon.hIcolib;
 	mi.pszPopupName = (char*)-1;
-	mi.pszName = "Assign Smiley Category";
+	mi.pszName = LPGEN("Assign Smiley Category");
 	hContactMenuItem = Menu_AddContactMenuItem(&mi);
 
 	DownloadInit();
@@ -100,9 +88,7 @@ extern "C" __declspec(dllexport) int Load(void)
 	mir_getLP(&pluginInfoEx);
 
 	if (ServiceExists(MS_SMILEYADD_REPLACESMILEYS)) {
-		static const TCHAR errmsg[] = _T("Only one instance of SmileyAdd could be executed.\n")
-			_T("Remove duplicate instances from 'Plugins' directory");
-		ReportError(TranslateTS(errmsg));
+		ReportError(TranslateT("Only one instance of SmileyAdd could be executed.\nRemove duplicate instances from 'Plugins' directory"));
 
 		return 1;
 	}

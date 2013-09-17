@@ -7,10 +7,12 @@ const
   HKN_PLAYPAUSE  :PAnsiChar = 'mRadio_PlayPause';
   HKN_STOP       :PAnsiChar = 'mRadio_Stop';
   HKN_MUTE       :PAnsiChar = 'mRadio_Mute';
+  HKN_RECORD     :PAnsiChar = 'mRadio_Record';
 
-  DefRadioKeyMute = ((HOTKEYF_EXT or HOTKEYF_SHIFT) shl 8) or ORD('M');
-  DefRadioKeyPlay = ((HOTKEYF_EXT or HOTKEYF_SHIFT) shl 8) or ORD('P');
-  DefRadioKeyStop = ((HOTKEYF_EXT or HOTKEYF_SHIFT) shl 8) or ORD('S');
+  DefRadioKeyRecord = ((HOTKEYF_EXT or HOTKEYF_SHIFT) shl 8) or ORD('R');
+  DefRadioKeyMute   = ((HOTKEYF_EXT or HOTKEYF_SHIFT) shl 8) or ORD('M');
+  DefRadioKeyPlay   = ((HOTKEYF_EXT or HOTKEYF_SHIFT) shl 8) or ORD('P');
+  DefRadioKeyStop   = ((HOTKEYF_EXT or HOTKEYF_SHIFT) shl 8) or ORD('S');
 
 function mRadio_Hotkey(wParam:WPARAM;lParam:LPARAM):int_ptr; cdecl;
 begin
@@ -49,6 +51,13 @@ begin
   hkrec.pszDescription.a:='Mute';
   hkrec.lParam          :=MRC_MUTE;
   CallService(MS_HOTKEY_REGISTER,0,lparam(@hkrec));
+
+  //??
+  hkrec.DefHotKey       :=DefRadioKeyRecord;
+  hkrec.pszName         :=HKN_RECORD;
+  hkrec.pszDescription.a:='Start/Stop Record';
+  hkrec.lParam          :=MRC_RECORD;
+  CallService(MS_HOTKEY_REGISTER,0,lparam(@hkrec));
 end;
 
 procedure UnregisterHotKey;
@@ -56,6 +65,7 @@ begin
   CallService(MS_HOTKEY_UNREGISTER,0,lparam(HKN_PLAYPAUSE));
   CallService(MS_HOTKEY_UNREGISTER,0,lparam(HKN_STOP));
   CallService(MS_HOTKEY_UNREGISTER,0,lparam(HKN_MUTE));
+  CallService(MS_HOTKEY_UNREGISTER,0,lparam(HKN_RECORD));
 
   DestroyServiceFunction(hRadioHotkey);
 end;

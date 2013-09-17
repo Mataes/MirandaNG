@@ -26,20 +26,11 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: srmm.cpp 13596 2011-04-15 19:07:23Z george.hazan $
- *
  * plugin loading functions and global exports.
  *
  */
 
 #include "commonheaders.h"
-
-extern int 	LoadSendRecvMessageModule(void);
-extern int 	SplitmsgShutdown(void);
-extern void LogErrorMessage(HWND hwndDlg, struct TWindowData *dat, int i, TCHAR *szMsg);
-extern int  Chat_Load(), Chat_Unload();
-extern void FreeLogFonts();
-
 
 HINSTANCE g_hInst;
 LOGFONT lfDefault = {0};
@@ -48,24 +39,22 @@ LOGFONT lfDefault = {0};
  * miranda interfaces
  */
 
-int    hLangpack;
+int hLangpack;
 TIME_API tmi = {0};
+CLIST_INTERFACE *pcli;
 
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
-#ifdef __GNUWIN32__
-	"TabSRMM (MINGW32)",
-#else
-	"TabSRMM",
-#endif
-	PLUGIN_MAKE_VERSION(_VER_MAJOR, _VER_MINOR, _VER_REVISION, _VER_BUILD),
-	"IM and group chat module for Miranda NG.",
-	"The Miranda developers team and contributors",
-	"silvercircle _at_ gmail _dot_ com",
-	"2000-2010 Miranda Project and contributors. See readme.txt for more.",
-	"http://miranda-ng.org/",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
-	{0x6ca5f042, 0x7a7f, 0x47cc, { 0xa7, 0x15, 0xfc, 0x8c, 0x46, 0xfb, 0xf4, 0x34 }} //{6CA5F042-7A7F-47cc-A715-FC8C46FBF434}
+	// {6CA5F042-7A7F-47CC-A715-FC8C46FBF434}
+	{0x6ca5f042, 0x7a7f, 0x47cc, {0xa7, 0x15, 0xfc, 0x8c, 0x46, 0xfb, 0xf4, 0x34}}
 };
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
@@ -84,15 +73,13 @@ extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_SRMM, M
 extern "C" int __declspec(dllexport) Load(void)
 {
 	if (WinVerMajor() < 5) {
-		MessageBox(0, _T("This version of tabSRMM requires Windows 2000 or later."), _T("tabSRMM"), MB_OK | MB_ICONERROR);
+		MessageBox(0, TranslateT("This version of TabSRMM requires Windows 2000 or later."), _T("tabSRMM"), MB_OK | MB_ICONERROR);
 		return 1;
 	}
 
-
+	mir_getCLI();
 	mir_getTMI(&tmi);
 	mir_getLP(&pluginInfo);
-
-	M = new CMimAPI();
 
 	SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lfDefault), &lfDefault, FALSE);
 	lstrcpy(lfDefault.lfFaceName, _T("Verdana"));
@@ -104,27 +91,16 @@ extern "C" int __declspec(dllexport) Load(void)
 
 extern "C" int __declspec(dllexport) Unload(void)
 {
-	int iRet;
-#if defined(__USE_EX_HANDLERS)
-	__try {
-#endif
-		FreeLogFonts();
-		Chat_Unload();
-		iRet = SplitmsgShutdown();
-		Skin->setupTabCloseBitmap(true);
-		Skin->UnloadAeroTabs();
-		CleanTempFiles();
-		delete Skin;
-		DestroyServiceFunction(hTypingNotify);
-		delete sendLater;
-		delete sendQueue;
-		delete M;
-#if defined(__USE_EX_HANDLERS)
-	}
-	__except(CGlobals::Ex_ShowDialog(GetExceptionInformation(), __FILE__, __LINE__, L"SHUTDOWN_STAGE_UNLOAD", false)) {
-		return 0;
-	}
-#endif
+	FreeLogFonts();
+	Chat_Unload();
+	int iRet = SplitmsgShutdown();
+	Skin->setupTabCloseBitmap(true);
+	Skin->UnloadAeroTabs();
+	CleanTempFiles();
+	delete Skin;
+	DestroyServiceFunction(hTypingNotify);
+	delete sendLater;
+	delete sendQueue;
 	return iRet;
 }
 
@@ -142,7 +118,7 @@ int _DebugTraceW(const wchar_t *fmt, ...)
 	mir_snprintf(tszTime, 50, "%02d.%02d.%04d - %02d:%02d:%02d.%04d: ", st.wDay, st.wMonth, st.wYear, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds);
 
 
-	_vsnwprintf(debug, ibsize - 10, fmt, va);
+	mir_vsntprintf(debug, ibsize - 10, fmt, va);
 //#ifdef _DEBUG
 	OutputDebugStringW(debug);
 //#else
@@ -175,17 +151,15 @@ int _DebugTraceA(const char *fmt, ...)
 	va_start(va, fmt);
 
 	lstrcpyA(debug, "TABSRMM: ");
-	_vsnprintf(&debug[9], ibsize - 10, fmt, va);
+	mir_vsnprintf(&debug[9], ibsize - 10, fmt, va);
 #ifdef _DEBUG
  	OutputDebugStringA(debug);
 #else
 	{
 		char szLogFileName[MAX_PATH], szDataPath[MAX_PATH];
-		FILE *f;
-
 		CallService(MS_DB_GETPROFILEPATH, MAX_PATH, (LPARAM)szDataPath);
-		mir_snprintf(szLogFileName, MAX_PATH, "%s\\%s", szDataPath, "tabsrmm_debug.log");
-		f = fopen(szLogFileName, "a+");
+		mir_snprintf(szLogFileName, MAX_PATH, "%s\\tabsrmm_debug.log", szDataPath);
+		FILE *f = fopen(szLogFileName, "a+");
 		if (f) {
 			fputs(debug, f);
 			fputs("\n", f);
@@ -212,21 +186,22 @@ int _DebugPopup(HANDLE hContact, const TCHAR *fmt, ...)
 	int			ibsize = 1023;
 
 	va_start(va, fmt);
-	_vsntprintf(debug, ibsize, fmt, va);
+	mir_vsntprintf(debug, ibsize, fmt, va);
 
 	if (ServiceExists(MS_CLIST_SYSTRAY_NOTIFY)) {
 		MIRANDASYSTRAYNOTIFY tn;
 		TCHAR	szTitle[128];
+		mir_sntprintf(szTitle, SIZEOF(szTitle), TranslateT("TabSRMM Message (%s)"),
+			(hContact != 0) ? pcli->pfnGetContactDisplayName(hContact, 0) : TranslateT("Global"));
 
 		tn.szProto = NULL;
 		tn.cbSize = sizeof(tn);
-		mir_sntprintf(szTitle, safe_sizeof(szTitle), TranslateT("tabSRMM Message (%s)"), (hContact != 0) ? (TCHAR *)CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM)hContact, GCDNF_TCHAR) : TranslateT("Global"));
 		tn.tszInfoTitle = szTitle;
 		tn.tszInfo = debug;
 		tn.dwInfoFlags = NIIF_INFO;
 		tn.dwInfoFlags |= NIIF_INTERN_UNICODE;
 		tn.uTimeout = 1000 * 4;
-		CallService(MS_CLIST_SYSTRAY_NOTIFY, 0, (LPARAM) & tn);
+		CallService(MS_CLIST_SYSTRAY_NOTIFY, 0, (LPARAM)&tn);
 	}
 	return 0;
 }
@@ -251,7 +226,7 @@ INT_PTR CALLBACK DlgProcAbout(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 				mir_snprintf(buildstr, 50, "[Build #%d]", build_nr);
 			}
 			TCHAR	*szBuildstr = mir_a2t(buildstr);
-			mir_sntprintf(tStr, safe_sizeof(tStr), _T("TabSRMM\n%s %d.%d.%d.%d (Unicode) %s"),
+			mir_sntprintf(tStr, SIZEOF(tStr), _T("TabSRMM\n%s %d.%d.%d.%d (Unicode) %s"),
 				_T("Version"), HIBYTE(HIWORD(v)), LOBYTE(HIWORD(v)), HIBYTE(LOWORD(v)), LOBYTE(LOWORD(v)),
 				szBuildstr);
 			SetDlgItemText(hwndDlg, IDC_HEADERBAR, tStr);
@@ -269,10 +244,6 @@ INT_PTR CALLBACK DlgProcAbout(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 		case IDC_SUPPORT:
 			CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://miranda.or.at/");
 			break;
-		case IDC_RESETWARNINGS:
-			M->WriteDword(SRMSGMOD_T, "cWarningsL", 0);
-			M->WriteDword(SRMSGMOD_T, "cWarningsH", 0);
-			break;
 		}
 		break;
 	case WM_CTLCOLOREDIT:
@@ -280,8 +251,6 @@ INT_PTR CALLBACK DlgProcAbout(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 		SetTextColor((HDC)wParam, RGB(60, 60, 150));
 		SetBkColor((HDC)wParam, GetSysColor(COLOR_WINDOW));
 		return (INT_PTR)GetSysColorBrush(COLOR_WINDOW);
-	default:
-		break;
 	}
 	return FALSE;
 }
