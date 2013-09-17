@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-/** @file meta_menu.c 
+/** @file meta_menu.c
 *
 * Functions needed to handle MetaContacts.
 * Centralizes functions called when the user chooses
@@ -40,7 +40,7 @@ INT_PTR Meta_Convert(WPARAM wParam, LPARAM lParam)
 {
 	DBVARIANT dbv;
 	char *group = 0;
-		
+
 	// Get some information about the selected contact.
 	if ( !db_get_utf((HANDLE)wParam, "CList", "Group", &dbv)) {
 		group = _strdup(dbv.pszVal);
@@ -59,7 +59,7 @@ INT_PTR Meta_Convert(WPARAM wParam, LPARAM lParam)
 
 		if (group)
 			db_set_utf(hMetaContact, "CList", "Group", group);
-		
+
 		// Assign the contact to the MetaContact just created (and make default).
 		if ( !Meta_Assign((HANDLE)wParam, hMetaContact, TRUE)) {
 			MessageBox(0, TranslateT("There was a problem in assigning the contact to the MetaContact"), TranslateT("Error"), MB_ICONEXCLAMATION);
@@ -71,9 +71,6 @@ INT_PTR Meta_Convert(WPARAM wParam, LPARAM lParam)
 		if ( !Meta_IsEnabled())
 			db_set_b(hMetaContact, "CList", "Hidden", 1);
 	}
-
-	//	Update the graphics
-	CallService(MS_CLUI_SORTLIST, 0, 0);
 
 	free(group);
 	return (INT_PTR)hMetaContact;
@@ -108,27 +105,6 @@ INT_PTR Meta_Edit(WPARAM wParam,LPARAM lParam)
 	DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_METAEDIT), clui, Meta_EditDialogProc, (LPARAM)wParam);
 	return 0;
 }
-
-/* DB/Contact/WriteSetting service
-Change the value of, or create a new value with, a named setting for a specific
-contact in the database to the given value
-  wParam=(WPARAM)(HANDLE)hContact
-  lParam=(LPARAM)(DBCONTACTWRITESETTING*)&dbcws
-hContact should have been returned by find*contact or addcontact
-Returns 0 on success or nonzero if hContact was invalid
-Note that DBCONTACTGETSETTING takes a pointer to a DBVARIANT, whereas
-DBCONTACTWRITESETTING contains a DBVARIANT.
-Because this is such a common function there are some short helper function at
-the bottom of this header that use it.
-Triggers a db/contact/settingchanged event just before it returns.
-*/
-//typedef struct {
-//	const char *szModule;	// pointer to name of the module that wrote the
-//	                        // setting to get
-//	const char *szSetting;	// pointer to name of the setting to get
-//	DBVARIANT value;		// variant containing the value to set
-//} DBCONTACTWRITESETTING;
-//#define MS_DB_CONTACT_WRITESETTING  "DB/Contact/WriteSetting"
 
 void Meta_RemoveContactNumber(HANDLE hMeta, int number)
 {
@@ -188,7 +164,7 @@ void Meta_RemoveContactNumber(HANDLE hMeta, int number)
 	// if the default contact was equal to or greater than 'number', decrement it (and deal with ends)
 	if (default_contact >= number) {
 		default_contact--;
-		if (default_contact < 0) 
+		if (default_contact < 0)
 			default_contact = 0;
 
 		db_set_dw(hMeta, META_PROTO, "Default", (DWORD)default_contact);
@@ -233,14 +209,13 @@ INT_PTR Meta_Delete(WPARAM wParam,LPARAM lParam)
 	// The wParam is a metacontact
 	if ((metaID = db_get_dw((HANDLE)wParam, META_PROTO, META_ID, (DWORD)-1)) != (DWORD)-1) {
 		if ( !lParam) { // check from recursion - see second half of this function
-			if ( MessageBox((HWND)CallService(MS_CLUI_GETHWND,0,0), 
+			if ( MessageBox((HWND)CallService(MS_CLUI_GETHWND,0,0),
 					TranslateT("This will remove the MetaContact permanently.\n\nProceed Anyway?"),
 					TranslateT("Are you sure?"),MB_ICONQUESTION | MB_YESNO | MB_DEFBUTTON2) != IDYES)
 				return 0;
 		}
 
-		HANDLE hContact = db_find_first();
-		while(hContact) {
+		for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 			 // This contact is assigned to the MetaContact that will be deleted, clear the "MetaContacts" information
 			if ( db_get_dw(hContact, META_PROTO, META_LINK,(DWORD)-1) == metaID) {
 				db_unset(hContact, META_PROTO, "IsSubcontact");
@@ -256,7 +231,6 @@ INT_PTR Meta_Delete(WPARAM wParam,LPARAM lParam)
 				if (options.suppress_status)
 					CallService(MS_IGNORE_UNIGNORE, (WPARAM)hContact, (WPARAM)IGNOREEVENT_USERONLINE);
 			}
-			hContact = db_find_next(hContact);
 		}
 
 		NotifyEventHooks(hSubcontactsChanged, (WPARAM)wParam, 0);
@@ -325,7 +299,7 @@ INT_PTR Meta_ForceDefault(WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
-HANDLE hMenuContact[MAX_CONTACTS];
+HGENMENU hMenuContact[MAX_CONTACTS];
 
 /** Called when the context-menu of a contact is about to be displayed
 *
@@ -341,79 +315,75 @@ int Meta_ModifyMenu(WPARAM wParam, LPARAM lParam)
 	DBVARIANT dbv;
 	char buf[512], idStr[512];
 	WORD status;
-
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIM_FLAGS;
 
 	if (db_get_dw((HANDLE)wParam, META_PROTO, META_ID,-1) != (DWORD)-1) {
 		// save the mouse pos in case they open a subcontact menu
 		GetCursorPos(&menuMousePoint);
-		
+
 		// This is a MetaContact, show the edit, force default, and the delete menu, and hide the others
-		CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuEdit, (LPARAM)&mi);
+		Menu_ShowItem(hMenuEdit, true);
+		Menu_ShowItem(hMenuAdd, false);
+		Menu_ShowItem(hMenuConvert, false);
+		Menu_ShowItem(hMenuDefault, false);
+		Menu_ShowItem(hMenuDelete, false);
 
-		mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
-		CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuAdd, (LPARAM)&mi);
-		CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuConvert, (LPARAM)&mi);
-		CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDefault, (LPARAM)&mi);
-
-		mi.flags = CMIM_FLAGS | CMIM_NAME | CMIF_HIDDEN;	// we don't need delete - already in contact menu
-		mi.pszName = Translate("Delete MetaContact");
-		CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDelete, (LPARAM)&mi);
+		mi.flags = CMIM_NAME | CMIF_TCHAR;
+		mi.ptszName = (TCHAR*)TranslateT("Remove from MetaContact");
+		Menu_ModifyItem(hMenuDelete, &mi);
 
 		//show subcontact menu items
 		int num_contacts = db_get_dw((HANDLE)wParam, META_PROTO, "NumContacts", 0);
 		for (int i = 0; i < MAX_CONTACTS; i++) {
-			if (i < num_contacts) {
-				HANDLE hContact = Meta_GetContactHandle((HANDLE)wParam, i);
-				char *szProto = GetContactProto(hContact);
-				if ( !szProto)
-					status = ID_STATUS_OFFLINE;
-				else
-					status = db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE);
+			if (i >= num_contacts) {
+				Menu_ShowItem(hMenuContact[i], false);
+				continue;
+			}
 
-				if (options.menu_contact_label == DNT_UID) {
-					strcpy(buf, "Login");
-					strcat(buf, _itoa(i, idStr, 10));
+			HANDLE hContact = Meta_GetContactHandle((HANDLE)wParam, i);
+			char *szProto = GetContactProto(hContact);
+			if ( !szProto)
+				status = ID_STATUS_OFFLINE;
+			else
+				status = db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE);
 
-					db_get((HANDLE)wParam, META_PROTO, buf, &dbv);
-					switch(dbv.type) {
-					case DBVT_ASCIIZ:
-						mir_snprintf(buf,512,"%s",dbv.pszVal);
-						break;
-					case DBVT_BYTE:
-						mir_snprintf(buf,512,"%d",dbv.bVal);
-						break;
-					case DBVT_WORD:
-						mir_snprintf(buf,512,"%d",dbv.wVal);
-						break;
-					case DBVT_DWORD:
-						mir_snprintf(buf,512,"%d",dbv.dVal);
-						break;
-					default:
-						buf[0] = 0;
-					}
-					db_free(&dbv);
-					mi.pszName = buf;
-					mi.flags = 0;
+			if (options.menu_contact_label == DNT_UID) {
+				strcpy(buf, "Login");
+				strcat(buf, _itoa(i, idStr, 10));
+
+				db_get((HANDLE)wParam, META_PROTO, buf, &dbv);
+				switch(dbv.type) {
+				case DBVT_ASCIIZ:
+					mir_snprintf(buf,512,"%s",dbv.pszVal);
+					break;
+				case DBVT_BYTE:
+					mir_snprintf(buf,512,"%d",dbv.bVal);
+					break;
+				case DBVT_WORD:
+					mir_snprintf(buf,512,"%d",dbv.wVal);
+					break;
+				case DBVT_DWORD:
+					mir_snprintf(buf,512,"%d",dbv.dVal);
+					break;
+				default:
+					buf[0] = 0;
 				}
-				else {
-					mi.ptszName = pcli->pfnGetContactDisplayName(hContact, GCDNF_TCHAR);
-					mi.flags = CMIF_TCHAR;
-				}
-
-				mi.flags |= CMIM_FLAGS | CMIM_NAME | CMIM_ICON;
-
-				int iconIndex = CallService(MS_CLIST_GETCONTACTICON, (WPARAM)hContact, 0);
-				mi.hIcon = ImageList_GetIcon((HIMAGELIST)CallService(MS_CLIST_GETICONSIMAGELIST, 0, 0), iconIndex, 0);
-
-				CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuContact[i], (LPARAM)&mi);
-				DestroyIcon(mi.hIcon);
+				db_free(&dbv);
+				mi.pszName = buf;
+				mi.flags = 0;
 			}
 			else {
-				mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
-				CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuContact[i], (LPARAM)&mi);
+				mi.ptszName = pcli->pfnGetContactDisplayName(hContact, GCDNF_TCHAR);
+				mi.flags = CMIF_TCHAR;
 			}
+
+			mi.flags |= CMIM_FLAGS | CMIM_NAME | CMIM_ICON;
+
+			int iconIndex = CallService(MS_CLIST_GETCONTACTICON, (WPARAM)hContact, 0);
+			mi.hIcon = ImageList_GetIcon((HIMAGELIST)CallService(MS_CLIST_GETICONSIMAGELIST, 0, 0), iconIndex, 0);
+
+			Menu_ModifyItem(hMenuContact[i], &mi);
+			DestroyIcon(mi.hIcon);
 		}
 
 		// show hide nudge menu item
@@ -421,44 +391,41 @@ int Meta_ModifyMenu(WPARAM wParam, LPARAM lParam)
 		// wParam = char *szProto
 		// lParam = BOOL show
 		char serviceFunc[256];
-		mir_snprintf(serviceFunc, 256, "%s/SendNudge", GetContactProto( Meta_GetMostOnline((HANDLE)wParam)));
+		mir_snprintf(serviceFunc, 256, "%s%s", GetContactProto( Meta_GetMostOnline((HANDLE)wParam)), PS_SEND_NUDGE);
 		CallService(MS_NUDGE_SHOWMENU, (WPARAM)META_PROTO, (LPARAM)ServiceExists(serviceFunc));
 	}
 	else { // This is a simple contact
 		if ( !Meta_IsEnabled()) {
 			// groups disabled - all meta menu options hidden
-			mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDefault, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDelete, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuAdd, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuConvert, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuEdit, (LPARAM)&mi);
+			Menu_ShowItem(hMenuDefault, false);
+			Menu_ShowItem(hMenuDelete, false);
+			Menu_ShowItem(hMenuAdd, false);
+			Menu_ShowItem(hMenuConvert, false);
+			Menu_ShowItem(hMenuEdit, false);
 		}
 		else if (db_get_dw((HANDLE)wParam, META_PROTO, META_LINK,(DWORD)-1)!=(DWORD)-1) {
 			// The contact is affected to a metacontact.
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDefault, (LPARAM)&mi);
-			mi.flags |= CMIM_NAME | CMIF_TCHAR;
+			Menu_ShowItem(hMenuDefault, true);
+
+			mi.flags = CMIM_NAME | CMIF_TCHAR;
 			mi.ptszName = (TCHAR*)TranslateT("Remove from MetaContact");
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDelete, (LPARAM)&mi);
-			mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuAdd, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuConvert, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuEdit, (LPARAM)&mi);
+			Menu_ModifyItem(hMenuDelete, &mi);
+
+			Menu_ShowItem(hMenuAdd, false);
+			Menu_ShowItem(hMenuConvert, false);
+			Menu_ShowItem(hMenuEdit, false);
 		}
 		else {
 			// The contact is neutral
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuAdd, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuConvert, (LPARAM)&mi);
-			mi.flags |= CMIF_HIDDEN;
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuEdit, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDelete, (LPARAM)&mi);
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuDefault, (LPARAM)&mi);
+			Menu_ShowItem(hMenuAdd, true);
+			Menu_ShowItem(hMenuConvert, true);
+			Menu_ShowItem(hMenuEdit, false);
+			Menu_ShowItem(hMenuDelete, false);
+			Menu_ShowItem(hMenuDefault, false);
 		}
 
-		for (int i = 0; i < MAX_CONTACTS; i++) {
-			mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
-			CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuContact[i], (LPARAM)&mi);
-		}
+		for (int i = 0; i < MAX_CONTACTS; i++)
+			Menu_ShowItem(hMenuContact[i], false);
 	}
 	return 0;
 }

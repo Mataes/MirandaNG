@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,29 +22,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "common.h"
 
-void FacebookProto::ProcessBuddyList( void* data )
+void FacebookProto::ProcessBuddyList(void* data)
 {
-	if ( data == NULL )
+	if (data == NULL)
 		return;
 
-	ScopedLock s( facy.buddies_lock_ );
+	ScopedLock s(facy.buddies_lock_);
 
 	std::string* resp = (std::string*)data;
 
-	if ( isOffline())
+	if (isOffline())
 		goto exit;
 
 	LOG("***** Starting processing buddy list");
 
 	CODE_BLOCK_TRY
 
-	facebook_json_parser* p = new facebook_json_parser( this );
-	p->parse_buddy_list( data, &facy.buddies );
+	facebook_json_parser* p = new facebook_json_parser(this);
+	p->parse_buddy_list(data, &facy.buddies);
 	delete p;
 
-	bool use_mobile_status = DBGetContactSettingByte(NULL,m_szModuleName,FACEBOOK_KEY_LOAD_MOBILE, DEFAULT_LOAD_MOBILE) != 0;
+	bool use_mobile_status = getByte(FACEBOOK_KEY_LOAD_MOBILE, DEFAULT_LOAD_MOBILE) != 0;
 
-	for ( List::Item< facebook_user >* i = facy.buddies.begin( ); i != NULL; )
+	for (List::Item< facebook_user >* i = facy.buddies.begin(); i != NULL;)
 	{		
 		facebook_user* fbu = i->data;
 		bool on_mobile = false;
@@ -52,76 +52,73 @@ void FacebookProto::ProcessBuddyList( void* data )
 		char *status;
 		switch (fbu->status_id) {
 			case ID_STATUS_OFFLINE:
-				status = "offline"; break;				
+				status = "Offline"; break;
 			case ID_STATUS_ONLINE:
-				status = "online"; break;				
+				status = "Online"; break;
 			case ID_STATUS_ONTHEPHONE:
-				on_mobile = true;				
-				status = "onthephone";
+				on_mobile = true;
+				status = "Phone";
 
 				if (!use_mobile_status)
 					fbu->status_id = ID_STATUS_OFFLINE;
 				break;
 		}
-		LOG("      Now %s: %s", status, i->data->real_name.c_str());
+		LOG("      Now %s: %s", status, fbu->user_id.c_str());
 
 		if (!fbu->deleted)
 		{
 			HANDLE hContact = fbu->handle;
 			if (!hContact)
-				hContact = AddToContactList(fbu, FACEBOOK_CONTACT_FRIEND);
+				hContact = AddToContactList(fbu, CONTACT_FRIEND);
 			
 			DBVARIANT dbv;
 			TCHAR* client = on_mobile ? _T(FACEBOOK_MOBILE) : _T(FACEBOOK_NAME);
-			if (!DBGetContactSettingTString(hContact,m_szModuleName,"MirVer",&dbv)) {
+			if (!getTString(hContact, "MirVer", &dbv)) {
 				if (_tcscmp(dbv.ptszVal, client))
-					DBWriteContactSettingTString(hContact,m_szModuleName,"MirVer",client);
-				DBFreeVariant(&dbv);
-			} else {
-				DBWriteContactSettingTString(hContact,m_szModuleName,"MirVer",client);
+					setTString(hContact, "MirVer", client);
+				db_free(&dbv);
 			}
+			else setTString(hContact, "MirVer", client);
 		}
 
 		if (fbu->status_id == ID_STATUS_OFFLINE || fbu->deleted)
 		{
 			if (fbu->handle)
-				DBWriteContactSettingWord(fbu->handle, m_szModuleName, "Status", ID_STATUS_OFFLINE);
+				setWord(fbu->handle, "Status", ID_STATUS_OFFLINE);
 
-			std::string to_delete( i->key );
+			std::string to_delete(i->key);
 			i = i->next;
-			facy.buddies.erase( to_delete );
+			facy.buddies.erase(to_delete);
 		} else {
 			i = i->next;
 
-			if (!fbu->handle) { // just been added
-				fbu->handle = AddToContactList(fbu, FACEBOOK_CONTACT_FRIEND);
-	
-				if (!fbu->real_name.empty()) {
-					DBWriteContactSettingUTF8String(fbu->handle,m_szModuleName,FACEBOOK_KEY_NAME,fbu->real_name.c_str());
-					DBWriteContactSettingUTF8String(fbu->handle,m_szModuleName,FACEBOOK_KEY_NICK,fbu->real_name.c_str());
-				}
+			if (!fbu->handle) // just been added
+				fbu->handle = AddToContactList(fbu, CONTACT_FRIEND);
+
+			if (getWord(fbu->handle, "Status", 0) != fbu->status_id)
+				setWord(fbu->handle, "Status", fbu->status_id);
+
+			if (getDword(fbu->handle, "LastActiveTS", 0) != fbu->last_active) {
+				if (fbu->last_active > 0)
+					setDword(fbu->handle, "LastActiveTS", fbu->last_active);
+				else
+					delSetting(fbu->handle, "LastActiveTS");
 			}
 
-			if (DBGetContactSettingWord(fbu->handle,m_szModuleName,"Status", 0) != fbu->status_id ) {
-				DBWriteContactSettingWord(fbu->handle,m_szModuleName,"Status", fbu->status_id );
-			}
-
-			if (DBGetContactSettingByte(fbu->handle, m_szModuleName, FACEBOOK_KEY_CONTACT_TYPE, 0) != FACEBOOK_CONTACT_FRIEND) {
-				DBWriteContactSettingByte(fbu->handle, m_szModuleName, FACEBOOK_KEY_CONTACT_TYPE, FACEBOOK_CONTACT_FRIEND);
+			if (getByte(fbu->handle, FACEBOOK_KEY_CONTACT_TYPE, 0) != CONTACT_FRIEND) {
+				setByte(fbu->handle, FACEBOOK_KEY_CONTACT_TYPE, CONTACT_FRIEND);
 				// TODO: remove that popup and use "Contact added you" event?
 			}
 
 			// Wasn't contact removed from "server-list" someday?
-			if ( DBGetContactSettingDword(fbu->handle, m_szModuleName, FACEBOOK_KEY_DELETED, 0)) {
-				DBDeleteContactSetting(fbu->handle, m_szModuleName, FACEBOOK_KEY_DELETED);
+			if (getDword(fbu->handle, FACEBOOK_KEY_DELETED, 0)) {
+				delSetting(fbu->handle, FACEBOOK_KEY_DELETED);
 
 				std::string url = FACEBOOK_URL_PROFILE + fbu->user_id;					
 
-				TCHAR* szTitle = mir_a2t_cp(fbu->real_name.c_str(), CP_UTF8);
-				TCHAR* szUrl = mir_a2t_cp(url.c_str(), CP_UTF8);
-				NotifyEvent(szTitle, TranslateT("Contact is back on server-list."), fbu->handle, FACEBOOK_EVENT_OTHER, szUrl);
-				mir_free( szTitle );
-				// mir_free( szUrl ); // url is free'd in popup procedure
+				TCHAR* szTitle = mir_utf8decodeT(fbu->real_name.c_str());
+				NotifyEvent(szTitle, TranslateT("Contact is back on server-list."), fbu->handle, FACEBOOK_EVENT_OTHER, &url);
+				mir_free(szTitle);
 			}
 
 			// Check avatar change
@@ -141,9 +138,9 @@ exit:
 	delete resp;
 }
 
-void FacebookProto::ProcessFriendList( void* data )
+void FacebookProto::ProcessFriendList(void* data)
 {
-	if ( data == NULL )
+	if (data == NULL)
 		return;
 
 	std::string* resp = (std::string*)data;
@@ -154,24 +151,21 @@ void FacebookProto::ProcessFriendList( void* data )
 
 	std::map<std::string, facebook_user*> friends;
 
-	facebook_json_parser* p = new facebook_json_parser( this );
-	p->parse_friends( data, &friends );
+	facebook_json_parser* p = new facebook_json_parser(this);
+	p->parse_friends(data, &friends);
 	delete p;
 
 
 	// Check and update old contacts
-	for(HANDLE hContact = db_find_first();
-	    hContact;
-	    hContact = db_find_next(hContact))
-	{
-		if (!IsMyContact(hContact))
+	for (HANDLE hContact = db_find_first(m_szModuleName); hContact; hContact = db_find_next(hContact, m_szModuleName)) {
+		if ( isChatRoom(hContact))
 			continue;
 
 		DBVARIANT dbv;
 		facebook_user *fbu;
-		if ( !DBGetContactSettingString(hContact,m_szModuleName,FACEBOOK_KEY_ID,&dbv)) {
+		if (!getString(hContact, FACEBOOK_KEY_ID, &dbv)) {
 			std::string id = dbv.pszVal;
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 			
 			std::map< std::string, facebook_user* >::iterator iter;
 			
@@ -185,86 +179,77 @@ void FacebookProto::ProcessFriendList( void* data )
 				// TODO RM: remove, because contacts cant change it, so its only for "first run"
 					// - but what with contacts, that was added after logon?
 				// Update gender
-				if ( DBGetContactSettingByte(hContact, m_szModuleName, "Gender", 0) != fbu->gender )
-					DBWriteContactSettingByte(hContact, m_szModuleName, "Gender", fbu->gender);
+				if (getByte(hContact, "Gender", 0) != fbu->gender)
+					setByte(hContact, "Gender", fbu->gender);
 
 				// Update real name
-				if ( !DBGetContactSettingUTF8String(hContact, m_szModuleName, FACEBOOK_KEY_NAME, &dbv))
+				if (!db_get_utf(hContact, m_szModuleName, FACEBOOK_KEY_NAME, &dbv))
 				{
-					update_required = strcmp( dbv.pszVal, fbu->real_name.c_str()) != 0;
-					DBFreeVariant(&dbv);
+					update_required = strcmp(dbv.pszVal, fbu->real_name.c_str()) != 0;
+					db_free(&dbv);
 				}
-				if ( update_required )
+				if (update_required)
 				{
-					DBWriteContactSettingUTF8String(hContact, m_szModuleName, FACEBOOK_KEY_NAME, fbu->real_name.c_str());
-					DBWriteContactSettingUTF8String(hContact, m_szModuleName, FACEBOOK_KEY_NICK, fbu->real_name.c_str());
+					db_set_utf(hContact, m_szModuleName, FACEBOOK_KEY_NAME, fbu->real_name.c_str());
+					db_set_utf(hContact, m_szModuleName, FACEBOOK_KEY_NICK, fbu->real_name.c_str());
 				}
 
-				if (DBGetContactSettingByte(hContact, m_szModuleName, FACEBOOK_KEY_CONTACT_TYPE, 0) != FACEBOOK_CONTACT_FRIEND) {
-					DBWriteContactSettingByte(hContact, m_szModuleName, FACEBOOK_KEY_CONTACT_TYPE, FACEBOOK_CONTACT_FRIEND);
+				if (getByte(hContact, FACEBOOK_KEY_CONTACT_TYPE, 0) != CONTACT_FRIEND) {
+					setByte(hContact, FACEBOOK_KEY_CONTACT_TYPE, CONTACT_FRIEND);
 					// TODO: remove that popup and use "Contact added you" event?
 				}
 
 				// Wasn't contact removed from "server-list" someday?
-				if ( DBGetContactSettingDword(hContact, m_szModuleName, FACEBOOK_KEY_DELETED, 0)) {
-					DBDeleteContactSetting(hContact, m_szModuleName, FACEBOOK_KEY_DELETED);
+				if (getDword(hContact, FACEBOOK_KEY_DELETED, 0)) {
+					delSetting(hContact, FACEBOOK_KEY_DELETED);
 
 					std::string url = FACEBOOK_URL_PROFILE + fbu->user_id;					
 
-					TCHAR* szTitle = mir_a2t_cp(fbu->real_name.c_str(), CP_UTF8);
-					TCHAR* szUrl = mir_a2t_cp(url.c_str(), CP_UTF8);
-					NotifyEvent(szTitle, TranslateT("Contact is back on server-list."), hContact, FACEBOOK_EVENT_OTHER, szUrl);					
-					mir_free( szTitle );
-					// mir_free( szUrl ); // url is free'd in popup procedure
+					TCHAR* szTitle = mir_utf8decodeT(fbu->real_name.c_str());
+					NotifyEvent(szTitle, TranslateT("Contact is back on server-list."), hContact, FACEBOOK_EVENT_OTHER, &url);
+					mir_free(szTitle);
 				}
 
 				// Check avatar change
 				CheckAvatarChange(hContact, fbu->image_url);
-			
-				delete fbu;
-				friends.erase(iter);
+
+				// Mark this contact as deleted ("processed") and delete them later (as there may be some duplicit contacts to use)
+				fbu->deleted = true;
 			} else {
 				// Contact was removed from "server-list", notify it
 
 				// Wasnt we already been notified about this contact? And was this real friend?
-				if (!DBGetContactSettingDword(hContact, m_szModuleName, FACEBOOK_KEY_DELETED, 0) 
-					&& DBGetContactSettingByte(hContact, m_szModuleName, FACEBOOK_KEY_CONTACT_TYPE, 0) == FACEBOOK_CONTACT_FRIEND)
-				{
-
-					DBWriteContactSettingDword(hContact, m_szModuleName, FACEBOOK_KEY_DELETED, ::time(NULL));
-					DBWriteContactSettingByte(hContact, m_szModuleName, FACEBOOK_KEY_CONTACT_TYPE, FACEBOOK_CONTACT_NONE);
+				if (!getDword(hContact, FACEBOOK_KEY_DELETED, 0) && getByte(hContact, FACEBOOK_KEY_CONTACT_TYPE, 0) == CONTACT_FRIEND) {
+					setDword(hContact, FACEBOOK_KEY_DELETED, ::time(NULL));
+					setByte(hContact, FACEBOOK_KEY_CONTACT_TYPE, CONTACT_NONE);
 
 					std::string contactname = id;
-					if ( !DBGetContactSettingUTF8String(hContact, m_szModuleName, FACEBOOK_KEY_NAME, &dbv)) {
+					if (!db_get_utf(hContact, m_szModuleName, FACEBOOK_KEY_NAME, &dbv)) {
 						contactname = dbv.pszVal;
-						DBFreeVariant(&dbv);
+						db_free(&dbv);
 					}
 
 					std::string url = FACEBOOK_URL_PROFILE + id;
 
-					TCHAR* szTitle = mir_a2t_cp(contactname.c_str(), CP_UTF8);
-					TCHAR* szUrl = mir_a2t_cp(url.c_str(), CP_UTF8);
-					NotifyEvent(szTitle, TranslateT("Contact is no longer on server-list."), hContact, FACEBOOK_EVENT_OTHER, szUrl);
-					mir_free( szTitle );
-					// mir_free( szUrl ); // url is free'd in popup procedure
+					TCHAR* szTitle = mir_utf8decodeT(contactname.c_str());
+					NotifyEvent(szTitle, TranslateT("Contact is no longer on server-list."), hContact, FACEBOOK_EVENT_OTHER, &url);
+					mir_free(szTitle);
 				}
 			}
 		}
 	}
 
-	// Check remain contacts in map and add it to contact list
-	for ( std::map< std::string, facebook_user* >::iterator iter = friends.begin(); iter != friends.end(); ++iter )
-	{
+	// Check remaining contacts in map and add them to contact list
+	for (std::map< std::string, facebook_user* >::iterator iter = friends.begin(); iter != friends.end(); ++iter) {
 		facebook_user *fbu = iter->second;
-		
-		HANDLE hContact = AddToContactList(fbu, FACEBOOK_CONTACT_FRIEND, true); // This contact is surely new
 
-		DBWriteContactSettingByte(hContact, m_szModuleName, "Gender", fbu->gender );
-		DBWriteContactSettingUTF8String(hContact, m_szModuleName, FACEBOOK_KEY_NAME, fbu->real_name.c_str());
-		DBWriteContactSettingUTF8String(hContact, m_szModuleName, FACEBOOK_KEY_NICK, fbu->real_name.c_str());
-		DBWriteContactSettingString(hContact, m_szModuleName, FACEBOOK_KEY_AV_URL, fbu->image_url.c_str());
-//		DBWriteContactSettingWord(hContact, m_szModuleName, "Status", ID_STATUS_OFFLINE );
+		if (!fbu->deleted)
+			HANDLE hContact = AddToContactList(fbu, CONTACT_FRIEND/*, true*/); // This contact is surely new ...am I sure? ...I'm not, so "true" is commented now
+
+		delete fbu;
 	}
+	
+	friends.clear();
 
 	LOG("***** Friend list processed");
 
@@ -277,158 +262,163 @@ void FacebookProto::ProcessFriendList( void* data )
 	delete resp;
 }
 
-void FacebookProto::ProcessUnreadMessages( void* )
+void FacebookProto::ProcessUnreadMessages(void*)
 {
-	facy.handle_entry( "messages" );
+	facy.handle_entry("ProcessUnreadMessages");
 
-	std::string get_data = "sk=inbox&query=is%3Aunread";
+	bool loadOther = true; // TODO: db setting? or use everytime?
 
-	std::string data = "&fb_dtsg=" + facy.dtsg_;
-	data += "&lsd=&phstamp=" + utils::time::mili_timestamp();
-	data += "&__user=" + facy.self_.user_id;
+	std::string data = "folders[0]=inbox";
+	if (loadOther)
+		data += "&folders[1]=other";
+	data += "&client=mercury";
+	data += "__user=" + facy.self_.user_id;
+	data += "&fb_dtsg=" + (facy.dtsg_.length() ? facy.dtsg_ : "0");
+	data += "&__a=1&__dyn=&__req=&ttstamp=0";
 
-	// Get unread inbox threads
-	http::response resp = facy.flap( FACEBOOK_REQUEST_ASYNC, &data, &get_data );
+	http::response resp = facy.flap(REQUEST_UNREAD_THREADS, &data);
+	facy.validate_response(&resp);
 
-	// sk=inbox,  sk=other
+	if (resp.code == HTTP_CODE_OK) {
+		
+		CODE_BLOCK_TRY
+		
+		std::vector<std::string> threads;
 
-	// Process result data
-	facy.validate_response(&resp);	
+		facebook_json_parser* p = new facebook_json_parser(this);
+		p->parse_unread_threads(&resp.data, &threads);
+		delete p;
 
-	if (resp.code != HTTP_CODE_OK) {
-		facy.handle_error( "messages" );
-		return;
-	}
+		ForkThread(&FacebookProto::ProcessUnreadMessage, new std::vector<std::string>(threads));
 
-	std::string threadlist = utils::text::slashu_to_utf8(resp.data);
+		LOG("***** Unread threads list processed");
+
+		CODE_BLOCK_CATCH
+
+		LOG("***** Error processing unread threads list: %s", e.what());
+
+		CODE_BLOCK_END
 	
-	std::string::size_type pos = 0;
-
-	while ( ( pos = threadlist.find( "<li class=\\\"threadRow noDraft unread", pos )) != std::string::npos )
-	{
-		std::string::size_type pos2 = threadlist.find( "/li>", pos );
-		std::string thread_content = threadlist.substr( pos, pos2 - pos );
-
-		pos = pos2;
-
-		get_data = "sk=inbox&query=is%3Aunread&thread_query=is%3Aunread&action=read&tid=";
-		get_data += utils::text::source_get_value( &thread_content, 2, "id=\\\"", "\\\"" );
-		
-		resp = facy.flap( FACEBOOK_REQUEST_ASYNC, &data, &get_data );
-		// TODO: move this to new thread...
-
-		facy.validate_response(&resp);
-
-		if (resp.code != HTTP_CODE_OK) {
-			LOG(" !! !! Error when getting messages list");
-			continue;
-		}
-		
-		std::string messageslist = utils::text::slashu_to_utf8(resp.data);		
-		
-		std::string user_id = utils::text::source_get_value( &messageslist, 2, "single_thread_id\":", "," );
-		if (user_id.empty()) {
-			LOG(" !! !! Thread id is empty - this is groupchat message."); // TODO: remove as this is not such 'error'
-			continue;
-		}
-
-		facebook_user fbu;
-		fbu.user_id = user_id;
-
-		HANDLE hContact = AddToContactList(&fbu, FACEBOOK_CONTACT_NONE);
-		// TODO: if contact is newly added, get his user info
-		// TODO: maybe create new "receiveMsg" function and use it for offline and channel messages?
-
-		pos2 = 0;
-		while ( ( pos2 = messageslist.find( "class=\\\"MessagingMessage ", pos2 )) != std::string::npos ) {
-			pos2 += 8;
-			std::string strclass = messageslist.substr(pos2, messageslist.find("\\\"", pos2) - pos2);
-
-			if (strclass.find("MessagingMessageUnread") == std::string::npos)
-				continue; // ignoring old messages
-
-			//std::string::size_type pos3 = messageslist.find( "/li>", pos2 ); // TODO: ne proti tomuhle li, protože i přílohy mají li...
-			std::string::size_type pos3 = messageslist.find( "class=\\\"MessagingMessage ", pos2 );
-			std::string messagesgroup = messageslist.substr( pos2, pos3 - pos2 );
-
-			DWORD timestamp = utils::conversion::to_timestamp( 
-								utils::text::source_get_value( &messagesgroup, 2, "data-utime=\\\"", "\\\"" ));
-
-			pos3 = 0;
-			while ( ( pos3 = messagesgroup.find( "class=\\\"content noh", pos3 )) != std::string::npos )
-			{
-
-				std::string message_attachments = "";
-				std::string::size_type pos4 = 0;
-				if ((pos4 = messagesgroup.find( "class=\\\"attachments\\\"", pos4)) != std::string::npos) {
-					std::string attachments = messagesgroup.substr( pos4, messagesgroup.find("<\\/ul", pos4) - pos4 );
-
-					pos4 = 0;
-					while ( ( pos4 = attachments.find("<li", pos4)) != std::string::npos ) {
-						std::string attachment = attachments.substr( pos4, attachments.find("<\\/li>", pos4) - pos4 );
-						std::string link = utils::text::source_get_value( &attachment, 4, "<a class=", "attachment", "href=\\\"", "\\\"" );
-
-						link = utils::text::trim(
-								utils::text::special_expressions_decode( link ));
-
-						// or first: std::string name = utils::text::source_get_value( &attachment, 4, "<a class=", "attachment", ">", "<\\/a>" );
-						std::string name = utils::text::trim(
-								utils::text::special_expressions_decode(
-									utils::text::remove_html( attachment )) );
-
-						if (link.find("/ajax/messaging/attachments/photo/dialog.php?uri=") != std::string::npos) {
-							link = link.substr(49);
-							link = utils::url::decode(link);
-						}
-
-						message_attachments += "< " + name + " > " + FACEBOOK_URL_HOMEPAGE;
-						message_attachments += link + "\r\n";
-
-						pos4++;
-					}
-
-				}
-
-				std::string message_text = messagesgroup.substr(pos3, messagesgroup.find( "<\\/div", pos3 ) + 6 - pos3);
-				LOG("Got unread message: \"%s\"", message_text.c_str());
-				message_text = utils::text::source_get_value( &message_text, 2, "\\\">", "<\\/div" );
-				message_text = utils::text::trim(
-								utils::text::special_expressions_decode(
-									utils::text::remove_html( message_text )) );
-
-				parseSmileys(message_text, hContact);
-
-				if (!message_attachments.empty()) {
-					if (!message_text.empty())
-						message_text += "\r\n\r\n";
-
-					message_text += Translate("Attachments:");
-					message_text += "\r\n" + message_attachments;
-				}
-
-				PROTORECVEVENT recv = {0};
-				recv.flags = PREF_UTF;
-				recv.szMessage = const_cast<char*>(message_text.c_str());
-				recv.timestamp = timestamp;
-				ProtoChainRecvMsg(hContact, &recv);
-
-				pos3++;
-			}
-
-		}
-		
-	}
-
+		facy.handle_success("ProcessUnreadMessages");
+	} else {
+		facy.handle_error("ProcessUnreadMessages");
+	}	
 }
 
-void FacebookProto::ProcessMessages( void* data )
+void FacebookProto::ProcessUnreadMessage(void *p)
 {
-	if ( data == NULL )
+	if (p == NULL)
+		return;
+
+	facy.handle_entry("ProcessUnreadMessage");
+
+	std::vector<std::string> threads = *(std::vector<std::string>*)p;
+	delete (std::vector<std::string>*)p;
+
+	int offset = 0;
+	int limit = 21;
+
+	bool local_timestamp = getBool(FACEBOOK_KEY_LOCAL_TIMESTAMP, 0);
+
+	http::response resp;
+
+	while (!threads.empty()) {
+		std::string data = "client=mercury";
+		data += "&__user=" + facy.self_.user_id;
+		data += "&fb_dtsg=" + (facy.dtsg_.length() ? facy.dtsg_ : "0");
+		data += "&__a=1&__dyn=&__req=&ttstamp=0";
+	
+		for (std::vector<std::string>::size_type i = 0; i < threads.size(); i++) {
+			// request messages from thread
+			data += "&messages[thread_ids][" + threads[i];
+			data += "][offset]=" + utils::conversion::to_string(&offset, UTILS_CONV_SIGNED_NUMBER);
+			data += "&messages[thread_ids][" + threads[i];
+			data += "][limit]=" + utils::conversion::to_string(&limit, UTILS_CONV_SIGNED_NUMBER);
+			
+			// request info about thread
+			data += "&threads[thread_ids][" + utils::conversion::to_string(&i, UTILS_CONV_UNSIGNED_NUMBER);
+			data += "]=" + threads[i];
+		}
+
+		resp = facy.flap(REQUEST_THREAD_INFO, &data);
+		facy.validate_response(&resp);
+
+		if (resp.code == HTTP_CODE_OK) {
+		
+			CODE_BLOCK_TRY
+		
+			std::vector<facebook_message*> messages;
+
+			facebook_json_parser* p = new facebook_json_parser(this);
+			p->parse_thread_messages(&resp.data, &messages, true, limit);
+			delete p;	
+
+			for(std::vector<facebook_message*>::size_type i = 0; i < messages.size(); i++) {
+				if (messages[i]->user_id != facy.self_.user_id) {
+					LOG("      Got message: %s", messages[i]->message_text.c_str());
+					facebook_user fbu;
+					fbu.user_id = messages[i]->user_id;
+					fbu.real_name = messages[i]->sender_name;
+
+					// TODO: optimize this?
+					HANDLE hContact = AddToContactList(&fbu, CONTACT_NONE);
+					setString(hContact, FACEBOOK_KEY_MESSAGE_ID, messages[i]->message_id.c_str());
+
+					// TODO: if contact is newly added, get his user info
+					// TODO: maybe create new "receiveMsg" function and use it for offline and channel messages?
+
+					ParseSmileys(messages[i]->message_text, hContact);
+
+					if (messages[i]->isIncoming) {
+						PROTORECVEVENT recv = {0};
+						recv.flags = PREF_UTF;
+						recv.szMessage = const_cast<char*>(messages[i]->message_text.c_str());
+						recv.timestamp = local_timestamp || !messages[i]->time ? ::time(NULL) : messages[i]->time;
+						ProtoChainRecvMsg(hContact, &recv);
+					} else {
+						DBEVENTINFO dbei = {0};
+						dbei.cbSize = sizeof(dbei);
+						dbei.eventType = EVENTTYPE_MESSAGE;
+						dbei.flags = DBEF_SENT | DBEF_UTF;
+						dbei.szModule = m_szModuleName;
+						dbei.timestamp = local_timestamp || !messages[i]->time ? ::time(NULL) : messages[i]->time;
+						dbei.cbBlob = (DWORD)messages[i]->message_text.length() + 1;
+						dbei.pBlob = (PBYTE)messages[i]->message_text.c_str();
+						db_event_add(hContact, &dbei);
+					}
+				}
+				delete messages[i];
+			}
+			messages.clear();			
+
+			LOG("***** Unread messages processed");
+
+			CODE_BLOCK_CATCH
+
+			LOG("***** Error processing unread messages: %s", e.what());
+
+			CODE_BLOCK_END
+	
+			facy.handle_success("ProcessUnreadMessage");
+		} else {
+			facy.handle_error("ProcessUnreadMessage");
+		}
+
+		offset += limit;
+		limit = 20; // TODO: use better limits?
+		
+		threads.clear(); // TODO: if we have limit messages from one user, there may be more unread messages... continue with it... otherwise remove that threadd from threads list -- or do it in json parser? hm			 = allow more than "limit" unread messages to be parsed
+	}
+}
+
+void FacebookProto::ProcessMessages(void* data)
+{
+	if (data == NULL)
 		return;
 
 	std::string* resp = (std::string*)data;
 
-	if ( isOffline())
+	if (isOffline())
 		goto exit;
 
 	LOG("***** Starting processing messages");
@@ -438,47 +428,59 @@ void FacebookProto::ProcessMessages( void* data )
 	std::vector< facebook_message* > messages;
 	std::vector< facebook_notification* > notifications;
 
-	facebook_json_parser* p = new facebook_json_parser( this );
-	p->parse_messages( data, &messages, &notifications );
+	facebook_json_parser* p = new facebook_json_parser(this);
+	p->parse_messages(data, &messages, &notifications);
 	delete p;
 
-	bool local_timestamp = getByte(FACEBOOK_KEY_LOCAL_TIMESTAMP, 0) != 0;
+	bool local_timestamp = getBool(FACEBOOK_KEY_LOCAL_TIMESTAMP, 0);
 
-	for(std::vector<facebook_message*>::size_type i=0; i<messages.size( ); i++)
+	for(std::vector<facebook_message*>::size_type i=0; i<messages.size(); i++)
 	{
-		if ( messages[i]->user_id != facy.self_.user_id )
+		if (messages[i]->user_id != facy.self_.user_id)
 		{
 			LOG("      Got message: %s", messages[i]->message_text.c_str());
 			facebook_user fbu;
 			fbu.user_id = messages[i]->user_id;
+			fbu.real_name = messages[i]->sender_name;
 
-			HANDLE hContact = AddToContactList(&fbu, FACEBOOK_CONTACT_NONE, false, messages[i]->sender_name.c_str());
+			HANDLE hContact = AddToContactList(&fbu, CONTACT_NONE);
+			setString(hContact, FACEBOOK_KEY_MESSAGE_ID, messages[i]->message_id.c_str());
 
 			// TODO: if contact is newly added, get his user info
 			// TODO: maybe create new "receiveMsg" function and use it for offline and channel messages?
 
-			parseSmileys(messages[i]->message_text, hContact);
+			ParseSmileys(messages[i]->message_text, hContact);
 
-			PROTORECVEVENT recv = {0};
-			recv.flags = PREF_UTF;
-			recv.szMessage = const_cast<char*>(messages[i]->message_text.c_str());
-			recv.timestamp = local_timestamp ? ::time(NULL) : messages[i]->time;
-			ProtoChainRecvMsg(hContact, &recv);
+			if (messages[i]->isIncoming) {
+				PROTORECVEVENT recv = {0};
+				recv.flags = PREF_UTF;
+				recv.szMessage = const_cast<char*>(messages[i]->message_text.c_str());
+				recv.timestamp = local_timestamp || !messages[i]->time ? ::time(NULL) : messages[i]->time;
+				ProtoChainRecvMsg(hContact, &recv);
+			} else {
+				DBEVENTINFO dbei = {0};
+				dbei.cbSize = sizeof(dbei);
+				dbei.eventType = EVENTTYPE_MESSAGE;
+				dbei.flags = DBEF_SENT | DBEF_UTF;
+				dbei.szModule = m_szModuleName;
+				dbei.timestamp = local_timestamp || !messages[i]->time ? ::time(NULL) : messages[i]->time;
+				dbei.cbBlob = (DWORD)messages[i]->message_text.length() + 1;
+				dbei.pBlob = (PBYTE)messages[i]->message_text.c_str();
+				db_event_add(hContact, &dbei);
+			}
 		}
 		delete messages[i];
 	}
 	messages.clear();
 
-	for(std::vector<facebook_notification*>::size_type i=0; i<notifications.size( ); i++)
+	for(std::vector<facebook_notification*>::size_type i=0; i<notifications.size(); i++)
 	{
 		LOG("      Got notification: %s", notifications[i]->text.c_str());
-		TCHAR* szTitle = mir_a2t_cp(this->m_szModuleName, CP_UTF8);
-		TCHAR* szText = mir_a2t_cp(notifications[i]->text.c_str(), CP_UTF8);
-		TCHAR* szUrl = mir_a2t_cp(notifications[i]->link.c_str(), CP_UTF8);
-		NotifyEvent( szTitle, szText, ContactIDToHContact(notifications[i]->user_id), FACEBOOK_EVENT_NOTIFICATION, szUrl );
-		mir_free( szTitle );
-		mir_free( szText );
-//		mir_free( szUrl ); // URL is free'd in popup procedure
+		TCHAR* szTitle = mir_utf8decodeT(this->m_szModuleName);
+		TCHAR* szText = mir_utf8decodeT(notifications[i]->text.c_str());
+		NotifyEvent(szTitle, szText, ContactIDToHContact(notifications[i]->user_id), FACEBOOK_EVENT_NOTIFICATION, &notifications[i]->link, &notifications[i]->id);
+		mir_free(szTitle);
+		mir_free(szText);
 
 		delete notifications[i];
 	}
@@ -496,24 +498,24 @@ exit:
 	delete resp;
 }
 
-void FacebookProto::ProcessNotifications( void* )
+void FacebookProto::ProcessNotifications(void*)
 {
-	if ( isOffline())
+	if (isOffline())
 		return;
 
-	if (!getByte( FACEBOOK_KEY_EVENT_NOTIFICATIONS_ENABLE, DEFAULT_EVENT_NOTIFICATIONS_ENABLE ))
+	if (!getByte(FACEBOOK_KEY_EVENT_NOTIFICATIONS_ENABLE, DEFAULT_EVENT_NOTIFICATIONS_ENABLE))
 		return;
 
-	facy.handle_entry( "notifications" );
+	facy.handle_entry("notifications");
 
 	// Get notifications
-	http::response resp = facy.flap( FACEBOOK_REQUEST_NOTIFICATIONS );
+	http::response resp = facy.flap(REQUEST_NOTIFICATIONS);
 
 	// Process result data
 	facy.validate_response(&resp);
   
 	if (resp.code != HTTP_CODE_OK) {
-		facy.handle_error( "notifications" );
+		facy.handle_error("notifications");
 		return;
 	}
 
@@ -525,20 +527,18 @@ void FacebookProto::ProcessNotifications( void* )
 
 	std::vector< facebook_notification* > notifications;
 
-	facebook_json_parser* p = new facebook_json_parser( this );
-	p->parse_notifications( &(resp.data), &notifications );
+	facebook_json_parser* p = new facebook_json_parser(this);
+	p->parse_notifications(&(resp.data), &notifications);
 	delete p;
 
-	for(std::vector<facebook_notification*>::size_type i=0; i<notifications.size( ); i++)
+	for(std::vector<facebook_notification*>::size_type i=0; i<notifications.size(); i++)
 	{
 		LOG("      Got notification: %s", notifications[i]->text.c_str());
-		TCHAR* szTitle = mir_a2t_cp(this->m_szModuleName, CP_UTF8);
-		TCHAR* szText = mir_a2t_cp(notifications[i]->text.c_str(), CP_UTF8);
-		TCHAR* szUrl = mir_a2t_cp(notifications[i]->link.c_str(), CP_UTF8);
-		NotifyEvent( szTitle, szText, ContactIDToHContact(notifications[i]->user_id), FACEBOOK_EVENT_NOTIFICATION, szUrl );
-		mir_free( szTitle );
-		mir_free( szText );
-//		mir_free( szUrl ); // URL is free'd in popup procedure
+		TCHAR* szTitle = mir_utf8decodeT(this->m_szModuleName);
+		TCHAR* szText = mir_utf8decodeT(notifications[i]->text.c_str());
+		NotifyEvent(szTitle, szText, ContactIDToHContact(notifications[i]->user_id), FACEBOOK_EVENT_NOTIFICATION, &notifications[i]->link, &notifications[i]->id);
+		mir_free(szTitle);
+		mir_free(szText);
 
 		delete notifications[i];
 	}
@@ -553,23 +553,23 @@ void FacebookProto::ProcessNotifications( void* )
 	CODE_BLOCK_END
 }
 
-void FacebookProto::ProcessFriendRequests( void* )
+void FacebookProto::ProcessFriendRequests(void*)
 {
-	facy.handle_entry( "friendRequests" );
+	facy.handle_entry("friendRequests");
 
 	// Get notifications
-	http::response resp = facy.flap( FACEBOOK_REQUEST_LOAD_REQUESTS );
+	http::response resp = facy.flap(REQUEST_LOAD_REQUESTS);
 
 	// Process result data
 	facy.validate_response(&resp);
   
 	if (resp.code != HTTP_CODE_OK) {
-		facy.handle_error( "friendRequests" );
+		facy.handle_error("friendRequests");
 		return;
 	}
 	
 	// Parse it
-	std::string reqs = utils::text::source_get_value(&resp.data, 2, "<div class=\"mRequestItem", "al aps\">");
+	std::string reqs = utils::text::source_get_value(&resp.data, 2, "class=\"mRequestItem", "al aps\">");
 
 	std::string::size_type pos = 0;
 	std::string::size_type pos2 = 0;
@@ -577,9 +577,9 @@ void FacebookProto::ProcessFriendRequests( void* )
 
 	while (!last && !reqs.empty()) {
 		std::string req;
-		if ((pos2 = reqs.find("<div class=\"mRequestItem", pos)) != std::string::npos) {
+		if ((pos2 = reqs.find("class=\"mRequestItem", pos)) != std::string::npos) {
 			req = reqs.substr(pos, pos2 - pos);
-			pos = pos2 + 24;
+			pos = pos2 + 19;
 		} else {
 			req = reqs.substr(pos);
 			last = true;
@@ -594,32 +594,32 @@ void FacebookProto::ProcessFriendRequests( void* )
 
 		if (fbu->user_id.length() && fbu->real_name.length())
 		{
-			HANDLE hContact = AddToContactList(fbu, FACEBOOK_CONTACT_APPROVE, false, fbu->real_name.c_str());
-			DBWriteContactSettingByte(hContact, m_szModuleName, FACEBOOK_KEY_CONTACT_TYPE, FACEBOOK_CONTACT_APPROVE);
+			HANDLE hContact = AddToContactList(fbu, CONTACT_APPROVE);
+			setByte(hContact, FACEBOOK_KEY_CONTACT_TYPE, CONTACT_APPROVE);
 
 			bool seen = false;
 
 			DBVARIANT dbv;
-			if (!DBGetContactSettingString(hContact, m_szModuleName, "RequestTime", &dbv)) {
+			if (!getString(hContact, "RequestTime", &dbv)) {
 				seen = !strcmp(dbv.pszVal, time.c_str());
-				DBFreeVariant(&dbv);
+				db_free(&dbv);
 			}
 
 			if (!seen) {
 				// This is new request
-				DBWriteContactSettingString(hContact, m_szModuleName, "RequestTime", time.c_str());
+				setString(hContact, "RequestTime", time.c_str());
 
-				//blob is: uin( DWORD ), hContact( HANDLE ), nick( ASCIIZ ), first( ASCIIZ ), last( ASCIIZ ), email( ASCIIZ ), reason( ASCIIZ )
-				//blob is: 0( DWORD ), hContact( HANDLE ), nick( ASCIIZ ), ""( ASCIIZ ), ""( ASCIIZ ), ""( ASCIIZ ), ""( ASCIIZ )
+				//blob is: uin(DWORD), hContact(HANDLE), nick(ASCIIZ), first(ASCIIZ), last(ASCIIZ), email(ASCIIZ), reason(ASCIIZ)
+				//blob is: 0(DWORD), hContact(HANDLE), nick(ASCIIZ), ""(ASCIIZ), ""(ASCIIZ), ""(ASCIIZ), ""(ASCIIZ)
 				DBEVENTINFO dbei = {0};
-				dbei.cbSize = sizeof( DBEVENTINFO );
+				dbei.cbSize = sizeof(DBEVENTINFO);
 				dbei.szModule = m_szModuleName;
-				dbei.timestamp = ::time( NULL );
+				dbei.timestamp = ::time(NULL);
 				dbei.flags = DBEF_UTF;
 				dbei.eventType = EVENTTYPE_AUTHREQUEST;
-				dbei.cbBlob = (DWORD)(sizeof( DWORD )*2 + fbu->real_name.length() + 5);
+				dbei.cbBlob = (DWORD)(sizeof(DWORD)*2 + fbu->real_name.length() + 5);
 					
-				PBYTE pCurBlob = dbei.pBlob = ( PBYTE ) mir_alloc( dbei.cbBlob );					
+				PBYTE pCurBlob = dbei.pBlob = (PBYTE) mir_alloc(dbei.cbBlob);					
 				*(PDWORD)pCurBlob = 0; pCurBlob += sizeof(DWORD);                    // UID
 				*(PDWORD)pCurBlob = (DWORD)hContact; pCurBlob += sizeof(DWORD);      // Contact Handle
 				strcpy((char*)pCurBlob, fbu->real_name.data()); pCurBlob += fbu->real_name.length()+1;	// Nickname
@@ -628,7 +628,7 @@ void FacebookProto::ProcessFriendRequests( void* )
 				*pCurBlob = '\0'; pCurBlob++;                                        // E-mail
 				*pCurBlob = '\0';                                                    // Reason
 
-				CallService(MS_DB_EVENT_ADD, 0, (LPARAM)&dbei);				
+				db_event_add(0, &dbei);				
 
 				LOG("      (New) Friendship request from: %s (%s) [%s]", fbu->real_name.c_str(), fbu->user_id.c_str(), time.c_str());
 			} else {
@@ -640,12 +640,12 @@ void FacebookProto::ProcessFriendRequests( void* )
 		}
 	}
 
-	facy.handle_success( "friendRequests" );
+	facy.handle_success("friendRequests");
 }
 
-void FacebookProto::ProcessFeeds( void* data )
+void FacebookProto::ProcessFeeds(void* data)
 {
-	if ( data == NULL )
+	if (data == NULL)
 		return;
 
 	std::string* resp = (std::string*)data;
@@ -665,19 +665,22 @@ void FacebookProto::ProcessFeeds( void* data )
 	*resp = utils::text::slashu_to_utf8(*resp);	
 	*resp = utils::text::source_get_value(resp, 2, "\"html\":\"", ">\"");
 
-	while ( ( pos = resp->find( "<div class=\\\"mainWrapper\\\"", pos )) != std::string::npos && limit <= 25 )
+	while ((pos = resp->find("<div class=\\\"mainWrapper\\\"", pos)) != std::string::npos && limit <= 25)
 	{		
-		std::string::size_type pos2 = resp->find( "<div class=\\\"mainWrapper\\\"", pos+5 );
+		std::string::size_type pos2 = resp->find("<div class=\\\"mainWrapper\\\"", pos+5);
 		if (pos2 == std::string::npos)
 			pos2 = resp->length();
 		
-		std::string post = resp->substr( pos, pos2 - pos );
+		std::string post = resp->substr(pos, pos2 - pos);
 		pos += 5;
 
 		std::string post_header = utils::text::source_get_value(&post, 4, "<h5 class=", "uiStreamHeadline", ">", "<\\/h5>");
-		std::string post_message = utils::text::source_get_value(&post, 3, "<h5 class=\"uiStreamMessage userContentWrapper", ">", "<\\/h5>");
+		std::string post_message = utils::text::source_get_value(&post, 3, "<h5 class=\\\"uiStreamMessage userContentWrapper", ">", "<\\/h5>");
 		std::string post_link = utils::text::source_get_value(&post, 3, "<span class=\\\"uiStreamSource\\\"", ">", "<\\/span>");
 		std::string post_attach = utils::text::source_get_value(&post, 4, "<div class=", "uiStreamAttachments", ">", "<form");
+
+		//std::string post_time = utils::text::source_get_value(&post_link, 2, "data-utime=\\\"", "\\\"");
+		//std::string post_time_text = utils::text::source_get_value(&post_link, 3, "class=\\\"timestamp livetimestamp", ">", "<");
 
 		// in title keep only name, end of events like "X shared link" put into message
 		pos2 = post_header.find("<\\/a>") + 5;
@@ -685,25 +688,27 @@ void FacebookProto::ProcessFeeds( void* data )
 		post_header = post_header.substr(0, pos2);
 
 		// append attachement to message (if any)
-		post_message += utils::text::trim( post_attach );
+		post_message += utils::text::trim(post_attach);
 
 		facebook_newsfeed* nf = new facebook_newsfeed;
 
 		nf->title = utils::text::trim(
 			utils::text::special_expressions_decode(
-				utils::text::remove_html( post_header )) );
+				utils::text::remove_html(post_header)));
 
-		nf->user_id = utils::text::source_get_value( &post_header, 2, "user.php?id=", "\\\"" );
+		nf->user_id = utils::text::source_get_value(&post_header, 2, "user.php?id=", "\\\"");
 		
 		nf->link = utils::text::special_expressions_decode(
-				utils::text::source_get_value( &post_link, 2, "href=\\\"", "\\\">" ));
+				utils::text::source_get_value(&post_link, 2, "href=\\\"", "\\\">"));
 
 		nf->text = utils::text::trim(
 			utils::text::special_expressions_decode(
 				utils::text::remove_html(
-					utils::text::edit_html( post_message )) ));
+					utils::text::edit_html(post_message))));
 
-		if ( !nf->title.length() || !nf->text.length())
+		//nf->text += "\n" + post_time_text;
+
+		if (!nf->title.length() || !nf->text.length())
 		{
 			delete nf;
 			continue;
@@ -715,21 +720,19 @@ void FacebookProto::ProcessFeeds( void* data )
 			nf->text += "...";
 		}
 
-		news.push_back( nf );
+		news.push_back(nf);
 		pos++;
 		limit++;
 	}
 
-	for(std::vector<facebook_newsfeed*>::size_type i=0; i<news.size( ); i++)
+	for(std::vector<facebook_newsfeed*>::size_type i=0; i<news.size(); i++)
 	{
 		LOG("      Got newsfeed: %s %s", news[i]->title.c_str(), news[i]->text.c_str());
-		TCHAR* szTitle = mir_a2t_cp(news[i]->title.c_str(), CP_UTF8);
-		TCHAR* szText = mir_a2t_cp(news[i]->text.c_str(), CP_UTF8);
-		TCHAR* szUrl = mir_a2t_cp(news[i]->link.c_str(), CP_UTF8);
-		NotifyEvent(szTitle,szText,this->ContactIDToHContact(news[i]->user_id),FACEBOOK_EVENT_NEWSFEED, szUrl);
+		TCHAR* szTitle = mir_utf8decodeT(news[i]->title.c_str());
+		TCHAR* szText = mir_utf8decodeT(news[i]->text.c_str());
+		NotifyEvent(szTitle,szText,this->ContactIDToHContact(news[i]->user_id),FACEBOOK_EVENT_NEWSFEED, &news[i]->link);
 		mir_free(szTitle);
 		mir_free(szText);
-//		mir_free(szUrl); // URL is free'd in popup procedure
 		delete news[i];
 	}
 	news.clear();
@@ -750,12 +753,12 @@ exit:
 
 void FacebookProto::SearchAckThread(void *targ)
 {
-	facy.handle_entry( "searchAckThread" );
+	facy.handle_entry("searchAckThread");
 
 	int count = 0;
 
 	char *arg = mir_utf8encodeT((TCHAR*)targ);
-	std::string search = utils::url::encode( arg );
+	std::string search = utils::url::encode(arg);
 	std::string ssid;
 
 	while (count < 50 && !isOffline())
@@ -764,7 +767,7 @@ void FacebookProto::SearchAckThread(void *targ)
 		if (!ssid.empty())
 			get_data += "&ssid=" + ssid;
 
-		http::response resp = facy.flap( FACEBOOK_REQUEST_SEARCH, NULL, &get_data );
+		http::response resp = facy.flap(REQUEST_SEARCH, NULL, &get_data);
 
 		// Process result data
 		facy.validate_response(&resp);
@@ -782,16 +785,16 @@ void FacebookProto::SearchAckThread(void *targ)
 
 				std::string id = utils::text::source_get_value2(&item, "?id=", "&\"");
 				if (id.empty())
-					id = utils::text::source_get_value2(&item, "?slog=", "&\"");
+					id = utils::text::source_get_value2(&item, "?ids=", "&\"");
 
 				std::string name = utils::text::source_get_value(&item, 4, "<td class=\"name\">", "<a", ">", "</");
 				std::string surname;
 				std::string nick;
 				std::string common = utils::text::source_get_value(&item, 2, "<span class=\"mfss fcg\">", "</span>");
 
-				if ((pos2 = name.find(" <span class=\"alternate_name\">")) != std::string::npos) {
-					nick = name.substr(pos2 + 31, name.length() - pos2 - 32); // also remove brackets around nickname
-					name = name.substr(0, pos2);
+				if ((pos2 = name.find("<span class=\"alternate_name\">")) != std::string::npos) {
+					nick = name.substr(pos2 + 30, name.length() - pos2 - 31); // also remove brackets around nickname
+					name = name.substr(0, pos2 - 1);
 				}
 
 				if ((pos2 = name.find(" ")) != std::string::npos) {
@@ -803,11 +806,11 @@ void FacebookProto::SearchAckThread(void *targ)
 				if (id.empty() || id == facy.self_.user_id)
 					continue;
 
-				TCHAR* tid = mir_a2t_cp(id.c_str(), CP_UTF8);
-				TCHAR* tname = mir_a2t_cp(name.c_str(), CP_UTF8);
-				TCHAR* tsurname = mir_a2t_cp(surname.c_str(), CP_UTF8);
-				TCHAR* tnick = mir_a2t_cp(nick.c_str(), CP_UTF8);
-				TCHAR* tcommon = mir_a2t_cp(common.c_str(), CP_UTF8);
+				ptrT tid = mir_utf8decodeT(id.c_str());
+				ptrT tname = mir_utf8decodeT(utils::text::special_expressions_decode(name).c_str());
+				ptrT tsurname = mir_utf8decodeT(utils::text::special_expressions_decode(surname).c_str());
+				ptrT tnick = mir_utf8decodeT(utils::text::special_expressions_decode(nick).c_str());
+				ptrT tcommon = mir_utf8decodeT(utils::text::special_expressions_decode(common).c_str());
 
 				PROTOSEARCHRESULT isr = {0};
 				isr.cbSize = sizeof(isr);
@@ -818,24 +821,78 @@ void FacebookProto::SearchAckThread(void *targ)
 				isr.lastName = tsurname;
 				isr.email = tcommon;
 
-				ProtoBroadcastAck(m_szModuleName, NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, targ, (LPARAM)&isr);
-
-				mir_free(tid);
-				mir_free(tnick);
-				mir_free(tname);
-				mir_free(tsurname);
-				mir_free(tcommon);
+				ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, targ, (LPARAM)&isr);
 			}
 
-			ssid = utils::text::source_get_value(&items, 3, "id=\"more_objects\"", "ssid=", "&");			
+			ssid = utils::text::source_get_value(&items, 3, "id=\"more_objects\"", "ssid=", "&");
 			if (ssid.empty())
 				break; // No more results
 		}
 	}
 
-	ProtoBroadcastAck(m_szModuleName, NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, targ, 0);
+	ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, targ, 0);
 
-	facy.handle_success( "searchAckThread" );
+	facy.handle_success("searchAckThread");
+
+	mir_free(targ);
+	mir_free(arg);
+}
+
+void FacebookProto::SearchIdAckThread(void *targ)
+{
+	facy.handle_entry("searchIdAckThread");
+
+	char *arg = mir_utf8encodeT((TCHAR*)targ);
+	std::string search = utils::url::encode(arg) + "?";
+
+	if (!isOffline())
+	{
+		http::response resp = facy.flap(REQUEST_USER_INFO, NULL, &search);
+
+		if (resp.code == HTTP_CODE_FOUND && resp.headers.find("Location") != resp.headers.end()) {
+			search = utils::text::source_get_value(&resp.headers["Location"], 2, FACEBOOK_SERVER_MOBILE"/", "_rdr", true);
+			resp = facy.flap(REQUEST_USER_INFO, NULL, &search);
+		}
+
+		facy.validate_response(&resp);
+
+		if (resp.code == HTTP_CODE_OK)
+		{
+			std::string about = utils::text::source_get_value(&resp.data, 2, "<div class=\"timeline", "<div id=\"footer");
+		
+			std::string id = utils::text::source_get_value2(&about, ";id=", "&\"");
+			if (id.empty())
+				id = utils::text::source_get_value2(&about, "?bid=", "&\"");
+			std::string name = utils::text::source_get_value(&about, 3, "class=\"profileName", ">", "</");
+			std::string surname;
+
+			std::string::size_type pos;
+			if ((pos = name.find(" ")) != std::string::npos) {
+				surname = name.substr(pos + 1, name.length() - pos - 1);
+				name = name.substr(0, pos);
+			}
+
+			// ignore self contact and empty ids
+			if (!id.empty() && id != facy.self_.user_id){
+				ptrT tid = mir_utf8decodeT(id.c_str());
+				ptrT tname = mir_utf8decodeT(name.c_str());
+				ptrT tsurname = mir_utf8decodeT(surname.c_str());
+
+				PROTOSEARCHRESULT isr = {0};
+				isr.cbSize = sizeof(isr);
+				isr.flags = PSR_TCHAR;
+				isr.id  = tid;
+				isr.firstName = tname;
+				isr.lastName = tsurname;
+
+				ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, targ, (LPARAM)&isr);
+			}
+		}
+	}
+
+	ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, targ, 0);	
+
+	facy.handle_success("searchIdAckThread");	
 
 	mir_free(targ);
 	mir_free(arg);

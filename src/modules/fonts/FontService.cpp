@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -90,19 +90,19 @@ int LoadFontserviceModule(void)
 	// create generic fonts
 	FontIDT fontid = { sizeof(fontid) };
 	strncpy(fontid.dbSettingsGroup, "Fonts", sizeof(fontid.dbSettingsGroup));
-	_tcsncpy(fontid.group, _T("General"), SIZEOF(fontid.group));
+	_tcsncpy(fontid.group, LPGENT("General"), SIZEOF(fontid.group));
 
-	_tcsncpy(fontid.name, _T("Headers"), SIZEOF(fontid.name));
+	_tcsncpy(fontid.name, LPGENT("Headers"), SIZEOF(fontid.name));
 	fontid.flags = FIDF_APPENDNAME | FIDF_NOAS | FIDF_SAVEPOINTSIZE | FIDF_ALLOWEFFECTS | FIDF_CLASSHEADER;
 	strncpy(fontid.prefix, "Header", SIZEOF(fontid.prefix));
 	FontRegisterT(&fontid);
 
-	_tcsncpy(fontid.name, _T("Generic text"), SIZEOF(fontid.name));
+	_tcsncpy(fontid.name, LPGENT("Generic text"), SIZEOF(fontid.name));
 	fontid.flags = FIDF_APPENDNAME | FIDF_NOAS | FIDF_SAVEPOINTSIZE | FIDF_ALLOWEFFECTS | FIDF_CLASSGENERAL;
 	strncpy(fontid.prefix, "Generic", SIZEOF(fontid.prefix));
 	FontRegisterT(&fontid);
 
-	_tcsncpy(fontid.name, _T("Small text"), SIZEOF(fontid.name));
+	_tcsncpy(fontid.name, LPGENT("Small text"), SIZEOF(fontid.name));
 	fontid.flags = FIDF_APPENDNAME | FIDF_NOAS | FIDF_SAVEPOINTSIZE | FIDF_ALLOWEFFECTS | FIDF_CLASSSMALL;
 	strncpy(fontid.prefix, "Small", SIZEOF(fontid.prefix));
 	FontRegisterT(&fontid);

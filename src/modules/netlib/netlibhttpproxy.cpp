@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,16 +20,17 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "netlib.h"
 
 typedef enum
 {
-	reqHelloGet, 
-	reqOldGet, 
-	reqOldPost, 
-	reqNewPost, 
-} 
+	reqHelloGet,
+	reqOldGet,
+	reqOldPost,
+	reqNewPost,
+}
 RequestType;
 
 static int HttpGatewayReadSetResult(NetlibConnection *nlc, char *buf, int num, int peek)
@@ -61,7 +62,7 @@ void HttpGatewayRemovePacket(NetlibConnection *nlc, int pck)
 	}
 }
 
-static bool NetlibHttpGatewaySend(struct NetlibConnection *nlc, RequestType reqType, const char *buf, int len)
+static bool NetlibHttpGatewaySend(NetlibConnection *nlc, RequestType reqType, const char *buf, int len)
 {
 	NETLIBHTTPREQUEST nlhrSend = {0};
 	char szUrl[512];
@@ -143,7 +144,7 @@ static bool NetlibHttpGatewaySend(struct NetlibConnection *nlc, RequestType reqT
 //	nlhrSend.headers[3].szName = "Accept-Encoding";
 //	nlhrSend.headers[3].szValue = "deflate, gzip";
 
-	return NetlibHttpSendRequest((WPARAM)nlc, (LPARAM)&nlhrSend) != SOCKET_ERROR; 
+	return NetlibHttpSendRequest((WPARAM)nlc, (LPARAM)&nlhrSend) != SOCKET_ERROR;
 }
 
 static bool NetlibHttpGatewayStdPost(NetlibConnection *nlc, int& numPackets)
@@ -221,7 +222,7 @@ static bool NetlibHttpGatewayOscarPost(NetlibConnection *nlc, const char *buf, i
 	return res;
 }
 
- int NetlibHttpGatewayPost(struct NetlibConnection *nlc, const char *buf, int len, int flags)
+ int NetlibHttpGatewayPost(NetlibConnection *nlc, const char *buf, int len, int flags)
 {
 	if (nlc->nlhpi.szHttpGetUrl != NULL)
 		return NetlibHttpGatewayOscarPost(nlc, buf, len, flags) ? len : SOCKET_ERROR;
@@ -266,7 +267,7 @@ static bool NetlibHttpGatewayOscarPost(NetlibConnection *nlc, const char *buf, i
 #define NETLIBHTTP_RETRYCOUNT   3
 #define NETLIBHTTP_RETRYTIMEOUT 2000
 
-int NetlibHttpGatewayRecv(struct NetlibConnection *nlc, char *buf, int len, int flags)
+int NetlibHttpGatewayRecv(NetlibConnection *nlc, char *buf, int len, int flags)
 {
 	bool peek = (flags & MSG_PEEK) != 0;
 
@@ -327,7 +328,7 @@ int NetlibHttpGatewayRecv(struct NetlibConnection *nlc, char *buf, int len, int 
 
 		if (nlc->nlu->user.pfnHttpGatewayUnwrapRecv && !(flags & MSG_NOHTTPGATEWAYWRAP))
 		{
-			nlhrReply->pData = (char*)nlc->nlu->user.pfnHttpGatewayUnwrapRecv(nlhrReply, 
+			nlhrReply->pData = (char*)nlc->nlu->user.pfnHttpGatewayUnwrapRecv(nlhrReply,
 				(PBYTE)nlhrReply->pData, nlhrReply->dataLength, &nlhrReply->dataLength, mir_realloc);
 		}
 
@@ -365,7 +366,7 @@ int NetlibHttpGatewayRecv(struct NetlibConnection *nlc, char *buf, int len, int 
 				nlc->dataBufferLen = rbytes;
 
 				NetlibHttpFreeRequestStruct(0, (LPARAM)nlhrReply);
-				
+
 				return HttpGatewayReadSetResult(nlc, buf, len, peek);
 			}
 			else
@@ -398,7 +399,7 @@ int NetlibHttpGatewayRecv(struct NetlibConnection *nlc, char *buf, int len, int 
 	return SOCKET_ERROR;
 }
 
-int NetlibInitHttpConnection(struct NetlibConnection *nlc, struct NetlibUser *nlu, NETLIBOPENCONNECTION *nloc)
+int NetlibInitHttpConnection(NetlibConnection *nlc, NetlibUser *nlu, NETLIBOPENCONNECTION *nloc)
 {
 	NETLIBHTTPREQUEST *nlhrReply = NULL;
 
@@ -448,11 +449,11 @@ int NetlibInitHttpConnection(struct NetlibConnection *nlc, struct NetlibUser *nl
 INT_PTR NetlibHttpGatewaySetInfo(WPARAM wParam, LPARAM lParam)
 {
 	NETLIBHTTPPROXYINFO *nlhpi = (NETLIBHTTPPROXYINFO*)lParam;
-	struct NetlibConnection *nlc = (struct NetlibConnection*)wParam;
+	NetlibConnection *nlc = (struct NetlibConnection*)wParam;
 
-	if (GetNetlibHandleType(nlc) != NLH_CONNECTION || nlhpi == NULL  || 
-		nlhpi->cbSize < (sizeof(NETLIBHTTPPROXYINFO) - sizeof(int)) || 
-		nlhpi->szHttpPostUrl == NULL) 
+	if (GetNetlibHandleType(nlc) != NLH_CONNECTION || nlhpi == NULL  ||
+		nlhpi->cbSize < (sizeof(NETLIBHTTPPROXYINFO) - sizeof(int)) ||
+		nlhpi->szHttpPostUrl == NULL)
 	{
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return 0;
@@ -473,7 +474,7 @@ INT_PTR NetlibHttpGatewaySetInfo(WPARAM wParam, LPARAM lParam)
 
 INT_PTR NetlibHttpSetSticky(WPARAM wParam, LPARAM lParam)
 {
-	struct NetlibUser * nu = (struct NetlibUser*)wParam;
+	NetlibUser * nu = (NetlibUser*)wParam;
 	if (GetNetlibHandleType(nu) != NLH_USER) return ERROR_INVALID_PARAMETER;
 	mir_free(nu->szStickyHeaders);
 	nu->szStickyHeaders = mir_strdup((char*)lParam); // pointer is ours
@@ -483,7 +484,7 @@ INT_PTR NetlibHttpSetSticky(WPARAM wParam, LPARAM lParam)
 INT_PTR NetlibHttpSetPollingTimeout(WPARAM wParam, LPARAM lParam)
 {
 	int oldTimeout;
-	struct NetlibConnection *nlc = (struct NetlibConnection*)wParam;
+	NetlibConnection *nlc = (struct NetlibConnection*)wParam;
 	if (GetNetlibHandleType(nlc) != NLH_CONNECTION) return -1;
 	oldTimeout = nlc->pollingTimeout;
 	nlc->pollingTimeout = lParam;

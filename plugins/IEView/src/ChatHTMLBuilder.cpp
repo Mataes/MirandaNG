@@ -18,11 +18,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-#include "ChatHTMLBuilder.h"
 
-#include "Options.h"
-#include "Utils.h"
-#include "m_chat.h"
+#include "ieview_common.h"
 
 #define CHATMOD 			"Chat"
 #define CHATFONTMOD 		"ChatFonts"
@@ -51,34 +48,34 @@ void ChatHTMLBuilder::loadMsgDlgFont(int i, LOGFONTA * lf, COLORREF * colour) {
 	int style;
 	DBVARIANT dbv;
 	if (colour) {
-		wsprintfA(str, "Font%dCol", i);
-		*colour = DBGetContactSettingDword(NULL, CHATFONTMOD, str, 0x000000);
+		mir_snprintf(str, SIZEOF(str), "Font%dCol", i);
+		*colour = db_get_dw(NULL, CHATFONTMOD, str, 0x000000);
 	}
 	if (lf) {
-		wsprintfA(str, "Font%dSize", i);
-		lf->lfHeight = (char) DBGetContactSettingByte(NULL, CHATFONTMOD, str, 10);
+		mir_snprintf(str, SIZEOF(str), "Font%dSize", i);
+		lf->lfHeight = (char) db_get_b(NULL, CHATFONTMOD, str, 10);
 		lf->lfHeight = abs(lf->lfHeight);
 		lf->lfWidth = 0;
 		lf->lfEscapement = 0;
 		lf->lfOrientation = 0;
-		wsprintfA(str, "Font%dSty", i);
-		style = DBGetContactSettingByte(NULL, CHATFONTMOD, str, 0);
+		mir_snprintf(str, SIZEOF(str), "Font%dSty", i);
+		style = db_get_b(NULL, CHATFONTMOD, str, 0);
 		lf->lfWeight = style & FONTF_BOLD ? FW_BOLD : FW_NORMAL;
 		lf->lfItalic = style & FONTF_ITALIC ? 1 : 0;
 		lf->lfUnderline = style & FONTF_UNDERLINE ? 1 : 0;
 		lf->lfStrikeOut = 0;
-		wsprintfA(str, "Font%dSet", i);
-		lf->lfCharSet = DBGetContactSettingByte(NULL, CHATFONTMOD, str, DEFAULT_CHARSET);
+		mir_snprintf(str, SIZEOF(str), "Font%dSet", i);
+		lf->lfCharSet = db_get_b(NULL, CHATFONTMOD, str, DEFAULT_CHARSET);
 		lf->lfOutPrecision = OUT_DEFAULT_PRECIS;
 		lf->lfClipPrecision = CLIP_DEFAULT_PRECIS;
 		lf->lfQuality = DEFAULT_QUALITY;
 		lf->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-		wsprintfA(str, "Font%d", i);
-		if (DBGetContactSetting(NULL, CHATFONTMOD, str, &dbv))
+		mir_snprintf(str, SIZEOF(str), "Font%d", i);
+		if (db_get(NULL, CHATFONTMOD, str, &dbv))
 			lstrcpyA(lf->lfFaceName, "Verdana");
 		else {
 			lstrcpynA(lf->lfFaceName, dbv.pszVal, sizeof(lf->lfFaceName));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 }
@@ -90,11 +87,12 @@ char *ChatHTMLBuilder::timestampToString(time_t time)
 	char *pszStamp = "[%H:%M]";
 	//InitSetting( &g_Settings.pszTimeStamp, "HeaderTime", _T("[%H:%M]"));
 	strftime(str, 79, pszStamp, localtime(&time));
-	Utils::UTF8Encode(str, szResult, 500);
+	lstrcpynA(szResult, ptrA(mir_utf8encode(str)), 500);
 	return szResult;
 }
 
-void ChatHTMLBuilder::buildHead(IEView *view, IEVIEWEVENT *event) {
+void ChatHTMLBuilder::buildHead(IEView *view, IEVIEWEVENT *event)
+{
 	LOGFONTA lf;
 	COLORREF color;
 	char *output = NULL;
@@ -116,7 +114,7 @@ void ChatHTMLBuilder::buildHead(IEView *view, IEVIEWEVENT *event) {
 		ReleaseDC(NULL, hdc);
 		Utils::appendText(&output, &outputSize, "<html><head>");
 		Utils::appendText(&output, &outputSize, "<style type=\"text/css\">\n");
-		COLORREF bkgColor = DBGetContactSettingDword(NULL, CHATMOD, "BackgroundLog", 0xFFFFFF);
+		COLORREF bkgColor = db_get_dw(NULL, CHATMOD, "BackgroundLog", 0xFFFFFF);
 		COLORREF inColor, outColor;
 		bkgColor= (((bkgColor & 0xFF) << 16) | (bkgColor & 0xFF00) | ((bkgColor & 0xFF0000) >> 16));
 		inColor = outColor = bkgColor;
@@ -159,35 +157,37 @@ void ChatHTMLBuilder::buildHead(IEView *view, IEVIEWEVENT *event) {
  * The following method is going to be completely rewritten soon. Do not modify or complain for the time being...
  */
 
-void ChatHTMLBuilder::appendEventNonTemplate(IEView *view, IEVIEWEVENT *event) {
-	DWORD iconFlags = DBGetContactSettingDword(NULL, CHATMOD, CHAT_ICON_FLAGS, 0);
+void ChatHTMLBuilder::appendEventNonTemplate(IEView *view, IEVIEWEVENT *event)
+{
+	DWORD iconFlags = db_get_dw(NULL, CHATMOD, CHAT_ICON_FLAGS, 0);
 	IEVIEWEVENTDATA* eventData = event->eventData;
 	for (int eventIdx = 0; eventData!=NULL && (eventIdx < event->count || event->count==-1); eventData = eventData->next, eventIdx++) {
 		//DWORD dwFlags = eventData->dwFlags;
 		const char *iconFile = "";
 		DWORD dwData = eventData->dwData;
-		int isSent = eventData->bIsMe;
+		bool isSent = eventData->bIsMe != 0;
 		int outputSize = 0;
 		char *output = NULL;
-		char *szName = NULL, *szText = NULL;
 		const char *className = "";
 		bool showIcon = false;
 
-		if (eventData->dwFlags & IEEDF_UNICODE_TEXT) {
+		ptrA szName, szText;
+		if (eventData->dwFlags & IEEDF_UNICODE_TEXT)
 			szText = encodeUTF8(NULL, event->pszProto, eventData->pszTextW, ENF_ALL | ENF_CHAT_FORMATTING, isSent);
-		} else {
+		else
 			szText = encodeUTF8(NULL, event->pszProto, (char *)eventData->pszText, ENF_ALL | ENF_CHAT_FORMATTING, isSent);
-		}
-		if (eventData->dwFlags & IEEDF_UNICODE_NICK) {
+
+		if (eventData->dwFlags & IEEDF_UNICODE_NICK)
 			szName = encodeUTF8(NULL, event->pszProto, eventData->pszNickW, ENF_NAMESMILEYS, true);
-		} else {
+		else
 			szName = encodeUTF8(NULL, event->pszProto, (char *) eventData->pszNick, ENF_NAMESMILEYS, true);
-		}
+
 		if (eventData->iType == IEED_GC_EVENT_MESSAGE) {
 			iconFile = isSent ? "message_out_chat.gif" : "message_in_chat.gif";
-			showIcon = iconFlags & (isSent ? GC_EVENT_MESSAGE : GC_EVENT_MESSAGE);
+			showIcon = (iconFlags & (isSent ? GC_EVENT_MESSAGE : GC_EVENT_MESSAGE)) != 0;
 			className = isSent ? "messageOut" : "messageIn";
-		} else {
+		}
+		else {
 			if (eventData->iType == IEED_GC_EVENT_ACTION) {
 				iconFile = "action.gif";
 				className = "action";
@@ -245,8 +245,6 @@ void ChatHTMLBuilder::appendEventNonTemplate(IEView *view, IEVIEWEVENT *event) {
 			view->write(output);
 			free(output);
 		}
-		if (szName!=NULL) delete szName;
-		if (szText!=NULL) delete szText;
 	}
 }
 

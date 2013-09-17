@@ -16,11 +16,8 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
-#include "variables.h"
 
-extern HINSTANCE hInst;
-extern struct ParseOptions gParseOpts;
-extern int hLangpack;
+#include "variables.h"
 
 static INT_PTR CALLBACK SetOptsDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 {
@@ -29,9 +26,9 @@ static INT_PTR CALLBACK SetOptsDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARA
 		TranslateDialogDefault(hwndDlg);
 		{
 			DBVARIANT dbv;
-			if (!DBGetContactSettingTString( NULL, MODULENAME, SETTING_STARTUPTEXT, &dbv )) {
+			if (!db_get_ts( NULL, MODULENAME, SETTING_STARTUPTEXT, &dbv )) {
 				SetDlgItemText(hwndDlg, IDC_FORMATTEXT, dbv.ptszVal);
-				DBFreeVariant(&dbv);
+				db_free(&dbv);
 			}
 		}
 		CheckDlgButton(hwndDlg, IDC_PARSEATSTARTUP, db_get_b(NULL, MODULENAME, SETTING_PARSEATSTARTUP, 0));

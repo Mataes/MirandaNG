@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people 
 listed in contributors.txt.
 
@@ -139,6 +139,10 @@ extern HANDLE hOkToExitEvent, hModulesLoadedEvent, hevLoadModule, hevUnloadModul
 
 char* GetPluginNameByInstance(HINSTANCE hInstance);
 int   GetPluginFakeId(const MUUID &uuid, int hLangpack);
+
+/**** srmm.cpp *************************************************************************/
+
+void KillModuleSrmmIcons(int hLangpack);
 
 /**** utf.cpp **************************************************************************/
 

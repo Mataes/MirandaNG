@@ -21,7 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "import.h"
-#include <m_db_int.h>
 
 time_t dwSinceDate = 0;
 
@@ -85,7 +84,7 @@ static HANDLE HContactFromID(char* szProto, char* pszSetting, TCHAR* pwszID)
 	while (hContact != NULL) {
 		char* szProto = GetContactProto(hContact);
 		if ( !lstrcmpA(szProto, szProto)) {
-			mir_ptr<WCHAR> id( db_get_tsa(hContact, szProto, pszSetting));
+			ptrW id( db_get_tsa(hContact, szProto, pszSetting));
 			if ( !lstrcmp(pwszID, id))
 				return hContact;
 		}
@@ -111,7 +110,7 @@ static HANDLE HistoryImportFindContact(HWND hdlgProgress, char* szModuleName, DW
 
 	hContact = (HANDLE)CallService(MS_DB_CONTACT_ADD, 0, 0);
 	CallService(MS_PROTO_ADDTOCONTACT, (WPARAM)hContact, (LPARAM)szModuleName);
-	DBWriteContactSettingDword(hContact, szModuleName, "UIN", uin);
+	db_set_dw(hContact, szModuleName, "UIN", uin);
 	AddMessage( LPGENT("Added contact %u (found in history)"), uin );
 	return hContact;
 }

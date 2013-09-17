@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "findadd.h"
 
@@ -30,7 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 static HWND hwndFindAdd = NULL;
 static HANDLE hHookModulesLoaded = 0;
-static HANDLE hMainMenuItem = NULL;
+static HGENMENU hMainMenuItem = NULL;
 static int OnSystemModulesLoaded(WPARAM wParam, LPARAM lParam);
 
 static int FindAddDlgResizer(HWND, LPARAM lParam, UTILRESIZECONTROL *urc)
@@ -342,7 +343,7 @@ static INT_PTR CALLBACK DlgProcFindAdd(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 
 			TCHAR *szProto = NULL;
 			DBVARIANT dbv;
-			if ( !DBGetContactSettingTString(NULL, "FindAdd", "LastSearched", &dbv)){
+			if ( !db_get_ts(NULL, "FindAdd", "LastSearched", &dbv)){
 				szProto = NEWTSTR_ALLOCA(dbv.ptszVal);
 				db_free(&dbv); /* free string szProto was fetched with */
 			}
@@ -515,10 +516,10 @@ static INT_PTR CALLBACK DlgProcFindAdd(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 			en(ADVANCEDGROUP, Advanced); en(BYADVANCED, Advanced); en(ADVANCED, Advanced);
 			en(BYCUSTOM, Tiny); en(TINYEXTENDEDGROUP, Tiny);
 #undef en
-			int checkmarkVisible = (dat->showAdvanced && IsDlgButtonChecked(hwndDlg, IDC_BYADVANCED)) || 
-				(dat->showEmail && IsDlgButtonChecked(hwndDlg, IDC_BYEMAIL)) || 
-				(dat->showTiny && IsDlgButtonChecked(hwndDlg, IDC_BYCUSTOM)) || 
-				(dat->showName && IsDlgButtonChecked(hwndDlg, IDC_BYNAME)) || 
+			int checkmarkVisible = (dat->showAdvanced && IsDlgButtonChecked(hwndDlg, IDC_BYADVANCED)) ||
+				(dat->showEmail && IsDlgButtonChecked(hwndDlg, IDC_BYEMAIL)) ||
+				(dat->showTiny && IsDlgButtonChecked(hwndDlg, IDC_BYCUSTOM)) ||
+				(dat->showName && IsDlgButtonChecked(hwndDlg, IDC_BYNAME)) ||
 				(dat->showProtoId && IsDlgButtonChecked(hwndDlg, IDC_BYPROTOID));
 			if ( !checkmarkVisible) {
 				if (dat->showProtoId) CheckSearchTypeRadioButton(hwndDlg, IDC_BYPROTOID);
@@ -686,18 +687,18 @@ static INT_PTR CALLBACK DlgProcFindAdd(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 				else if (IsDlgButtonChecked(hwndDlg, IDC_BYPROTOID)) {
 					TCHAR str[256];
 					GetDlgItemText(hwndDlg, IDC_PROTOID, str, SIZEOF(str));
-					trtrim(str);
+					rtrimt(str);
 					if (str[0] == 0)
-						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_OK);
+						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_ICONERROR | MB_OK);
 					else
 						BeginSearch(hwndDlg, dat, szProto, PS_BASICSEARCHT, PF1_BASICSEARCH, str);
 				}
 				else if (IsDlgButtonChecked(hwndDlg, IDC_BYEMAIL)) {
 					TCHAR str[256];
 					GetDlgItemText(hwndDlg, IDC_EMAIL, str, SIZEOF(str));
-					trtrim(str);
+					rtrimt(str);
 					if (str[0] == 0)
-						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_OK);
+						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_ICONERROR | MB_OK);
 					else
 						BeginSearch(hwndDlg, dat, szProto, PS_SEARCHBYEMAILT, PF1_SEARCHBYEMAIL, str);
 				}
@@ -711,13 +712,13 @@ static INT_PTR CALLBACK DlgProcFindAdd(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 					psbn.pszLastName = last;
 					psbn.pszNick = nick;
 					if (nick[0] == 0 && first[0] == 0 && last[0] == 0)
-						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_OK);
+						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_ICONERROR | MB_OK);
 					else
 						BeginSearch(hwndDlg, dat, szProto, PS_SEARCHBYNAMET, PF1_SEARCHBYNAME, &psbn);
 				}
 				else if (IsDlgButtonChecked(hwndDlg, IDC_BYADVANCED)) {
 					if (dat->hwndAdvSearch == NULL)
-						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_OK);
+						MessageBox(hwndDlg, sttErrMsg, sttErrTitle, MB_ICONERROR | MB_OK);
 					else
 						BeginSearch(hwndDlg, dat, szProto, PS_SEARCHBYADVANCED, PF1_EXTSEARCHUI, dat->hwndAdvSearch);
 				}
@@ -754,7 +755,7 @@ static INT_PTR CALLBACK DlgProcFindAdd(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 				else {
 					TCHAR str[256];
 					GetDlgItemText(hwndDlg, IDC_PROTOID, str, SIZEOF(str));
-					if (*trtrim(str) == 0)
+					if (*rtrimt(str) == 0)
 						break;
 
 					PROTOSEARCHRESULT psr = {0};
@@ -763,7 +764,7 @@ static INT_PTR CALLBACK DlgProcFindAdd(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 					psr.id = str;
 
 					acs.psr = &psr;
-					acs.szProto = (char*)SendDlgItemMessage(hwndDlg, IDC_PROTOLIST, CB_GETITEMDATA, 
+					acs.szProto = (char*)SendDlgItemMessage(hwndDlg, IDC_PROTOLIST, CB_GETITEMDATA,
 						SendDlgItemMessage(hwndDlg, IDC_PROTOLIST, CB_GETCURSEL, 0, 0), 0);
 				}
 
@@ -1025,7 +1026,6 @@ int LoadFindAddModule(void)
 
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.position = 500020000;
-	mi.flags = CMIF_ICONFROMICOLIB;
 	mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_FINDUSER);
 	mi.pszName = LPGEN("&Find/Add Contacts...");
 	mi.pszService = MS_FINDADD_FINDADD;
@@ -1045,10 +1045,6 @@ static int OnSystemModulesLoaded(WPARAM, LPARAM)
 			netProtoCount++;
 	}
 
-	CLISTMENUITEM cmi = { sizeof(cmi) };
-	cmi.flags = CMIM_FLAGS;
-	if (netProtoCount == 0)
-		cmi.flags |= CMIF_HIDDEN;
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMainMenuItem, (LPARAM)&cmi);
+	Menu_ShowItem(hMainMenuItem, netProtoCount != 0);
 	return 0;
 }

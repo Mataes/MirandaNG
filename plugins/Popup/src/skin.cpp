@@ -1,10 +1,10 @@
 /*
 Popup Plus plugin for Miranda IM
 
-Copyright	� 2002 Luca Santarelli,
-			� 2004-2007 Victor Pavlychko
-			� 2010 MPK
-			� 2010 Merlin_de
+Copyright	© 2002 Luca Santarelli,
+			© 2004-2007 Victor Pavlychko
+			© 2010 MPK
+			© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/skin.cpp $
-Revision       : $Revision: 1651 $
-Last change on : $Date: 2010-07-15 20:31:06 +0300 (Чт, 15 июл 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #include "headers.h"
@@ -56,10 +47,10 @@ PopupSkin::~PopupSkin()
 SIZE PopupSkin::measureAction(HDC hdc, POPUPACTION *act) const
 {
 	SIZE sz = {0};
-	if (!(PopUpOptions.actions&ACT_ENABLE))
+	if (!(PopupOptions.actions&ACT_ENABLE))
 		return sz;
 
-	if (PopUpOptions.actions&ACT_LARGE)
+	if (PopupOptions.actions&ACT_LARGE)
 	{
 		sz.cx = sz.cy = 32;
 	} else
@@ -67,7 +58,7 @@ SIZE PopupSkin::measureAction(HDC hdc, POPUPACTION *act) const
 		sz.cx = sz.cy = 16;
 	}
 
-	if (PopUpOptions.actions&ACT_TEXT)
+	if (PopupOptions.actions&ACT_TEXT)
 	{
 		char *name = strchr(act->lpzTitle, '/');
 		if (!name) name = act->lpzTitle;
@@ -103,7 +94,7 @@ SIZE PopupSkin::measureActionBar(HDC hdc, PopupWnd2 *wnd) const
 	{
 		SIZE szAction = measureAction(hdc, &wnd->getActions()[i].actionA);
 
-		if (PopUpOptions.actions & ACT_TEXT)
+		if (PopupOptions.actions & ACT_TEXT)
 		{
 			sz.cx = max(sz.cx, szAction.cx);
 			sz.cy += szAction.cy;
@@ -119,16 +110,16 @@ SIZE PopupSkin::measureActionBar(HDC hdc, PopupWnd2 *wnd) const
 
 void PopupSkin::drawAction(MyBitmap *bmp, POPUPACTION *act, int x, int y, bool hover) const
 {
-	if (!(PopUpOptions.actions&ACT_ENABLE))
+	if (!(PopupOptions.actions&ACT_ENABLE))
 		return;
 
 	bmp->DrawIcon(act->lchIcon,
-		(PopUpOptions.actions&ACT_TEXT) ? x : (x+2),
+		(PopupOptions.actions&ACT_TEXT) ? x : (x+2),
 		y+2,
-		(PopUpOptions.actions&ACT_LARGE) ? 32 : 16,
-		(PopUpOptions.actions&ACT_LARGE) ? 32 : 16);
+		(PopupOptions.actions&ACT_LARGE) ? 32 : 16,
+		(PopupOptions.actions&ACT_LARGE) ? 32 : 16);
 
-	if (PopUpOptions.actions&ACT_TEXT)
+	if (PopupOptions.actions&ACT_TEXT)
 	{
 		char *name = strchr(act->lpzTitle, '/');
 		if (!name) name = act->lpzTitle;
@@ -147,10 +138,10 @@ void PopupSkin::drawAction(MyBitmap *bmp, POPUPACTION *act, int x, int y, bool h
 		WCHAR *str = TranslateW(wname);
 		GetTextExtentPoint32W(bmp->getDC(), str, lstrlenW(str), &szText);
 		bmp->Draw_TextW(str,
-			(PopUpOptions.actions&ACT_LARGE) ? (x+szSpace.cx+32) : (x+szSpace.cx+16),
+			(PopupOptions.actions&ACT_LARGE) ? (x+szSpace.cx+32) : (x+szSpace.cx+16),
 			max(
 				y+2,
-				y+2 + (((PopUpOptions.actions&ACT_LARGE) ? 32 : 16) - szText.cy)/2
+				y+2 + (((PopupOptions.actions&ACT_LARGE) ? 32 : 16) - szText.cy)/2
 			));
 		mir_free(wname);
 
@@ -162,8 +153,8 @@ void PopupSkin::drawAction(MyBitmap *bmp, POPUPACTION *act, int x, int y, bool h
 			RECT rc;
 			rc.left = x;
 			rc.top = y;
-			rc.right = x + ((PopUpOptions.actions&ACT_LARGE) ? 32 : 16) + 4;
-			rc.bottom = y + ((PopUpOptions.actions&ACT_LARGE) ? 32 : 16) + 4;
+			rc.right = x + ((PopupOptions.actions&ACT_LARGE) ? 32 : 16) + 4;
+			rc.bottom = y + ((PopupOptions.actions&ACT_LARGE) ? 32 : 16) + 4;
 			bmp->saveAlpha(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
 			HBRUSH hbr = CreateSolidBrush(fonts.clActionHover);
 			FrameRect(bmp->getDC(), &rc, hbr);
@@ -185,7 +176,7 @@ void PopupSkin::drawActionBar(MyBitmap *bmp, PopupWnd2 *wnd, int x, int y) const
 		wnd->getActions()[i].rc.right = x + szAction.cx;
 		wnd->getActions()[i].rc.bottom = y + szAction.cy;
 
-		if (PopUpOptions.actions & ACT_TEXT)
+		if (PopupOptions.actions & ACT_TEXT)
 		{
 			y += szAction.cy;
 		} else
@@ -236,14 +227,14 @@ void PopupSkin::measure(HDC hdc, PopupWnd2 *wnd, int maxw, POPUPOPTIONS *options
 	}
 
 	wnd->getArgs()->clear();
-	wnd->getArgs()->add("options.avatarsize", PopUpOptions.avatarSize);
+	wnd->getArgs()->add("options.avatarsize", PopupOptions.avatarSize);
 	wnd->getArgs()->add("window.width", maxw);
 	wnd->getArgs()->add("window.maxwidth", maxw);
 
 	for (int i=0; i < 32; ++i)
 	{
 		char buf[10];
-		wsprintfA(buf, "opt%d", i);
+		mir_snprintf(buf, SIZEOF(buf), "opt%d", i);
 		wnd->getArgs()->add(buf, (m_flags&(1L<<i)) ? 1 : 0);
 	}
 
@@ -634,9 +625,9 @@ void PopupSkin::display(MyBitmap *bmp, PopupWnd2 *wnd, int maxw, POPUPOPTIONS *o
 				if (textAreaWidth <= 0) textAreaWidth = wnd->getRenderInfo()->realtextw;
 
 				drawActionBar(bmp, wnd,
-					DBGetContactSettingByte(NULL, MODULNAME, "CenterActions", 0) ?
+					db_get_b(NULL, MODULNAME, "CenterActions", 0) ?
 						(pos.x + (textAreaWidth - wnd->getRenderInfo()->actw)/2) :
-					(PopUpOptions.actions&ACT_RIGHTICONS) ?
+					(PopupOptions.actions&ACT_RIGHTICONS) ?
 						(pos.x + textAreaWidth - wnd->getRenderInfo()->actw) :
 					// else
 						pos.x,
@@ -1278,7 +1269,7 @@ void PopupSkin::saveOpts() const
 
 	mir_snprintf(buf, sizeof(buf), "skin.%.120S", m_name);
 
-	DBWriteContactSettingDword(NULL, MODULNAME, buf, m_flags);
+	db_set_dw(NULL, MODULNAME, buf, m_flags);
 }
 
 void PopupSkin::loadOpts() const
@@ -1287,7 +1278,7 @@ void PopupSkin::loadOpts() const
 
 	mir_snprintf(buf, sizeof(buf), "skin.%.120S", m_name);
 
-	m_flags = DBGetContactSettingDword(NULL, MODULNAME, buf, m_flags);
+	m_flags = db_get_dw(NULL, MODULNAME, buf, m_flags);
 }
 
 // Skins
@@ -1403,13 +1394,8 @@ const PopupSkin *Skins::getSkin(LPCTSTR name)
 
 	if (!any->skin->isCompatible())
 		MessageBox(NULL,
-			TranslateTS(
-				_T("The skin you are trying to load is designed\r\n")
-				_T("for newer version of Popup Plus. And will not\r\n")
-				_T("display properly.\r\n")
-				_T("\r\n")
-				_T("Please choose another skin.")),
-			_T(MODULNAME_LONG), MB_ICONSTOP|MB_OK);
+			TranslateT("The skin you are trying to load is designed\r\nfor newer version of Popup Plus. And will not\r\ndisplay properly.\r\n\r\nPlease choose another skin."),
+			_T(MODULNAME_LONG), MB_ICONSTOP | MB_OK);
 
 	return any->skin;
 }
@@ -1417,7 +1403,7 @@ const PopupSkin *Skins::getSkin(LPCTSTR name)
 void Skins::loadActiveSkin()
 {
 	for (SKINLIST *p = m_skins; p; p = p->next)
-		if (!lstrcmpi(p->name, PopUpOptions.SkinPack))
+		if (!lstrcmpi(p->name, PopupOptions.SkinPack))
 		{
 			if (p->skin)
 				break;
@@ -1431,7 +1417,7 @@ void Skins::loadActiveSkin()
 void Skins::freeAllButActive()
 {
 	for (SKINLIST *p = m_skins; p; p = p->next)
-		if (lstrcmpi(p->name, PopUpOptions.SkinPack))
+		if (lstrcmpi(p->name, PopupOptions.SkinPack))
 		{
 			delete p->skin;
 			p->skin = NULL;

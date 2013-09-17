@@ -7,10 +7,6 @@
  */
 
 #include "yamn.h"
-#include "m_mails.h"
-#if defined(DEBUG_FILEREAD) || defined(DEBUG_FILEREADMESSAGES) || defined(DEBUG_SYNCHRO)
-	#include <stdio.h>
-#endif
 
 //Account status CS
 //When we check some account, thread should change status of account to idle, connecting etc.
@@ -48,12 +44,12 @@ INT_PTR CreatePluginAccountSvc(WPARAM wParam,LPARAM lParam)
 	HACCOUNT NewAccount;
 
 //test if we are going to initialize members of suitable structure (structures of plugin and YAMN must match)
-	if (AccountVersion!=YAMN_ACCOUNTVERSION)
+	if (AccountVersion != YAMN_ACCOUNTVERSION)
 		return NULL;
 
-	if (Plugin!=NULL)
+	if (Plugin != NULL)
 	{
-		if (Plugin->Fcn->NewAccountFcnPtr!=NULL)
+		if (Plugin->Fcn->NewAccountFcnPtr != NULL)
 		{
 //Let plugin create its own structure, which can be derived from CAccount structure
 			NewAccount=Plugin->Fcn->NewAccountFcnPtr(Plugin,YAMN_ACCOUNTVERSION);
@@ -80,11 +76,11 @@ INT_PTR DeletePluginAccountSvc(WPARAM wParam,LPARAM)
 {
 	HACCOUNT OldAccount=(HACCOUNT)wParam;
 
-	if (OldAccount->Plugin->Fcn!=NULL)
+	if (OldAccount->Plugin->Fcn != NULL)
 	{
 //Deinit every members and allocated fields of structure used by YAMN
 		DeInitAccount(OldAccount);
-		if (OldAccount->Plugin->Fcn->DeleteAccountFcnPtr!=NULL)
+		if (OldAccount->Plugin->Fcn->DeleteAccountFcnPtr != NULL)
 		{
 //Let plugin delete its own CAccount derived structure
 			OldAccount->Plugin->Fcn->DeleteAccountFcnPtr(OldAccount);
@@ -134,15 +130,15 @@ int InitAccount(HACCOUNT Which)
 void DeInitAccount(HACCOUNT Which)
 {
 //delete YAMN allocated fields
-	if (Which->Name!=NULL)
+	if (Which->Name != NULL)
 		delete[] Which->Name;
-	if (Which->Server->Name!=NULL)
+	if (Which->Server->Name != NULL)
 		delete[] Which->Server->Name;
-	if (Which->Server->Login!=NULL)
+	if (Which->Server->Login != NULL)
 		delete[] Which->Server->Login;
-	if (Which->Server->Passwd!=NULL)
+	if (Which->Server->Passwd != NULL)
 		delete[] Which->Server->Passwd;
-	if (Which->Server!=NULL)
+	if (Which->Server != NULL)
 		delete[] Which->Server;
 
 	SWMRGDelete(Which->AccountAccessSO);
@@ -173,7 +169,7 @@ void CodeDecodeString(char *Dest,BOOL Encrypt)
 	if (Dest==NULL)
 		return;
 
-	for (;*Dest!=(TCHAR)0;Dest++)
+	for (;*Dest != (TCHAR)0;Dest++)
 	{
 		if (Encrypt)
 			*Dest=*Dest+Code;
@@ -229,8 +225,8 @@ DWORD ReadStringFromMemory(char **Parser,TCHAR *End,char **StoreTo,TCHAR *DebugS
 	TCHAR Debug[65536];
 
 	Finder=*Parser;
-	while((*Finder!=(TCHAR)0) && (Finder<=End)) Finder++;
-	_stprintf(Debug,_T("%s: %s,length is %d, remaining %d chars"),DebugString,*Parser,Finder-*Parser,End-Finder);
+	while((*Finder != (TCHAR)0) && (Finder<=End)) Finder++;
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("%s: %s,length is %d, remaining %d chars"), DebugString, *Parser, Finder-*Parser, End-Finder);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 	if (Finder>=End)
 		return EACC_FILECOMPATIBILITY;
@@ -256,7 +252,7 @@ DWORD ReadStringFromMemory(char **Parser,char *End,char **StoreTo)
 	DWORD Size;
 
 	Finder=*Parser;
-	while((*Finder!=(TCHAR)0) && (Finder<=End)) Finder++;
+	while((*Finder != (TCHAR)0) && (Finder<=End)) Finder++;
 	if (Finder>=End)
 		return EACC_FILECOMPATIBILITY;
 	if (Size=Finder-*Parser)
@@ -284,8 +280,8 @@ DWORD ReadStringFromMemoryW(WCHAR **Parser,TCHAR *End,WCHAR **StoreTo,WCHAR *Deb
 	WCHAR Debug[65536];
 
 	Finder=*Parser;
-	while((*Finder!=(WCHAR)0) && (Finder<=(WCHAR *)End)) Finder++;
-	swprintf(Debug,L"%s: %s,length is %d, remaining %d chars",DebugString,*Parser,Finder-*Parser,(WCHAR *)End-Finder);
+	while((*Finder != (WCHAR)0) && (Finder<=(WCHAR *)End)) Finder++;
+	mir_sntprintf(Debug, SIZEOF(Debug), L"%s: %s,length is %d, remaining %d chars", DebugString, *Parser, Finder-*Parser, (WCHAR *)End-Finder);
 	MessageBoxW(NULL,Debug,L"debug",MB_OK);
 	if (Finder>=(WCHAR *)End)
 		return EACC_FILECOMPATIBILITY;
@@ -311,7 +307,7 @@ DWORD ReadStringFromMemoryW(WCHAR **Parser,WCHAR *End,WCHAR **StoreTo)
 	DWORD Size;
 
 	Finder=*Parser;
-	while((*Finder!=(WCHAR)0) && (Finder<=(WCHAR *)End)) Finder++;
+	while((*Finder != (WCHAR)0) && (Finder<=(WCHAR *)End)) Finder++;
 	if (Finder>=(WCHAR *)End)
 		return EACC_FILECOMPATIBILITY;
 	if (Size=Finder-*Parser)
@@ -341,32 +337,32 @@ static DWORD ReadNotificationFromMemory(char **Parser,char *End,YAMN_NOTIFICATIO
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("NFlags: %04x, remaining %d chars"),Which->Flags,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("NFlags: %04x, remaining %d chars"), Which->Flags, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 
-	Which->PopUpB=*(COLORREF *)(*Parser);
+	Which->PopupB=*(COLORREF *)(*Parser);
 	(*Parser)+=sizeof(COLORREF);
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("PopUpB: %04x, remaining %d chars"),Which->PopUpB,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("PopupB: %04x, remaining %d chars"), Which->PopupB, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
-	Which->PopUpT=*(COLORREF *)(*Parser);
+	Which->PopupT=*(COLORREF *)(*Parser);
 	(*Parser)+=sizeof(COLORREF);
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("PopUpT: %04x, remaining %d chars"),Which->PopUpT,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("PopupT: %04x, remaining %d chars"), Which->PopupT, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
-	Which->PopUpTime=*(DWORD *)(*Parser);
+	Which->PopupTime=*(DWORD *)(*Parser);
 	(*Parser)+=sizeof(DWORD);
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("PopUpTime: %04x, remaining %d chars"),Which->PopUpTime,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("PopupTime: %04x, remaining %d chars"), Which->PopupTime, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 
@@ -399,7 +395,7 @@ DWORD ReadMessagesFromMemory(HACCOUNT Which,char **Parser,char *End)
 	do
 	{
 		Finder=*Parser;
-		while((*Finder!=(TCHAR)0) && (Finder<=End)) Finder++;
+		while((*Finder != (TCHAR)0) && (Finder<=End)) Finder++;
 		if (Finder>=End)
 			return EACC_FILECOMPATIBILITY;
 		if (Size=Finder-*Parser)
@@ -438,7 +434,7 @@ DWORD ReadMessagesFromMemory(HACCOUNT Which,char **Parser,char *End)
 			if (*Parser>=End)
 				return EACC_FILECOMPATIBILITY;
 
-			if ((NULL!=Which->Plugin->MailFcn) && (NULL!=Which->Plugin->MailFcn->ReadMailOptsFcnPtr))
+			if ((NULL != Which->Plugin->MailFcn) && (NULL != Which->Plugin->MailFcn->ReadMailOptsFcnPtr))
 				Which->Plugin->MailFcn->ReadMailOptsFcnPtr(ActualMail,Parser,End);	//read plugin mail settings from file
 
 			do
@@ -516,7 +512,7 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef	DEBUG_FILEREAD
-	_stprintf(Debug,_T("Port: %d, remaining %d chars"),Which->Server->Port,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("Port: %d, remaining %d chars"), Which->Server->Port, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 #ifdef	DEBUG_FILEREAD
@@ -539,19 +535,19 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("Flags: %04x, remaining %d chars"),Which->Flags,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("Flags: %04x, remaining %d chars"), Which->Flags, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 	Which->StatusFlags=*(DWORD *)(*Parser);
 	(*Parser)+=sizeof(DWORD);
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("STFlags: %04x, remaining %d chars"),Which->StatusFlags,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("STFlags: %04x, remaining %d chars"), Which->StatusFlags, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 	Which->PluginFlags=*(DWORD *)(*Parser);
 	(*Parser)+=sizeof(DWORD);
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("PFlags: %04x, remaining %d chars"),Which->PluginFlags,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("PFlags: %04x, remaining %d chars"), Which->PluginFlags, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 
@@ -562,7 +558,7 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("Interval: %d, remaining %d chars"),Which->Interval,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("Interval: %d, remaining %d chars"), Which->Interval, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 
@@ -575,7 +571,7 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 		return Stat;
 
 	//Let plugin read its own data stored in file
-	if (Which->Plugin->Fcn!=NULL && Which->Plugin->Fcn->ReadPluginOptsFcnPtr!=NULL)
+	if (Which->Plugin->Fcn != NULL && Which->Plugin->Fcn->ReadPluginOptsFcnPtr != NULL)
 		if (Stat=Which->Plugin->Fcn->ReadPluginOptsFcnPtr(Which,Parser,End))
 			return Stat;
 	//Read mails
@@ -605,7 +601,7 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("LastChecked: %04x, remaining %d chars"),Which->LastChecked,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("LastChecked: %04x, remaining %d chars"), Which->LastChecked, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 	Which->LastSChecked=*(SYSTEMTIME *)(*Parser);
@@ -613,7 +609,7 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("LastSChecked: %04x, remaining %d chars"),Which->LastSChecked,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("LastSChecked: %04x, remaining %d chars"), Which->LastSChecked, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 	Which->LastSynchronised=*(SYSTEMTIME *)(*Parser);
@@ -621,7 +617,7 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 	if (*Parser>=End)
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("LastSynchronised: %04x, remaining %d chars"),Which->LastSynchronised,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("LastSynchronised: %04x, remaining %d chars"), Which->LastSynchronised, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 	Which->LastMail=*(SYSTEMTIME *)(*Parser);
@@ -629,7 +625,7 @@ DWORD ReadAccountFromMemory(HACCOUNT Which,char **Parser,char *End)
 	if (*Parser>End)		//WARNING! There's only > at the end of testing
 		return EACC_FILECOMPATIBILITY;
 #ifdef DEBUG_FILEREAD
-	_stprintf(Debug,_T("LastMail: %04x, remaining %d chars"),Which->LastMail,End-*Parser);
+	mir_sntprintf(Debug, SIZEOF(Debug), _T("LastMail: %04x, remaining %d chars"), Which->LastMail, End-*Parser);
 	MessageBox(NULL,Debug,_T("debug"),MB_OK);
 #endif
 	if (*Parser==End)
@@ -688,9 +684,9 @@ static INT_PTR PerformAccountReading(HYAMNPROTOPLUGIN Plugin,char *MemFile,char 
 		if (ActualAccount->StatusFlags & (YAMN_ACC_STARTA | YAMN_ACC_STARTS))
 			ActualAccount->TimeLeft=1;		//check on loading
 
-		if (Stat && (Stat!=EACC_ENDOFFILE))
+		if (Stat && (Stat != EACC_ENDOFFILE))
 		{
-			for (ActualAccount=FirstAllocatedAccount;ActualAccount!=NULL;ActualAccount=Temp)
+			for (ActualAccount=FirstAllocatedAccount;ActualAccount != NULL;ActualAccount=Temp)
 			{
 				Temp=ActualAccount->Next;
 				delete ActualAccount;
@@ -710,9 +706,9 @@ static INT_PTR PerformAccountReading(HYAMNPROTOPLUGIN Plugin,char *MemFile,char 
 #endif
 		WriteDoneFcn(ActualAccount->AccountAccessSO);
 
-		if ((Stat!=EACC_ENDOFFILE) && (NULL==(ActualAccount=(HACCOUNT)CallService(MS_YAMN_GETNEXTFREEACCOUNT,(WPARAM)Plugin,(LPARAM)YAMN_ACCOUNTVERSION))))
+		if ((Stat != EACC_ENDOFFILE) && (NULL==(ActualAccount=(HACCOUNT)CallService(MS_YAMN_GETNEXTFREEACCOUNT,(WPARAM)Plugin,(LPARAM)YAMN_ACCOUNTVERSION))))
 		{
-			for (ActualAccount=FirstAllocatedAccount;ActualAccount!=NULL;ActualAccount=Temp)
+			for (ActualAccount=FirstAllocatedAccount;ActualAccount != NULL;ActualAccount=Temp)
 			{
 				Temp=ActualAccount->Next;
 				delete ActualAccount;
@@ -726,7 +722,7 @@ static INT_PTR PerformAccountReading(HYAMNPROTOPLUGIN Plugin,char *MemFile,char 
 			SWMRGDoneWriting(Plugin->AccountBrowserSO);
 			return EACC_ALLOC;
 		}
-	}while(Stat!=EACC_ENDOFFILE);
+	}while(Stat != EACC_ENDOFFILE);
 
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"AddAccountsFromFile:AccountBrowserSO-write done\n");
@@ -790,7 +786,7 @@ DWORD WriteMessagesToFile(HANDLE File,HACCOUNT Which)
 	HYAMNMAIL ActualMail=(HYAMNMAIL)Which->Mails;
 	struct CMimeItem *items;
 
-	while(ActualMail!=NULL)
+	while(ActualMail != NULL)
 	{
 		if (Stat=WriteStringToFile(File,ActualMail->ID))
 			return Stat;
@@ -798,9 +794,9 @@ DWORD WriteMessagesToFile(HANDLE File,HACCOUNT Which)
 			!WriteFile(File,(char *)&ActualMail->Flags,sizeof(ActualMail->Flags),&WrittenBytes,NULL) ||
 			!WriteFile(File,(char *)&ActualMail->Number,sizeof(ActualMail->Number),&WrittenBytes,NULL))
 			return EACC_SYSTEM;
-		if ((NULL!=Which->Plugin->MailFcn) && (NULL!=Which->Plugin->MailFcn->WriteMailOptsFcnPtr))
+		if ((NULL != Which->Plugin->MailFcn) && (NULL != Which->Plugin->MailFcn->WriteMailOptsFcnPtr))
 			Which->Plugin->MailFcn->WriteMailOptsFcnPtr(File,ActualMail);	//write plugin mail options to file
-		for (items=ActualMail->MailData->TranslatedHeader;items!=NULL;items=items->Next)
+		for (items=ActualMail->MailData->TranslatedHeader;items != NULL;items=items->Next)
 		{
 			if (Stat=WriteStringToFile(File,items->name))
 				return Stat;
@@ -833,13 +829,8 @@ static INT_PTR PerformAccountWriting(HYAMNPROTOPLUGIN Plugin,HANDLE File)
 #endif
 	try
 	{
-		for (ActualAccount=Plugin->FirstAccount;ActualAccount!=NULL;ActualAccount=ActualAccount->Next)
+		for (ActualAccount=Plugin->FirstAccount;ActualAccount != NULL;ActualAccount=ActualAccount->Next)
 		{
-/*			TCHAR DEBUG[100];
-			Beep(3000,100);Sleep(200);
-			_stprintf(DEBUG,_T("Browsing account %s"),ActualAccount->Name==NULL ? _T("(null)") : ActualAccount->Name);
-			MessageBox(NULL,DEBUG,_T("debug- WriteAccount..."),MB_OK);
-*/
 #ifdef DEBUG_SYNCHRO
 			DebugLog(SynchroFile,"WriteAccountsToFile:ActualAccountSO-read wait\n");
 #endif
@@ -900,9 +891,9 @@ static INT_PTR PerformAccountWriting(HYAMNPROTOPLUGIN Plugin,HANDLE File)
 				throw (DWORD)EACC_SYSTEM;
 
 			if ((!WriteFile(File,(char *)&ActualAccount->NewMailN.Flags,sizeof(DWORD),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->NewMailN.PopUpB,sizeof(COLORREF),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->NewMailN.PopUpT,sizeof(COLORREF),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->NewMailN.PopUpTime,sizeof(DWORD),&WrittenBytes,NULL)))
+				(!WriteFile(File,(char *)&ActualAccount->NewMailN.PopupB,sizeof(COLORREF),&WrittenBytes,NULL)) ||
+				(!WriteFile(File,(char *)&ActualAccount->NewMailN.PopupT,sizeof(COLORREF),&WrittenBytes,NULL)) ||
+				(!WriteFile(File,(char *)&ActualAccount->NewMailN.PopupTime,sizeof(DWORD),&WrittenBytes,NULL)))
 				throw (DWORD)EACC_SYSTEM;
 
 			if ((Stat=WriteStringToFileW(File,ActualAccount->NewMailN.App)) ||
@@ -910,9 +901,9 @@ static INT_PTR PerformAccountWriting(HYAMNPROTOPLUGIN Plugin,HANDLE File)
 				throw (DWORD)Stat;
 
 			if ((!WriteFile(File,(char *)&ActualAccount->NoNewMailN.Flags,sizeof(DWORD),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->NoNewMailN.PopUpB,sizeof(COLORREF),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->NoNewMailN.PopUpT,sizeof(COLORREF),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->NoNewMailN.PopUpTime,sizeof(DWORD),&WrittenBytes,NULL)))
+				(!WriteFile(File,(char *)&ActualAccount->NoNewMailN.PopupB,sizeof(COLORREF),&WrittenBytes,NULL)) ||
+				(!WriteFile(File,(char *)&ActualAccount->NoNewMailN.PopupT,sizeof(COLORREF),&WrittenBytes,NULL)) ||
+				(!WriteFile(File,(char *)&ActualAccount->NoNewMailN.PopupTime,sizeof(DWORD),&WrittenBytes,NULL)))
 				throw (DWORD)EACC_SYSTEM;
 
 			if ((Stat=WriteStringToFileW(File,ActualAccount->NoNewMailN.App)) ||
@@ -920,9 +911,9 @@ static INT_PTR PerformAccountWriting(HYAMNPROTOPLUGIN Plugin,HANDLE File)
 				throw (DWORD)Stat;
 
 			if ((!WriteFile(File,(char *)&ActualAccount->BadConnectN.Flags,sizeof(DWORD),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->BadConnectN.PopUpB,sizeof(COLORREF),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->BadConnectN.PopUpT,sizeof(COLORREF),&WrittenBytes,NULL)) ||
-				(!WriteFile(File,(char *)&ActualAccount->BadConnectN.PopUpTime,sizeof(DWORD),&WrittenBytes,NULL)))
+				(!WriteFile(File,(char *)&ActualAccount->BadConnectN.PopupB,sizeof(COLORREF),&WrittenBytes,NULL)) ||
+				(!WriteFile(File,(char *)&ActualAccount->BadConnectN.PopupT,sizeof(COLORREF),&WrittenBytes,NULL)) ||
+				(!WriteFile(File,(char *)&ActualAccount->BadConnectN.PopupTime,sizeof(DWORD),&WrittenBytes,NULL)))
 				throw (DWORD)EACC_SYSTEM;
 
 			if ((Stat=WriteStringToFileW(File,ActualAccount->BadConnectN.App)) ||
@@ -930,7 +921,7 @@ static INT_PTR PerformAccountWriting(HYAMNPROTOPLUGIN Plugin,HANDLE File)
 				throw (DWORD)Stat;
 
 //Let plugin write its own values into file
-			if (ActualAccount->Plugin->Fcn!=NULL && ActualAccount->Plugin->Fcn->WritePluginOptsFcnPtr!=NULL)
+			if (ActualAccount->Plugin->Fcn != NULL && ActualAccount->Plugin->Fcn->WritePluginOptsFcnPtr != NULL)
 				if (Stat=ActualAccount->Plugin->Fcn->WritePluginOptsFcnPtr(File,ActualAccount))
 					throw (DWORD)Stat;
 #ifdef DEBUG_SYNCHRO
@@ -1013,8 +1004,8 @@ INT_PTR FindAccountByNameSvc(WPARAM wParam,LPARAM lParam)
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"FindAccountByName:AccountBrowserSO-read enter\n");
 #endif
-	for (Finder=Plugin->FirstAccount;Finder!=NULL;Finder=Finder->Next)
-		if ((Finder->Name!=NULL) && (0 == strcmp(SearchedAccount,Finder->Name)))
+	for (Finder=Plugin->FirstAccount;Finder != NULL;Finder=Finder->Next)
+		if ((Finder->Name != NULL) && (0 == strcmp(SearchedAccount,Finder->Name)))
 			break;
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"FindAccountByName:AccountBrowserSO-read done\n");
@@ -1033,7 +1024,7 @@ INT_PTR GetNextFreeAccountSvc(WPARAM wParam,LPARAM lParam)
 		Plugin->FirstAccount=(HACCOUNT)CallService(MS_YAMN_CREATEPLUGINACCOUNT,wParam,lParam);
 		return (INT_PTR)Plugin->FirstAccount;
 	}
-	for (Finder=Plugin->FirstAccount;Finder->Next!=NULL;Finder=Finder->Next);
+	for (Finder=Plugin->FirstAccount;Finder->Next != NULL;Finder=Finder->Next);
 	Finder->Next=(HACCOUNT)CallService(MS_YAMN_CREATEPLUGINACCOUNT,wParam,lParam);
 	return (INT_PTR)Finder->Next;
 }
@@ -1046,7 +1037,7 @@ int FindPluginAccount(WPARAM wParam,LPARAM lParam)
 
 	if (Finder=NULL)	Finder=Plugin->FirstAccount;
 
-//	for (;Finder!=NULL && Finder->PluginID!=Plugin->PluginInfo->PluginID;Finder=(HACCOUNT)Finder->Next);
+//	for (;Finder != NULL && Finder->PluginID != Plugin->PluginInfo->PluginID;Finder=(HACCOUNT)Finder->Next);
 	return (int)Finder;
 }
 */
@@ -1085,7 +1076,7 @@ INT_PTR DeleteAccountSvc(WPARAM wParam,LPARAM lParam)
 //1. set stop signal 
 	StopSignalFcn(Which);
 	WindowList_BroadcastAsync(YAMNVar.MessageWnds,WM_YAMN_STOPACCOUNT,(WPARAM)Which,0);
-	if (Plugin->Fcn->StopAccountFcnPtr!=NULL)
+	if (Plugin->Fcn->StopAccountFcnPtr != NULL)
 		Plugin->Fcn->StopAccountFcnPtr(Which);
 
 //2. wait to get write access
@@ -1113,7 +1104,7 @@ INT_PTR DeleteAccountSvc(WPARAM wParam,LPARAM lParam)
 	}
 	else
 	{
-		for (Finder=Plugin->FirstAccount;Which!=Finder->Next;Finder=Finder->Next);
+		for (Finder=Plugin->FirstAccount;Which != Finder->Next;Finder=Finder->Next);
 		Finder->Next=Finder->Next->Next;
 	}
 //leave write access
@@ -1128,7 +1119,7 @@ INT_PTR DeleteAccountSvc(WPARAM wParam,LPARAM lParam)
 //	No, of course not. We will create new thread, that will wait and additionally remove our thread in background.
 //5. So, the last point (deleting from memory) is performed in new DeleteAccountInBackground thread
 
-	if ((Plugin->Fcn!=NULL) && (Plugin->Fcn->WriteAccountsFcnPtr!=NULL))
+	if ((Plugin->Fcn != NULL) && (Plugin->Fcn->WriteAccountsFcnPtr != NULL))
 			Plugin->Fcn->WriteAccountsFcnPtr();
 	CloseHandle(CreateThread(NULL,0,DeleteAccountInBackground,(LPVOID)Which,0,&tid));
 
@@ -1157,12 +1148,12 @@ int StopAccounts(HYAMNPROTOPLUGIN Plugin)
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"StopAccounts:AccountBrowserSO-write enter\n");
 #endif
-	for (Finder=Plugin->FirstAccount;Finder!=NULL;Finder=Finder->Next)
+	for (Finder=Plugin->FirstAccount;Finder != NULL;Finder=Finder->Next)
 	{
 //2. set stop signal 
 		StopSignalFcn(Finder);
 		WindowList_BroadcastAsync(YAMNVar.MessageWnds,WM_YAMN_STOPACCOUNT,(WPARAM)Finder,0);
-		if (Plugin->Fcn->StopAccountFcnPtr!=NULL)
+		if (Plugin->Fcn->StopAccountFcnPtr != NULL)
 			Plugin->Fcn->StopAccountFcnPtr(Finder);
 	}
 
@@ -1191,7 +1182,7 @@ int WaitForAllAccounts(HYAMNPROTOPLUGIN Plugin,BOOL GetAccountBrowserAccess)
 		DebugLog(SynchroFile,"WaitForAllAccounts:AccountBrowserSO-write enter\n");
 #endif
 	}
-	for (Finder=Plugin->FirstAccount;Finder!=NULL;Finder=Finder->Next)
+	for (Finder=Plugin->FirstAccount;Finder != NULL;Finder=Finder->Next)
 	{
 //2. wait for signal that account is not in use
 #ifdef DEBUG_SYNCHRO
@@ -1230,7 +1221,7 @@ int DeleteAccounts(HYAMNPROTOPLUGIN Plugin)
 
 	WaitForAllAccounts(Plugin,FALSE);
 
-	for (Finder=Plugin->FirstAccount;Finder!=NULL;)
+	for (Finder=Plugin->FirstAccount;Finder != NULL;)
 	{
 		HACCOUNT Next = Finder->Next;
 		DeletePluginAccountSvc((WPARAM)Finder,0);
@@ -1293,7 +1284,7 @@ int GetAccounts()
 	HACCOUNT Finder;
 	int cnt=0;
 
-	for (Finder=Account;Finder!=NULL;Finder=Finder->Next)
+	for (Finder=Account;Finder != NULL;Finder=Finder->Next)
 		cnt++;
 	return cnt;
 }
@@ -1302,7 +1293,7 @@ void WriteAccounts()
 {
 	HACCOUNT Finder;
 
-	for (Finder=Account;Finder!=NULL;Finder=Finder->Next)
+	for (Finder=Account;Finder != NULL;Finder=Finder->Next)
 		MessageBoxA(NULL,Finder->Name,"Browsing account",MB_OK);
 }
 #endif

@@ -1,0 +1,63 @@
+﻿#muuid {80dca515-973a-4a7e-8b85-5d8ec88fc5a7}
+;============================================================
+;  File: wumf.dll
+;  Module: Who Uses My Files
+;  Versions: 0.1.0.2
+;  URL: http://miranda-im.org/download/feed.php?dlfile=831
+;============================================================
+[Scans for network users of your shared files and notify you with popups.]
+Сканирует сеть в поисках пользователей, использующих ваши файлы, открытые для доступа по сети и уведомляет всплывающими окнами.
+[WUMF: Who Use My Files?]
+Кто использует мои файлы?
+[WUMF: Show connections]
+WUMF: Показать подключения
+[Disable WUMF popups]
+Выключить WUMF окна
+[Enable WUMF popups]
+Включить WUMF окна
+[Popup color settings]
+Настройки цвета Popup
+[Choose colors]
+Выбрать цвет
+[Use default Popup colors]
+Цвета Popup
+[Popup delay settings]
+Настройки показа Popup
+[Choose delay time]
+Настроить самому
+[Show infinitely]
+Постоянно
+[Default Popup delay]
+Как в Popup
+[File access filter && logging settings]
+Настройки фильтров журнала
+[Log into text file]
+Писать в файл
+[Log folders access]
+Доступ к папкам
+[Disabled options will be available in the next version]
+Будут доступны в следующей версии
+[Alerts on folders access]
+Оповещения доступа к папкам
+[Show current connections]
+Показать соединения
+[Popup plugin not found!]
+Не установлен плагин Popup!
+[Access]
+Доступ
+[Plugin WhoUsesMyFiles requires admin privileges in order to work.]
+Для работы плагина WhoUsesMyFiles требуются права администратора.
+
+;GetFromSource.cmd
+[Alert computer name with username]
+Показывать имена компьютеров вместе с именами пользователей
+[Alert files && folders in UNC format]
+Показывать папки и файлы в UNC формате
+[Log computer name with username]
+Имена компьютеров вместе с именами пользователей
+[Log files and folders in UNC format]
+Папки и файлы в UNC формате
+[WUMF: Current connections]
+WUMF: Текущие соединения
+[Show connections list]
+Показать список подключений

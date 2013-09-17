@@ -2,7 +2,7 @@
 
 Standard idle state module for Myranda IM
 
-Copyright (C) 2012 George Hazan
+Copyright (C) 2012-13 George Hazan
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -72,8 +72,7 @@ extern "C" int __declspec(dllexport) Load(void)
 
 	MyMonitorFromWindow = (pfnMyMonitorFromWindow)GetProcAddress(hUser32, "MonitorFromWindow");
 	MyGetMonitorInfo = (pfnMyGetMonitorInfo)GetProcAddress(hUser32, "GetMonitorInfoW");
-
-	pcli = ( CLIST_INTERFACE* )CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)hInst);
+	mir_getCLI();
 
 	LoadIdleModule();
 	return 0;

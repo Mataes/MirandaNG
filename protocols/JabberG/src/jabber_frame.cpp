@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,16 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "jabber.h"
 #include "jabber_caps.h"
-
-#include <m_genmenu.h>
-#include <m_icolib.h>
-#include <m_fontservice.h>
-
-#include <m_cluiframes.h>
-
-#include "m_proto_listeningto.h"
-#include "m_skin_eng.h"
-#include "m_extraicons.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // CJabberInfoFrame
@@ -89,8 +80,7 @@ CJabberInfoFrame::CJabberInfoFrame(CJabberProto *proto):
 	if ( !proto->m_options.DisableFrame && ServiceExists(MS_CLIST_FRAMES_ADDFRAME)) {
 		InitClass();
 
-		CLISTFrame frame = {0};
-		frame.cbSize = sizeof(frame);
+		CLISTFrame frame = { sizeof(frame) };
 		HWND hwndClist = (HWND)CallService(MS_CLUI_GETHWND, 0, 0);
 		frame.hWnd = CreateWindowEx(0, _T("JabberInfoFrameClass"), NULL, WS_CHILD|WS_VISIBLE, 0, 0, 100, 100, hwndClist, NULL, hInst, this);
 		frame.align = alBottom;
@@ -201,7 +191,7 @@ LRESULT CJabberInfoFrame::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 		{
 			POINT pt = { LOWORD(lParam), HIWORD(lParam) };
-			for (int i = 0; i < m_pItems.getCount(); ++i)
+			for (int i = 0; i < m_pItems.getCount(); i++)
 				if (m_pItems[i].m_onEvent && PtInRect(&m_pItems[i].m_rcItem, pt)) {
 					m_clickedItem = i;
 					return 0;
@@ -414,7 +404,7 @@ void CJabberInfoFrame::PaintNormal(HDC hdc)
 	int line_height = cy_icon + SZ_LINEPADDING;
 	int cy = SZ_FRAMEPADDING;
 
-	for (int i = 0; i < m_pItems.getCount(); ++i) {
+	for (int i = 0; i < m_pItems.getCount(); i++) {
 		CJabberInfoFrameItem &item = m_pItems[i];
 
 		if ( !item.m_bShow) {
@@ -484,7 +474,7 @@ void CJabberInfoFrame::ShowInfoItem(char *pszName, bool bShow)
 {
 	bool bUpdate = false;
 	size_t length = strlen(pszName);
-	for (int i = 0; i < m_pItems.getCount(); ++i)
+	for (int i = 0; i < m_pItems.getCount(); i++)
 		if ((m_pItems[i].m_bShow != bShow) && !strncmp(m_pItems[i].m_pszName, pszName, length)) {
 			m_pItems[i].m_bShow = bShow;
 			m_hiddenItemCount += bShow ? -1 : 1;
@@ -499,7 +489,7 @@ void CJabberInfoFrame::RemoveInfoItem(char *pszName)
 {
 	bool bUpdate = false;
 	size_t length = strlen(pszName);
-	for (int i = 0; i < m_pItems.getCount(); ++i)
+	for (int i = 0; i < m_pItems.getCount(); i++)
 		if ( !strncmp(m_pItems[i].m_pszName, pszName, length)) {
 			if ( !m_pItems[i].m_bShow) --m_hiddenItemCount;
 			RemoveTooltip(m_pItems[i].m_tooltipId);

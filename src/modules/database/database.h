@@ -2,7 +2,7 @@
 
 Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2012 Miranda NG project,
+Copyright 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -21,11 +21,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-class MDatabaseCache : public MIDatabaseCache, public MZeroedObject
+class MDatabaseCache : public MIDatabaseCache
 {
 	HANDLE m_hCacheHeap;
 	char* m_lastSetting;
 	DBCachedContact *m_lastVL;
+	CRITICAL_SECTION m_cs;
 
 	LIST<DBCachedContact> m_lContacts;
 	LIST<DBCachedGlobalValue> m_lGlobalSettings;

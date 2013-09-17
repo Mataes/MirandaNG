@@ -3,6 +3,7 @@
 Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -31,7 +32,7 @@ class CAgentRegProgressDlg : public CJabberDlgBase
 {
 	CCtrlButton m_ok;
 
-public:  
+public:
 	CAgentRegProgressDlg(CJabberProto* _ppro, HWND _owner) :
 		CJabberDlgBase(_ppro, IDD_OPT_REGISTER, _owner, false),
 		m_ok(this, IDOK)
@@ -78,7 +79,7 @@ class CAgentRegDlg : public CJabberDlgBase
 	int m_formHeight, m_frameHeight;
 	RECT m_frameRect;
 	HXML m_agentRegIqNode;
-	TCHAR* m_jid;
+	TCHAR *m_jid;
 
 	CCtrlButton m_submit;
 
@@ -102,7 +103,7 @@ public:
 
 		int iqId = m_proto->SerialNext();
 		m_proto->IqAdd(iqId, IQ_PROC_GETREGISTER, &CJabberProto::OnIqResultGetRegister);
-		m_proto->m_ThreadInfo->send(XmlNodeIq(_T("get"), iqId, m_jid) << XQUERY(_T(JABBER_FEAT_REGISTER)));
+		m_proto->m_ThreadInfo->send( XmlNodeIq(_T("get"), iqId, m_jid) << XQUERY(JABBER_FEAT_REGISTER));
 
 		// Enable WS_EX_CONTROLPARENT on IDC_FRAME (so tab stop goes through all its children)
 		LONG frameExStyle = GetWindowLongPtr(GetDlgItem(m_hwnd, IDC_FRAME), GWL_EXSTYLE);
@@ -141,7 +142,7 @@ public:
 				if ((queryNode = xmlGetChild(m_agentRegIqNode , "query")) == NULL) return TRUE;
 
 				RECT rect;
-				
+
 				m_curPos = 0;
 				GetClientRect(GetDlgItem(m_hwnd, IDC_FRAME), &(m_frameRect));
 				GetClientRect(GetDlgItem(m_hwnd, IDC_VSCROLL), &rect);
@@ -151,9 +152,8 @@ public:
 
 				if ((xNode=xmlGetChild(queryNode , "x")) != NULL) {
 					// use new jabber:x:data form
-					HXML n = xmlGetChild(xNode , "instructions");
-					if (n != NULL && xmlGetText(n)!=NULL)
-						JabberFormSetInstruction(m_hwnd, xmlGetText(n));
+					if (LPCTSTR ptszInstr = xmlGetText( xmlGetChild(xNode, "instructions")))
+						JabberFormSetInstruction(m_hwnd, ptszInstr);
 
 					JabberFormCreateUI(hFrame, xNode, &m_formHeight /*dummy*/);
 				}
@@ -162,7 +162,7 @@ public:
 					HJFORMLAYOUT layout_info = JabberFormCreateLayout(hFrame);
 					for (int i=0; ; i++) {
 						HXML n = xmlGetChild(queryNode ,i);
-						if ( !n)
+						if (n == NULL)
 							break;
 
 						if (xmlGetName(n)) {
@@ -237,7 +237,7 @@ public:
 		m_proto->IqAdd(iqId, IQ_PROC_SETREGISTER, &CJabberProto::OnIqResultSetRegister);
 
 		XmlNodeIq iq(_T("set"), iqId, from);
-		HXML query = iq << XQUERY(_T(JABBER_FEAT_REGISTER));
+		HXML query = iq << XQUERY(JABBER_FEAT_REGISTER);
 
 		if ((xNode = xmlGetChild(queryNode , "x")) != NULL) {
 			// use new jabber:x:data form

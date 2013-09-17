@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 
 INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -37,11 +38,10 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 			Window_SetIcon_IcoLib(hdlg, SKINICON_OTHER_ADDCONTACT);
 			if (acs->handleType == HANDLE_EVENT) {
 				DWORD dwUin;
-				DBEVENTINFO dbei = { 0 };
-				dbei.cbSize = sizeof(dbei);
+				DBEVENTINFO dbei = { sizeof(dbei) };
 				dbei.cbBlob = sizeof(DWORD);
 				dbei.pBlob = (PBYTE)&dwUin;
-				CallService(MS_DB_EVENT_GET, (WPARAM)acs->handle, (LPARAM)&dbei);
+				db_event_get(acs->handle, &dbei);
 				_ltoa(dwUin, szUin, 10);
 				acs->szProto = dbei.szModule;
 			}
@@ -53,15 +53,11 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 					int isSet = 0;
 
 					if (acs->handleType == HANDLE_EVENT) {
-						DBEVENTINFO dbei;
-						HANDLE hcontact;
-
-						ZeroMemory(&dbei, sizeof(dbei));
-						dbei.cbSize = sizeof(dbei);
-						dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, (WPARAM)acs->handle, 0);
+						DBEVENTINFO dbei = { sizeof(dbei) };
+						dbei.cbBlob = db_event_getBlobSize(acs->handle);
 						dbei.pBlob = (PBYTE)mir_alloc(dbei.cbBlob);
-						CallService(MS_DB_EVENT_GET, (WPARAM)acs->handle, (LPARAM)&dbei);
-						hcontact = *((PHANDLE)(dbei.pBlob+sizeof(DWORD)));
+						db_event_get(acs->handle, &dbei);
+						HANDLE hcontact = *((PHANDLE)(dbei.pBlob+sizeof(DWORD)));
 						mir_free(dbei.pBlob);
 						if (hcontact != INVALID_HANDLE_VALUE) {
 							szName = cli.pfnGetContactDisplayName(hcontact, 0);
@@ -69,7 +65,7 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 						}
 					}
 					if ( !isSet) {
-						szName = (acs->handleType == HANDLE_EVENT) ? (tmpStr = mir_a2t(szUin)) : 
+						szName = (acs->handleType == HANDLE_EVENT) ? (tmpStr = mir_a2t(szUin)) :
 							(acs->psr->id ? acs->psr->id : acs->psr->nick);
 					}
 				}
@@ -89,16 +85,10 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 				acs->szProto = GetContactProto(acs->handle);
 
 		{
-			int groupId;
-			for (groupId = 0; groupId < 999; groupId++) {
-				DBVARIANT dbv;
-				char idstr[4];
-				int id;
-				_itoa(groupId, idstr, 10);
-				if (DBGetContactSettingTString(NULL, "CListGroups", idstr, &dbv)) break;
-				id = SendDlgItemMessage(hdlg, IDC_GROUP, CB_ADDSTRING, 0, (LPARAM)(dbv.ptszVal+1));
-				SendDlgItemMessage(hdlg, IDC_GROUP, CB_SETITEMDATA , id, groupId+1);
-				db_free(&dbv);
+			TCHAR *grpName;
+			for (int groupId = 1; (grpName = cli.pfnGetGroupName(groupId, NULL)) != NULL; groupId++) {
+				int id = SendDlgItemMessage(hdlg, IDC_GROUP, CB_ADDSTRING, 0, (LPARAM)grpName);
+				SendDlgItemMessage(hdlg, IDC_GROUP, CB_SETITEMDATA, id, groupId);
 			}
 		}
 
@@ -109,6 +99,10 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 			// By default check both checkboxes
 			CheckDlgButton(hdlg, IDC_ADDED, BST_CHECKED);
 			CheckDlgButton(hdlg, IDC_AUTH, BST_CHECKED);
+			
+			// Set last choice
+			if (db_get_b(NULL, "Miranda", "AuthOpenWindow", 1))
+				CheckDlgButton(hdlg, IDC_OPEN_WINDOW, BST_CHECKED);
 
 			DWORD flags = (acs->szProto) ? CallProtoServiceInt(NULL,acs->szProto, PS_GETCAPS, PFLAGNUM_4, 0) : 0;
 			if (flags&PF4_FORCEADDED) { // force you were added requests for this protocol
@@ -132,8 +126,7 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 	case WM_COMMAND:
 		acs = (ADDCONTACTSTRUCT *)GetWindowLongPtr(hdlg, GWLP_USERDATA);
 
-		switch (LOWORD(wparam))
-		{
+		switch (LOWORD(wparam)) {
 		case IDC_AUTH:
 			{
 				DWORD flags = CallProtoServiceInt(NULL,acs->szProto, PS_GETCAPS, PFLAGNUM_4, 0);
@@ -147,16 +140,18 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 				}
 			}
 			break;
+		case IDC_OPEN_WINDOW:
+			// Remember this choice
+			db_set_b(NULL, "Miranda", "AuthOpenWindow", IsDlgButtonChecked(hdlg, IDC_OPEN_WINDOW));
+			break;
 		case IDOK:
 			{
 				HANDLE hContact = INVALID_HANDLE_VALUE;
-				switch (acs->handleType)
-				{
+				switch (acs->handleType) {
 				case HANDLE_EVENT:
 					{
-						DBEVENTINFO dbei = { 0 };
-						dbei.cbSize = sizeof(dbei);
-						CallService(MS_DB_EVENT_GET, (WPARAM)acs->handle, (LPARAM)&dbei);
+						DBEVENTINFO dbei = { sizeof(dbei) };
+						db_event_get(acs->handle, &dbei);
 						hContact = (HANDLE)CallProtoServiceInt(NULL,dbei.szModule, PS_ADDTOLISTBYEVENT, 0, (LPARAM)acs->handle);
 					}
 					break;
@@ -178,29 +173,29 @@ INT_PTR CALLBACK AddContactDlgProc(HWND hdlg, UINT msg, WPARAM wparam, LPARAM lp
 					db_set_ts(hContact, "CList", "MyHandle", szHandle);
 
 				int item = SendDlgItemMessage(hdlg, IDC_GROUP, CB_GETCURSEL, 0, 0);
-				if (item > 0)
-				{
+				if (item > 0) {
 					item = SendDlgItemMessage(hdlg, IDC_GROUP, CB_GETITEMDATA, item, 0);
 					CallService(MS_CLIST_CONTACTCHANGEGROUP, (WPARAM)hContact, item);
 				}
 
-				DBDeleteContactSetting(hContact, "CList", "NotOnList");
+				db_unset(hContact, "CList", "NotOnList");
 
 				if (IsDlgButtonChecked(hdlg, IDC_ADDED))
 					CallContactService(hContact, PSS_ADDED, 0, 0);
 
-				if (IsDlgButtonChecked(hdlg, IDC_AUTH))
-				{
+				if (IsDlgButtonChecked(hdlg, IDC_AUTH)) {
 					DWORD flags = CallProtoServiceInt(NULL,acs->szProto, PS_GETCAPS, PFLAGNUM_4, 0);
 					if (flags & PF4_NOCUSTOMAUTH)
 						CallContactService(hContact, PSS_AUTHREQUESTT, 0, 0);
-					else
-					{
+					else {
 						TCHAR szReason[512];
 						GetDlgItemText(hdlg, IDC_AUTHREQ, szReason, SIZEOF(szReason));
 						CallContactService(hContact, PSS_AUTHREQUESTT, 0, (LPARAM)szReason);
 					}
 				}
+
+				if (IsDlgButtonChecked(hdlg, IDC_OPEN_WINDOW))
+					CallService(MS_CLIST_CONTACTDOUBLECLICKED, (WPARAM)hContact, 0);
 			}
 			// fall through
 		case IDCANCEL:

@@ -48,7 +48,7 @@ static int GetContactStatus(HANDLE hContact)
 
 void cli_ChangeContactIcon(HANDLE hContact,int iIcon,int add)
 {
-	corecli.pfnChangeContactIcon((HANDLE) hContact,(int) iIcon,(int) add);
+	corecli.pfnChangeContactIcon((HANDLE) hContact,(int)iIcon,(int)add);
 }
 
 static int GetStatusModeOrdering(int statusMode)
@@ -62,18 +62,13 @@ static int GetStatusModeOrdering(int statusMode)
 
 DWORD CompareContacts2_getLMTime(HANDLE hContact)
 {
-	HANDLE hDbEvent;
-	DBEVENTINFO dbei = {0};
-
-	hDbEvent = (HANDLE)CallService(MS_DB_EVENT_FINDLAST, (WPARAM)hContact, 0);
+	HANDLE hDbEvent = db_event_last(hContact);
 	while(hDbEvent) {
-		dbei.cbSize = sizeof(dbei);
-		dbei.pBlob = 0;
-		dbei.cbBlob = 0;
-		CallService(MS_DB_EVENT_GET, (WPARAM)hDbEvent, (LPARAM)&dbei);
+		DBEVENTINFO dbei = { sizeof(dbei) };
+		db_event_get(hDbEvent, &dbei);
 		if (dbei.eventType == EVENTTYPE_MESSAGE && !(dbei.flags & DBEF_SENT))
 			return dbei.timestamp;
-		hDbEvent = (HANDLE)CallService(MS_DB_EVENT_FINDPREV, (WPARAM)hDbEvent, 0);
+		hDbEvent = db_event_prev(hDbEvent);
 	}
 	return 0;
 }
@@ -137,7 +132,7 @@ int CompareContacts2(const ClcContact *contact1,const ClcContact *contact2, int 
 	if (by == SORTBY_NAME_LOCALE) 
 	{ //name
 		static int LocaleId = -1;
-		if (LocaleId == -1) LocaleId = CallService(MS_LANGPACK_GETLOCALE,0,0);
+		if (LocaleId == -1) LocaleId = CallService(MS_LANGPACK_GETLOCALE, 0, 0);
 		return (CompareString(LocaleId,NORM_IGNORECASE,SAFETSTRING(namea),-1,SAFETSTRING(nameb),-1))-2;
 	} 
 	else if (by == SORTBY_LASTMSG) 
@@ -171,17 +166,6 @@ int cliCompareContacts(const ClcContact *contact1,const ClcContact *contact2)
 }
 
 #undef SAFESTRING
-
-INT_PTR ContactChangeGroup(WPARAM wParam,LPARAM lParam)
-{
-	CallService(MS_CLUI_CONTACTDELETED,wParam,0);
-	if ((HANDLE)lParam == NULL)
-		db_unset((HANDLE)wParam,"CList","Group");
-	else
-		db_set_ws((HANDLE)wParam,"CList","Group",pcli->pfnGetGroupName(lParam, NULL));
-	CallService(MS_CLUI_CONTACTADDED,wParam,ExtIconFromStatusMode((HANDLE)wParam,GetContactProto((HANDLE)wParam),GetContactStatus((HANDLE)wParam)));
-	return 0;
-}
 
 INT_PTR ToggleHideOffline(WPARAM wParam,LPARAM lParam)
 {

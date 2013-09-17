@@ -1,8 +1,8 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project,
+Copyright (C) 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -36,26 +36,29 @@ static int compareGlobals(const DBCachedGlobalValue* p1, const DBCachedGlobalVal
 
 MDatabaseCache::MDatabaseCache() :
 	m_lSettings(100, stringCompare),
-	m_lContacts(50, LIST<DBCachedContact>::FTSortFunc(HandleKeySort)),
+	m_lContacts(50, HandleKeySortT),
 	m_lGlobalSettings(50, compareGlobals)
 {
 	m_hCacheHeap = HeapCreate(0, 0, 0);
+	InitializeCriticalSection(&m_cs);
 }
 
 MDatabaseCache::~MDatabaseCache()
 {
-	HeapDestroy(m_hCacheHeap);
 	m_lContacts.destroy();
 	m_lSettings.destroy();
 	m_lGlobalSettings.destroy();
+	HeapDestroy(m_hCacheHeap);
+	DeleteCriticalSection(&m_cs);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
 DBCachedContact* MDatabaseCache::AddContactToCache(HANDLE hContact)
 {
-	DBCachedContact VLtemp = { hContact };
-	int index = m_lContacts.getIndex(&VLtemp);
+	mir_cslock lck(m_cs);
+
+	int index = m_lContacts.getIndex((DBCachedContact*)&hContact);
 	if (index == -1) {
 		DBCachedContact* VL = (DBCachedContact*)HeapAlloc(m_hCacheHeap, HEAP_ZERO_MEMORY, sizeof(DBCachedContact));
 		VL->hContact = hContact;
@@ -68,15 +71,17 @@ DBCachedContact* MDatabaseCache::AddContactToCache(HANDLE hContact)
 
 DBCachedContact* MDatabaseCache::GetCachedContact(HANDLE hContact)
 {
-	DBCachedContact VLtemp = { hContact };
-	int index = m_lContacts.getIndex(&VLtemp);
+	mir_cslock lck(m_cs);
+
+	int index = m_lContacts.getIndex((DBCachedContact*)&hContact);
 	return (index == -1) ? NULL : m_lContacts[index];
 }
 
 void MDatabaseCache::FreeCachedContact(HANDLE hContact)
 {
-	DBCachedContact VLtemp = { hContact };
-	int index = m_lContacts.getIndex(&VLtemp);
+	mir_cslock lck(m_cs);
+
+	int index = m_lContacts.getIndex((DBCachedContact*)&hContact);
 	if (index == -1)
 		return;
 
@@ -91,6 +96,12 @@ void MDatabaseCache::FreeCachedContact(HANDLE hContact)
 	HeapFree( m_hCacheHeap, 0, VL );
 
 	m_lContacts.remove(index);
+
+	for (int i=0; i < m_lContacts.getCount(); i++) {
+		DBCachedContact *cc = m_lContacts[i];
+		if (cc->hNext == hContact)
+			cc->hNext = NULL;
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////

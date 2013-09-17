@@ -1,0 +1,19 @@
+﻿#muuid {1acb2ed1-c1ed-43ee-89bd-086686f6ebb5}
+;============================================================
+;  File: StatusChange.dll
+;  Module: StatusChange
+;============================================================
+[On events...]
+При событиях...
+[Send]
+Отправка
+[Receive]
+Получение
+[...change status to...]
+...сменить статус на...
+[... if status is...]
+...если статус...
+[Change status when you send/receive an event.]
+Меняет статус при получении или отправки события.
+[Status Change]
+Изменение статуса

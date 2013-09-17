@@ -523,13 +523,13 @@ LRESULT CALLBACK OwnerProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		dlg->changed = TRUE;
 	}
 
-	return CallWindowProc(dlg->owner_old_edit_proc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, OwnerProc, msg, wParam, lParam);
 }
 
 void ToggleEnabled(Dialog *dlg)
 {
 	dlg->enabled = !dlg->enabled;
-	DBWriteContactSettingByte(dlg->hContact, MODULE_NAME, dlg->name, dlg->enabled);
+	db_set_b(dlg->hContact, MODULE_NAME, dlg->name, dlg->enabled);
 
 	if (!dlg->enabled)
 		SetNoUnderline(dlg);
@@ -565,7 +565,7 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return 1;
 	}
 
-	LRESULT ret = CallWindowProc(dlg->old_edit_proc, hwnd, msg, wParam, lParam);
+	LRESULT ret = mir_callNextSubclass(hwnd, EditProc, msg, wParam, lParam);
 
 	switch(msg) {
 	case WM_KEYDOWN:
@@ -731,7 +731,7 @@ void GetUserProtoLanguageSetting(Dialog *dlg, HANDLE hContact, char *group, char
 	else {
 		rc = CallService(MS_DB_CONTACT_GETSETTING_STR_EX, (WPARAM)hContact, (LPARAM)&cgs);
 		if (rc == CALLSERVICE_NOTFOUND)
-			rc = CallService(MS_DB_CONTACT_GETSETTING_STR, (WPARAM)hContact, (LPARAM)&cgs);
+			rc = db_get_ts(hContact, group, setting, &dbv);
 	}
 
 	if (!rc && dbv.type == DBVT_TCHAR && dbv.ptszVal != NULL) {
@@ -750,7 +750,7 @@ void GetUserProtoLanguageSetting(Dialog *dlg, HANDLE hContact, char *group, char
 	}
 
 	if (!rc)
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 }
 
 void GetUserLanguageSetting(Dialog *dlg, char *setting)
@@ -796,18 +796,18 @@ void GetContactLanguage(Dialog *dlg)
 	if (dlg->hContact == NULL) {
 		if ( !db_get_ts(NULL, MODULE_NAME, dlg->name, &dbv)) {
 			lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 	else {
 		if (!db_get_ts(dlg->hContact, MODULE_NAME, "TalkLanguage", &dbv)) {
 			lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 
 		if (dlg->lang_name[0] == _T('\0') && !db_get_ts(dlg->hContact, "eSpeak", "TalkLanguage", &dbv)) {
 			lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 
 		// Try from metacontact
@@ -818,12 +818,12 @@ void GetContactLanguage(Dialog *dlg)
 				if (hMetaContact != NULL) {
 					if (!db_get_ts(hMetaContact, MODULE_NAME, "TalkLanguage", &dbv)) {
 						lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
-						DBFreeVariant(&dbv);
+						db_free(&dbv);
 					}
 
 					if (dlg->lang_name[0] == _T('\0') && !db_get_ts(hMetaContact, "eSpeak", "TalkLanguage", &dbv)) {
 						lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
-						DBFreeVariant(&dbv);
+						db_free(&dbv);
 					}
 				}
 			}
@@ -860,21 +860,18 @@ void GetContactLanguage(Dialog *dlg)
 
 void ModifyIcon(Dialog *dlg)
 {
-	if ( ServiceExists(MS_MSG_MODIFYICON)) {
-		StatusIconData sid = {0};
-		sid.cbSize = sizeof(sid);
-		sid.szModule = MODULE_NAME;
+	StatusIconData sid = { sizeof(sid) };
+	sid.szModule = MODULE_NAME;
 
-		for (int i = 0; i < languages.getCount(); i++) {
-			sid.dwId = i;
+	for (int i = 0; i < languages.getCount(); i++) {
+		sid.dwId = i;
 
-			if (languages[i] == dlg->lang)
-				sid.flags = (dlg->enabled ? 0 : MBF_DISABLED);
-			else
-				sid.flags = MBF_HIDDEN;
+		if (languages[i] == dlg->lang)
+			sid.flags = (dlg->enabled ? 0 : MBF_DISABLED);
+		else
+			sid.flags = MBF_HIDDEN;
 
-			CallService(MS_MSG_MODIFYICON, (WPARAM) dlg->hContact, (LPARAM) &sid);
-		}
+		Srmm_ModifyIcon(dlg->hContact, &sid);
 	}
 }
 
@@ -894,7 +891,7 @@ void NotifyWrongSRMM()
 		return;
 
 	MessageBox(NULL,
-		TranslateT("Your message window does not support SpellChecker Plugin.\nIf you use SRMM, tabSRMM or Scriver, please update them to the latest version,\notherwise ask the author of your message window plugin to add support for Spell Checker."),
+		TranslateT("Your message window does not support SpellChecker Plugin.\nIf you use SRMM, TabSRMM or Scriver, please update them to the latest version,\notherwise ask the author of your message window plugin to add support for Spell Checker."),
 		TranslateT("Spell Checker"), MB_ICONERROR | MB_OK);
 
 	notified = TRUE;
@@ -924,7 +921,7 @@ int AddContactTextBox(HANDLE hContact, HWND hwnd, char *name, BOOL srmm, HWND hw
 		dlg->hContact = hContact;
 		dlg->hwnd = hwnd;
 		strncpy(dlg->name, name, sizeof(dlg->name));
-		dlg->enabled = DBGetContactSettingByte(dlg->hContact, MODULE_NAME, dlg->name, 1);
+		dlg->enabled = db_get_b(dlg->hContact, MODULE_NAME, dlg->name, 1);
 		dlg->srmm = srmm;
 
 		GetContactLanguage(dlg);
@@ -932,12 +929,12 @@ int AddContactTextBox(HANDLE hContact, HWND hwnd, char *name, BOOL srmm, HWND hw
 		if (opts.auto_locale)
 			LoadDictFromKbdl(dlg);
 
-		dlg->old_edit_proc = (WNDPROC) SetWindowLongPtr(dlg->hwnd, GWLP_WNDPROC, (LONG_PTR) EditProc);
+		mir_subclassWindow(dlg->hwnd, EditProc);
 		dialogs[hwnd] = dlg;
 
 		if (dlg->srmm && hwndOwner != NULL) {
 			dlg->hwnd_owner = hwndOwner;
-			dlg->owner_old_edit_proc = (WNDPROC) SetWindowLongPtr(dlg->hwnd_owner, GWLP_WNDPROC, (LONG_PTR) OwnerProc);
+			mir_subclassWindow(dlg->hwnd_owner, OwnerProc);
 			dialogs[dlg->hwnd_owner] = dlg;
 
 			ModifyIcon(dlg);
@@ -958,14 +955,6 @@ void FreePopupData(Dialog *dlg)
 {
 	DESTROY_MENY(dlg->hLanguageSubMenu)
 	DESTROY_MENY(dlg->hWrongWordsSubMenu)
-
-	if (dlg->old_menu_proc != NULL)
-		SetWindowLongPtr(dlg->hwnd_menu_owner, GWLP_WNDPROC, (LONG_PTR) dlg->old_menu_proc);
-	dlg->old_menu_proc = NULL;
-
-	if (dlg->hwnd_menu_owner != NULL)
-		menus.erase(dlg->hwnd_menu_owner);
-	dlg->hwnd_menu_owner = NULL;
 
 	if (dlg->wrong_words != NULL) {
 		for (unsigned i = 0; i < dlg->wrong_words->size(); i++) {
@@ -1000,15 +989,10 @@ int RemoveContactTextBox(HWND hwnd)
 
 		KillTimer(hwnd, TIMER_ID);
 
-		if (dlg->old_edit_proc != NULL)
-			SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR) dlg->old_edit_proc);
+		mir_unsubclassWindow(hwnd, EditProc);
 		dialogs.erase(hwnd);
-
-		if (dlg->hwnd_owner != NULL) {
-			if (dlg->owner_old_edit_proc != NULL)
-				SetWindowLongPtr(dlg->hwnd_owner, GWLP_WNDPROC, (LONG_PTR) dlg->owner_old_edit_proc);
+		if (dlg->hwnd_owner != NULL)
 			dialogs.erase(dlg->hwnd_owner);
-		}
 
 		delete dlg->re;
 		FreePopupData(dlg);
@@ -1135,7 +1119,7 @@ void AddMenuForWord(Dialog *dlg, TCHAR *word, CHARRANGE &pos, HMENU hMenu, BOOL 
 	InsertMenu(data.hReplaceSubMenu, 0, MF_BYPOSITION, base + AUTOREPLACE_MENU_ID_BASE + suggestions.count, TranslateT("Other..."));
 	if (suggestions.count > 0) {
 		InsertMenu(data.hReplaceSubMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-		for (int i = suggestions.count-1; i >= 0; i--)
+		for (int i = (int)suggestions.count-1; i >= 0; i--)
 			InsertMenu(data.hReplaceSubMenu, 0, MF_BYPOSITION, base + AUTOREPLACE_MENU_ID_BASE + i, suggestions.words[i]);
 	}
 
@@ -1155,7 +1139,7 @@ void AddMenuForWord(Dialog *dlg, TCHAR *word, CHARRANGE &pos, HMENU hMenu, BOOL 
 			hSubMenu = hMenu;
 		}
 
-		for (int i = suggestions.count - 1; i >= 0; i--)
+		for (int i = (int)suggestions.count - 1; i >= 0; i--)
 			InsertMenu(hSubMenu, 0, MF_BYPOSITION, base + i, suggestions.words[i]);
 	}
 
@@ -1200,7 +1184,7 @@ void AddItemsToMenu(Dialog *dlg, HMENU hMenu, POINT pt, HWND hwndOwner)
 		dlg->hLanguageSubMenu = CreatePopupMenu();
 
 		if (dlg->hwnd_menu_owner != NULL)
-			dlg->old_menu_proc = (WNDPROC) SetWindowLongPtr(dlg->hwnd_menu_owner, GWLP_WNDPROC, (LONG_PTR) MenuWndProc);
+			mir_subclassWindow(dlg->hwnd_menu_owner, MenuWndProc);
 
 		// First add languages
 		for (int i = 0; i < languages.getCount(); i++)
@@ -1263,10 +1247,10 @@ BOOL HandleMenuSelection(Dialog *dlg, POINT pt, unsigned selection)
 		SetNoUnderline(dlg);
 
 		if (dlg->hContact == NULL)
-			DBWriteContactSettingTString(NULL, MODULE_NAME, dlg->name,
+			db_set_ts(NULL, MODULE_NAME, dlg->name,
 					languages[selection - LANGUAGE_MENU_ID_BASE]->language);
 		else
-			DBWriteContactSettingTString(dlg->hContact, MODULE_NAME, "TalkLanguage",
+			db_set_ts(dlg->hContact, MODULE_NAME, "TalkLanguage",
 					languages[selection - LANGUAGE_MENU_ID_BASE]->language);
 
 		GetContactLanguage(dlg);
@@ -1450,7 +1434,7 @@ int IconPressed(WPARAM wParam, LPARAM lParam)
 			if (opts.use_flags) {
 				menus[dlg->hwnd] = dlg;
 				dlg->hwnd_menu_owner = dlg->hwnd;
-				dlg->old_menu_proc = (WNDPROC) SetWindowLongPtr(dlg->hwnd_menu_owner, GWLP_WNDPROC, (LONG_PTR) MenuWndProc);
+				mir_subclassWindow(dlg->hwnd_menu_owner, MenuWndProc);
 			}
 
 			// First add languages
@@ -1607,7 +1591,7 @@ LRESULT CALLBACK MenuWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 	}
 
-	return CallWindowProc(dlg->old_menu_proc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, MenuWndProc, msg, wParam, lParam);
 }
 
 TCHAR *lstrtrim(TCHAR *str)

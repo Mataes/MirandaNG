@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,113 +20,124 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include "constants.h"
+
 #pragma once
 
-class FacebookProto : public PROTO_INTERFACE, public MZeroedObject
+class FacebookProto : public PROTO<FacebookProto>
 {
 public:
-	FacebookProto( const char *proto_name, const TCHAR *username );
-	~FacebookProto( );
+	FacebookProto(const char *proto_name, const TCHAR *username);
+	~FacebookProto();
 
-	inline const char* ModuleName( ) const
+	inline const char* ModuleName() const
 	{
 		return m_szModuleName;
 	}
 
-	inline bool isOnline( )
+	inline bool isOnline()
 	{
-		return ( m_iStatus != ID_STATUS_OFFLINE && m_iStatus != ID_STATUS_CONNECTING );
+		return (m_iStatus != ID_STATUS_OFFLINE && m_iStatus != ID_STATUS_CONNECTING);
 	}
 
-	inline bool isOffline( )
+	inline bool isOffline()
 	{
-		return ( m_iStatus == ID_STATUS_OFFLINE );
+		return (m_iStatus == ID_STATUS_OFFLINE);
 	}
 
-	inline bool isInvisible( )
+	inline bool isInvisible()
 	{
-		return ( m_iStatus == ID_STATUS_INVISIBLE );
+		return (m_iStatus == ID_STATUS_INVISIBLE);
 	}
 
 	//PROTO_INTERFACE
 
-	virtual	HANDLE   __cdecl AddToList( int flags, PROTOSEARCHRESULT* psr );
-	virtual	HANDLE   __cdecl AddToListByEvent( int flags, int iContact, HANDLE hDbEvent );
+	virtual	HANDLE   __cdecl AddToList(int flags, PROTOSEARCHRESULT* psr);
+	virtual	HANDLE   __cdecl AddToListByEvent(int flags, int iContact, HANDLE hDbEvent);
 
-	virtual	int      __cdecl Authorize( HANDLE hDbEvent );
-	virtual	int      __cdecl AuthDeny( HANDLE hDbEvent, const PROTOCHAR* szReason );
-	virtual	int      __cdecl AuthRecv( HANDLE hContact, PROTORECVEVENT* );
-	virtual	int      __cdecl AuthRequest( HANDLE hContact, const PROTOCHAR* szMessage );
+	virtual	int      __cdecl Authorize(HANDLE hDbEvent);
+	virtual	int      __cdecl AuthDeny(HANDLE hDbEvent, const PROTOCHAR* szReason);
+	virtual	int      __cdecl AuthRecv(HANDLE hContact, PROTORECVEVENT*);
+	virtual	int      __cdecl AuthRequest(HANDLE hContact, const PROTOCHAR* szMessage);
 
-	virtual	HANDLE   __cdecl ChangeInfo( int iInfoType, void* pInfoData );
+	virtual	HANDLE   __cdecl ChangeInfo(int iInfoType, void* pInfoData);
 
-	virtual	HANDLE   __cdecl FileAllow( HANDLE hContact, HANDLE hTransfer, const PROTOCHAR* szPath );
-	virtual	int      __cdecl FileCancel( HANDLE hContact, HANDLE hTransfer );
-	virtual	int      __cdecl FileDeny( HANDLE hContact, HANDLE hTransfer, const PROTOCHAR* szReason );
-	virtual	int      __cdecl FileResume( HANDLE hTransfer, int* action, const PROTOCHAR** szFilename );
+	virtual	HANDLE   __cdecl FileAllow(HANDLE hContact, HANDLE hTransfer, const PROTOCHAR* szPath);
+	virtual	int      __cdecl FileCancel(HANDLE hContact, HANDLE hTransfer);
+	virtual	int      __cdecl FileDeny(HANDLE hContact, HANDLE hTransfer, const PROTOCHAR* szReason);
+	virtual	int      __cdecl FileResume(HANDLE hTransfer, int* action, const PROTOCHAR** szFilename);
 
-	virtual	DWORD_PTR __cdecl GetCaps( int type, HANDLE hContact = NULL );
-	virtual	HICON     __cdecl GetIcon( int iconIndex );
-	virtual	int       __cdecl GetInfo( HANDLE hContact, int infoType );
+	virtual	DWORD_PTR __cdecl GetCaps(int type, HANDLE hContact = NULL);
+	virtual	int       __cdecl GetInfo(HANDLE hContact, int infoType);
 
-	virtual	HANDLE    __cdecl SearchBasic( const PROTOCHAR* id );
-	virtual	HANDLE    __cdecl SearchByEmail( const PROTOCHAR* email );
-	virtual	HANDLE    __cdecl SearchByName( const PROTOCHAR* nick, const PROTOCHAR* firstName, const PROTOCHAR* lastName );
-	virtual	HWND      __cdecl SearchAdvanced( HWND owner );
-	virtual	HWND      __cdecl CreateExtendedSearchUI( HWND owner );
+	virtual	HANDLE    __cdecl SearchBasic(const PROTOCHAR* id);
+	virtual	HANDLE    __cdecl SearchByEmail(const PROTOCHAR* email);
+	virtual	HANDLE    __cdecl SearchByName(const PROTOCHAR* nick, const PROTOCHAR* firstName, const PROTOCHAR* lastName);
+	virtual	HWND      __cdecl SearchAdvanced(HWND owner);
+	virtual	HWND      __cdecl CreateExtendedSearchUI(HWND owner);
 
-	virtual	int       __cdecl RecvContacts( HANDLE hContact, PROTORECVEVENT* );
-	virtual	int       __cdecl RecvFile( HANDLE hContact, PROTOFILEEVENT* );
-	virtual	int       __cdecl RecvMsg( HANDLE hContact, PROTORECVEVENT* );
-	virtual	int       __cdecl RecvUrl( HANDLE hContact, PROTORECVEVENT* );
+	virtual	int       __cdecl RecvContacts(HANDLE hContact, PROTORECVEVENT*);
+	virtual	int       __cdecl RecvFile(HANDLE hContact, PROTOFILEEVENT*);
+	virtual	int       __cdecl RecvMsg(HANDLE hContact, PROTORECVEVENT*);
+	virtual	int       __cdecl RecvUrl(HANDLE hContact, PROTORECVEVENT*);
 
-	virtual	int       __cdecl SendContacts( HANDLE hContact, int flags, int nContacts, HANDLE* hContactsList );
-	virtual	HANDLE    __cdecl SendFile( HANDLE hContact, const PROTOCHAR* szDescription, PROTOCHAR** ppszFiles );
-	virtual	int       __cdecl SendMsg( HANDLE hContact, int flags, const char* msg );
-	virtual	int       __cdecl SendUrl( HANDLE hContact, int flags, const char* url );
+	virtual	int       __cdecl SendContacts(HANDLE hContact, int flags, int nContacts, HANDLE* hContactsList);
+	virtual	HANDLE    __cdecl SendFile(HANDLE hContact, const PROTOCHAR* szDescription, PROTOCHAR** ppszFiles);
+	virtual	int       __cdecl SendMsg(HANDLE hContact, int flags, const char* msg);
+	virtual	int       __cdecl SendUrl(HANDLE hContact, int flags, const char* url);
 
-	virtual	int       __cdecl SetApparentMode( HANDLE hContact, int mode );
-	virtual	int       __cdecl SetStatus( int iNewStatus );
+	virtual	int       __cdecl SetApparentMode(HANDLE hContact, int mode);
+	virtual	int       __cdecl SetStatus(int iNewStatus);
 
-	virtual	HANDLE    __cdecl GetAwayMsg( HANDLE hContact );
-	virtual	int       __cdecl RecvAwayMsg( HANDLE hContact, int mode, PROTORECVEVENT* evt );
-	virtual	int       __cdecl SendAwayMsg( HANDLE hContact, HANDLE hProcess, const char* msg );
-	virtual	int       __cdecl SetAwayMsg( int iStatus, const PROTOCHAR* msg );
+	virtual	HANDLE    __cdecl GetAwayMsg(HANDLE hContact);
+	virtual	int       __cdecl RecvAwayMsg(HANDLE hContact, int mode, PROTORECVEVENT* evt);
+	virtual	int       __cdecl SendAwayMsg(HANDLE hContact, HANDLE hProcess, const char* msg);
+	virtual	int       __cdecl SetAwayMsg(int iStatus, const PROTOCHAR* msg);
 
-	virtual	int       __cdecl UserIsTyping( HANDLE hContact, int type );
+	virtual	int       __cdecl UserIsTyping(HANDLE hContact, int type);
 
-	virtual	int       __cdecl OnEvent( PROTOEVENTTYPE iEventType, WPARAM wParam, LPARAM lParam );
+	virtual	int       __cdecl OnEvent(PROTOEVENTTYPE iEventType, WPARAM wParam, LPARAM lParam);
 
 	////////////////////////
 
 	// Services
-	int  __cdecl GetMyAwayMsg( WPARAM, LPARAM );
-	int  __cdecl SetMyAwayMsg( WPARAM, LPARAM );
-	int  __cdecl SvcCreateAccMgrUI( WPARAM, LPARAM );
-	int  __cdecl GetMyAvatar(WPARAM, LPARAM );
-	int  __cdecl GetAvatarInfo(WPARAM, LPARAM );
-	int  __cdecl GetAvatarCaps(WPARAM, LPARAM );
-	int  __cdecl VisitProfile(WPARAM, LPARAM );
-	int  __cdecl CancelFriendship(WPARAM, LPARAM );
-	int  __cdecl RequestFriendship(WPARAM, LPARAM );
-	int  __cdecl ApproveFriendship(WPARAM, LPARAM );
-	int  __cdecl OnCancelFriendshipRequest(WPARAM, LPARAM );
-	int  __cdecl CheckNewsfeeds(WPARAM, LPARAM );
-	int  __cdecl CheckFriendRequests(WPARAM, LPARAM );
-	int  __cdecl RefreshBuddyList(WPARAM, LPARAM );
+	INT_PTR __cdecl GetMyAwayMsg(WPARAM, LPARAM);
+	INT_PTR __cdecl SetMyAwayMsg(WPARAM, LPARAM);
+	INT_PTR __cdecl SvcCreateAccMgrUI(WPARAM, LPARAM);
+	INT_PTR __cdecl GetMyAvatar(WPARAM, LPARAM);
+	INT_PTR __cdecl GetAvatarInfo(WPARAM, LPARAM);
+	INT_PTR __cdecl GetAvatarCaps(WPARAM, LPARAM);
+	INT_PTR __cdecl VisitProfile(WPARAM, LPARAM);
+	INT_PTR __cdecl VisitFriendship(WPARAM, LPARAM);
+	INT_PTR __cdecl Poke(WPARAM, LPARAM);
+	INT_PTR __cdecl CancelFriendship(WPARAM, LPARAM);
+	INT_PTR __cdecl RequestFriendship(WPARAM, LPARAM);
+	INT_PTR __cdecl ApproveFriendship(WPARAM, LPARAM);
+	INT_PTR __cdecl OnCancelFriendshipRequest(WPARAM, LPARAM);
+	INT_PTR __cdecl CheckNewsfeeds(WPARAM, LPARAM);
+	INT_PTR __cdecl CheckFriendRequests(WPARAM, LPARAM);
+	INT_PTR __cdecl RefreshBuddyList(WPARAM, LPARAM);
+
+	INT_PTR __cdecl OnJoinChat(WPARAM,LPARAM);
+	INT_PTR __cdecl OnLeaveChat(WPARAM,LPARAM);
+
+	INT_PTR __cdecl OnMind(WPARAM,LPARAM);
+
+	// Initialiation
+	void InitPopups();
+	void InitHotkeys();
+	void InitSounds();
 
 	// Events
 	int  __cdecl OnModulesLoaded(WPARAM, LPARAM);
 	int  __cdecl OnOptionsInit(WPARAM, LPARAM);
+	int  __cdecl OnToolbarInit(WPARAM, LPARAM);
 	int  __cdecl OnBuildStatusMenu(WPARAM,LPARAM);
 	int  __cdecl OnContactDeleted(WPARAM,LPARAM);
-	int  __cdecl OnMind(WPARAM,LPARAM);
 	int  __cdecl OnPreShutdown(WPARAM,LPARAM);
 	int  __cdecl OnPrebuildContactMenu(WPARAM,LPARAM);
 	int  __cdecl OnIdleChanged(WPARAM,LPARAM);
 	int  __cdecl OnChatOutgoing(WPARAM,LPARAM);
-	int  __cdecl OnJoinChat(WPARAM,LPARAM);
-	int  __cdecl OnLeaveChat(WPARAM,LPARAM);
 
 	// Loops
 	bool    NegotiateConnection();
@@ -139,10 +150,12 @@ public:
 	void __cdecl ProcessFriendList(void*);
 	void __cdecl ProcessMessages(void*);
 	void __cdecl ProcessUnreadMessages(void*);
+	void __cdecl ProcessUnreadMessage(void*);
 	void __cdecl ProcessFeeds(void*);
 	void __cdecl ProcessNotifications(void*);
 	void __cdecl ProcessFriendRequests(void*);
 	void __cdecl SearchAckThread(void*);
+	void __cdecl SearchIdAckThread(void*);
 
 	// Worker threads
 	void __cdecl SignOn(void*);
@@ -153,17 +166,19 @@ public:
 	void __cdecl SendMsgWorker(void*);
 	void __cdecl SendChatMsgWorker(void*);
 	void __cdecl SendTypingWorker(void*);
-	void __cdecl MessagingWorker(void*);
+	void __cdecl ReadMessageWorker(void*);
+	void __cdecl ReadNotificationWorker(void*);
 	void __cdecl DeleteContactFromServer(void*);
 	void __cdecl AddContactToServer(void*);
 	void __cdecl ApproveContactToServer(void*);
 	void __cdecl CancelFriendsRequest(void*);
+	void __cdecl SendPokeWorker(void*);
 
 	// Contacts handling
 	bool    IsMyContact(HANDLE, bool include_chat = false);
 	HANDLE  ContactIDToHContact(std::string);
 	HANDLE  ChatIDToHContact(std::string);
-	HANDLE  AddToContactList(facebook_user*, BYTE type, bool dont_check = false, const char *new_name = "");
+	HANDLE  AddToContactList(facebook_user*, ContactType type, bool dont_check = false);
 	void    SetAllContactStatuses(int status, bool reset_client = false);
 	HANDLE  HContactFromAuthEvent(HANDLE hEvent);
 
@@ -183,13 +198,12 @@ public:
 	std::tstring GetAvatarFolder();
 	bool GetDbAvatarInfo(PROTO_AVATAR_INFORMATIONT &ai, std::string *url);
 	void CheckAvatarChange(HANDLE hContact, std::string image_url);
-	void ToggleStatusMenuItems( BOOL bEnable );
-	void parseSmileys(std::string message, HANDLE hContact);
+	void ToggleStatusMenuItems(BOOL bEnable);
+	void ParseSmileys(std::string message, HANDLE hContact);
+	void OpenUrl(std::string url);
 
 	// Handles, Locks
-	HGENMENU m_hMenuRoot;
-	HGENMENU m_hMenuServicesRoot;
-	HANDLE  m_hStatusMind;
+	HGENMENU m_hMenuRoot, m_hMenuServicesRoot, m_hStatusMind;
 
 	HANDLE  signon_lock_;
 	HANDLE  avatar_lock_;
@@ -198,8 +212,9 @@ public:
 
 	HANDLE  m_hNetlibUser;
 
+	std::vector<HANDLE> popupClasses;
+
 	std::string last_status_msg_;
-	std::tstring def_avatar_folder_;
 	HANDLE  hAvatarFolder_;
 	HANDLE	hSmileysFolder_;
 	std::vector<HANDLE> avatar_queue;
@@ -208,5 +223,5 @@ public:
 
 	// Information providing
 	int Log(const char *fmt,...);
-	void NotifyEvent(TCHAR* title, TCHAR* info, HANDLE contact, DWORD flags, TCHAR* url=NULL);
+	void NotifyEvent(TCHAR* title, TCHAR* info, HANDLE contact, DWORD flags, std::string *url = NULL, std::string *notification_id = NULL);
 };

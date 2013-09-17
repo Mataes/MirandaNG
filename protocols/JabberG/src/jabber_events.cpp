@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -22,19 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "jabber.h"
-
-#include <fcntl.h>
-#include <io.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include "jabber_list.h"
 #include "jabber_iq.h"
 #include "jabber_caps.h"
-#include "m_file.h"
-#include "m_addcontact.h"
 #include "jabber_disco.h"
-#include "m_proto_listeningto.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // OnContactDeleted - processes a contact deletion
@@ -44,19 +35,20 @@ int CJabberProto::OnContactDeleted(WPARAM wParam, LPARAM)
 	if ( !m_bJabberOnline)	// should never happen
 		return 0;
 
+	HANDLE hContact = (HANDLE)wParam;
 	DBVARIANT dbv;
-	if ( !JGetStringT((HANDLE)wParam, JGetByte((HANDLE) wParam, "ChatRoom", 0)?(char*)"ChatRoomID":(char*)"jid", &dbv)) {
-		if (ListExist(LIST_ROSTER, dbv.ptszVal)) {
+	if ( !getTString(hContact, isChatRoom(hContact) ? "ChatRoomID" : "jid", &dbv)) {
+		if (ListGetItemPtr(LIST_ROSTER, dbv.ptszVal)) {
 			if ( !_tcschr(dbv.ptszVal, _T('@'))) {
 				TCHAR szStrippedJid[JABBER_MAX_JID_LEN];
 				JabberStripJid(m_ThreadInfo->fullJID, szStrippedJid, SIZEOF(szStrippedJid));
 				TCHAR *szDog = _tcschr(szStrippedJid, _T('@'));
 				if (szDog && _tcsicmp(szDog + 1, dbv.ptszVal))
-					m_ThreadInfo->send(XmlNodeIq(_T("set"), SerialNext(), dbv.ptszVal) << XQUERY(_T(JABBER_FEAT_REGISTER)) << XCHILD(_T("remove")));
+					m_ThreadInfo->send( XmlNodeIq(_T("set"), SerialNext(), dbv.ptszVal) << XQUERY(JABBER_FEAT_REGISTER) << XCHILD(_T("remove")));
 			}
 
 			// Remove from roster, server also handles the presence unsubscription process.
-			m_ThreadInfo->send(XmlNodeIq(_T("set"), SerialNext()) << XQUERY(_T(JABBER_FEAT_IQ_ROSTER))
+			m_ThreadInfo->send( XmlNodeIq(_T("set"), SerialNext()) << XQUERY(JABBER_FEAT_IQ_ROSTER)
 				<< XCHILD(_T("item")) << XATTR(_T("jid"), dbv.ptszVal) << XATTR(_T("subscription"), _T("remove")));
 		}
 
@@ -86,20 +78,20 @@ static TCHAR* sttSettingToTchar(DBCONTACTWRITESETTING* cws)
 void __cdecl CJabberProto::OnRenameGroup(DBCONTACTWRITESETTING* cws, HANDLE hContact)
 {
 	DBVARIANT jid, dbv;
-	if (JGetStringT(hContact, "jid", &jid))
+	if (getTString(hContact, "jid", &jid))
 		return;
 
-	JABBER_LIST_ITEM* item = ListGetItemPtr(LIST_ROSTER, jid.ptszVal);
+	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_ROSTER, jid.ptszVal);
 	db_free(&jid);
 	if (item == NULL)
 		return;
 
-	TCHAR* nick;
-	if ( !DBGetContactSettingTString(hContact, "CList", "MyHandle", &dbv)) {
+	TCHAR *nick;
+	if ( !db_get_ts(hContact, "CList", "MyHandle", &dbv)) {
 		nick = mir_tstrdup(dbv.ptszVal);
 		db_free(&dbv);
 	}
-	else if ( !JGetStringT(hContact, "Nick", &dbv)) {
+	else if ( !getTString(hContact, "Nick", &dbv)) {
 		nick = mir_tstrdup(dbv.ptszVal);
 		db_free(&dbv);
 	}
@@ -114,9 +106,9 @@ void __cdecl CJabberProto::OnRenameGroup(DBCONTACTWRITESETTING* cws, HANDLE hCon
 		}
 	}
 	else {
-		TCHAR* p = sttSettingToTchar(cws);
+		TCHAR *p = sttSettingToTchar(cws);
 		if (cws->value.pszVal != NULL && lstrcmp(p, item->group)) {
-			Log("Group set to " TCHAR_STR_PARAM, p);
+			Log("Group set to %S", p);
 			if (p)
 				AddContactToRoster(item->jid, nick, p);
 		}
@@ -128,46 +120,44 @@ void __cdecl CJabberProto::OnRenameGroup(DBCONTACTWRITESETTING* cws, HANDLE hCon
 void __cdecl CJabberProto::OnRenameContact(DBCONTACTWRITESETTING* cws, HANDLE hContact)
 {
 	DBVARIANT jid;
-	if (JGetStringT(hContact, "jid", &jid))
+	if (getTString(hContact, "jid", &jid))
 		return;
 
-	JABBER_LIST_ITEM* item = ListGetItemPtr(LIST_ROSTER, jid.ptszVal);
+	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_ROSTER, jid.ptszVal);
 	db_free(&jid);
 	if (item == NULL)
 		return;
 
 	if (cws->value.type == DBVT_DELETED) {
-		TCHAR* nick = (TCHAR*)CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM)hContact, GCDNF_NOMYHANDLE | GCDNF_TCHAR);
+		TCHAR *nick = pcli->pfnGetContactDisplayName(hContact, GCDNF_NOMYHANDLE);
 		AddContactToRoster(item->jid, nick, item->group);
 		mir_free(nick);
 		return;
 	}
 
-	TCHAR* newNick = sttSettingToTchar(cws);
-	if (newNick) {
-		if (lstrcmp(item->nick, newNick)) {
-			Log("Renaming contact " TCHAR_STR_PARAM ": " TCHAR_STR_PARAM " -> " TCHAR_STR_PARAM, item->jid, item->nick, newNick);
-			AddContactToRoster(item->jid, newNick, item->group);
-		}
-		mir_free(newNick);
-}	}
+	ptrT newNick( sttSettingToTchar(cws));
+	if (newNick && lstrcmp(item->nick, newNick)) {
+		Log("Renaming contact %S: %S -> %S", item->jid, item->nick, newNick);
+		AddContactToRoster(item->jid, newNick, item->group);
+	}
+}
 
-void __cdecl CJabberProto::OnAddContactForever(DBCONTACTWRITESETTING* cws, HANDLE hContact)
+void __cdecl CJabberProto::OnAddContactForever(DBCONTACTWRITESETTING *cws, HANDLE hContact)
 {
 	if (cws->value.type != DBVT_DELETED && !(cws->value.type==DBVT_BYTE && cws->value.bVal==0))
 		return;
 
 	DBVARIANT jid, dbv;
-	if (JGetStringT(hContact, "jid", &jid))
+	if (getTString(hContact, "jid", &jid))
 		return;
 
 	TCHAR *nick;
-	Log("Add " TCHAR_STR_PARAM " permanently to list", jid.pszVal);
-	if ( !DBGetContactSettingTString(hContact, "CList", "MyHandle", &dbv)) {
+	Log("Add %S permanently to list", jid.pszVal);
+	if ( !db_get_ts(hContact, "CList", "MyHandle", &dbv)) {
 		nick = mir_tstrdup(dbv.ptszVal);
 		db_free(&dbv);
 	}
-	else if ( !JGetStringT(hContact, "Nick", &dbv)) {
+	else if ( !getTString(hContact, "Nick", &dbv)) {
 		nick = mir_tstrdup(dbv.ptszVal);
 		db_free(&dbv);
 	}
@@ -177,7 +167,7 @@ void __cdecl CJabberProto::OnAddContactForever(DBCONTACTWRITESETTING* cws, HANDL
 		return;
 	}
 
-	if ( !DBGetContactSettingTString(hContact, "CList", "Group", &dbv)) {
+	if ( !db_get_ts(hContact, "CList", "Group", &dbv)) {
 		AddContactToRoster(jid.ptszVal, nick, dbv.ptszVal);
 		db_free(&dbv);
 	}
@@ -224,11 +214,11 @@ int CJabberProto::OnIdleChanged(WPARAM, LPARAM lParam)
 	}
 
 	if (lParam & IDF_ISIDLE) {
-		MIRANDA_IDLE_INFO mii = { 0 };
-		mii.cbSize = sizeof(mii);
+		MIRANDA_IDLE_INFO mii = { sizeof(mii) };
 		CallService(MS_IDLE_GETIDLEINFO, 0, (LPARAM)&mii);
 		m_tmJabberIdleStartTime = time(0) - mii.idleTime * 60;
-	} else
-		m_tmJabberIdleStartTime = 0;
+	}
+	else m_tmJabberIdleStartTime = 0;
+
 	return 0;
 }

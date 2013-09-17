@@ -16,10 +16,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#pragma once
-#include <oleidl.h>
-#include <tchar.h>
-
 #define OLEIVERB_SETOWNER		(-24)
 
 EXTERN_C const IID IID_ITooltipData;
@@ -39,8 +35,8 @@ class ISmileyBase :
 {
 protected:
 	IOleAdviseHolder* m_spAdviseHolder;
-    IAdviseSink* m_spAdviseSink;
-    IOleClientSite* m_spClientSite;
+	IAdviseSink* m_spAdviseSink;
+	IOleClientSite* m_spClientSite;
 	DWORD m_advf;
 	LONG m_lRefCount;
 
@@ -52,7 +48,7 @@ protected:
 	HWND m_hwnd;
 
 	bool m_visible;
-    bool m_dirAniAllow;
+	bool m_dirAniAllow;
 
 public:
 	ISmileyBase(void);
@@ -64,7 +60,7 @@ public:
 	bool QueryHitPointSpecial(int x, int y, HWND hwnd, TCHAR** smltxt);
 	void SetHint(TCHAR* smltxt);
 
-    virtual void SetPosition(HWND hwnd, LPCRECT lpRect);
+	virtual void SetPosition(HWND hwnd, LPCRECT lpRect);
 
     //
 	// IUnknown members
@@ -98,16 +94,16 @@ public:
 	STDMETHOD(EnumAdvise)(IEnumSTATDATA **ppEnumAdvise);
 	STDMETHOD(GetMiscStatus)(DWORD dwAspect, DWORD *pdwStatus);
 	STDMETHOD(SetColorScheme)(LOGPALETTE* /* pLogpal */);
-	
+
 	//
 	// IViewObject members
 	//
-    STDMETHOD(SetAdvise)(DWORD aspect, DWORD advf, IAdviseSink* pAdvSink);
-    STDMETHOD(GetAdvise)(DWORD* /*pAspects*/, DWORD* /*pAdvf*/, IAdviseSink** ppAdvSink);
-    STDMETHOD(Freeze)(DWORD, long, void*, DWORD*);
-    STDMETHOD(Unfreeze)(DWORD);
-    STDMETHOD(GetColorSet)(DWORD, long, void*, DVTARGETDEVICE*, HDC, 
-        LOGPALETTE**);
+	STDMETHOD(SetAdvise)(DWORD aspect, DWORD advf, IAdviseSink* pAdvSink);
+	STDMETHOD(GetAdvise)(DWORD* /*pAspects*/, DWORD* /*pAdvf*/, IAdviseSink** ppAdvSink);
+	STDMETHOD(Freeze)(DWORD, long, void*, DWORD*);
+	STDMETHOD(Unfreeze)(DWORD);
+	STDMETHOD(GetColorSet)(DWORD, long, void*, DVTARGETDEVICE*, HDC, 
+		LOGPALETTE**);
 
 	//
 	// IViewObject2 members
@@ -119,7 +115,6 @@ public:
 	//
 	STDMETHOD(SetTooltip)(BSTR bstrHint);
 	STDMETHOD(GetTooltip)(BSTR * bstrHint); 
-
 };
 
 int CheckForTip(int x, int y, HWND hwnd, TCHAR** smltxt);

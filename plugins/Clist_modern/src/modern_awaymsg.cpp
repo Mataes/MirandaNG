@@ -32,120 +32,75 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "hdr/modern_commonheaders.h"
 #include "hdr/modern_awaymsg.h"
-#include "newpluginapi.h"
 #include "hdr/modern_sync.h"
 
 #define AMASKPERIOD 3000
-#define amlock EnterCriticalSection(&amLockChain)
-#define amunlock LeaveCriticalSection(&amLockChain)
 
-typedef struct _tag_amChainItem {
-	HANDLE hContact;
-	_tag_amChainItem *Next;
-} AMCHAINITEM;
+static CRITICAL_SECTION	amCS;
+static LIST<void> amItems(10, PtrKeySortT);
 
-static AMCHAINITEM *	amFirstChainItem = NULL;
-static AMCHAINITEM *	amLastChainItem  = NULL;
-static CRITICAL_SECTION	amLockChain;
-static HANDLE			hamProcessEvent	 = NULL;
-static DWORD			amRequestTick	 = 0;
-
+static HANDLE  hamProcessEvent = NULL;
+static DWORD   amRequestTick = 0;
 
 static int		amAddHandleToChain(HANDLE hContact);
 static HANDLE	amGetCurrentChain();
-static int		amThreadProc(HWND hwnd);
 
 /*
 *  Add contact handle to requests queue
 */
 static int amAddHandleToChain(HANDLE hContact)
 {
-	AMCHAINITEM * workChain;
-	amlock;
-	{
-		//check that handle is present
-		AMCHAINITEM * wChain;
-		wChain = amFirstChainItem;
-		if (wChain)
-			do {
-				if (wChain->hContact == hContact)
-				{
-					amunlock;
-					return 0;
-				}
-			} while(wChain = (AMCHAINITEM *)wChain->Next);
-	}
-	if ( !amFirstChainItem)  
-	{
-		amFirstChainItem = (AMCHAINITEM*)malloc(sizeof(AMCHAINITEM));
-		workChain = amFirstChainItem;
-	}
-	else 
-	{
-		amLastChainItem->Next = (AMCHAINITEM*)malloc(sizeof(AMCHAINITEM));
-		workChain = (AMCHAINITEM *)amLastChainItem->Next;
-	}
-	amLastChainItem = workChain;
-	workChain->Next = NULL;
-	workChain->hContact = hContact;
-	amunlock;
+	mir_cslockfull lck(amCS);
+	if (amItems.find(hContact) != NULL)
+		return 0;
+
+	amItems.insert(hContact);
+	lck.unlock();
 	SetEvent(hamProcessEvent);
 	return 1;
 }
-
 
 /*
 *	Gets handle from queue for request
 */
 static HANDLE amGetCurrentChain()
 {
-	AMCHAINITEM * workChain;
-	HANDLE res = NULL;
-	amlock;
-	if (amFirstChainItem)
-	{
-		res = amFirstChainItem->hContact;
-		workChain = amFirstChainItem->Next;
-		free(amFirstChainItem);
-		amFirstChainItem = (AMCHAINITEM *)workChain;
-	}
-	amunlock;
+	mir_cslock lck(amCS);
+	if (amItems.getCount() == 0)
+		return NULL;
+
+	HANDLE res = amItems[0];
+	amItems.remove(0);
 	return res;
 }
 
 /*
 *	Tread sub to ask protocol to retrieve away message
 */
-static int amThreadProc(HWND hwnd)
+static void amThreadProc(void *)
 {
-	DWORD time;
-	HANDLE hContact;
-	HANDLE ACK = 0;
+	thread_catcher lck(g_hAwayMsgThread);
+	
 	ClcCacheEntry dnce;
-	memset( &dnce, 0, sizeof(dnce));
+	memset(&dnce, 0, sizeof(dnce));
 
-	while (!MirandaExiting())
-	{
-		hContact = amGetCurrentChain(); 
-		while (hContact)
-		{ 
-			time = GetTickCount();
-			if ((time-amRequestTick) < AMASKPERIOD)
-			{
-				SleepEx(AMASKPERIOD-(time-amRequestTick)+10,TRUE);
-				if (MirandaExiting())
-				{
-					g_dwAwayMsgThreadID = 0;
-					return 0; 
-				}
+	while (!MirandaExiting()) {
+		HANDLE hContact = amGetCurrentChain(); 
+		while (hContact) { 
+			DWORD time = GetTickCount();
+			if ((time-amRequestTick) < AMASKPERIOD) {
+				SleepEx(AMASKPERIOD-(time-amRequestTick)+10, TRUE);
+				if ( MirandaExiting())
+					return; 
 			}
 			CListSettings_FreeCacheItemData(&dnce);
 			dnce.hContact = (HANDLE)hContact;
-			Sync(CLUI_SyncGetPDNCE, (WPARAM) 0,(LPARAM)&dnce);            
+			Sync(CLUI_SyncGetPDNCE, (WPARAM) 0, (LPARAM)&dnce);
+			
+			HANDLE ACK = 0;
 			if (dnce.ApparentMode != ID_STATUS_OFFLINE) //don't ask if contact is always invisible (should be done with protocol)
-				ACK = (HANDLE)CallContactService(hContact,PSS_GETAWAYMSG,0,0);		
-			if ( !ACK)
-			{
+				ACK = (HANDLE)CallContactService(hContact,PSS_GETAWAYMSG, 0, 0);		
+			if ( !ACK) {
 				ACKDATA ack;
 				ack.hContact = hContact;
 				ack.type = ACKTYPE_AWAYMSG;
@@ -159,40 +114,29 @@ static int amThreadProc(HWND hwnd)
 			CListSettings_FreeCacheItemData(&dnce);
 			amRequestTick = time;
 			hContact = amGetCurrentChain();
-			if (hContact) 
-			{
+			if (hContact) {
 				DWORD i=0;
-				do 
-				{
+				do {
 					i++;
-					SleepEx(50,TRUE);
-				} while (i < AMASKPERIOD/50 && !MirandaExiting());
+					SleepEx(50, TRUE);
+				}
+					while (i < AMASKPERIOD/50 && !MirandaExiting());
 			}
 			else break;
-			if (MirandaExiting()) 
-			{	
-				g_dwAwayMsgThreadID = 0;
-				return 0;			
-			}
+			if ( MirandaExiting())
+				return;			
 		}
 		WaitForSingleObjectEx(hamProcessEvent, INFINITE, TRUE);
 		ResetEvent(hamProcessEvent);
-		if (MirandaExiting()) 
-		{
-			g_dwAwayMsgThreadID = 0;
-			return 0;
-		}
+		if ( MirandaExiting())
+			break;
 	}
-	g_dwAwayMsgThreadID = 0;
-	return 1;
 }
 
 BOOL amWakeThread()
 {
-	if (hamProcessEvent && g_dwAwayMsgThreadID)
-	{
+	if (hamProcessEvent && g_hAwayMsgThread) {
 		SetEvent(hamProcessEvent);
-
 		return TRUE;
 	}
 
@@ -204,29 +148,30 @@ BOOL amWakeThread()
 */
 void amRequestAwayMsg(HANDLE hContact)
 {
-	char *szProto;
 	if ( !g_CluiData.bInternalAwayMsgDiscovery || !hContact) 
 		return;
+
 	//Do not re-ask for chat rooms   
-	szProto = GetContactProto(hContact);
-	if (szProto == NULL || db_get_b(hContact, szProto, "ChatRoom", 0) != 0) 	
-		return;
-	amAddHandleToChain(hContact);        
+	char *szProto = GetContactProto(hContact);
+	if (szProto != NULL && !db_get_b(hContact, szProto, "ChatRoom", 0))
+		amAddHandleToChain(hContact);        
 }
 
 void InitAwayMsgModule()
 {
-	InitializeCriticalSection(&amLockChain);
+	InitializeCriticalSection(&amCS);
 	hamProcessEvent = CreateEvent(NULL,FALSE,FALSE,NULL);   
-	g_dwAwayMsgThreadID = (DWORD)mir_forkthread((pThreadFunc)amThreadProc,0);
+	g_hAwayMsgThread = mir_forkthread(amThreadProc, 0);
 }
 
 void UninitAwayMsgModule()
 {
 	SetEvent(hamProcessEvent);
+
+	while (g_hAwayMsgThread)
+		SleepEx(50, TRUE);
+
 	CloseHandle(hamProcessEvent);
-	amlock;
-	while (amGetCurrentChain());
-	amunlock;
-	DeleteCriticalSection(&amLockChain);
+	DeleteCriticalSection(&amCS);
+	amItems.destroy();
 }

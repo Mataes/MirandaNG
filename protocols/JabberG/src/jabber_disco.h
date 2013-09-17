@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2005-07  Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -55,15 +56,15 @@ public:
 		if (m_pNext)
 			delete m_pNext;
 	}
-	TCHAR* GetCategory()
+	TCHAR *GetCategory()
 	{
 		return m_szCategory;
 	}
-	TCHAR* GetType()
+	TCHAR *GetType()
 	{
 		return m_szType;
 	}
-	TCHAR* GetName()
+	TCHAR *GetName()
 	{
 		return m_szName;
 	}
@@ -97,7 +98,7 @@ public:
 		if (m_pNext)
 			delete m_pNext;
 	}
-	TCHAR* GetVar()
+	TCHAR *GetVar()
 	{
 		return m_szVar;
 	}
@@ -232,7 +233,7 @@ public:
 		replaceStrT(m_szJid, szJid);
 		return TRUE;
 	}
-	TCHAR* GetJid()
+	TCHAR *GetJid()
 	{
 		return m_szJid;
 	}
@@ -241,11 +242,11 @@ public:
 		replaceStrT(m_szNode, szNode);
 		return TRUE;
 	}
-	TCHAR* GetNode()
+	TCHAR *GetNode()
 	{
 		return m_szNode;
 	}
-	TCHAR* GetName()
+	TCHAR *GetName()
 	{
 		return m_szName;
 	}

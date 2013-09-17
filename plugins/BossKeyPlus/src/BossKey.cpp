@@ -18,7 +18,6 @@
 */
 
 #include "BossKey.h"
-#include "m_msg_buttonsbar.h"
 
 // multiple instances support:
 // when hotkey is hit, handler notifies all listen windows
@@ -32,7 +31,8 @@
 // unique to this DLL, not to be shared
 HINSTANCE g_hInstance;
 CLIST_INTERFACE *pcli;
-HANDLE g_hmGenMenuInit, g_hMenuItem, g_hHideService, g_hIsHiddenService;
+HGENMENU g_hMenuItem;
+HANDLE g_hHideService, g_hIsHiddenService;
 HWINEVENTHOOK g_hWinHook;
 HWND g_hListenWindow, hDlg, g_hDlgPass, hOldForegroundWindow;
 HWND_ITEM *g_pMirWnds; // a pretty simple linked list
@@ -65,7 +65,7 @@ static PLUGININFOEX pluginInfo = {
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,
-	//4fac353d-0a36-44a4-9064-6759c53ae782
+	// {4FAC353D-0A36-44A4-9064-6759C53AE782}
 	{0x4fac353d, 0x0a36, 0x44a4, {0x90, 0x64, 0x67, 0x59, 0xc5, 0x3a, 0xe7, 0x82}}
 };
 
@@ -106,12 +106,10 @@ INT_PTR CALLBACK DlgStdInProc(HWND hDlg, UINT uMsg,WPARAM wParam,LPARAM lParam)
 
 				RECT rect;
 				GetClientRect(hDlg, &rect);
-				SetWindowPos(hDlg, 0, 0, 0, rect.right, rect.bottom +
-					GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CXSIZEFRAME),
-					SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOZORDER);
+				SetWindowPos(hDlg, 0, 0, 0, rect.right, rect.bottom + GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CXSIZEFRAME), SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOZORDER);
 			}
-			SendMessage(GetDlgItem(hDlg, IDC_HEADERBAR), WM_SETICON, 0, (LPARAM)hIcon);
-			SetWindowText(GetDlgItem(hDlg, IDC_HEADERBAR), TranslateT("Miranda NG is locked.\nEnter password to unlock it."));
+			SendDlgItemMessage(hDlg, IDC_HEADERBAR, WM_SETICON, 0, (LPARAM)hIcon);
+			SetDlgItemText(hDlg, IDC_HEADERBAR, TranslateT("Miranda NG is locked.\nEnter password to unlock it."));
 
 			TranslateDialogDefault(hDlg);
 			oldLangID = 0;
@@ -144,14 +142,14 @@ INT_PTR CALLBACK DlgStdInProc(HWND hDlg, UINT uMsg,WPARAM wParam,LPARAM lParam)
 
 				if (passlen == 0)
 				{
-					SetWindowText(GetDlgItem(hDlg, IDC_HEADERBAR), TranslateT("Miranda NG is locked.\nEnter password to unlock it."));
-					SendMessage(GetDlgItem(hDlg, IDC_HEADERBAR), WM_NCPAINT, 0, 0);
+					SetDlgItemText(hDlg, IDC_HEADERBAR, TranslateT("Miranda NG is locked.\nEnter password to unlock it."));
+					SendDlgItemMessage(hDlg, IDC_HEADERBAR, WM_NCPAINT, 0, 0);
 				}
 				else if (lstrcmpA(password, g_password))
 				{
-					SetWindowText(GetDlgItem(hDlg, IDC_HEADERBAR), TranslateT("Password is not correct!\nPlease, enter correct password."));
-					SendMessage(GetDlgItem(hDlg, IDC_HEADERBAR), WM_NCPAINT, 0, 0);
-					SetDlgItemTextA(hDlg, IDC_EDIT1, "");
+					SetDlgItemText(hDlg, IDC_HEADERBAR, TranslateT("Password is not correct!\nPlease, enter correct password."));
+					SendDlgItemMessage(hDlg, IDC_HEADERBAR, WM_NCPAINT, 0, 0);
+					SetDlgItemText(hDlg, IDC_EDIT1, _T(""));
 				}
 				else EndDialog(hDlg,IDOK);
 
@@ -174,44 +172,41 @@ INT_PTR CALLBACK DlgStdInProc(HWND hDlg, UINT uMsg,WPARAM wParam,LPARAM lParam)
 			return FALSE;
 		}
 
-	}return FALSE;
+	}
+	return FALSE;
 }
 
 static void LanguageChanged(HWND hDlg)
 {
 	HKL LangID = GetKeyboardLayout(0);
-	char Lang[3] = {0};
 	if (LangID != oldLangID)
 	{
+		TCHAR Lang[3] = {0};
 		oldLangID = LangID;
-		GetLocaleInfoA(MAKELCID(((WORD)LangID & 0xffffffff),  SORT_DEFAULT),  LOCALE_SABBREVLANGNAME, Lang, 2);
+		GetLocaleInfo(MAKELCID(((WORD)LangID & 0xffffffff),  SORT_DEFAULT),  LOCALE_SABBREVLANGNAME, Lang, 2);
 		Lang[0] = toupper(Lang[0]);
 		Lang[1] = tolower(Lang[1]);
-		SetDlgItemTextA(hDlg, IDC_LANG, Lang);
+		SetDlgItemText(hDlg, IDC_LANG, Lang);
 	}
 }
 
-BOOL CALLBACK EnumWindowsProc(HWND hWnd,LPARAM lParam)
+BOOL CALLBACK EnumWindowsProc(HWND hWnd,LPARAM)
 {
 	DWORD dwWndPID;
 	GetWindowThreadProcessId(hWnd,&dwWndPID);
 
-	if ((g_dwMirandaPID == dwWndPID) && hWnd != g_hDlgPass /* && (GetWindowLongPtr(hWnd,GWLP_HWNDPARENT) == NULL)*/ && (IsWindowVisible(hWnd)))
+	if ((g_dwMirandaPID == dwWndPID) && hWnd != g_hDlgPass && IsWindowVisible(hWnd))
 	{
-		char szTemp[32];
-		GetClassNameA(hWnd,szTemp,32);
+		TCHAR szTemp[32];
+		GetClassName(hWnd,szTemp,32);
 
-		if (lstrcmpA(szTemp,"MirandaThumbsWnd") == 0) // hide floating contacts
+		if (lstrcmp(szTemp,_T("MirandaThumbsWnd")) == 0) // hide floating contacts
 		{
 			CallService("FloatingContacts/MainHideAllThumbs",0,0);
 			g_bOldSetting |= OLD_FLTCONT;
 		}
-		else
-		if (lstrcmpA(szTemp,"PopupWnd2") == 0 || lstrcmpA(szTemp,"YAPPWinClass") == 0) // destroy opened popups
-			SendMessage(hWnd, UM_DESTROYPOPUP,0,0);
-//		else
-//		if (lstrcmpA(szTemp,"#32770") == 0)
-//			SendMessage(hWnd, WM_CLOSE,0,0);
+		else if (lstrcmp(szTemp,_T("PopupWnd2")) == 0 || lstrcmp(szTemp,_T("YAPPWinClass")) == 0) // destroy opened popups
+			PUDeletePopup(hWnd);
 		else
 		{
 			HWND_ITEM *node = new HWND_ITEM;
@@ -227,14 +222,16 @@ BOOL CALLBACK EnumWindowsProc(HWND hWnd,LPARAM lParam)
 
 TCHAR* GetDefStatusMsg(unsigned uStatus, const char* szProto)
 {
-	TCHAR *ret = (TCHAR *)CallService ( MS_AWAYMSG_GETSTATUSMSGT, (WPARAM)uStatus, (LPARAM)szProto );
-	if ( (int)ret == CALLSERVICE_NOTFOUND )
+	INT_PTR res = CallService (MS_AWAYMSG_GETSTATUSMSGT, (WPARAM)uStatus, (LPARAM)szProto );
+	if (res == CALLSERVICE_NOTFOUND )
 	{
-		char* tmp = ( char* )CallService( MS_AWAYMSG_GETSTATUSMSG, (WPARAM)uStatus, (LPARAM)szProto );
-		ret = mir_a2t( tmp );
+		char* tmp = ( char* )CallService(MS_AWAYMSG_GETSTATUSMSG, (WPARAM)uStatus, (LPARAM)szProto );
+		TCHAR *ret = mir_a2t( tmp );
 		mir_free( tmp );
+		return ret;
 	}
-	return ret;
+	else
+		return (TCHAR *) res;
 }
 
 void SetStatus(const char* szProto, unsigned status, TCHAR *tszAwayMsg)
@@ -260,25 +257,12 @@ static int ChangeAllProtoStatuses(unsigned statusMode, TCHAR *msg)
 			(g_wMask & OPT_ONLINEONLY) ? // check "Change only if current status is Online" option
 			((status == ID_STATUS_ONLINE) || (status == ID_STATUS_FREECHAT)) // process only "online" and "free for chat"
 			:
-			((status > ID_STATUS_OFFLINE) && (status < ID_STATUS_IDLE) && (status != ID_STATUS_INVISIBLE)) // process all existing statuses except for "invisible" & "offline"
-			)
+			((status > ID_STATUS_OFFLINE) && (status < ID_STATUS_IDLE) && (status != ID_STATUS_INVISIBLE))) // process all existing statuses except for "invisible" & "offline"
 		{
 			if (g_wMask & OPT_SETONLINEBACK){ // need to save old statuses & status messages
 				oldStatus[i] = status;
-
-				char svc[256];
-				mir_snprintf(svc, 256, "%s%s", proto[i]->szModuleName, PS_GETMYAWAYMSG);
-				if (ServiceExists (svc))
-				{
-					if (ServiceExists (MS_AWAYMSG_GETSTATUSMSGT)) // if core can support unicode status message
-						oldStatusMsg[i] = (TCHAR *)CallService (svc, 0, SGMA_TCHAR);
-					else
-					{
-						char *tmp = (char *)CallService (svc, 0, 0);
-						oldStatusMsg[i] = mir_a2t(tmp);
-						mir_free(tmp);
-					}
-				}
+				if (ProtoServiceExists(proto[i]->szModuleName, PS_GETMYAWAYMSG))
+					oldStatusMsg[i] = (TCHAR*)ProtoCallService(proto[i]->szModuleName, PS_GETMYAWAYMSG, 0, SGMA_TCHAR);
 				else
 					oldStatusMsg[i] = GetDefStatusMsg(status, proto[i]->szModuleName);
 			}
@@ -308,22 +292,22 @@ static int BackAllProtoStatuses(void)
 
 static void CreateTrayIcon(bool create)
 {
-    NOTIFYICONDATA nim;
+	NOTIFYICONDATA nim;
 	DBVARIANT dbVar;
-	if (!DBGetContactSettingTString(NULL,MOD_NAME,"ToolTipText",&dbVar))
+	if (!db_get_ts(NULL,MOD_NAME,"ToolTipText",&dbVar))
 	{
 		mir_sntprintf(nim.szTip, 64, _T("%s"), dbVar.ptszVal);
-		DBFreeVariant(&dbVar);
+		db_free(&dbVar);
 	}
 	else
 		lstrcpy(nim.szTip, _T("Miranda NG"));
 
-    nim.cbSize = sizeof(nim);
-    nim.hWnd = g_hListenWindow;
-    nim.uID = 100;
-    nim.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-    nim.hIcon = Skin_GetIcon("hidemim");
-    nim.uCallbackMessage = WM_USER + 24;
+	nim.cbSize = sizeof(nim);
+	nim.hWnd = g_hListenWindow;
+	nim.uID = 100;
+	nim.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+	nim.hIcon = Skin_GetIcon("hidemim");
+	nim.uCallbackMessage = WM_USER + 24;
 	Shell_NotifyIcon(create ? NIM_ADD : NIM_DELETE, &nim);
 	g_TrayIcon = create;
 }
@@ -334,14 +318,14 @@ static void RestoreOldSettings(void)
 		CallService(MS_POPUP_QUERY, PUQS_ENABLEPOPUPS, 0);
 
 	if (g_bOldSetting & OLD_SOUND)
-		DBWriteContactSettingByte(NULL,"Skin","UseSound", 1);
+		db_set_b(NULL,"Skin","UseSound", 1);
 
-    if (g_bOldSetting & OLD_FLTCONT) // show Floating contacts if needed
+	if (g_bOldSetting & OLD_FLTCONT) // show Floating contacts if needed
 	{
 		if(ServiceExists("FloatingContacts/MainHideAllThumbs"))
 			CallService("FloatingContacts/MainHideAllThumbs",0,0);
 		else
-			DBWriteContactSettingByte(NULL,"FloatingContacts","HideAll", 0);
+			db_set_b(NULL,"FloatingContacts","HideAll", 0);
 	}
 	g_bOldSetting = 0;
 }
@@ -369,9 +353,6 @@ LRESULT CALLBACK ListenWndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 			if (g_bWindowHidden || g_fOptionsOpen) // already hidden or in options, no hiding
 				break;
 
-			if (ServiceExists(MS_TRIGGER_REGISTERTRIGGER))
-				BossKeyEvent(g_bWindowHidden, 0);
-
 			DWORD dwWndPID; // remember foreground window
 			HWND hForegroundWnd = GetForegroundWindow();
 			GetWindowThreadProcessId(hForegroundWnd,&dwWndPID);
@@ -382,10 +363,10 @@ LRESULT CALLBACK ListenWndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 
 			if (g_wMask & OPT_CHANGESTATUS) // is this even needed?
 			{
-				BYTE bReqMode = DBGetContactSettingByte(NULL, MOD_NAME, "stattype", 4);
+				BYTE bReqMode = db_get_b(NULL, MOD_NAME, "stattype", 4);
 				unsigned uMode = (STATUS_ARR_TO_ID[bReqMode]);
 				DBVARIANT dbVar;
-				if (g_wMask & OPT_USEDEFMSG || DBGetContactSettingTString(NULL,MOD_NAME,"statmsg",&dbVar))
+				if (g_wMask & OPT_USEDEFMSG || db_get_ts(NULL,MOD_NAME,"statmsg",&dbVar))
 				{
 					TCHAR *ptszDefMsg = GetDefStatusMsg(uMode, 0);
 					ChangeAllProtoStatuses(uMode, ptszDefMsg);
@@ -396,20 +377,14 @@ LRESULT CALLBACK ListenWndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 				{
 					if (ServiceExists(MS_VARS_FORMATSTRING))
 					{
-						FORMATINFO fi;
-						TCHAR *ptszParsed;
-
-						ZeroMemory(&fi, sizeof(fi));
-						fi.cbSize = sizeof(fi);
-						fi.flags = FIF_TCHAR;
-						fi.tszFormat = dbVar.ptszVal;
-						ptszParsed = (TCHAR*)CallService(MS_VARS_FORMATSTRING, (WPARAM)&fi, 0);
+						TCHAR *ptszParsed = variables_parse(dbVar.ptszVal, 0, 0);
 						ChangeAllProtoStatuses(uMode, ptszParsed);
 						if (ptszParsed)
-							CallService(MS_VARS_FREEMEMORY, (WPARAM)ptszParsed, 0);
-					}else
+							mir_free(ptszParsed);
+					}
+					else
 						ChangeAllProtoStatuses(uMode, dbVar.ptszVal);
-				DBFreeVariant(&dbVar);
+					db_free(&dbVar);
 				}
 			}
 
@@ -428,17 +403,17 @@ LRESULT CALLBACK ListenWndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 			}
 
 			// disable sounds
-			if ((g_wMask & OPT_DISABLESNDS) && DBGetContactSettingByte(NULL,"Skin","UseSound",1))
+			if ((g_wMask & OPT_DISABLESNDS) && db_get_b(NULL,"Skin","UseSound",1))
 			{
 				// save current
 				g_bOldSetting |= OLD_SOUND;
-				DBWriteContactSettingByte(NULL,"Skin","UseSound",0);
+				db_set_b(NULL,"Skin","UseSound",0);
 			}
 
 			g_bWindowHidden = true;
 
 			g_bOldSetting |= OLD_WASHIDDEN;
-			DBWriteContactSettingByte(NULL, MOD_NAME, "OldSetting", g_bOldSetting);
+			db_set_b(NULL, MOD_NAME, "OldSetting", g_bOldSetting);
 			return(0);
 		} break;
 		case WM_USER+52: // back
@@ -448,37 +423,32 @@ LRESULT CALLBACK ListenWndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 
 			if (g_wMask & OPT_REQPASS){  //password request
 				DBVARIANT dbVar = {0};
-				if (!DBGetContactSettingString(NULL,MOD_NAME,"password",&dbVar))
+				if (!db_get_s(NULL,MOD_NAME,"password",&dbVar))
 				{
 					g_fPassRequested = true;
 
 					strncpy(g_password, dbVar.pszVal, MAXPASSLEN);
-					DBFreeVariant(&dbVar);
-					CallService( MS_DB_CRYPT_DECODESTRING, MAXPASSLEN+1, ( LPARAM )g_password );
+					db_free(&dbVar);
+					CallService(MS_DB_CRYPT_DECODESTRING, MAXPASSLEN+1, ( LPARAM )g_password );
 
-					int res = DialogBox(g_hInstance,(MAKEINTRESOURCE(IDD_PASSDIALOGNEW)),GetForegroundWindow(),(DLGPROC)DlgStdInProc);
+					int res = DialogBox(g_hInstance,(MAKEINTRESOURCE(IDD_PASSDIALOGNEW)),GetForegroundWindow(), DlgStdInProc);
 
 					g_fPassRequested = false;
 					if(res != IDOK) return 0;
 				}
 			}
 
-			if (ServiceExists(MS_TRIGGER_REGISTERTRIGGER))
-				BossKeyEvent(g_bWindowHidden, 0);
-
 			if (g_wMask & OPT_CHANGESTATUS && g_wMask & OPT_SETONLINEBACK) // set back to some status
-			{
 				BackAllProtoStatuses();
-			}
 
 			HWND_ITEM *pCurWnd = g_pMirWnds;
 			while (pCurWnd != NULL)
 			{
 				HWND_ITEM *pNextWnd = pCurWnd->next;
-				char szTemp[32];
-				GetClassNameA(pCurWnd->hWnd,szTemp,32);
+				TCHAR szTemp[32];
+				GetClassName(pCurWnd->hWnd,szTemp,32);
 
-				if (IsWindow(pCurWnd->hWnd) && lstrcmpA(szTemp,"SysShadow") != 0) // precaution
+				if (IsWindow(pCurWnd->hWnd) && lstrcmp(szTemp,_T("SysShadow")) != 0) // precaution
 				{
 					ShowWindow(pCurWnd->hWnd, SW_SHOW);
 				}
@@ -509,7 +479,7 @@ LRESULT CALLBACK ListenWndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 			PostMessage(hWnd, WM_MOUSEMOVE, 0, (LPARAM)MAKELONG(2, 2)); // reset core's IDLE
 			g_bWindowHidden = false;
 
-			DBWriteContactSettingByte(NULL, MOD_NAME, "OldSetting", 0);
+			db_set_b(NULL, MOD_NAME, "OldSetting", 0);
 			return(0);
 		} break;
 		default:break;
@@ -517,10 +487,10 @@ LRESULT CALLBACK ListenWndProc(HWND hWnd,UINT uMsg,WPARAM wParam,LPARAM lParam)
 	return(DefWindowProc(hWnd,uMsg,wParam,lParam));
 }
 
-static int MsgWinOpening(WPARAM wParam, LPARAM lParam) // hiding new message windows
+static int MsgWinOpening(WPARAM, LPARAM) // hiding new message windows
 {
 	if (g_bWindowHidden)
-	EnumWindows(EnumWindowsProc,0);
+		EnumWindows(EnumWindowsProc, 0);
 	return 0;
 }
 
@@ -535,7 +505,7 @@ VOID CALLBACK WinEventProc(HWINEVENTHOOK g_hWinHook, DWORD event, HWND hwnd, LON
 	}
 }
 
-INT_PTR BossKeyHideMiranda(WPARAM wParam, LPARAM lParam) // for service :)
+INT_PTR BossKeyHideMiranda(WPARAM, LPARAM) // for service :)
 {
 	PostMessage(g_hListenWindow, WM_USER + ((g_bWindowHidden) ? (52) : (40)), 0, 0);
 	return 0;
@@ -580,7 +550,7 @@ static TCHAR *HokeyVkToName(WORD vkKey)
 
 static TCHAR *GetBossKeyText(void)
 {
-	WORD wHotKey = DBGetContactSettingWord(NULL,"SkinHotKeys","Hide/Show Miranda",HOTKEYCODE(HOTKEYF_CONTROL, VK_F12));
+	WORD wHotKey = db_get_w(NULL,"SkinHotKeys","Hide/Show Miranda",HOTKEYCODE(HOTKEYF_CONTROL, VK_F12));
 
 	BYTE key = LOBYTE(wHotKey);
 	BYTE shift = HIBYTE(wHotKey);
@@ -596,15 +566,14 @@ static TCHAR *GetBossKeyText(void)
 	return buf;
 }
 
-static IconItem iconList[] = 
+static IconItem iconList[] =
 {
 	{ LPGEN("Hide Miranda NG"), "hidemim", IDI_DLGPASSWD }
 };
 
-static int GenMenuInit(WPARAM wParam, LPARAM lParam) // Modify menu item text before to show the main menu
+static int GenMenuInit(WPARAM, LPARAM) // Modify menu item text before to show the main menu
 {
-	if (g_hMenuItem)
-	{
+	if (g_hMenuItem) {
 		TCHAR buf[128] = {0};
 		mir_sntprintf(buf, SIZEOF(buf), _T("%s [%s]"), TranslateT("Hide"), GetBossKeyText());
 
@@ -612,7 +581,7 @@ static int GenMenuInit(WPARAM wParam, LPARAM lParam) // Modify menu item text be
 		mi.flags = CMIM_FLAGS | CMIF_TCHAR  | CMIM_NAME;
 		mi.ptszName = buf;
 
-		CallService(MS_CLIST_MODIFYMENUITEM,(WPARAM)g_hMenuItem,(LPARAM)&mi);
+		Menu_ModifyItem(g_hMenuItem, &mi);
 	}
 	return 0;
 }
@@ -629,16 +598,13 @@ void BossKeyMenuItemInit(void) // Add menu item
 
 	g_hMenuItem = Menu_AddMainMenuItem(&mi);
 
-	g_hmGenMenuInit = HookEvent(ME_CLIST_PREBUILDMAINMENU, GenMenuInit);
+	HookEvent(ME_CLIST_PREBUILDMAINMENU, GenMenuInit);
 }
 
 void BossKeyMenuItemUnInit(void) // Remove menu item
 {
 	CallService(MS_CLIST_REMOVEMAINMENUITEM, (WPARAM)g_hMenuItem, 0);
 	g_hMenuItem = 0;
-	if(g_hmGenMenuInit)
-		UnhookEvent(g_hmGenMenuInit);
-	g_hmGenMenuInit = 0;
 }
 
 void RegisterCoreHotKeys (void)
@@ -656,18 +622,17 @@ void RegisterCoreHotKeys (void)
 
 static int ModernToolbarInit(WPARAM, LPARAM) // Modern toolbar support
 {
-	TTBButton button = {0};
-	button.cbSize = sizeof(button);
-	button.pszService = MS_BOSSKEY_HIDE;
-	button.pszTooltipUp = button.name = LPGEN("Hide Miranda NG");
-	button.dwFlags = TTBBF_VISIBLE | TTBBF_SHOWTOOLTIP;
-	button.hIconHandleUp = iconList[0].hIcolib;
-	TopToolbar_AddButton(&button);
+	TTBButton ttb = { sizeof(ttb) };
+	ttb.pszService = MS_BOSSKEY_HIDE;
+	ttb.pszTooltipUp = ttb.name = LPGEN("Hide Miranda NG");
+	ttb.dwFlags = TTBBF_VISIBLE | TTBBF_SHOWTOOLTIP;
+	ttb.hIconHandleUp = iconList[0].hIcolib;
+	TopToolbar_AddButton(&ttb);
 	return 0;
 }
 
 // Tabsrmm toolbar support
-static int TabsrmmButtonPressed(WPARAM wParam, LPARAM lParam)
+static int TabsrmmButtonPressed(WPARAM, LPARAM lParam)
 {
 	CustomButtonClickData *cbcd=(CustomButtonClickData *)lParam;
 
@@ -677,7 +642,7 @@ static int TabsrmmButtonPressed(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-static int TabsrmmButtonsInit(WPARAM wParam, LPARAM lParam)
+static int TabsrmmButtonsInit(WPARAM, LPARAM)
 {
 	BBButton bbd = {0};
 
@@ -718,14 +683,13 @@ static int EnumProtos(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-int MirandaLoaded(WPARAM wParam,LPARAM lParam)
+int MirandaLoaded(WPARAM,LPARAM)
 {
-	g_wMask = DBGetContactSettingWord(NULL,MOD_NAME,"optsmask",DEFAULTSETTING);
+	g_wMask = db_get_w(NULL,MOD_NAME,"optsmask",DEFAULTSETTING);
 
 	RegisterCoreHotKeys();
 
-	g_hWinHook = SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW,
-		NULL, WinEventProc, GetCurrentProcessId(), 0, 0);
+	g_hWinHook = SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW, NULL, WinEventProc, GetCurrentProcessId(), 0, 0);
 
 	HookEvent(ME_TTB_MODULELOADED, ModernToolbarInit);
 	HookEvent(ME_OPT_INITIALISE, OptsDlgInit);
@@ -734,7 +698,6 @@ int MirandaLoaded(WPARAM wParam,LPARAM lParam)
 	HookEvent(ME_MSG_TOOLBARLOADED, TabsrmmButtonsInit);
 	HookEvent(ME_MSG_BUTTONPRESSED, TabsrmmButtonPressed);
 
-	pcli = (CLIST_INTERFACE *)CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)g_hInstance);
 	GetWindowThreadProcessId(pcli->hwndContactList, &g_dwMirandaPID);
 
 	// let's create our secret window
@@ -778,10 +741,7 @@ int MirandaLoaded(WPARAM wParam,LPARAM lParam)
 	if (g_wMaskAdv & OPT_MENUITEM)
 		BossKeyMenuItemInit();
 
-	if (ServiceExists(MS_TRIGGER_REGISTERTRIGGER))
-		RegisterTrigger();
-
-// Register token for variables plugin
+	// Register token for variables plugin
 	if (ServiceExists(MS_VARS_REGISTERTOKEN))
 	{
 		TOKENREGISTER tr = {0};
@@ -791,7 +751,7 @@ int MirandaLoaded(WPARAM wParam,LPARAM lParam)
 
 		tr.tszTokenString = _T("bosskeyname");
 		tr.parseFunctionT = VariablesBossKey;
-		tr.szHelpText = LPGEN("BossKey\tget the BossKey name");
+		tr.szHelpText = LPGEN("BossKey")"\t"LPGEN("get the BossKey name");
 		CallService(MS_VARS_REGISTERTOKEN, 0, (LPARAM) &tr);
 	}
 
@@ -801,33 +761,31 @@ int MirandaLoaded(WPARAM wParam,LPARAM lParam)
 	if (g_bOldSetting && !(g_wMaskAdv & OPT_RESTORE)) // Restore settings if Miranda was crushed or killed in hidden mode and "Restore hiding on startup after failure" option is disabled
 		RestoreOldSettings();
 
-	if (g_wMaskAdv & OPT_HIDEONSTART ||
-		(g_wMaskAdv & OPT_RESTORE && g_bOldSetting))
+	if ((g_wMaskAdv & OPT_HIDEONSTART) || (g_wMaskAdv & OPT_RESTORE && g_bOldSetting))
 		BossKeyHideMiranda(0, 0);
 
 	return(0);
 }
 
-
-
 extern "C" int __declspec(dllexport) Load(void)
 {
 	mir_getLP(&pluginInfo);
+	mir_getCLI();
 
-	g_wMaskAdv = DBGetContactSettingWord(NULL,MOD_NAME,"optsmaskadv",0);
-	g_bOldSetting = DBGetContactSettingByte(NULL, MOD_NAME, "OldSetting", 0);
+	g_wMaskAdv = db_get_w(NULL,MOD_NAME,"optsmaskadv",0);
+	g_bOldSetting = db_get_b(NULL, MOD_NAME, "OldSetting", 0);
 
 	if ((g_bOldSetting & OLD_POPUP) && !(g_wMaskAdv & OPT_RESTORE)) // Restore popup settings if Miranda was crushed or killed in hidden mode and "Restore hiding on startup after failure" option is disabled
 	{
-		if (DBGetContactSettingByte(NULL, "PopUp", "ModuleIsEnabled", 1) == 0)
-			DBWriteContactSettingByte(NULL, "PopUp", "ModuleIsEnabled", 1);
-		if (DBGetContactSettingByte(NULL, "YAPP", "Enabled", 1) == 0)
-			DBWriteContactSettingByte(NULL, "YAPP", "Enabled", 1);
+		if (db_get_b(NULL, "Popup", "ModuleIsEnabled", 1) == 0)
+			db_set_b(NULL, "Popup", "ModuleIsEnabled", 1);
+		if (db_get_b(NULL, "YAPP", "Enabled", 1) == 0)
+			db_set_b(NULL, "YAPP", "Enabled", 1);
 	}
-	if (g_wMaskAdv & OPT_HIDEONSTART && DBGetContactSettingByte(NULL, "PopUp", "ModuleIsEnabled", 0)) // hack for disabling popup on startup if "Hide Miranda on startup" is enabled
+	if (g_wMaskAdv & OPT_HIDEONSTART && db_get_b(NULL, "Popup", "ModuleIsEnabled", 0)) // hack for disabling popup on startup if "Hide Miranda on startup" is enabled
 	{
 		g_bOldSetting |= OLD_POPUP;
-		DBWriteContactSettingByte(NULL, "PopUp", "ModuleIsEnabled", 0);
+		db_set_b(NULL, "Popup", "ModuleIsEnabled", 0);
 	}
 
 	Icon_Register(g_hInstance, "BossKey", iconList, SIZEOF(iconList));
@@ -841,9 +799,6 @@ extern "C" int __declspec(dllexport) Load(void)
 extern "C" int __declspec(dllexport) Unload(void)
 {
 	UninitIdleTimer();
-
-	if(g_hmGenMenuInit)
-		UnhookEvent(g_hmGenMenuInit);
 
 	if (g_hWinHook != 0)
 		UnhookWinEvent(g_hWinHook);

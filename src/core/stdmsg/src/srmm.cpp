@@ -1,5 +1,6 @@
 /*
-Copyright 2000-2012 Miranda IM project,
+
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -23,6 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 int LoadSendRecvMessageModule(void);
 int SplitmsgShutdown(void);
 
+CLIST_INTERFACE *pcli;
 HINSTANCE g_hInst;
 int hLangpack;
 
@@ -56,15 +58,14 @@ extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_SRMM, M
 
 extern "C" int __declspec(dllexport) Load(void)
 {
-
 	mir_getTMI(&tmi);
 	mir_getLP(&pluginInfo);
+	mir_getCLI();
 
 	return LoadSendRecvMessageModule();
 }
 
 extern "C" int __declspec(dllexport) Unload(void)
 {
-	UnloadOptions();
 	return SplitmsgShutdown();
 }

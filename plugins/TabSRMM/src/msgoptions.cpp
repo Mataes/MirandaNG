@@ -26,27 +26,13 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: msgoptions.cpp 13750 2011-08-03 20:10:43Z george.hazan $
- *
  * Implementation of the option pages
  *
  */
 
 #include "commonheaders.h"
-#pragma hdrstop
-#include <m_modernopt.h>
 
 #define DM_GETSTATUSMASK (WM_USER + 10)
-
-extern		INT_PTR CALLBACK DlgProcPopupOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-extern		INT_PTR CALLBACK DlgProcTabConfig(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-extern		INT_PTR CALLBACK DlgProcTemplateEditor(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-extern		INT_PTR CALLBACK DlgProcToolBar(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-extern		INT_PTR CALLBACK PlusOptionsProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-
-extern		INT_PTR CALLBACK DlgProcOptions1(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-extern		INT_PTR CALLBACK DlgProcOptions2(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-extern		INT_PTR CALLBACK DlgProcOptions3(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 INT_PTR CALLBACK DlgProcSetupStatusModes(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -100,7 +86,7 @@ void TSAPI LoadLogfont(int i, LOGFONTA * lf, COLORREF * colour, char *szModule)
 		lf->lfClipPrecision			= lfResult.lfClipPrecision;
 		lf->lfQuality				= lfResult.lfQuality;
 		lf->lfPitchAndFamily		= lfResult.lfPitchAndFamily;
-		wsprintfA(lf->lfFaceName, "%S", lfResult.lfFaceName);
+		mir_snprintf(lf->lfFaceName, SIZEOF(lf->lfFaceName), "%S", lfResult.lfFaceName);
 	}
 }
 
@@ -152,9 +138,9 @@ static int TSAPI ScanSkinDir(const TCHAR* tszFolder, HWND hwndCombobox)
 			mir_sntprintf(szBuf, 255, _T("%s"), fd.cFileName);
 		}
 
-		M->pathToRelative(tszFinalName, tszRel, M->getSkinPath());
+		M.pathToRelative(tszFinalName, tszRel, M.getSkinPath());
 		if ((lr = SendMessage(hwndCombobox, CB_INSERTSTRING, -1, (LPARAM)szBuf)) != CB_ERR) {
-			TCHAR *idata = (TCHAR *)malloc((lstrlen(tszRel) + 1) * sizeof(TCHAR));
+			TCHAR *idata = (TCHAR*)mir_alloc((lstrlen(tszRel) + 1) * sizeof(TCHAR));
 
 			_tcscpy(idata, tszRel);
 			SendMessage(hwndCombobox, CB_SETITEMDATA, lr, (LPARAM)idata);
@@ -179,7 +165,7 @@ static int TSAPI RescanSkins(HWND hwndCombobox)
 	DBVARIANT 				dbv = {0};
 
 
-	mir_sntprintf(tszSkinRoot, MAX_PATH, _T("%s"), M->getSkinPath());
+	mir_sntprintf(tszSkinRoot, MAX_PATH, _T("%s"), M.getSkinPath());
 
 	SetDlgItemText(GetParent(hwndCombobox), IDC_SKINROOTFOLDER, tszSkinRoot);
 	mir_sntprintf(tszFindMask, MAX_PATH, _T("%s*.*"), tszSkinRoot);
@@ -194,33 +180,33 @@ static int TSAPI RescanSkins(HWND hwndCombobox)
 			mir_sntprintf(tszSubDir, MAX_PATH, _T("%s%s\\"), tszSkinRoot, fd.cFileName);
 			ScanSkinDir(tszSubDir, hwndCombobox);
 		}
-	    if (FindNextFile(h, &fd) == 0)
-	    	break;
+		if (FindNextFile(h, &fd) == 0)
+			break;
 	}
 	if (h != INVALID_HANDLE_VALUE)
 		FindClose(h);
 
 
 	SendMessage(hwndCombobox, CB_SETCURSEL, 0, 0);
-	if (0 == M->GetTString(0, SRMSGMOD_T, "ContainerSkin", &dbv)) {
+	if (0 == db_get_ts(0, SRMSGMOD_T, "ContainerSkin", &dbv)) {
 		LRESULT lr = SendMessage(hwndCombobox, CB_GETCOUNT, 0, 0);
 		for (int i = 1; i < lr; i++) {
 
-			TCHAR* idata = (TCHAR *)SendMessage(hwndCombobox, CB_GETITEMDATA, i, 0);
-			if (idata && idata != (TCHAR *)CB_ERR) {
+			TCHAR* idata = (TCHAR*)SendMessage(hwndCombobox, CB_GETITEMDATA, i, 0);
+			if (idata && idata != (TCHAR*)CB_ERR) {
 				if (!_tcsicmp(dbv.ptszVal, idata)) {
 					SendMessage(hwndCombobox, CB_SETCURSEL, i, 0);
 					break;
 				}
 			}
 		}
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 	}
 	return 0;
 }
 
 /**
- * free the item extra data (used to store the skin filenames for
+ * mir_free the item extra data (used to store the skin filenames for
  * each entry).
  */
 static void TSAPI FreeComboData(HWND hwndCombobox)
@@ -231,7 +217,7 @@ static void TSAPI FreeComboData(HWND hwndCombobox)
 		void *idata = (void*)SendMessage(hwndCombobox, CB_GETITEMDATA, i, 0);
 
 		if (idata && idata != (void*)CB_ERR)
-			free(idata);
+			mir_free(idata);
 	}
 }
 
@@ -246,10 +232,10 @@ static INT_PTR CALLBACK DlgProcSkinOpts(HWND hwndDlg, UINT msg, WPARAM wParam, L
 	switch (msg) {
 		case WM_INITDIALOG: {
 			RescanSkins(GetDlgItem(hwndDlg, IDC_SKINNAME));
-			BYTE loadMode = M->GetByte("skin_loadmode", 0);
+			BYTE loadMode = M.GetByte("skin_loadmode", 0);
 			TranslateDialogDefault(hwndDlg);
 
-			CheckDlgButton(hwndDlg, IDC_USESKIN, M->GetByte("useskin", 1) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_USESKIN, M.GetByte("useskin", 1) ? BST_CHECKED : BST_UNCHECKED);
 			CheckDlgButton(hwndDlg, IDC_SKIN_LOADFONTS, loadMode & THEME_READ_FONTS);
 			CheckDlgButton(hwndDlg, IDC_SKIN_LOADTEMPLATES, loadMode & THEME_READ_TEMPLATES);
 
@@ -291,20 +277,20 @@ static INT_PTR CALLBACK DlgProcSkinOpts(HWND hwndDlg, UINT msg, WPARAM wParam, L
 		case WM_COMMAND:
 			switch (LOWORD(wParam)) {
 				case IDC_USESKIN:
-					M->WriteByte(SRMSGMOD_T, "useskin", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_USESKIN) ? 1 : 0));
+					db_set_b(0, SRMSGMOD_T, "useskin", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_USESKIN) ? 1 : 0));
 					break;
 
 				case IDC_SKIN_LOADFONTS: {
-					BYTE loadMode = M->GetByte("skin_loadmode", 0);
+					BYTE loadMode = M.GetByte("skin_loadmode", 0);
 					loadMode = IsDlgButtonChecked(hwndDlg, IDC_SKIN_LOADFONTS) ? loadMode | THEME_READ_FONTS : loadMode & ~THEME_READ_FONTS;
-					M->WriteByte(SRMSGMOD_T, "skin_loadmode", loadMode);
+					db_set_b(0, SRMSGMOD_T, "skin_loadmode", loadMode);
 					break;
 				}
 
 				case IDC_SKIN_LOADTEMPLATES: {
-					BYTE loadMode = M->GetByte("skin_loadmode", 0);
+					BYTE loadMode = M.GetByte("skin_loadmode", 0);
 					loadMode = IsDlgButtonChecked(hwndDlg, IDC_SKIN_LOADTEMPLATES) ? loadMode | THEME_READ_TEMPLATES : loadMode & ~THEME_READ_TEMPLATES;
-					M->WriteByte(SRMSGMOD_T, "skin_loadmode", loadMode);
+					db_set_b(0, SRMSGMOD_T, "skin_loadmode", loadMode);
 					break;
 				}
 
@@ -360,8 +346,8 @@ static INT_PTR CALLBACK DlgProcSkinOpts(HWND hwndDlg, UINT msg, WPARAM wParam, L
 						CacheMsgLogIcons();
 						PluginConfig.reloadSettings();
 						CSkin::setAeroEffect(-1);
-						M->BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
-						M->BroadcastMessage(DM_FORCEDREMAKELOG, 0, 0);
+						M.BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
+						M.BroadcastMessage(DM_FORCEDREMAKELOG, 0, 0);
 						SendMessage(GetParent(hwndDlg), WM_COMMAND, IDCANCEL, 0);
 					}
 					break;
@@ -376,10 +362,9 @@ static INT_PTR CALLBACK DlgProcSkinOpts(HWND hwndDlg, UINT msg, WPARAM wParam, L
 
 					PluginConfig.m_HideOnClose = FALSE;
 
-					while(pFirstContainer) {
+					while(pFirstContainer)
 						if (pFirstContainer->hwnd)
 							SendMessage(pFirstContainer->hwnd, WM_CLOSE, 0, 1);
-					}
 
 					PluginConfig.m_HideOnClose = fOldHideSetting;
 					break;
@@ -388,13 +373,13 @@ static INT_PTR CALLBACK DlgProcSkinOpts(HWND hwndDlg, UINT msg, WPARAM wParam, L
 					if (HIWORD(wParam) == CBN_SELCHANGE) {
 						LRESULT lr = SendDlgItemMessage(hwndDlg, IDC_SKINNAME, CB_GETCURSEL, 0 ,0);
 						if (lr != CB_ERR && lr > 0) {
-							TCHAR	*tszRelPath = (TCHAR *)SendDlgItemMessage(hwndDlg, IDC_SKINNAME, CB_GETITEMDATA, lr, 0);
-							if (tszRelPath && tszRelPath != (TCHAR *)CB_ERR)
-								M->WriteTString(0, SRMSGMOD_T, "ContainerSkin", tszRelPath);
+							TCHAR	*tszRelPath = (TCHAR*)SendDlgItemMessage(hwndDlg, IDC_SKINNAME, CB_GETITEMDATA, lr, 0);
+							if (tszRelPath && tszRelPath != (TCHAR*)CB_ERR)
+								db_set_ts(0, SRMSGMOD_T, "ContainerSkin", tszRelPath);
 							SendMessage(hwndDlg, WM_COMMAND, IDC_RELOADSKIN, 0);
 						}
 						else if (lr == 0) {		// selected the <no skin> entry
-							DBDeleteContactSetting(0, SRMSGMOD_T, "ContainerSkin");
+							db_unset(0, SRMSGMOD_T, "ContainerSkin");
 							Skin->Unload();
 							SendMessage(hwndTabConfig, WM_USER + 100, 0, 0);
 						}
@@ -435,7 +420,7 @@ static INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 			TVINSERTSTRUCT tvi = {0};
 			int i;
 
-			DWORD dwFlags = DBGetContactSettingDword(NULL, SRMSGMOD_T, "mwflags", MWF_LOG_DEFAULT);
+			DWORD dwFlags = db_get_dw(NULL, SRMSGMOD_T, "mwflags", MWF_LOG_DEFAULT);
 
 			TranslateDialogDefault(hwndDlg);
 			SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_WINDOWOPTIONS), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_WINDOWOPTIONS), GWL_STYLE) | (TVS_NOHSCROLL | TVS_CHECKBOXES));
@@ -468,12 +453,12 @@ static INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 				tvi.item.lParam = i;
 				tvi.item.stateMask = TVIS_STATEIMAGEMASK;
 				if (defaultItems[i].uType == LOI_TYPE_SETTING)
-					tvi.item.state = INDEXTOSTATEIMAGEMASK(M->GetByte((char *)defaultItems[i].lParam, (BYTE)defaultItems[i].id) ? 3 : 2);
+					tvi.item.state = INDEXTOSTATEIMAGEMASK(M.GetByte((char *)defaultItems[i].lParam, (BYTE)defaultItems[i].id) ? 3 : 2);
 				defaultItems[i].handle = (LRESULT)TreeView_InsertItem(GetDlgItem(hwndDlg, IDC_WINDOWOPTIONS), &tvi);
 			}
 
-			SetDlgItemInt(hwndDlg, IDC_MAXAVATARHEIGHT, M->GetDword("avatarheight", 128), FALSE);
-			CheckDlgButton(hwndDlg, IDC_PRESERVEAVATARSIZE, M->GetByte("dontscaleavatars", 1) ? BST_CHECKED : BST_UNCHECKED);
+			SetDlgItemInt(hwndDlg, IDC_MAXAVATARHEIGHT, M.GetDword("avatarheight", 128), FALSE);
+			CheckDlgButton(hwndDlg, IDC_PRESERVEAVATARSIZE, M.GetByte("dontscaleavatars", 1) ? BST_CHECKED : BST_UNCHECKED);
 			SendDlgItemMessage(hwndDlg, IDC_AVATARSPIN, UDM_SETRANGE, 0, MAKELONG(150, 0));
 			SendDlgItemMessage(hwndDlg, IDC_AVATARSPIN, UDM_SETPOS, 0, GetDlgItemInt(hwndDlg, IDC_MAXAVATARHEIGHT, &translated, FALSE));
 			return TRUE;
@@ -493,8 +478,8 @@ static INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 					CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://wiki.miranda.or.at/TabSRMM/GeneralSettings");
 					break;
 				case IDC_RESETWARNINGS:
-					M->WriteDword(SRMSGMOD_T, "cWarningsL", 0);
-					M->WriteDword(SRMSGMOD_T, "cWarningsH", 0);
+					db_set_dw(0, SRMSGMOD_T, "cWarningsL", 0);
+					db_set_dw(0, SRMSGMOD_T, "cWarningsH", 0);
 					break;
 			}
 			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
@@ -538,9 +523,9 @@ static INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 							BOOL translated;
 							TVITEM item = {0};
 
-							M->WriteDword(SRMSGMOD_T, "avatarheight", GetDlgItemInt(hwndDlg, IDC_MAXAVATARHEIGHT, &translated, FALSE));
+							db_set_dw(0, SRMSGMOD_T, "avatarheight", GetDlgItemInt(hwndDlg, IDC_MAXAVATARHEIGHT, &translated, FALSE));
 
-							M->WriteByte(SRMSGMOD_T, "dontscaleavatars", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_PRESERVEAVATARSIZE) ? 1 : 0));
+							db_set_b(0, SRMSGMOD_T, "dontscaleavatars", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_PRESERVEAVATARSIZE) ? 1 : 0));
 
 							/*
 							* scan the tree view and obtain the options...
@@ -554,10 +539,10 @@ static INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 
 								SendDlgItemMessageA(hwndDlg, IDC_WINDOWOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
 								if (defaultItems[i].uType == LOI_TYPE_SETTING)
-									M->WriteByte(SRMSGMOD_T, (char *)defaultItems[i].lParam, (BYTE)((item.state >> 12) == 3 ? 1 : 0));
+									db_set_b(0, SRMSGMOD_T, (char *)defaultItems[i].lParam, (BYTE)((item.state >> 12) == 3 ? 1 : 0));
 							}
 							PluginConfig.reloadSettings();
-							M->BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
+							M.BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
 							return TRUE;
 						}
 					}
@@ -575,30 +560,31 @@ static UINT __ctrls[] = { IDC_INDENTSPIN, IDC_RINDENTSPIN, IDC_INDENTAMOUNT, IDC
 static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	BOOL translated;
-	DWORD dwFlags = M->GetDword("mwflags", MWF_LOG_DEFAULT);
+	DWORD dwFlags = M.GetDword("mwflags", MWF_LOG_DEFAULT);
 
 	switch (msg) {
-		case WM_INITDIALOG: {
+	case WM_INITDIALOG:
+		{
 			TVINSERTSTRUCT tvi = {0};
 			int i;
-			DWORD maxhist = M->GetDword("maxhist", 0);
+			DWORD maxhist = M.GetDword("maxhist", 0);
 
 			TranslateDialogDefault(hwndDlg);
-			switch (M->GetByte(SRMSGMOD, SRMSGSET_LOADHISTORY, SRMSGDEFSET_LOADHISTORY)) {
-				case LOADHISTORY_UNREAD:
-					CheckDlgButton(hwndDlg, IDC_LOADUNREAD, BST_CHECKED);
-					break;
-				case LOADHISTORY_COUNT:
-					CheckDlgButton(hwndDlg, IDC_LOADCOUNT, BST_CHECKED);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, TRUE);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, TRUE);
-					break;
-				case LOADHISTORY_TIME:
-					CheckDlgButton(hwndDlg, IDC_LOADTIME, BST_CHECKED);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, TRUE);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, TRUE);
-					Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, TRUE);
-					break;
+			switch (M.GetByte(SRMSGMOD, SRMSGSET_LOADHISTORY, SRMSGDEFSET_LOADHISTORY)) {
+			case LOADHISTORY_UNREAD:
+				CheckDlgButton(hwndDlg, IDC_LOADUNREAD, BST_CHECKED);
+				break;
+			case LOADHISTORY_COUNT:
+				CheckDlgButton(hwndDlg, IDC_LOADCOUNT, BST_CHECKED);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, TRUE);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, TRUE);
+				break;
+			case LOADHISTORY_TIME:
+				CheckDlgButton(hwndDlg, IDC_LOADTIME, BST_CHECKED);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, TRUE);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, TRUE);
+				Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, TRUE);
+				break;
 			}
 			SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_LOGOPTIONS), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_LOGOPTIONS), GWL_STYLE) | (TVS_NOHSCROLL | TVS_CHECKBOXES));
 
@@ -631,20 +617,20 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 				if (lvItems[i].uType == LOI_TYPE_FLAG)
 					tvi.item.state = INDEXTOSTATEIMAGEMASK((dwFlags & (UINT)lvItems[i].lParam) ? 3 : 2);
 				else if (lvItems[i].uType == LOI_TYPE_SETTING)
-					tvi.item.state = INDEXTOSTATEIMAGEMASK(M->GetByte((char *)lvItems[i].lParam, lvItems[i].id) ? 3 : 2);  // NOTE: was 2 : 1 without state image mask
+					tvi.item.state = INDEXTOSTATEIMAGEMASK(M.GetByte((char *)lvItems[i].lParam, lvItems[i].id) ? 3 : 2);  // NOTE: was 2 : 1 without state image mask
 				lvItems[i].handle = (LRESULT)TreeView_InsertItem(GetDlgItem(hwndDlg, IDC_LOGOPTIONS), &tvi);
 			}
-			
-			SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_SETRANGE, 0, MAKELONG(100, 0));
-			SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_SETPOS, 0, DBGetContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, SRMSGDEFSET_LOADCOUNT));
-			SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_SETRANGE, 0, MAKELONG(24 * 60, 0));
-			SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_SETPOS, 0, DBGetContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADTIME, SRMSGDEFSET_LOADTIME));
 
-			SetDlgItemInt(hwndDlg, IDC_INDENTAMOUNT, M->GetDword("IndentAmount", 0), FALSE);
+			SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_SETRANGE, 0, MAKELONG(100, 0));
+			SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_SETPOS, 0, db_get_w(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, SRMSGDEFSET_LOADCOUNT));
+			SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_SETRANGE, 0, MAKELONG(24 * 60, 0));
+			SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_SETPOS, 0, db_get_w(NULL, SRMSGMOD, SRMSGSET_LOADTIME, SRMSGDEFSET_LOADTIME));
+
+			SetDlgItemInt(hwndDlg, IDC_INDENTAMOUNT, M.GetDword("IndentAmount", 0), FALSE);
 			SendDlgItemMessage(hwndDlg, IDC_INDENTSPIN, UDM_SETRANGE, 0, MAKELONG(1000, 0));
 			SendDlgItemMessage(hwndDlg, IDC_INDENTSPIN, UDM_SETPOS, 0, GetDlgItemInt(hwndDlg, IDC_INDENTAMOUNT, &translated, FALSE));
 
-			SetDlgItemInt(hwndDlg, IDC_RIGHTINDENT, M->GetDword("RightIndent", 0), FALSE);
+			SetDlgItemInt(hwndDlg, IDC_RIGHTINDENT, M.GetDword("RightIndent", 0), FALSE);
 			SendDlgItemMessage(hwndDlg, IDC_RINDENTSPIN, UDM_SETRANGE, 0, MAKELONG(1000, 0));
 			SendDlgItemMessage(hwndDlg, IDC_RINDENTSPIN, UDM_SETPOS, 0, GetDlgItemInt(hwndDlg, IDC_RIGHTINDENT, &translated, FALSE));
 			SendMessage(hwndDlg, WM_COMMAND, MAKELONG(IDC_INDENT, 0), 0);
@@ -658,180 +644,190 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 			have_ieview = ServiceExists(MS_IEVIEW_WINDOW);
 			have_hpp = ServiceExists("History++/ExtGrid/NewWindow");
 
-			SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Default"));
+			SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Internal message log"));
 			SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_SETCURSEL, 0, 0);
-
-			if (have_ieview) {
-				SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_INSERTSTRING, -1, (LPARAM)TranslateT("IEView plugin"));
-				if (M->GetByte("default_ieview", 0))
-					SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_SETCURSEL, 1, 0);
+			if (have_ieview || have_hpp)
+			{
+				if (have_ieview) {
+					SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_INSERTSTRING, -1, (LPARAM)TranslateT("IEView plugin"));
+					if (M.GetByte("default_ieview", 0))
+						SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_SETCURSEL, 1, 0);
+				}
+				if (have_hpp) {
+					SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_INSERTSTRING, -1, (LPARAM)TranslateT("History++ plugin"));
+					if (M.GetByte("default_ieview", 0))
+						SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_SETCURSEL, 1, 0);
+					else if (M.GetByte("default_hpp", 0))
+						SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_SETCURSEL, have_ieview ? 2 : 1, 0);
+				}
 			}
-			if (have_hpp) {
-				SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_INSERTSTRING, -1, (LPARAM)TranslateT("History++ plugin"));
-				if (M->GetByte("default_ieview", 0))
-					SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_SETCURSEL, 1, 0);
-				else if (M->GetByte("default_hpp", 0))
-					SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_SETCURSEL, have_ieview ? 2 : 1, 0);
+			else
+			{
+				EnableWindow(GetDlgItem(hwndDlg, IDC_MSGLOGDIDSPLAY),FALSE);
 			}
 			SetDlgItemText(hwndDlg, IDC_EXPLAINMSGLOGSETTINGS, TranslateT("You have chosen to use an external plugin for displaying the message history in the chat window. Most of the settings on this page are for the standard message log viewer only and will have no effect. To change the appearance of the message log, you must configure either IEView or History++."));
 			SendMessage(hwndDlg, WM_USER + 100, 0, 0);
-			return TRUE;
 		}
-		/*
-		 * configure the option page - hide most of the settings here when either IEView
-		 * or H++ is set as the global message log viewer. Showing these options may confuse
-		 * the user, because they are not working and the user needs to configure the 3rd
-		 * party plugin.
-		 */
-		case WM_USER + 100: {
-			int i;
+		return TRUE;
 
+		/*
+		* configure the option page - hide most of the settings here when either IEView
+		* or H++ is set as the global message log viewer. Showing these options may confuse
+		* the user, because they are not working and the user needs to configure the 3rd
+		* party plugin.
+		*/
+	case WM_USER + 100:
+		{
 			LRESULT r = SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_GETCURSEL, 0, 0);
 			Utils::showDlgControl(hwndDlg, IDC_EXPLAINMSGLOGSETTINGS, r == 0 ? SW_HIDE : SW_SHOW);
 			Utils::showDlgControl(hwndDlg, IDC_LOGOPTIONS, r == 0 ? SW_SHOW : SW_HIDE);
-			for (i=0; i < safe_sizeof(__ctrls); i++)
+			Utils::enableDlgControl(GetDlgItem(hwndDlg, IDC_MSGLOGDIDSPLAY),r == 0 ? FALSE : TRUE);
+			for (int i=0; i < SIZEOF(__ctrls); i++)
 				Utils::enableDlgControl(hwndDlg, __ctrls[i], r == 0 ? TRUE : FALSE);
-			return 0;
 		}
-		case WM_COMMAND:
-			switch (LOWORD(wParam)) {
-				case IDC_ALWAYSTRIM:
-					Utils::enableDlgControl(hwndDlg, IDC_TRIMSPIN, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
-					Utils::enableDlgControl(hwndDlg, IDC_TRIM, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
-					break;
-				case IDC_LOADUNREAD:
-				case IDC_LOADCOUNT:
-				case IDC_LOADTIME:
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
-					Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
-					break;
-				case IDC_INDENTAMOUNT:
-				case IDC_LOADCOUNTN:
-				case IDC_LOADTIMEN:
-				case IDC_RIGHTINDENT:
-				case IDC_TRIM:
-					if (HIWORD(wParam) != EN_CHANGE || (HWND) lParam != GetFocus())
-						return TRUE;
-					break;
-				case IDC_MODIFY: {
-					TemplateEditorNew teNew = {0, 0, hwndDlg};
-					CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_TEMPLATEEDIT), hwndDlg, DlgProcTemplateEditor, (LPARAM)&teNew);
-					break;
-				}
-				case IDC_RTLMODIFY: {
-					TemplateEditorNew teNew = {0, TRUE, hwndDlg};
-					CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_TEMPLATEEDIT), hwndDlg, DlgProcTemplateEditor, (LPARAM)&teNew);
-					break;
-				}
-				case IDC_MSGLOGDIDSPLAY:
-					SendMessage(hwndDlg, WM_USER + 100, 0, 0);
-					break;
-			}
-			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+		return 0;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDC_ALWAYSTRIM:
+			Utils::enableDlgControl(hwndDlg, IDC_TRIMSPIN, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
+			Utils::enableDlgControl(hwndDlg, IDC_TRIM, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
 			break;
-		case WM_NOTIFY:
-			switch (((LPNMHDR) lParam)->idFrom) {
-				case IDC_LOGOPTIONS:
-					if (((LPNMHDR)lParam)->code == NM_CLICK || (((LPNMHDR)lParam)->code == TVN_KEYDOWN && ((LPNMTVKEYDOWN)lParam)->wVKey == VK_SPACE)) {
-						TVHITTESTINFO hti;
-						TVITEM item = {0};
-
-						item.mask = TVIF_HANDLE | TVIF_STATE;
-						item.stateMask = TVIS_STATEIMAGEMASK | TVIS_BOLD;
-						hti.pt.x = (short)LOWORD(GetMessagePos());
-						hti.pt.y = (short)HIWORD(GetMessagePos());
-						ScreenToClient(((LPNMHDR)lParam)->hwndFrom, &hti.pt);
-						if (TreeView_HitTest(((LPNMHDR)lParam)->hwndFrom, &hti) || ((LPNMHDR)lParam)->code == TVN_KEYDOWN) {
-							if (((LPNMHDR)lParam)->code == TVN_KEYDOWN) {
-								hti.flags |= TVHT_ONITEMSTATEICON;
-								item.hItem = TreeView_GetSelection(((LPNMHDR)lParam)->hwndFrom);
-							} else
-								item.hItem = (HTREEITEM)hti.hItem;
-							SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
-							if (item.state & TVIS_BOLD && hti.flags & TVHT_ONITEMSTATEICON) {
-								item.state = INDEXTOSTATEIMAGEMASK(0) | TVIS_BOLD;
-								SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_SETITEMA, 0, (LPARAM)&item);
-							} else if (hti.flags & TVHT_ONITEMSTATEICON) {
-
-								if (((item.state & TVIS_STATEIMAGEMASK) >> 12) == 3) {
-									item.state = INDEXTOSTATEIMAGEMASK(1);
-									SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_SETITEMA, 0, (LPARAM)&item);
-								}
-								SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-							}
-						}
-					}
-					break;
-				default:
-					switch (((LPNMHDR) lParam)->code) {
-						case PSN_APPLY: {
-							int i;
-							TVITEM item = {0};
-							LRESULT msglogmode = SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_GETCURSEL, 0, 0);
-
-							dwFlags &= ~(MWF_LOG_ALL);
-
-							if (IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT))
-								M->WriteByte(SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_COUNT);
-							else if (IsDlgButtonChecked(hwndDlg, IDC_LOADTIME))
-								M->WriteByte(SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_TIME);
-							else
-								M->WriteByte(SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_UNREAD);
-							DBWriteContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_GETPOS, 0, 0));
-							DBWriteContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADTIME, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_GETPOS, 0, 0));
-
-							M->WriteDword(SRMSGMOD_T, "IndentAmount", (DWORD) GetDlgItemInt(hwndDlg, IDC_INDENTAMOUNT, &translated, FALSE));
-							M->WriteDword(SRMSGMOD_T, "RightIndent", (DWORD) GetDlgItemInt(hwndDlg, IDC_RIGHTINDENT, &translated, FALSE));
-
-							M->WriteByte(SRMSGMOD_T, "default_ieview", 0);
-							M->WriteByte(SRMSGMOD_T, "default_hpp", 0);
-							switch(msglogmode) {
-							case 0:
-								break;
-							case 1:
-								if (have_ieview)
-									M->WriteByte(SRMSGMOD_T, "default_ieview", 1);
-								else
-									M->WriteByte(SRMSGMOD_T, "default_hpp", 1);
-								break;
-							case 2:
-								M->WriteByte(SRMSGMOD_T, "default_hpp", 1);
-								break;
-							}
-
-							/*
-							* scan the tree view and obtain the options...
-							*/
-							
-							TOptionListItem *lvItems = CTranslator::getTree(CTranslator::TREE_LOG);
-							for (i=0; lvItems[i].szName != NULL; i++) {
-								item.mask = TVIF_HANDLE | TVIF_STATE;
-								item.hItem = (HTREEITEM)lvItems[i].handle;
-								item.stateMask = TVIS_STATEIMAGEMASK;
-
-								SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
-								if (lvItems[i].uType == LOI_TYPE_FLAG)
-									dwFlags |= (item.state >> 12) == 3/*2*/ ? lvItems[i].lParam : 0;
-								else if (lvItems[i].uType == LOI_TYPE_SETTING)
-									M->WriteByte(SRMSGMOD_T, (char *)lvItems[i].lParam, (BYTE)((item.state >> 12) == 3/*2*/ ? 1 : 0));  // NOTE: state image masks changed
-							}
-
-							M->WriteDword(SRMSGMOD_T, "mwflags", dwFlags);
-							if (IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM))
-								M->WriteDword(SRMSGMOD_T, "maxhist", (DWORD)SendDlgItemMessage(hwndDlg, IDC_TRIMSPIN, UDM_GETPOS, 0, 0));
-							else
-								M->WriteDword(SRMSGMOD_T, "maxhist", 0);
-							PluginConfig.reloadSettings();
-							M->BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
-							return TRUE;
-						}
-					}
-					break;
+		case IDC_LOADUNREAD:
+		case IDC_LOADCOUNT:
+		case IDC_LOADTIME:
+			Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
+			Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
+			Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
+			Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
+			Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
+			break;
+		case IDC_INDENTAMOUNT:
+		case IDC_LOADCOUNTN:
+		case IDC_LOADTIMEN:
+		case IDC_RIGHTINDENT:
+		case IDC_TRIM:
+			if (HIWORD(wParam) != EN_CHANGE || (HWND) lParam != GetFocus())
+				return TRUE;
+			break;
+		case IDC_MODIFY:
+			{
+				TemplateEditorNew teNew = {0, 0, hwndDlg};
+				CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_TEMPLATEEDIT), hwndDlg, DlgProcTemplateEditor, (LPARAM)&teNew);
 			}
 			break;
+		case IDC_RTLMODIFY:
+			{
+				TemplateEditorNew teNew = {0, TRUE, hwndDlg};
+				CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_TEMPLATEEDIT), hwndDlg, DlgProcTemplateEditor, (LPARAM)&teNew);
+			}
+			break;
+		case IDC_MSGLOGDIDSPLAY:
+			SendMessage(hwndDlg, WM_USER + 100, 0, 0);
+			break;
+		}
+		SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+		break;
+
+	case WM_NOTIFY:
+		switch (((LPNMHDR) lParam)->idFrom) {
+		case IDC_LOGOPTIONS:
+			if (((LPNMHDR)lParam)->code == NM_CLICK || (((LPNMHDR)lParam)->code == TVN_KEYDOWN && ((LPNMTVKEYDOWN)lParam)->wVKey == VK_SPACE)) {
+				TVHITTESTINFO hti;
+				TVITEM item = {0};
+
+				item.mask = TVIF_HANDLE | TVIF_STATE;
+				item.stateMask = TVIS_STATEIMAGEMASK | TVIS_BOLD;
+				hti.pt.x = (short)LOWORD(GetMessagePos());
+				hti.pt.y = (short)HIWORD(GetMessagePos());
+				ScreenToClient(((LPNMHDR)lParam)->hwndFrom, &hti.pt);
+				if (TreeView_HitTest(((LPNMHDR)lParam)->hwndFrom, &hti) || ((LPNMHDR)lParam)->code == TVN_KEYDOWN) {
+					if (((LPNMHDR)lParam)->code == TVN_KEYDOWN) {
+						hti.flags |= TVHT_ONITEMSTATEICON;
+						item.hItem = TreeView_GetSelection(((LPNMHDR)lParam)->hwndFrom);
+					} else
+						item.hItem = (HTREEITEM)hti.hItem;
+					SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
+					if (item.state & TVIS_BOLD && hti.flags & TVHT_ONITEMSTATEICON) {
+						item.state = INDEXTOSTATEIMAGEMASK(0) | TVIS_BOLD;
+						SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_SETITEMA, 0, (LPARAM)&item);
+					} else if (hti.flags & TVHT_ONITEMSTATEICON) {
+
+						if (((item.state & TVIS_STATEIMAGEMASK) >> 12) == 3) {
+							item.state = INDEXTOSTATEIMAGEMASK(1);
+							SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_SETITEMA, 0, (LPARAM)&item);
+						}
+						SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+					}
+				}
+			}
+			break;
+
+		default:
+			switch (((LPNMHDR) lParam)->code) {
+			case PSN_APPLY:
+				int i;
+				TVITEM item = {0};
+				LRESULT msglogmode = SendDlgItemMessage(hwndDlg, IDC_MSGLOGDIDSPLAY, CB_GETCURSEL, 0, 0);
+
+				dwFlags &= ~(MWF_LOG_ALL);
+
+				if (IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT))
+					db_set_b(0, SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_COUNT);
+				else if (IsDlgButtonChecked(hwndDlg, IDC_LOADTIME))
+					db_set_b(0, SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_TIME);
+				else
+					db_set_b(0, SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_UNREAD);
+				db_set_w(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_GETPOS, 0, 0));
+				db_set_w(NULL, SRMSGMOD, SRMSGSET_LOADTIME, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_GETPOS, 0, 0));
+
+				db_set_dw(0, SRMSGMOD_T, "IndentAmount", (DWORD) GetDlgItemInt(hwndDlg, IDC_INDENTAMOUNT, &translated, FALSE));
+				db_set_dw(0, SRMSGMOD_T, "RightIndent", (DWORD) GetDlgItemInt(hwndDlg, IDC_RIGHTINDENT, &translated, FALSE));
+
+				db_set_b(0, SRMSGMOD_T, "default_ieview", 0);
+				db_set_b(0, SRMSGMOD_T, "default_hpp", 0);
+				switch(msglogmode) {
+				case 0:
+					break;
+				case 1:
+					if (have_ieview)
+						db_set_b(0, SRMSGMOD_T, "default_ieview", 1);
+					else
+						db_set_b(0, SRMSGMOD_T, "default_hpp", 1);
+					break;
+				case 2:
+					db_set_b(0, SRMSGMOD_T, "default_hpp", 1);
+					break;
+				}
+
+				/*
+				* scan the tree view and obtain the options...
+				*/
+
+				TOptionListItem *lvItems = CTranslator::getTree(CTranslator::TREE_LOG);
+				for (i=0; lvItems[i].szName != NULL; i++) {
+					item.mask = TVIF_HANDLE | TVIF_STATE;
+					item.hItem = (HTREEITEM)lvItems[i].handle;
+					item.stateMask = TVIS_STATEIMAGEMASK;
+
+					SendDlgItemMessageA(hwndDlg, IDC_LOGOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
+					if (lvItems[i].uType == LOI_TYPE_FLAG)
+						dwFlags |= (item.state >> 12) == 3/*2*/ ? lvItems[i].lParam : 0;
+					else if (lvItems[i].uType == LOI_TYPE_SETTING)
+						db_set_b(0, SRMSGMOD_T, (char *)lvItems[i].lParam, (BYTE)((item.state >> 12) == 3/*2*/ ? 1 : 0));  // NOTE: state image masks changed
+				}
+
+				db_set_dw(0, SRMSGMOD_T, "mwflags", dwFlags);
+				if (IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM))
+					db_set_dw(0, SRMSGMOD_T, "maxhist", (DWORD)SendDlgItemMessage(hwndDlg, IDC_TRIMSPIN, UDM_GETPOS, 0, 0));
+				else
+					db_set_dw(0, SRMSGMOD_T, "maxhist", 0);
+				PluginConfig.reloadSettings();
+				M.BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
+				return TRUE;
+			}
+		}
+		break;
 	}
 	return FALSE;
 }
@@ -840,10 +836,10 @@ static void ResetCList(HWND hwndDlg)
 {
 	int i;
 
-	if (CallService(MS_CLUI_GETCAPS, 0, 0) & CLUIF_DISABLEGROUPS && !M->GetByte("CList", "UseGroups", SETTING_USEGROUPS_DEFAULT))
-		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETUSEGROUPS, (WPARAM) FALSE, 0);
+	if (CallService(MS_CLUI_GETCAPS, 0, 0) & CLUIF_DISABLEGROUPS && !M.GetByte("CList", "UseGroups", SETTING_USEGROUPS_DEFAULT))
+		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETUSEGROUPS, (WPARAM)FALSE, 0);
 	else
-		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETUSEGROUPS, (WPARAM) TRUE, 0);
+		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETUSEGROUPS, (WPARAM)TRUE, 0);
 	SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETHIDEEMPTYGROUPS, 1, 0);
 	SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETGREYOUTFLAGS, 0, 0);
 	SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETLEFTMARGIN, 2, 0);
@@ -856,41 +852,33 @@ static void ResetCList(HWND hwndDlg)
 
 static void RebuildList(HWND hwndDlg, HANDLE hItemNew, HANDLE hItemUnknown)
 {
-	HANDLE hContact, hItem;
-	BYTE defType = M->GetByte(SRMSGMOD, SRMSGSET_TYPINGNEW, SRMSGDEFSET_TYPINGNEW);
+	BYTE defType = M.GetByte(SRMSGMOD, SRMSGSET_TYPINGNEW, SRMSGDEFSET_TYPINGNEW);
+	if (hItemNew && defType)
+		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETCHECKMARK, (WPARAM)hItemNew, 1);
 
-	if (hItemNew && defType) {
-		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETCHECKMARK, (WPARAM) hItemNew, 1);
+	if (hItemUnknown && M.GetByte(SRMSGMOD, SRMSGSET_TYPINGUNKNOWN, SRMSGDEFSET_TYPINGUNKNOWN))
+		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETCHECKMARK, (WPARAM)hItemUnknown, 1);
+
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+		HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+		if (hItem && db_get_b(hContact, SRMSGMOD, SRMSGSET_TYPING, defType))
+			SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETCHECKMARK, (WPARAM)hItem, 1);
 	}
-	if (hItemUnknown && M->GetByte(SRMSGMOD, SRMSGSET_TYPINGUNKNOWN, SRMSGDEFSET_TYPINGUNKNOWN)) {
-		SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETCHECKMARK, (WPARAM) hItemUnknown, 1);
-	}
-	hContact = db_find_first();
-	do {
-		hItem = (HANDLE) SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM) hContact, 0);
-		if (hItem && M->GetByte(hContact, SRMSGMOD, SRMSGSET_TYPING, defType)) {
-			SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_SETCHECKMARK, (WPARAM) hItem, 1);
-		}
-	} while (hContact = db_find_next(hContact));
 }
 
 static void SaveList(HWND hwndDlg, HANDLE hItemNew, HANDLE hItemUnknown)
 {
-	HANDLE hContact, hItem;
+	if (hItemNew)
+		db_set_b(0, SRMSGMOD, SRMSGSET_TYPINGNEW, (BYTE)(SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM)hItemNew, 0) ? 1 : 0));
 
-	if (hItemNew) {
-		M->WriteByte(SRMSGMOD, SRMSGSET_TYPINGNEW, (BYTE)(SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM) hItemNew, 0) ? 1 : 0));
+	if (hItemUnknown)
+		db_set_b(0, SRMSGMOD, SRMSGSET_TYPINGUNKNOWN, (BYTE)(SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM)hItemUnknown, 0) ? 1 : 0));
+
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+		HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+		if (hItem)
+			db_set_b(hContact, SRMSGMOD, SRMSGSET_TYPING, (BYTE)(SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM)hItem, 0) ? 1 : 0));
 	}
-	if (hItemUnknown) {
-		M->WriteByte(SRMSGMOD, SRMSGSET_TYPINGUNKNOWN, (BYTE)(SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM) hItemUnknown, 0) ? 1 : 0));
-	}
-	hContact = db_find_first();
-	do {
-		hItem = (HANDLE) SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM) hContact, 0);
-		if (hItem) {
-			DBWriteContactSettingByte(hContact, SRMSGMOD, SRMSGSET_TYPING, (BYTE)(SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM) hItem, 0) ? 1 : 0));
-		}
-	} while (hContact = db_find_next(hContact));
 }
 
 static INT_PTR CALLBACK DlgProcTypeOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -898,110 +886,109 @@ static INT_PTR CALLBACK DlgProcTypeOptions(HWND hwndDlg, UINT msg, WPARAM wParam
 	static HANDLE hItemNew, hItemUnknown;
 
 	switch (msg) {
-		case WM_INITDIALOG:
-			TranslateDialogDefault(hwndDlg);
-			{
-				CLCINFOITEM cii = { 0 };
-				cii.cbSize = sizeof(cii);
-				cii.flags = CLCIIF_GROUPFONT | CLCIIF_CHECKBOX;
-				cii.pszText = TranslateT("** New contacts **");
-				hItemNew = (HANDLE) SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_ADDINFOITEM, 0, (LPARAM) & cii);
-				cii.pszText = TranslateT("** Unknown contacts **");
-				hItemUnknown = (HANDLE) SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_ADDINFOITEM, 0, (LPARAM) & cii);
-			}
-			SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_CLIST), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_CLIST), GWL_STYLE) | (CLS_SHOWHIDDEN));
-			ResetCList(hwndDlg);
-			RebuildList(hwndDlg, hItemNew, hItemUnknown);
+	case WM_INITDIALOG:
+		TranslateDialogDefault(hwndDlg);
+		{
+			CLCINFOITEM cii = { 0 };
+			cii.cbSize = sizeof(cii);
+			cii.flags = CLCIIF_GROUPFONT | CLCIIF_CHECKBOX;
+			cii.pszText = TranslateT("** New contacts **");
+			hItemNew = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_ADDINFOITEM, 0, (LPARAM)&cii);
+			cii.pszText = TranslateT("** Unknown contacts **");
+			hItemUnknown = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_ADDINFOITEM, 0, (LPARAM)&cii);
+		}
+		SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_CLIST), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_CLIST), GWL_STYLE) | (CLS_SHOWHIDDEN));
+		ResetCList(hwndDlg);
+		RebuildList(hwndDlg, hItemNew, hItemUnknown);
 
-			CheckDlgButton(hwndDlg, IDC_SHOWNOTIFY, M->GetByte(SRMSGMOD, SRMSGSET_SHOWTYPING, SRMSGDEFSET_SHOWTYPING));
-			CheckDlgButton(hwndDlg, IDC_TYPEFLASHWIN, M->GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINFLASH, SRMSGDEFSET_SHOWTYPINGWINFLASH));
+		CheckDlgButton(hwndDlg, IDC_SHOWNOTIFY, M.GetByte(SRMSGMOD, SRMSGSET_SHOWTYPING, SRMSGDEFSET_SHOWTYPING));
+		CheckDlgButton(hwndDlg, IDC_TYPEFLASHWIN, M.GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINFLASH, SRMSGDEFSET_SHOWTYPINGWINFLASH));
 
-			CheckDlgButton(hwndDlg, IDC_TYPENOWIN, M->GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGNOWINOPEN, 1));
-			CheckDlgButton(hwndDlg, IDC_TYPEWIN, M->GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINOPEN, 1));
-			CheckDlgButton(hwndDlg, IDC_NOTIFYTRAY, M->GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGCLIST, SRMSGDEFSET_SHOWTYPINGCLIST));
-			CheckDlgButton(hwndDlg, IDC_NOTIFYBALLOON, M->GetByte(SRMSGMOD, "ShowTypingBalloon", 0));
+		CheckDlgButton(hwndDlg, IDC_TYPENOWIN, M.GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGNOWINOPEN, 1));
+		CheckDlgButton(hwndDlg, IDC_TYPEWIN, M.GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINOPEN, 1));
+		CheckDlgButton(hwndDlg, IDC_NOTIFYTRAY, M.GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGCLIST, SRMSGDEFSET_SHOWTYPINGCLIST));
+		CheckDlgButton(hwndDlg, IDC_NOTIFYBALLOON, M.GetByte(SRMSGMOD, "ShowTypingBalloon", 0));
 
-			CheckDlgButton(hwndDlg, IDC_NOTIFYPOPUP, M->GetByte(SRMSGMOD, "ShowTypingPopup", 1));
+		CheckDlgButton(hwndDlg, IDC_NOTIFYPOPUP, M.GetByte(SRMSGMOD, "ShowTypingPopup", 0));
 
+		Utils::enableDlgControl(hwndDlg, IDC_TYPEWIN, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
+		Utils::enableDlgControl(hwndDlg, IDC_TYPENOWIN, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
+		Utils::enableDlgControl(hwndDlg, IDC_NOTIFYBALLOON, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY) &&
+			(IsDlgButtonChecked(hwndDlg, IDC_TYPEWIN) || IsDlgButtonChecked(hwndDlg, IDC_TYPENOWIN)));
+
+		Utils::enableDlgControl(hwndDlg, IDC_TYPEFLASHWIN, IsDlgButtonChecked(hwndDlg, IDC_SHOWNOTIFY));
+		Utils::enableDlgControl(hwndDlg, IDC_MTN_POPUPMODE, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYPOPUP));
+
+		if (!ServiceExists(MS_CLIST_SYSTRAY_NOTIFY)) {
+			Utils::enableDlgControl(hwndDlg, IDC_NOTIFYBALLOON, FALSE);
+			SetWindowText(GetDlgItem(hwndDlg, IDC_NOTIFYBALLOON), TranslateT("Show balloon popup (unsupported system)"));
+		}
+
+		SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Always"));
+		SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Always, but no popup when window is focused"));
+		SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Only when no message window is open"));
+
+		SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_SETCURSEL, (WPARAM)M.GetByte("MTN_PopupMode", 0), 0);
+
+		if (!PluginConfig.g_PopupAvail) {
+			Utils::showDlgControl(hwndDlg, IDC_NOTIFYPOPUP, SW_HIDE);
+			Utils::showDlgControl(hwndDlg, IDC_STATIC111, SW_HIDE);
+			Utils::showDlgControl(hwndDlg, IDC_MTN_POPUPMODE, SW_HIDE);
+		}
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDC_NOTIFYTRAY:
 			Utils::enableDlgControl(hwndDlg, IDC_TYPEWIN, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
 			Utils::enableDlgControl(hwndDlg, IDC_TYPENOWIN, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
+			Utils::enableDlgControl(hwndDlg, IDC_NOTIFYBALLOON, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
+			break;
+		case IDC_SHOWNOTIFY:
+			Utils::enableDlgControl(hwndDlg, IDC_TYPEFLASHWIN, IsDlgButtonChecked(hwndDlg, IDC_SHOWNOTIFY));
+			break;
+		case IDC_NOTIFYPOPUP:
+			Utils::enableDlgControl(hwndDlg, IDC_MTN_POPUPMODE, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYPOPUP));
+			break;
+		case IDC_TYPEWIN:
+		case IDC_TYPENOWIN:
 			Utils::enableDlgControl(hwndDlg, IDC_NOTIFYBALLOON, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY) &&
 				(IsDlgButtonChecked(hwndDlg, IDC_TYPEWIN) || IsDlgButtonChecked(hwndDlg, IDC_TYPENOWIN)));
+			break;
+		case IDC_MTN_HELP:
+			CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://wiki.miranda.or.at/TabSRMM/TypingNotifications");
+			return 0;
+		}
+		SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+		break;
 
-			Utils::enableDlgControl(hwndDlg, IDC_TYPEFLASHWIN, IsDlgButtonChecked(hwndDlg, IDC_SHOWNOTIFY));
-			Utils::enableDlgControl(hwndDlg, IDC_MTN_POPUPMODE, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYPOPUP));
-
-			if (!ServiceExists(MS_CLIST_SYSTRAY_NOTIFY)) {
-				Utils::enableDlgControl(hwndDlg, IDC_NOTIFYBALLOON, FALSE);
-				SetWindowText(GetDlgItem(hwndDlg, IDC_NOTIFYBALLOON), TranslateT("Show balloon popup (unsupported system)"));
-			}
-
-			SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Always"));
-			SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Always, but no popup when window is focused"));
-			SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_INSERTSTRING, -1, (LPARAM)TranslateT("Only when no message window is open"));
-
-			SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_SETCURSEL, (WPARAM)M->GetByte("MTN_PopupMode", 0), 0);
-
-			if (!PluginConfig.g_PopupWAvail) {
-				Utils::showDlgControl(hwndDlg, IDC_NOTIFYPOPUP, SW_HIDE);
-				Utils::showDlgControl(hwndDlg, IDC_STATIC111, SW_HIDE);
-				Utils::showDlgControl(hwndDlg, IDC_MTN_POPUPMODE, SW_HIDE);
+	case WM_NOTIFY:
+		switch (((NMHDR *) lParam)->idFrom) {
+		case IDC_CLIST:
+			switch (((NMHDR *) lParam)->code) {
+			case CLN_OPTIONSCHANGED:
+				ResetCList(hwndDlg);
+				break;
+			case CLN_CHECKCHANGED:
+				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+				break;
 			}
 			break;
-		case WM_COMMAND:
-			switch (LOWORD(wParam)) {
-				case IDC_NOTIFYTRAY:
-					Utils::enableDlgControl(hwndDlg, IDC_TYPEWIN, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
-					Utils::enableDlgControl(hwndDlg, IDC_TYPENOWIN, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
-					Utils::enableDlgControl(hwndDlg, IDC_NOTIFYBALLOON, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
-					break;
-				case IDC_SHOWNOTIFY:
-					Utils::enableDlgControl(hwndDlg, IDC_TYPEFLASHWIN, IsDlgButtonChecked(hwndDlg, IDC_SHOWNOTIFY));
-					break;
-				case IDC_NOTIFYPOPUP:
-					Utils::enableDlgControl(hwndDlg, IDC_MTN_POPUPMODE, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYPOPUP));
-					break;
-				case IDC_TYPEWIN:
-				case IDC_TYPENOWIN:
-					Utils::enableDlgControl(hwndDlg, IDC_NOTIFYBALLOON, IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY) &&
-						(IsDlgButtonChecked(hwndDlg, IDC_TYPEWIN) || IsDlgButtonChecked(hwndDlg, IDC_TYPENOWIN)));
-					break;
-				case IDC_MTN_HELP:
-					CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://wiki.miranda.or.at/TabSRMM/TypingNotifications");
-					return 0;
+		case 0:
+			switch (((LPNMHDR) lParam)->code) {
+			case PSN_APPLY:
+				SaveList(hwndDlg, hItemNew, hItemUnknown);
+				db_set_b(0, SRMSGMOD, SRMSGSET_SHOWTYPING, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_SHOWNOTIFY));
+				db_set_b(0, SRMSGMOD, SRMSGSET_SHOWTYPINGWINFLASH, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_TYPEFLASHWIN));
+				db_set_b(0, SRMSGMOD, SRMSGSET_SHOWTYPINGNOWINOPEN, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_TYPENOWIN));
+				db_set_b(0, SRMSGMOD, SRMSGSET_SHOWTYPINGWINOPEN, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_TYPEWIN));
+				db_set_b(0, SRMSGMOD, SRMSGSET_SHOWTYPINGCLIST, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
+				db_set_b(0, SRMSGMOD, "ShowTypingBalloon", (BYTE) IsDlgButtonChecked(hwndDlg, IDC_NOTIFYBALLOON));
+				db_set_b(0, SRMSGMOD, "ShowTypingPopup",(BYTE) IsDlgButtonChecked(hwndDlg, IDC_NOTIFYPOPUP));
+				db_set_b(0, SRMSGMOD_T, "MTN_PopupMode", (BYTE)SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_GETCURSEL, 0, 0));
+				PluginConfig.reloadSettings();
 			}
-			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-			break;
-		case WM_NOTIFY:
-			switch (((NMHDR *) lParam)->idFrom) {
-				case IDC_CLIST:
-					switch (((NMHDR *) lParam)->code) {
-						case CLN_OPTIONSCHANGED:
-							ResetCList(hwndDlg);
-							break;
-						case CLN_CHECKCHANGED:
-							SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-							break;
-					}
-					break;
-				case 0:
-					switch (((LPNMHDR) lParam)->code) {
-						case PSN_APPLY: {
-							SaveList(hwndDlg, hItemNew, hItemUnknown);
-							M->WriteByte(SRMSGMOD, SRMSGSET_SHOWTYPING, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_SHOWNOTIFY));
-							M->WriteByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINFLASH, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_TYPEFLASHWIN));
-							M->WriteByte(SRMSGMOD, SRMSGSET_SHOWTYPINGNOWINOPEN, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_TYPENOWIN));
-							M->WriteByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINOPEN, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_TYPEWIN));
-							M->WriteByte(SRMSGMOD, SRMSGSET_SHOWTYPINGCLIST, (BYTE) IsDlgButtonChecked(hwndDlg, IDC_NOTIFYTRAY));
-							M->WriteByte(SRMSGMOD, "ShowTypingBalloon", (BYTE) IsDlgButtonChecked(hwndDlg, IDC_NOTIFYBALLOON));
-							M->WriteByte(SRMSGMOD, "ShowTypingPopup",(BYTE) IsDlgButtonChecked(hwndDlg, IDC_NOTIFYPOPUP));
-							M->WriteByte(SRMSGMOD_T, "MTN_PopupMode", (BYTE)SendDlgItemMessage(hwndDlg, IDC_MTN_POPUPMODE, CB_GETCURSEL, 0, 0));
-							PluginConfig.reloadSettings();
-						}
-					}
-					break;
-			}
-			break;
+		}
 	}
 	return FALSE;
 }
@@ -1047,13 +1034,13 @@ static INT_PTR CALLBACK DlgProcTabbedOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 				tvi.item.lParam = i;
 				tvi.item.stateMask = TVIS_STATEIMAGEMASK;
 				if (tabItems[i].uType == LOI_TYPE_SETTING)
-					tvi.item.state = INDEXTOSTATEIMAGEMASK(M->GetByte((char *)tabItems[i].lParam, (BYTE)tabItems[i].id) ? 3 : 2/*2 : 1*/);
+					tvi.item.state = INDEXTOSTATEIMAGEMASK(M.GetByte((char *)tabItems[i].lParam, (BYTE)tabItems[i].id) ? 3 : 2/*2 : 1*/);
 				tabItems[i].handle = (LRESULT)TreeView_InsertItem(GetDlgItem(hwndDlg, IDC_TABMSGOPTIONS), &tvi);
 			}
 
-			CheckDlgButton(hwndDlg, IDC_CUT_TABTITLE, M->GetByte("cuttitle", 0));
+			CheckDlgButton(hwndDlg, IDC_CUT_TABTITLE, M.GetByte("cuttitle", 0));
 			SendDlgItemMessage(hwndDlg, IDC_CUT_TITLEMAXSPIN, UDM_SETRANGE, 0, MAKELONG(20, 5));
-			SendDlgItemMessage(hwndDlg, IDC_CUT_TITLEMAXSPIN, UDM_SETPOS, 0, (WPARAM)DBGetContactSettingWord(NULL, SRMSGMOD_T, "cut_at", 15));
+			SendDlgItemMessage(hwndDlg, IDC_CUT_TITLEMAXSPIN, UDM_SETPOS, 0, (WPARAM)db_get_w(NULL, SRMSGMOD_T, "cut_at", 15));
 
 			Utils::enableDlgControl(hwndDlg, IDC_CUT_TITLEMAX, IsDlgButtonChecked(hwndDlg, IDC_CUT_TABTITLE));
 			Utils::enableDlgControl(hwndDlg, IDC_CUT_TITLEMAXSPIN, IsDlgButtonChecked(hwndDlg, IDC_CUT_TABTITLE));
@@ -1071,7 +1058,7 @@ static INT_PTR CALLBACK DlgProcTabbedOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 						return TRUE;
 					break;
 				case IDC_SETUPAUTOCREATEMODES: {
-					HWND hwndNew = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_CHOOSESTATUSMODES), hwndDlg, DlgProcSetupStatusModes, M->GetDword("autopopupmask", -1));
+					HWND hwndNew = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_CHOOSESTATUSMODES), hwndDlg, DlgProcSetupStatusModes, M.GetDword("autopopupmask", -1));
 					SendMessage(hwndNew, DM_SETPARENTDIALOG, 0, (LPARAM)hwndDlg);
 					break;
 				}
@@ -1083,7 +1070,7 @@ static INT_PTR CALLBACK DlgProcTabbedOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 			break;
 		case DM_STATUSMASKSET:
-			M->WriteDword(SRMSGMOD_T, "autopopupmask", (DWORD)lParam);
+			db_set_dw(0, SRMSGMOD_T, "autopopupmask", (DWORD)lParam);
 			break;
 		case WM_NOTIFY:
 			switch (((LPNMHDR) lParam)->idFrom) {
@@ -1123,8 +1110,8 @@ static INT_PTR CALLBACK DlgProcTabbedOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 					switch (((LPNMHDR) lParam)->code) {
 						case PSN_APPLY: {
 							TVITEM item = {0};
-							M->WriteByte(SRMSGMOD_T, "cuttitle", (BYTE) IsDlgButtonChecked(hwndDlg, IDC_CUT_TABTITLE));
-							DBWriteContactSettingWord(NULL, SRMSGMOD_T, "cut_at", (WORD)SendDlgItemMessage(hwndDlg, IDC_CUT_TITLEMAXSPIN, UDM_GETPOS, 0, 0));
+							db_set_b(0, SRMSGMOD_T, "cuttitle", (BYTE) IsDlgButtonChecked(hwndDlg, IDC_CUT_TABTITLE));
+							db_set_w(NULL, SRMSGMOD_T, "cut_at", (WORD)SendDlgItemMessage(hwndDlg, IDC_CUT_TITLEMAXSPIN, UDM_GETPOS, 0, 0));
 
 							/*
 							* scan the tree view and obtain the options...
@@ -1138,13 +1125,13 @@ static INT_PTR CALLBACK DlgProcTabbedOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 
 								SendDlgItemMessageA(hwndDlg, IDC_TABMSGOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
 								if (tabItems[i].uType == LOI_TYPE_SETTING)
-									M->WriteByte(SRMSGMOD_T, (char *)tabItems[i].lParam, (BYTE)((item.state >> 12) == 3/*2*/ ? 1 : 0));
+									db_set_b(0, SRMSGMOD_T, (char *)tabItems[i].lParam, (BYTE)((item.state >> 12) == 3/*2*/ ? 1 : 0));
 							}
 
 							PluginConfig.m_EscapeCloses = (int)SendDlgItemMessage(hwndDlg, IDC_ESCMODE, CB_GETCURSEL, 0, 0);
-							M->WriteByte(SRMSGMOD_T, "escmode", (BYTE)PluginConfig.m_EscapeCloses);
+							db_set_b(0, SRMSGMOD_T, "escmode", (BYTE)PluginConfig.m_EscapeCloses);
 							PluginConfig.reloadSettings();
-							M->BroadcastMessage(DM_OPTIONSAPPLIED, 0, 0);
+							M.BroadcastMessage(DM_OPTIONSAPPLIED, 0, 0);
 							return TRUE;
 						}
 					}
@@ -1157,92 +1144,87 @@ static INT_PTR CALLBACK DlgProcTabbedOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 static INT_PTR CALLBACK DlgProcContainerSettings(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg) {
-		case WM_INITDIALOG: {
-			DBVARIANT dbv = {0};
+	case WM_INITDIALOG:
+		TranslateDialogDefault(hwndDlg);
+		CheckDlgButton(hwndDlg, IDC_CONTAINERGROUPMODE, M.GetByte("useclistgroups", 0));
+		CheckDlgButton(hwndDlg, IDC_LIMITTABS, M.GetByte("limittabs", 0));
 
-			TranslateDialogDefault(hwndDlg);
+		SendDlgItemMessage(hwndDlg, IDC_TABLIMITSPIN, UDM_SETRANGE, 0, MAKELONG(1000, 1));
+		SendDlgItemMessage(hwndDlg, IDC_TABLIMITSPIN, UDM_SETPOS, 0, (int)M.GetDword("maxtabs", 1));
+		SetDlgItemInt(hwndDlg, IDC_TABLIMIT, (int)M.GetDword("maxtabs", 1), FALSE);
+		Utils::enableDlgControl(hwndDlg, IDC_TABLIMIT, IsDlgButtonChecked(hwndDlg, IDC_LIMITTABS));
+		CheckDlgButton(hwndDlg, IDC_SINGLEWINDOWMODE, M.GetByte("singlewinmode", 0));
+		CheckDlgButton(hwndDlg, IDC_DEFAULTCONTAINERMODE, !(IsDlgButtonChecked(hwndDlg, IDC_CONTAINERGROUPMODE) || IsDlgButtonChecked(hwndDlg, IDC_LIMITTABS) || IsDlgButtonChecked(hwndDlg, IDC_SINGLEWINDOWMODE)));
 
-			CheckDlgButton(hwndDlg, IDC_CONTAINERGROUPMODE, M->GetByte("useclistgroups", 0));
-			CheckDlgButton(hwndDlg, IDC_LIMITTABS, M->GetByte("limittabs", 0));
+		SetDlgItemInt(hwndDlg, IDC_NRFLASH, M.GetByte("nrflash", 4), FALSE);
+		SendDlgItemMessage(hwndDlg, IDC_NRFLASHSPIN, UDM_SETRANGE, 0, MAKELONG(255, 1));
+		SendDlgItemMessage(hwndDlg, IDC_NRFLASHSPIN, UDM_SETPOS, 0, (int)M.GetByte("nrflash", 4));
 
-			SendDlgItemMessage(hwndDlg, IDC_TABLIMITSPIN, UDM_SETRANGE, 0, MAKELONG(1000, 1));
-			SendDlgItemMessage(hwndDlg, IDC_TABLIMITSPIN, UDM_SETPOS, 0, (int)M->GetDword("maxtabs", 1));
-			SetDlgItemInt(hwndDlg, IDC_TABLIMIT, (int)M->GetDword("maxtabs", 1), FALSE);
+		SetDlgItemInt(hwndDlg, IDC_FLASHINTERVAL, M.GetDword("flashinterval", 1000), FALSE);
+		SendDlgItemMessage(hwndDlg, IDC_FLASHINTERVALSPIN, UDM_SETRANGE, 0, MAKELONG(10000, 500));
+		SendDlgItemMessage(hwndDlg, IDC_FLASHINTERVALSPIN, UDM_SETPOS, 0, (int)M.GetDword("flashinterval", 1000));
+		SendDlgItemMessage(hwndDlg, IDC_FLASHINTERVALSPIN, UDM_SETACCEL, 0, (int)M.GetDword("flashinterval", 1000));
+		CheckDlgButton(hwndDlg, IDC_USEAERO, M.GetByte("useAero", 1));
+		CheckDlgButton(hwndDlg, IDC_USEAEROPEEK, M.GetByte("useAeroPeek", 1));
+		for (int i=0; i < CSkin::AERO_EFFECT_LAST; i++)
+			SendDlgItemMessage(hwndDlg, IDC_AEROEFFECT, CB_INSERTSTRING, -1, (LPARAM)TranslateTS(CSkin::m_aeroEffects[i].tszName));
+
+		SendDlgItemMessage(hwndDlg, IDC_AEROEFFECT, CB_SETCURSEL, (WPARAM)CSkin::m_aeroEffect, 0);
+		Utils::enableDlgControl(hwndDlg, IDC_AEROEFFECT, PluginConfig.m_bIsVista ? TRUE : FALSE);
+		Utils::enableDlgControl(hwndDlg, IDC_USEAERO, PluginConfig.m_bIsVista ? TRUE : FALSE);
+		Utils::enableDlgControl(hwndDlg, IDC_USEAEROPEEK, PluginConfig.m_bIsWin7 ? TRUE : FALSE);
+		if (PluginConfig.m_bIsVista)
+			Utils::enableDlgControl(hwndDlg, IDC_AEROEFFECT, IsDlgButtonChecked(hwndDlg, IDC_USEAERO) ? 1 : 0);
+		return TRUE;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDC_TABLIMIT:
+			if (HIWORD(wParam) != EN_CHANGE || (HWND) lParam != GetFocus())
+				return TRUE;
+			break;
+		case IDC_USEAERO:
+			Utils::enableDlgControl(hwndDlg, IDC_AEROEFFECT, IsDlgButtonChecked(hwndDlg, IDC_USEAERO) ? 1 : 0);
+			break;
+		case IDC_LIMITTABS:
+		case IDC_SINGLEWINDOWMODE:
+		case IDC_CONTAINERGROUPMODE:
+		case IDC_DEFAULTCONTAINERMODE:
 			Utils::enableDlgControl(hwndDlg, IDC_TABLIMIT, IsDlgButtonChecked(hwndDlg, IDC_LIMITTABS));
-			CheckDlgButton(hwndDlg, IDC_SINGLEWINDOWMODE, M->GetByte("singlewinmode", 0));
-			CheckDlgButton(hwndDlg, IDC_DEFAULTCONTAINERMODE, !(IsDlgButtonChecked(hwndDlg, IDC_CONTAINERGROUPMODE) || IsDlgButtonChecked(hwndDlg, IDC_LIMITTABS) || IsDlgButtonChecked(hwndDlg, IDC_SINGLEWINDOWMODE)));
-
-			SetDlgItemInt(hwndDlg, IDC_NRFLASH, M->GetByte("nrflash", 4), FALSE);
-			SendDlgItemMessage(hwndDlg, IDC_NRFLASHSPIN, UDM_SETRANGE, 0, MAKELONG(255, 1));
-			SendDlgItemMessage(hwndDlg, IDC_NRFLASHSPIN, UDM_SETPOS, 0, (int)M->GetByte("nrflash", 4));
-
-			SetDlgItemInt(hwndDlg, IDC_FLASHINTERVAL, M->GetDword("flashinterval", 1000), FALSE);
-			SendDlgItemMessage(hwndDlg, IDC_FLASHINTERVALSPIN, UDM_SETRANGE, 0, MAKELONG(10000, 500));
-			SendDlgItemMessage(hwndDlg, IDC_FLASHINTERVALSPIN, UDM_SETPOS, 0, (int)M->GetDword("flashinterval", 1000));
-			SendDlgItemMessage(hwndDlg, IDC_FLASHINTERVALSPIN, UDM_SETACCEL, 0, (int)M->GetDword("flashinterval", 1000));
-			CheckDlgButton(hwndDlg, IDC_USEAERO, M->GetByte("useAero", 1));
-			CheckDlgButton(hwndDlg, IDC_USEAEROPEEK, M->GetByte("useAeroPeek", 1));
-			for (int i = 0; i < CSkin::AERO_EFFECT_LAST; i++)
-				SendDlgItemMessage(hwndDlg, IDC_AEROEFFECT, CB_INSERTSTRING, -1, (LPARAM)TranslateTS(CSkin::m_aeroEffects[i].tszName));
-
-			SendDlgItemMessage(hwndDlg, IDC_AEROEFFECT, CB_SETCURSEL, (WPARAM)CSkin::m_aeroEffect, 0);
-			Utils::enableDlgControl(hwndDlg, IDC_AEROEFFECT, PluginConfig.m_bIsVista ? TRUE : FALSE);
-			Utils::enableDlgControl(hwndDlg, IDC_USEAERO, PluginConfig.m_bIsVista ? TRUE : FALSE);
-			Utils::enableDlgControl(hwndDlg, IDC_USEAEROPEEK, PluginConfig.m_bIsWin7 ? TRUE : FALSE);
-			if (PluginConfig.m_bIsVista)
-				Utils::enableDlgControl(hwndDlg, IDC_AEROEFFECT, IsDlgButtonChecked(hwndDlg, IDC_USEAERO) ? 1 : 0);
-
-			return TRUE;
+			break;
+		case IDC_HELP_CONTAINERS:
+			CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://wiki.miranda.or.at/TabSRMM/Containers");
+			break;
 		}
-		case WM_COMMAND:
-			switch (LOWORD(wParam)) {
-				case IDC_TABLIMIT:
-					if (HIWORD(wParam) != EN_CHANGE || (HWND) lParam != GetFocus())
-						return TRUE;
-					break;
-				case IDC_USEAERO:
-					Utils::enableDlgControl(hwndDlg, IDC_AEROEFFECT, IsDlgButtonChecked(hwndDlg, IDC_USEAERO) ? 1 : 0);
-					break;
-				case IDC_LIMITTABS:
-				case IDC_SINGLEWINDOWMODE:
-				case IDC_CONTAINERGROUPMODE:
-				case IDC_DEFAULTCONTAINERMODE:
-					Utils::enableDlgControl(hwndDlg, IDC_TABLIMIT, IsDlgButtonChecked(hwndDlg, IDC_LIMITTABS));
-					break;
-				case IDC_HELP_CONTAINERS:
-					CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://wiki.miranda.or.at/TabSRMM/Containers");
-					break;
-			}
-			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-			break;
-		case WM_NOTIFY:
-			switch (((LPNMHDR) lParam)->idFrom) {
-				case 0:
-					switch (((LPNMHDR) lParam)->code) {
-						case PSN_APPLY: {
-							BOOL translated;
+		SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+		break;
 
-							bool	fOldAeroState = M->getAeroState();
-							M->WriteByte(SRMSGMOD_T, "useclistgroups", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_CONTAINERGROUPMODE)));
-							M->WriteByte(SRMSGMOD_T, "limittabs", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_LIMITTABS)));
-							M->WriteDword(SRMSGMOD_T, "maxtabs", GetDlgItemInt(hwndDlg, IDC_TABLIMIT, &translated, FALSE));
-							M->WriteByte(SRMSGMOD_T, "singlewinmode", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_SINGLEWINDOWMODE)));
-							M->WriteDword(SRMSGMOD_T, "flashinterval", GetDlgItemInt(hwndDlg, IDC_FLASHINTERVAL, &translated, FALSE));
-							M->WriteByte(SRMSGMOD_T, "nrflash", (BYTE)(GetDlgItemInt(hwndDlg, IDC_NRFLASH, &translated, FALSE)));
-							M->WriteByte(0, SRMSGMOD_T, "useAero", IsDlgButtonChecked(hwndDlg, IDC_USEAERO) ? 1 : 0);
-							M->WriteByte(0, SRMSGMOD_T, "useAeroPeek", IsDlgButtonChecked(hwndDlg, IDC_USEAEROPEEK) ? 1 : 0);
-							CSkin::setAeroEffect(SendDlgItemMessage(hwndDlg, IDC_AEROEFFECT, CB_GETCURSEL, 0, 0));
+	case WM_NOTIFY:
+		switch (((LPNMHDR) lParam)->idFrom) {
+		case 0:
+			switch (((LPNMHDR) lParam)->code) {
+			case PSN_APPLY:
+				BOOL translated;
+				bool	fOldAeroState = M.getAeroState();
+				db_set_b(0, SRMSGMOD_T, "useclistgroups", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_CONTAINERGROUPMODE)));
+				db_set_b(0, SRMSGMOD_T, "limittabs", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_LIMITTABS)));
+				db_set_dw(0, SRMSGMOD_T, "maxtabs", GetDlgItemInt(hwndDlg, IDC_TABLIMIT, &translated, FALSE));
+				db_set_b(0, SRMSGMOD_T, "singlewinmode", (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_SINGLEWINDOWMODE)));
+				db_set_dw(0, SRMSGMOD_T, "flashinterval", GetDlgItemInt(hwndDlg, IDC_FLASHINTERVAL, &translated, FALSE));
+				db_set_b(0, SRMSGMOD_T, "nrflash", (BYTE)(GetDlgItemInt(hwndDlg, IDC_NRFLASH, &translated, FALSE)));
+				db_set_b(0, SRMSGMOD_T, "useAero", IsDlgButtonChecked(hwndDlg, IDC_USEAERO) ? 1 : 0);
+				db_set_b(0, SRMSGMOD_T, "useAeroPeek", IsDlgButtonChecked(hwndDlg, IDC_USEAEROPEEK) ? 1 : 0);
+				CSkin::setAeroEffect(SendDlgItemMessage(hwndDlg, IDC_AEROEFFECT, CB_GETCURSEL, 0, 0));
 
-							if (M->getAeroState() != fOldAeroState) {
-								SendMessage(PluginConfig.g_hwndHotkeyHandler, WM_DWMCOMPOSITIONCHANGED, 0, 0);	// simulate aero state change
-								SendMessage(PluginConfig.g_hwndHotkeyHandler, WM_DWMCOLORIZATIONCOLORCHANGED, 0, 0);	// simulate aero state change
-							}
-							BuildContainerMenu();
-							return TRUE;
-						}
-					}
+				if (M.getAeroState() != fOldAeroState) {
+					SendMessage(PluginConfig.g_hwndHotkeyHandler, WM_DWMCOMPOSITIONCHANGED, 0, 0);	// simulate aero state change
+					SendMessage(PluginConfig.g_hwndHotkeyHandler, WM_DWMCOLORIZATIONCOLORCHANGED, 0, 0);	// simulate aero state change
+				}
+				BuildContainerMenu();
+				return TRUE;
 			}
-			break;
+		}
+		break;
 	}
 	return FALSE;
 }
@@ -1274,7 +1256,7 @@ struct {
 
 static int OptInitialise(WPARAM wParam, LPARAM lParam)
 {
-	if (PluginConfig.g_PopupWAvail||PluginConfig.g_PopupAvail)
+	if (PluginConfig.g_PopupAvail)
 		TN_OptionsInitialize(wParam, lParam);
 
 	OPTIONSDIALOGPAGE odp = { 0 };
@@ -1320,11 +1302,13 @@ static int OptInitialise(WPARAM wParam, LPARAM lParam)
 	odp.pfnDlgProc = DlgProcTypeOptions;
 	Options_AddPage(wParam, &odp);
 
-	odp.pszTemplate = MAKEINTRESOURCEA(IDD_POPUP_OPT);
-	odp.pszTitle    = LPGEN("Event notifications");
-	odp.pszGroup    = LPGEN("PopUps");
-	odp.pfnDlgProc  = DlgProcPopupOpts;
-	Options_AddPage(wParam, &odp);
+	if (ServiceExists(MS_POPUP_ADDPOPUP)) {
+		odp.pszTemplate = MAKEINTRESOURCEA(IDD_POPUP_OPT);
+		odp.pszTitle    = LPGEN("Event notifications");
+		odp.pszGroup    = LPGEN("Popups");
+		odp.pfnDlgProc  = DlgProcPopupOpts;
+		Options_AddPage(wParam, &odp);
+	}
 
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_SKIN);
 	odp.pszTitle    = LPGEN("Message window");
@@ -1400,17 +1384,15 @@ struct OptCheckBox
 
 DWORD OptCheckBox_LoadValue(struct OptCheckBox *cb)
 {
-	switch (cb->valueType)
-	{
+	switch (cb->valueType) {
 	case CBVT_NONE:
-		switch (cb->dbType)
-		{
+		switch (cb->dbType) {
 		case DBVT_BYTE:
-			return M->GetByte(cb->dbModule, cb->dbSetting, cb->defValue);
+			return M.GetByte(cb->dbModule, cb->dbSetting, cb->defValue);
 		case DBVT_WORD:
-			return DBGetContactSettingWord(NULL, cb->dbModule, cb->dbSetting, cb->defValue);
+			return db_get_w(NULL, cb->dbModule, cb->dbSetting, cb->defValue);
 		case DBVT_DWORD:
-			return M->GetDword(cb->dbModule, cb->dbSetting, cb->defValue);
+			return M.GetDword(cb->dbModule, cb->dbSetting, cb->defValue);
 		}
 		break;
 
@@ -1429,38 +1411,35 @@ DWORD OptCheckBox_LoadValue(struct OptCheckBox *cb)
 	return cb->defValue;
 }
 
-void OptCheckBox_Load(HWND hwnd, struct OptCheckBox *cb)
+void OptCheckBox_Load(HWND hwnd, OptCheckBox *cb)
 {
 	DWORD value = OptCheckBox_LoadValue(cb);
 	if (cb->dwBit) value &= cb->dwBit;
 	CheckDlgButton(hwnd, cb->idc, value ? BST_CHECKED : BST_UNCHECKED);
 }
 
-void OptCheckBox_Save(HWND hwnd, struct OptCheckBox *cb)
+void OptCheckBox_Save(HWND hwnd, OptCheckBox *cb)
 {
 	DWORD value = IsDlgButtonChecked(hwnd, cb->idc) == BST_CHECKED;
 
-	if (cb->dwBit)
-	{
+	if (cb->dwBit) {
 		DWORD curValue = OptCheckBox_LoadValue(cb);
 		value = value ? (curValue | cb->dwBit) : (curValue & ~cb->dwBit);
 	}
 
-	switch (cb->dbType)
-	{
+	switch (cb->dbType) {
 	case DBVT_BYTE:
-		M->WriteByte(cb->dbModule, cb->dbSetting, (BYTE)value);
+		db_set_b(0, cb->dbModule, cb->dbSetting, (BYTE)value);
 		break;
 	case DBVT_WORD:
-		DBWriteContactSettingWord(NULL, cb->dbModule, cb->dbSetting, (WORD)value);
+		db_set_w(NULL, cb->dbModule, cb->dbSetting, (WORD)value);
 		break;
 	case DBVT_DWORD:
-		M->WriteDword(cb->dbModule, cb->dbSetting, (DWORD)value);
+		db_set_dw(0, cb->dbModule, cb->dbSetting, (DWORD)value);
 		break;
 	}
 
-	switch (cb->valueType)
-	{
+	switch (cb->valueType) {
 	case CBVT_CHAR:
 		*cb->charValue = (char)value;
 		break;
@@ -1481,7 +1460,7 @@ void OptCheckBox_Save(HWND hwnd, struct OptCheckBox *cb)
 
 static INT_PTR CALLBACK DlgProcTabSrmmModernOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	struct OptCheckBox opts[] =
+	OptCheckBox opts[] =
 	{
 		//{IDC_, def, bit, dbtype, dbmodule, dbsetting, valtype, pval},
 		{IDC_CLOSEONESC, FALSE, 0, DBVT_BYTE, SRMSGMOD_T, "escmode"},
@@ -1501,44 +1480,41 @@ static INT_PTR CALLBACK DlgProcTabSrmmModernOptions(HWND hwndDlg, UINT msg, WPAR
 
 	static BOOL bInit = TRUE;
 
-	switch (msg)
-	{
-		case WM_INITDIALOG:
+	switch (msg) {
+	case WM_INITDIALOG:
+		TranslateDialogDefault(hwndDlg);
 		{
-			int i = 0;
-			DWORD maxhist = M->GetDword("maxhist", 0);
+			DWORD maxhist = M.GetDword("maxhist", 0);
 
 			bInit = TRUE;
 
-			TranslateDialogDefault(hwndDlg);
-
-			for (i=0; i < SIZEOF(opts); ++i)
+			for (int i=0; i < SIZEOF(opts); ++i)
 				OptCheckBox_Load(hwndDlg, opts+i);
 
 			// Always on!
 			CheckDlgButton(hwndDlg, IDC_SENDCTRLENTER, BST_CHECKED);
 
-			switch (M->GetByte(SRMSGMOD, SRMSGSET_LOADHISTORY, SRMSGDEFSET_LOADHISTORY)) {
-				case LOADHISTORY_UNREAD:
-					CheckDlgButton(hwndDlg, IDC_LOADUNREAD, BST_CHECKED);
-					break;
-				case LOADHISTORY_COUNT:
-					CheckDlgButton(hwndDlg, IDC_LOADCOUNT, BST_CHECKED);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, TRUE);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, TRUE);
-					break;
-				case LOADHISTORY_TIME:
-					CheckDlgButton(hwndDlg, IDC_LOADTIME, BST_CHECKED);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, TRUE);
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, TRUE);
-					Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, TRUE);
-					break;
+			switch (M.GetByte(SRMSGMOD, SRMSGSET_LOADHISTORY, SRMSGDEFSET_LOADHISTORY)) {
+			case LOADHISTORY_UNREAD:
+				CheckDlgButton(hwndDlg, IDC_LOADUNREAD, BST_CHECKED);
+				break;
+			case LOADHISTORY_COUNT:
+				CheckDlgButton(hwndDlg, IDC_LOADCOUNT, BST_CHECKED);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, TRUE);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, TRUE);
+				break;
+			case LOADHISTORY_TIME:
+				CheckDlgButton(hwndDlg, IDC_LOADTIME, BST_CHECKED);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, TRUE);
+				Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, TRUE);
+				Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, TRUE);
+				break;
 			}
 
 			SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_SETRANGE, 0, MAKELONG(100, 0));
-			SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_SETPOS, 0, DBGetContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, SRMSGDEFSET_LOADCOUNT));
+			SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_SETPOS, 0, db_get_w(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, SRMSGDEFSET_LOADCOUNT));
 			SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_SETRANGE, 0, MAKELONG(24 * 60, 0));
-			SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_SETPOS, 0, DBGetContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADTIME, SRMSGDEFSET_LOADTIME));
+			SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_SETPOS, 0, db_get_w(NULL, SRMSGMOD, SRMSGSET_LOADTIME, SRMSGDEFSET_LOADTIME));
 
 			SendDlgItemMessage(hwndDlg, IDC_TRIMSPIN, UDM_SETRANGE, 0, MAKELONG(1000, 5));
 			SendDlgItemMessage(hwndDlg, IDC_TRIMSPIN, UDM_SETPOS, 0, maxhist);
@@ -1546,104 +1522,91 @@ static INT_PTR CALLBACK DlgProcTabSrmmModernOptions(HWND hwndDlg, UINT msg, WPAR
 			Utils::enableDlgControl(hwndDlg, IDC_TRIM, maxhist != 0);
 			CheckDlgButton(hwndDlg, IDC_ALWAYSTRIM, maxhist != 0);
 
-			{
-				BOOL bTabOptGroups = M->GetByte("useclistgroups", 0);
-				BOOL bTabOptLimit = M->GetByte("limittabs", 0);
-				BOOL bTabOptSingle = M->GetByte("singlewinmode", 0);
+			BOOL bTabOptGroups = M.GetByte("useclistgroups", 0);
+			BOOL bTabOptLimit = M.GetByte("limittabs", 0);
+			BOOL bTabOptSingle = M.GetByte("singlewinmode", 0);
 
-				if (bTabOptSingle && !bTabOptGroups && !bTabOptLimit)
-					CheckDlgButton(hwndDlg, IDC_USETABS, BST_UNCHECKED);
-				else if (!bTabOptSingle && !bTabOptGroups && !bTabOptLimit)
-					CheckDlgButton(hwndDlg, IDC_USETABS, BST_CHECKED);
+			if (bTabOptSingle && !bTabOptGroups && !bTabOptLimit)
+				CheckDlgButton(hwndDlg, IDC_USETABS, BST_UNCHECKED);
+			else if (!bTabOptSingle && !bTabOptGroups && !bTabOptLimit)
+				CheckDlgButton(hwndDlg, IDC_USETABS, BST_CHECKED);
+			else {
+				LONG s = (GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_USETABS), GWL_STYLE) & ~BS_TYPEMASK) | BS_AUTO3STATE;
+				SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_USETABS), GWL_STYLE, s);
+				CheckDlgButton(hwndDlg, IDC_USETABS, BST_INDETERMINATE);
+			}
+		}
+		bInit = FALSE;
+		return TRUE;
+
+	case WM_DESTROY:
+		bInit = TRUE;
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDC_LOADUNREAD:
+		case IDC_LOADCOUNT:
+		case IDC_LOADTIME:
+			Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
+			Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
+			Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
+			Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
+			Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
+			break;
+		case IDC_ALWAYSTRIM:
+			Utils::enableDlgControl(hwndDlg, IDC_TRIMSPIN, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
+			Utils::enableDlgControl(hwndDlg, IDC_TRIM, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
+			break;
+		case IDC_TRIM:
+			if (HIWORD(wParam) != EN_CHANGE || (HWND) lParam != GetFocus())
+				return TRUE;
+			break;
+		}
+		if (!bInit)
+			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+		break;
+
+	case WM_NOTIFY:
+		switch (((LPNMHDR) lParam)->idFrom) {
+		case 0:
+			switch (((LPNMHDR) lParam)->code) {
+			case PSN_APPLY:
+				for (int i=0; i < SIZEOF(opts); ++i)
+					OptCheckBox_Save(hwndDlg, opts+i);
+
+				if (IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT))
+					db_set_b(0, SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_COUNT);
+				else if (IsDlgButtonChecked(hwndDlg, IDC_LOADTIME))
+					db_set_b(0, SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_TIME);
 				else
-				{
-					LONG s = (GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_USETABS), GWL_STYLE) & ~BS_TYPEMASK) | BS_AUTO3STATE;
-					SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_USETABS), GWL_STYLE, s);
-					CheckDlgButton(hwndDlg, IDC_USETABS, BST_INDETERMINATE);
+					db_set_b(0, SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_UNREAD);
+				db_set_w(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_GETPOS, 0, 0));
+				db_set_w(NULL, SRMSGMOD, SRMSGSET_LOADTIME, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_GETPOS, 0, 0));
+
+				if (IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM))
+					db_set_dw(0, SRMSGMOD_T, "maxhist", (DWORD)SendDlgItemMessage(hwndDlg, IDC_TRIMSPIN, UDM_GETPOS, 0, 0));
+				else
+					db_set_dw(0, SRMSGMOD_T, "maxhist", 0);
+
+				switch (IsDlgButtonChecked(hwndDlg, IDC_USETABS)) {
+				case BST_UNCHECKED:
+					db_set_b(0, SRMSGMOD_T, "useclistgroups", 0);
+					db_set_b(0, SRMSGMOD_T, "limittabs", 0);
+					db_set_b(0, SRMSGMOD_T, "singlewinmode", 1);
+					break;
+				case BST_CHECKED:
+					db_set_b(0, SRMSGMOD_T, "useclistgroups", 0);
+					db_set_b(0, SRMSGMOD_T, "limittabs", 0);
+					db_set_b(0, SRMSGMOD_T, "singlewinmode", 0);
+					break;
 				}
+				PluginConfig.reloadSettings();
+				M.BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
+				return TRUE;
 			}
-
-			bInit = FALSE;
-			return TRUE;
 		}
-
-		case WM_DESTROY:
-			bInit = TRUE;
-			break;
-
-		case WM_COMMAND:
-			switch (LOWORD(wParam)) {
-				case IDC_LOADUNREAD:
-				case IDC_LOADCOUNT:
-				case IDC_LOADTIME:
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
-					Utils::enableDlgControl(hwndDlg, IDC_LOADCOUNTSPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT));
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMEN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
-					Utils::enableDlgControl(hwndDlg, IDC_LOADTIMESPIN, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
-					Utils::enableDlgControl(hwndDlg, IDC_STMINSOLD, IsDlgButtonChecked(hwndDlg, IDC_LOADTIME));
-					break;
-				case IDC_ALWAYSTRIM:
-					Utils::enableDlgControl(hwndDlg, IDC_TRIMSPIN, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
-					Utils::enableDlgControl(hwndDlg, IDC_TRIM, IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM));
-					break;
-				case IDC_TRIM:
-					if (HIWORD(wParam) != EN_CHANGE || (HWND) lParam != GetFocus())
-						return TRUE;
-					break;
-			}
-			if (!bInit)
-				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-			break;
-
-		case WM_NOTIFY:
-		{
-			switch (((LPNMHDR) lParam)->idFrom)
-			{
-				case 0:
-					switch (((LPNMHDR) lParam)->code)
-					{
-						case PSN_APPLY:
-						{
-							int i;
-							for (i=0; i < SIZEOF(opts); ++i)
-								OptCheckBox_Save(hwndDlg, opts+i);
-
-							if (IsDlgButtonChecked(hwndDlg, IDC_LOADCOUNT))
-								M->WriteByte(SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_COUNT);
-							else if (IsDlgButtonChecked(hwndDlg, IDC_LOADTIME))
-								M->WriteByte(SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_TIME);
-							else
-								M->WriteByte(SRMSGMOD, SRMSGSET_LOADHISTORY, LOADHISTORY_UNREAD);
-							DBWriteContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADCOUNT, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADCOUNTSPIN, UDM_GETPOS, 0, 0));
-							DBWriteContactSettingWord(NULL, SRMSGMOD, SRMSGSET_LOADTIME, (WORD) SendDlgItemMessage(hwndDlg, IDC_LOADTIMESPIN, UDM_GETPOS, 0, 0));
-
-							if (IsDlgButtonChecked(hwndDlg, IDC_ALWAYSTRIM))
-								M->WriteDword(SRMSGMOD_T, "maxhist", (DWORD)SendDlgItemMessage(hwndDlg, IDC_TRIMSPIN, UDM_GETPOS, 0, 0));
-							else
-								M->WriteDword(SRMSGMOD_T, "maxhist", 0);
-
-							switch (IsDlgButtonChecked(hwndDlg, IDC_USETABS))
-							{
-							case BST_UNCHECKED:
-								M->WriteByte(SRMSGMOD_T, "useclistgroups", 0);
-								M->WriteByte(SRMSGMOD_T, "limittabs", 0);
-								M->WriteByte(SRMSGMOD_T, "singlewinmode", 1);
-								break;
-							case BST_CHECKED:
-								M->WriteByte(SRMSGMOD_T, "useclistgroups", 0);
-								M->WriteByte(SRMSGMOD_T, "limittabs", 0);
-								M->WriteByte(SRMSGMOD_T, "singlewinmode", 0);
-								break;
-							}
-							PluginConfig.reloadSettings();
-							M->BroadcastMessage(DM_OPTIONSAPPLIED, 1, 0);
-							return TRUE;
-						}
-					}
-					break;
-			}
-			break;
-		}
+		break;
 	}
 
 	return FALSE;
@@ -1692,64 +1655,57 @@ INT_PTR CALLBACK DlgProcSetupStatusModes(HWND hwndDlg, UINT msg, WPARAM wParam, 
 	static HWND hwndParent = 0;
 
 	switch (msg) {
-		case WM_INITDIALOG: {
-			int i;
+	case WM_INITDIALOG:
+		TranslateDialogDefault(hwndDlg);
+		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, lParam);
+		dwStatusMask = lParam;
 
-			TranslateDialogDefault(hwndDlg);
-			SetWindowLongPtr(hwndDlg, GWLP_USERDATA, lParam);
-			dwStatusMask = lParam;
-
-			SetWindowText(hwndDlg, TranslateT("Choose status modes"));
-			for (i = ID_STATUS_ONLINE; i <= ID_STATUS_OUTTOLUNCH; i++) {
-				SetWindowText(GetDlgItem(hwndDlg, i), (TCHAR *)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)i, GSMDF_TCHAR));
+		SetWindowText(hwndDlg, TranslateT("Choose status modes"));
+		{
+			for (int i = ID_STATUS_ONLINE; i <= ID_STATUS_OUTTOLUNCH; i++) {
+				SetWindowText(GetDlgItem(hwndDlg, i), (TCHAR*)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)i, GSMDF_TCHAR));
 				if (dwStatusMask != -1 && (dwStatusMask & (1 << (i - ID_STATUS_ONLINE))))
 					CheckDlgButton(hwndDlg, i, TRUE);
 				Utils::enableDlgControl(hwndDlg, i, dwStatusMask != -1);
 			}
-			if (dwStatusMask == -1)
-				CheckDlgButton(hwndDlg, IDC_ALWAYS, TRUE);
-			ShowWindow(hwndDlg, SW_SHOWNORMAL);
-			return TRUE;
 		}
-		case DM_SETPARENTDIALOG:
-			hwndParent = (HWND)lParam;
-			break;
-		case DM_GETSTATUSMASK: {
-			if (IsDlgButtonChecked(hwndDlg, IDC_ALWAYS))
-				dwNewStatusMask = -1;
-			else {
-				int i;
-				dwNewStatusMask = 0;
-				for (i = ID_STATUS_ONLINE; i <= ID_STATUS_OUTTOLUNCH; i++)
-					dwNewStatusMask |= (IsDlgButtonChecked(hwndDlg, i) ? (1 << (i - ID_STATUS_ONLINE)) : 0);
+		if (dwStatusMask == -1)
+			CheckDlgButton(hwndDlg, IDC_ALWAYS, TRUE);
+		ShowWindow(hwndDlg, SW_SHOWNORMAL);
+		return TRUE;
+
+	case DM_SETPARENTDIALOG:
+		hwndParent = (HWND)lParam;
+		break;
+	case DM_GETSTATUSMASK:
+		if (IsDlgButtonChecked(hwndDlg, IDC_ALWAYS))
+			dwNewStatusMask = -1;
+		else {
+			dwNewStatusMask = 0;
+			for (int i = ID_STATUS_ONLINE; i <= ID_STATUS_OUTTOLUNCH; i++)
+				dwNewStatusMask |= (IsDlgButtonChecked(hwndDlg, i) ? (1 << (i - ID_STATUS_ONLINE)) : 0);
+		}
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDOK:
+		case IDCANCEL:
+			if (LOWORD(wParam) == IDOK) {
+				SendMessage(hwndDlg, DM_GETSTATUSMASK, 0, 0);
+				SendMessage(hwndParent, DM_STATUSMASKSET, 0, (LPARAM)dwNewStatusMask);
 			}
+			DestroyWindow(hwndDlg);
+			break;
+		case IDC_ALWAYS:
+			for (int i=ID_STATUS_ONLINE; i <= ID_STATUS_OUTTOLUNCH; i++)
+				Utils::enableDlgControl(hwndDlg, i, !IsDlgButtonChecked(hwndDlg, IDC_ALWAYS));
 			break;
 		}
-		case WM_COMMAND: {
-			switch (LOWORD(wParam)) {
-				case IDOK:
-				case IDCANCEL:
-					if (LOWORD(wParam) == IDOK) {
-						SendMessage(hwndDlg, DM_GETSTATUSMASK, 0, 0);
-						SendMessage(hwndParent, DM_STATUSMASKSET, 0, (LPARAM)dwNewStatusMask);
-					}
-					DestroyWindow(hwndDlg);
-					break;
-				case IDC_ALWAYS: {
-					int i;
-					for (i = ID_STATUS_ONLINE; i <= ID_STATUS_OUTTOLUNCH; i++)
-						Utils::enableDlgControl(hwndDlg, i, !IsDlgButtonChecked(hwndDlg, IDC_ALWAYS));
-					break;
-				}
-				default:
-					break;
-			}
-		}
-		case WM_DESTROY:
-			SetWindowLongPtr(hwndDlg, GWLP_USERDATA, 0);
-			break;
-		default:
-			break;
+
+	case WM_DESTROY:
+		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, 0);
+		break;
 	}
 	return FALSE;
 }

@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "commonheaders.h"
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -112,7 +113,7 @@ static void FilenameToFileList(HWND hwndDlg, struct FileDlgData* dat, const TCHA
 			CopyMemory(dat->files[nTemp], buf, (fileOffset-1)*sizeof(TCHAR));
 			dat->files[nTemp][fileOffset-1] = '\\';
 			_tcscpy(dat->files[nTemp] + fileOffset - (buf[fileOffset-2] == '\\'?1:0), pBuf);
-			
+
 			// Move pointers to next file...
 			pBuf += cbFileNameLen + 1;
 			nTemp++;
@@ -169,24 +170,23 @@ static BOOL CALLBACK ClipSiblingsChildEnumProc(HWND hwnd, LPARAM)
 	return TRUE;
 }
 
-static WNDPROC OldSendEditProc;
 static LRESULT CALLBACK SendEditSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch(msg) {
-		case WM_CHAR:
-			if (wParam == '\n' && GetKeyState(VK_CONTROL)&0x8000) {
-				PostMessage(GetParent(hwnd), WM_COMMAND, IDOK, 0);
-				return 0;
-			}
-			break;
-		case WM_SYSCHAR:
-			if ((wParam == 's' || wParam == 'S') && GetKeyState(VK_MENU)&0x8000) {
-				PostMessage(GetParent(hwnd), WM_COMMAND, IDOK, 0);
-				return 0;
-			}
-			break;
+	case WM_CHAR:
+		if (wParam == '\n' && GetKeyState(VK_CONTROL)&0x8000) {
+			PostMessage(GetParent(hwnd), WM_COMMAND, IDOK, 0);
+			return 0;
+		}
+		break;
+	case WM_SYSCHAR:
+		if ((wParam == 's' || wParam == 'S') && GetKeyState(VK_MENU)&0x8000) {
+			PostMessage(GetParent(hwnd), WM_COMMAND, IDOK, 0);
+			return 0;
+		}
+		break;
 	}
-	return CallWindowProc(OldSendEditProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, SendEditSubclassProc, msg, wParam, lParam);
 }
 
 INT_PTR CALLBACK DlgProcSendFile(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -209,7 +209,7 @@ INT_PTR CALLBACK DlgProcSendFile(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM l
 
 		TranslateDialogDefault(hwndDlg);
 		EnumChildWindows(hwndDlg, ClipSiblingsChildEnumProc, 0);
-		OldSendEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_MSG), GWLP_WNDPROC, (LONG_PTR)SendEditSubclassProc);
+		mir_subclassWindow( GetDlgItem(hwndDlg, IDC_MSG), SendEditSubclassProc);
 
 		Window_SetIcon_IcoLib(hwndDlg, SKINICON_EVENT_FILE);
 		Button_SetIcon_IcoLib(hwndDlg, IDC_DETAILS, SKINICON_OTHER_USERDETAILS, LPGEN("View User's Details"));
@@ -284,7 +284,7 @@ INT_PTR CALLBACK DlgProcSendFile(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM l
 						DestroyIcon(hIcon);
 		}	}	}	}
 		return CallService(MS_CLIST_MENUDRAWITEM, wParam, lParam);
-		
+
 	case M_FILECHOOSEDONE:
 		if (lParam != 0) {
 			FilenameToFileList(hwndDlg, dat, (TCHAR*)lParam);
@@ -347,8 +347,7 @@ INT_PTR CALLBACK DlgProcSendFile(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM l
 
 		if (dat)
 			FreeFileDlgData(dat);
-		
-		SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_MSG), GWLP_WNDPROC, (LONG_PTR)OldSendEditProc);
+
 		return TRUE;
 	}
 	return FALSE;

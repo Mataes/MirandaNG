@@ -24,6 +24,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef M_MESSAGE_H__
 #define M_MESSAGE_H__ 1
 
+#include <m_core.h>
+
+extern int hLangpack;
+
 //brings up the send message dialog for a contact
 //wParam = (WPARAM)(HANDLE)hContact
 //lParam = (LPARAM)(char*)szText
@@ -67,16 +71,21 @@ typedef struct {
 	HWND hwndLog; // log area window for the contact (or NULL if there is none)
 } MessageWindowEventData;
 
-#define MS_MSG_GETWINDOWAPI "MessageAPI/WindowAPI"
+//wparam = (HANDLE)hContact
+//lparam = (TCHAR*)ptszMessageText
+//Sets a status line text for the appropriate contact
+#define MS_MSG_SETSTATUSTEXT "MessageAPI/SetStatusText"
+
 //wparam = 0
 //lparam = 0
 //Returns a dword with the current message api version
 //Current version is 0, 0, 0, 4
+#define MS_MSG_GETWINDOWAPI "MessageAPI/WindowAPI"
 
-#define MS_MSG_GETWINDOWCLASS "MessageAPI/WindowClass"
 //wparam = (char*)szBuf
 //lparam = (int)cbSize size of buffer
 //Sets the window class name in wParam (ex. "SRMM" for srmm.dll)
+#define MS_MSG_GETWINDOWCLASS "MessageAPI/WindowClass"
 
 typedef struct {
 	int cbSize;
@@ -98,18 +107,34 @@ typedef struct {
 	void *local; // used to store pointer to custom data
 } MessageWindowData;
 
-#define MS_MSG_GETWINDOWDATA "MessageAPI/GetWindowData"
 //wparam = (MessageWindowInputData*)
 //lparam = (MessageWindowData*)
 //returns 0 on success and returns non-zero (1) on error or if no window data exists for that hcontact
+#define MS_MSG_GETWINDOWDATA "MessageAPI/GetWindowData"
 
+//wparam = 0 (unused)
+//lparam = (MessageWindowEvent*)
+//fired before SRMM writes an entered message into the database
+#define ME_MSG_PRECREATEEVENT    "MessageAPI/PreCreateEvent"
 
-#define ME_MSG_WINDOWPOPUP		"MessageAPI/WindowPopupRequested"
+typedef struct {
+	int cbSize;
+	int seq;      // number returned by PSS_MESSAGE
+	HANDLE hContact;
+	DBEVENTINFO *dbei; // database event written on the basis of message sent
+} MessageWindowEvent;
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// SRMM popup menu
+
 // wParam = 0
 // lParam = (MessageWindowPopupData *)&MessageWindowPopupData;
 // Fired to allow plugins to add items to the msg window popup menu
 // Always fired twice: once with MSG_WINDOWPOPUP_SHOWING and once with MSG_WINDOWPOPUP_SELECTED.
 // This is done to allow cleaning of resources.
+
+#define ME_MSG_WINDOWPOPUP		"MessageAPI/WindowPopupRequested"
+
 #define MSG_WINDOWPOPUP_SHOWING  1
 #define MSG_WINDOWPOPUP_SELECTED 2
 
@@ -127,47 +152,87 @@ typedef struct {
 	int selection; // The menu control id or 0 if no one was selected
 } MessageWindowPopupData;
 
-// status icons - HICONs will be automatically destroyed when removed or when miranda exits
+/////////////////////////////////////////////////////////////////////////////////////////
+// status icons
 
 #define MBF_DISABLED       0x01
 #define MBF_HIDDEN         0x02
+#define MBF_UNICODE        0x04
+
+#ifdef _UNICODE
+	#define MBF_TCHAR MBF_UNICODE
+#else
+	#define MBF_TCHAR 0
+#endif
 
 typedef struct {
-	int cbSize;
-	char *szModule;						// used in combo with the dwId below to create a unique identifier
-	DWORD dwId;
-	HICON hIcon, hIconDisabled;		// hIconDisabled is optional - if null, will use hIcon in the disabled state
-	int flags;								// bitwize OR of MBF_* flags above
-	char *szTooltip;
+	int   cbSize;                    // must be equal to sizeof(StatusIconData)
+	char *szModule;                  // used in combo with the dwId below to create a unique identifier
+	DWORD dwId;                      // uniquely defines a button inside a module
+	HICON hIcon, hIconDisabled;      // hIconDisabled is optional - if null, will use hIcon in the disabled state
+	int   flags;                     // bitwize OR of MBF_* flags above
+	union {
+		char *szTooltip;              // controlled by MBF_UNICODE
+		TCHAR *tszTooltip;
+		wchar_t *wszTooltip;
+	};
 } StatusIconData;
 
-#define MBCF_RIGHTBUTTON   0x01		// if this flag is specified, the click was a right button - otherwize it was a left click
+#define MBCF_RIGHTBUTTON   0x01     // if this flag is specified, the click was a right button - otherwize it was a left click
 
 typedef struct {
-	int cbSize;
-	POINT clickLocation;					// click location, in screen coordinates
+	int   cbSize;
+	POINT clickLocation;             // click location, in screen coordinates
 	char *szModule;
 	DWORD dwId;
-	int flags;								// bitwize OR of MBCF_* flags above
+	int   flags;                       // bitwize OR of MBCF_* flags above
 } StatusIconClickData;
 
-#define MS_MSG_ADDICON			"MessageAPI/AddIcon"
+// wParam = (int)hLangpack
 // lParam = (StatusIconData *)&StatusIconData
+// #define MS_MSG_ADDICON "MessageAPI/AddIcon"
 
-#define MS_MSG_REMOVEICON		"MessageAPI/RemoveIcon"
+__forceinline INT_PTR Srmm_AddIcon(StatusIconData *sid)
+{	return CallService("MessageAPI/AddIcon", hLangpack, (LPARAM)sid);
+}
+
+// wParam = 0 (unused)
 // lParam = (StatusIconData *)&StatusIconData
 // only szModule and szId are used
+#define MS_MSG_REMOVEICON "MessageAPI/RemoveIcon"
 
-#define MS_MSG_MODIFYICON		"MessageAPI/ModifyIcon"
+__forceinline void Srmm_RemoveIcon(StatusIconData *sid)
+{	CallService(MS_MSG_REMOVEICON, 0, (LPARAM)sid);
+}
+
 // wParam = (HANDLE)hContact
 // lParam = (StatusIconData *)&StatusIconData
 // if hContact is null, icon is modified for all contacts
 // otherwise, only the flags field is valid
 // if either hIcon, hIconDisabled or szTooltip is null, they will not be modified
+#define MS_MSG_MODIFYICON "MessageAPI/ModifyIcon"
 
-#define ME_MSG_ICONPRESSED		"MessageAPI/IconPressed"
+__forceinline void Srmm_ModifyIcon(HANDLE hContact, StatusIconData *sid)
+{	CallService(MS_MSG_MODIFYICON, (WPARAM)hContact, (LPARAM)sid);
+}
+
+// wParam = (HANDLE)hContact
+// lParam = (int)zero-based index of a visible icon
+// returns (StatusIconData*)icon description filled for the required contact
+// don't free this memory.
+
+__forceinline StatusIconData* Srmm_GetNthIcon(HANDLE hContact, int index)
+{	return (StatusIconData*)CallService("MessageAPI/GetNthIcon", (WPARAM)hContact, index);
+}
+
 // wParam = (HANDLE)hContact;
 // lParam = (StatusIconClickData *)&StatusIconClickData;
 // catch to show a popup menu, etc.
+#define ME_MSG_ICONPRESSED		"MessageAPI/IconPressed"
+
+// wParam = (HANDLE)hContact;
+// lParam = (StatusIconkData*)pIcon
+// catch to be notified about the icon list's change.
+#define ME_MSG_ICONSCHANGED   "MessageAPI/IconsChanged"
 
 #endif // M_MESSAGE_H__

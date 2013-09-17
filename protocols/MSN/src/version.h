@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2008-2009 Boris Krasnovskiy.
 
 This program is free software; you can redistribute it and/or
@@ -16,6 +18,14 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define __FILEVERSION_STRING        0,11,0,1
-#define __VERSION_STRING            "0.11.0.1"
-#define __VERSION_DWORD             PLUGIN_MAKE_VERSION(0, 11, 0, 1)
+#define __FILEVERSION_STRING        0,11,0,2
+#define __VERSION_STRING            "0.11.0.2"
+#define __VERSION_DWORD             PLUGIN_MAKE_VERSION(0, 11, 0, 2)
+
+#define __PLUGIN_NAME				"MSN Protocol"
+#define __DESCRIPTION 				"Microsoft Network (MSN) protocol support for Miranda NG."
+#define __AUTHOR					"Boris Krasnovskiy, George Hazan, Richard Hughes"
+#define __AUTHOREMAIL				"borkra@miranda-im.org"
+#define __COPYRIGHT					"© 2001-2012 Richard Hughes, George Hazan, Boris Krasnovskiy"
+#define __AUTHORWEB					"http://miranda-ng.org/p/MSN/"
+

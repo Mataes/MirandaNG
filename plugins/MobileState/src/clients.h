@@ -1,6 +1,6 @@
 /*
    Mobile State plugin for Miranda NG (www.miranda-ng.org)
-   (c) 2012 by Robert Pösel
+   (c) 2012-13 by Robert Pösel
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -34,8 +34,17 @@ static const TCHAR *clients[] = {
 	_T("bombus"),
 	_T("colibry"),
 	_T("berry"),
-	_T("iphone"),
+	_T("phone"),
 	_T("ipad"),
 	_T("im+"),
-	_T("bayan")
+	_T("bayan"),
+	_T("imo.im"),
+	_T("slick"),
+	_T("talkonaut"),
+	_T("jabbroid"),
+	_T("talkdroid"),
+	_T("blackberry"),
+	_T("prelude"),
+	_T("nimbuzz"),
+	_T("mqutim")
 };

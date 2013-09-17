@@ -111,7 +111,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;WIN64;_WINDOWS;_NOSDK;_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_NOSDK;_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -175,7 +175,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_DEBUG;WIN64;_WINDOWS;_NOSDK;_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_NOSDK;_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -216,7 +216,6 @@
     <ClInclude Include="..\include\m_email.h" />
     <ClInclude Include="..\include\m_file.h" />
     <ClInclude Include="..\include\m_findadd.h" />
-    <ClInclude Include="..\include\m_fuse.h" />
     <ClInclude Include="..\include\m_history.h" />
     <ClInclude Include="..\include\m_hotkeys.h" />
     <ClInclude Include="..\include\m_icq.h" />
@@ -250,17 +249,6 @@
     <ClInclude Include="modules\extraicons\extraicons.h" />
     <ClInclude Include="modules\extraicons\usedIcons.h" />
     <ClInclude Include="modules\findadd\findadd.h" />
-    <ClInclude Include="modules\json\internalJSONNode.h" />
-    <ClInclude Include="modules\json\JSONChildren.h" />
-    <ClInclude Include="modules\json\JSONDebug.h" />
-    <ClInclude Include="modules\json\JSONDefs.h" />
-    <ClInclude Include="modules\json\JSONMemory.h" />
-    <ClInclude Include="modules\json\JSONNode.h" />
-    <ClInclude Include="modules\json\JSONOptions.h" />
-    <ClInclude Include="modules\json\JSONWorker.h" />
-    <ClInclude Include="modules\json\JSON_Base64.h" />
-    <ClInclude Include="modules\json\libJSON.h" />
-    <ClInclude Include="modules\json\NumberToString.h" />
     <ClInclude Include="modules\netlib\netlib.h" />
     <ClInclude Include="modules\options\filter.h" />
     <ClInclude Include="..\include\m_protoint.h" />
@@ -347,42 +335,6 @@
       <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="modules\ignore\ignore.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\internalJSONNode.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONChildren.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONDebug.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONIterators.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONMemory.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONNode.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONNode_Mutex.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONWorker.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSONWriter.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\JSON_Base64.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\libJSON.cpp">
-      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="modules\json\json.cpp">
       <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="modules\langpack\lpservices.cpp">
@@ -476,6 +428,9 @@
       <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="modules\skin\sounds.cpp">
+      <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="modules\srmm\statusicon.cpp">
       <PrecompiledHeaderFile>..\..\core\commonheaders.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="modules\utils\bmpfilter.cpp">

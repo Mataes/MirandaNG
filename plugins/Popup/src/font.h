@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/font.h $
-Revision       : $Revision: 1623 $
-Last change on : $Date: 2010-06-24 18:47:07 +0300 (Чт, 24 июн 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #ifndef __font_h__
@@ -35,7 +26,7 @@ Last change by : $Author: Merlin_de $
 
 //basic constants for all popup plugins
 #define PU_FNT_AND_COLOR		"Popups"			//common main group for customice\font&color
-#define PU_FNT_AND_COLOR_DB		PU_COMMONMODUL		//use eg strcpy(fid.dbSettingsGroup, PU_FNT_GROUP_DB);
+#define PU_FNT_AND_COLOR_DB		MODULNAME		//use eg strcpy(fid.dbSettingsGroup, PU_FNT_GROUP_DB);
 
 #define PU_FNT_PREFIX			"fnt%s"				//use eg mir_snprintf(fid.prefix, sizeof(fid.prefix), PU_FNT_PREFIX, PU_FNT_NAME_....);
 #define PU_FNT_NAME_TITLE		"Title"				//use eg lstrcpy(fid.name, _T(FNT_NAME_....)) for FontIDT

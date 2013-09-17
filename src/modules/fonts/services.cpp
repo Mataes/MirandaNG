@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -129,7 +129,7 @@ static void GetDefaultFontSetting(LOGFONT* lf, COLORREF* colour)
 	_tcscpy(lf->lfFaceName, _T("Verdana"));
 	
 	HDC hdc = GetDC(0);
-	lf->lfHeight = -MulDiv(lf->lfHeight,GetDeviceCaps(hdc, LOGPIXELSY), 72);
+	lf->lfHeight = -MulDiv(lf->lfHeight, GetDeviceCaps(hdc, LOGPIXELSY), 72);
 	ReleaseDC(0, hdc);
 }
 
@@ -145,7 +145,7 @@ int GetFontSettingFromDB(char *settings_group, char *prefix, LOGFONT* lf, COLORR
 	if (flags & FIDF_APPENDNAME) mir_snprintf(idstr, SIZEOF(idstr), "%sName", prefix);
 	else mir_snprintf(idstr, SIZEOF(idstr), "%s", prefix);
 
-	if ( !DBGetContactSettingTString(NULL, settings_group, idstr, &dbv)) {
+	if ( !db_get_ts(NULL, settings_group, idstr, &dbv)) {
 		_tcscpy(lf->lfFaceName, dbv.ptszVal);
 		db_free(&dbv);
 	}

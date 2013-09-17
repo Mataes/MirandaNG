@@ -53,7 +53,7 @@ begin
   end
   else
     pcw:=FastAnsiToWideBuf(BASS_ERRORS[idx],@buf);
-    
+
   MessageBoxW(0,TranslateW(pcw),
       TranslateW('Oops! BASS error'),MB_ICONERROR)
 end;
@@ -139,7 +139,7 @@ begin
         else
           result:=true;
       end;
-    
+
     end;
   end;
 
@@ -210,6 +210,29 @@ begin
   MyStopBASS;
 end;
 
+function GetDeviceNumber:integer;
+var
+  i:integer;
+  info:BASS_DEVICEINFO;
+begin
+  // default device
+  result:=-1;
+  i:=1;
+  repeat
+    if not BASS_GetDeviceInfo(i,info) then
+      break;
+    if (info.flags and BASS_DEVICE_ENABLED)<>0 then
+      if StrCmp(info.name,usedevice)=0 then
+      begin
+        // not default device
+        if (info.flags and BASS_DEVICE_DEFAULT)=0 then
+          result:=i;
+        break;
+      end;
+    inc(i);
+  until false;
+end;
+
 function MyInitBASS:int;
 var
   fd:TWin32FindDataW;
@@ -218,6 +241,7 @@ var
 //  buf1:array [0..31] of WideChar;
   pc:PWideChar;
   p:Bool;
+  num:integer;
 begin
   if Inited then
   begin
@@ -227,11 +251,19 @@ begin
 
   Inited:=true;
   BASS_Free;
-  p:=BASS_Init(-1,44100,BASS_DEVICE_3D,0,nil);
+
+  num:=GetDeviceNumber;
+  p:=BASS_Init(num,44100,BASS_DEVICE_3D,0,nil);
   if not p then
-    p:=BASS_Init(-1,44100,0,0,nil);
-  if not p then
-    p:=BASS_Init(1,44100,0,0,nil);
+    p:=BASS_Init(num,44100,0,0,nil);
+  // not default device choosed - check default now
+  if (not p) and (num>=0) then
+  begin
+    p:=BASS_Init(-1,44100,BASS_DEVICE_3D,0,nil);
+    if not p then
+      p:=BASS_Init(-1,44100,0,0,nil);
+  end;
+
   if not p then
   begin
     ErrorCustom('Can''t initialize device');
@@ -316,9 +348,6 @@ begin
   if recpath<>nil then
   begin
     ConvertFileName(recpath,buf,ActiveContact);
-//    pcw:=ParseVarString(recpath,ActiveContact);
-//    CallService(MS_UTILS_PATHTOABSOLUTEW,dword(pcw),dword(buf));
-//    mFreeMem(pcw);
     if not ForceDirectories(buf) then
     begin
       result:=nil;
@@ -549,7 +578,7 @@ begin
           end
           else
             needtofree:=true;
-          
+
           // to avoid mem leak and wrong tag process
           result:=true;
         end;
@@ -699,7 +728,7 @@ begin
           end;
         end;
       end;
-{$IFDEF Debug}      
+{$IFDEF Debug}
 logmeta(tag,artist,title);
 {$ENDIF}
       mFreeMem(oldartist);
@@ -855,7 +884,7 @@ begin
 
   if chan=0 then
   begin
-    if (CallService(MS_RADIO_COMMAND,MRC_STATUS,RD_STATUS_GET)=RD_STATUS_ABORT) or 
+    if (CallService(MS_RADIO_COMMAND,MRC_STATUS,RD_STATUS_GET)=RD_STATUS_ABORT) or
        (plist=nil) then
     begin
       CallService(MS_RADIO_COMMAND,MRC_STOP,1);

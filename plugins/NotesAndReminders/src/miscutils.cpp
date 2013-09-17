@@ -23,73 +23,20 @@ WORD ConvertControlToHotKey(WORD HK)
 	return R;
 }
 
-void WriteSettingInt(HANDLE hContact,char *ModuleName,char *SettingName,int Value)
-{
-	DBCONTACTWRITESETTING cws = {0};
-	DBVARIANT dbv = {0};
-	dbv.type = DBVT_DWORD;
-	dbv.dVal = Value;
-	cws.szModule = ModuleName;
-	cws.szSetting = SettingName;
-	cws.value = dbv;
-	CallService(MS_DB_CONTACT_WRITESETTING, (WPARAM)hContact, (DWORD)&cws);
-}
-
-int ReadSettingInt(HANDLE hContact,char *ModuleName,char *SettingName,int Default)
-{
-	DBCONTACTGETSETTING cws = {0};
-	DBVARIANT dbv = {0};
-	dbv.type = DBVT_DWORD;
-	dbv.dVal = Default;
-	cws.szModule = ModuleName;
-	cws.szSetting = SettingName;
-	cws.pValue = &dbv;
-	if (CallService(MS_DB_CONTACT_GETSETTING,(DWORD)hContact,(DWORD)&cws)) 
-		return Default;
-	else 
-		return dbv.dVal;
-}
-
-void DeleteSetting(HANDLE hContact,char *ModuleName,char *SettingName)
-{
-	DBCONTACTGETSETTING dbcgs = {0};
-	dbcgs.szModule = ModuleName;
-	dbcgs.szSetting = SettingName;
-	dbcgs.pValue = NULL;
-	CallService(MS_DB_CONTACT_DELETESETTING,(DWORD)hContact,(DWORD)&dbcgs);
-}
-
 void FreeSettingBlob(WORD pSize,void *pbBlob)
 {
 	DBVARIANT dbv = {0};
 	dbv.type = DBVT_BLOB;
 	dbv.cpbVal = pSize;
 	dbv.pbVal = (BYTE*)pbBlob;
-	CallService(MS_DB_CONTACT_FREEVARIANT,0,(DWORD)&dbv);
-}
-
-void WriteSettingBlob(HANDLE hContact,char *ModuleName,char *SettingName,WORD pSize,void *pbBlob)
-{
-	DBCONTACTWRITESETTING cgs = {0};
-	DBVARIANT dbv = {0};
-	dbv.type = DBVT_BLOB;
-	dbv.cpbVal = pSize;
-	dbv.pbVal = (BYTE*)pbBlob;
-	cgs.szModule = ModuleName;
-	cgs.szSetting = SettingName;
-	cgs.value = dbv;
-	CallService(MS_DB_CONTACT_WRITESETTING,(DWORD)hContact,(DWORD)&cgs);
+	db_free(&dbv);
 }
 
 void ReadSettingBlob(HANDLE hContact, char *ModuleName, char *SettingName, WORD *pSize, void **pbBlob)
 {
-	DBCONTACTGETSETTING cgs = {0};
 	DBVARIANT dbv = {0};
 	dbv.type = DBVT_BLOB;
-	cgs.szModule = ModuleName;
-	cgs.szSetting = SettingName;
-	cgs.pValue = &dbv;
-	if ( CallService(MS_DB_CONTACT_GETSETTING,(DWORD)hContact,(DWORD)&cgs)) {
+	if ( db_get(hContact, ModuleName, SettingName, &dbv)) {
 		*pSize = 0;
 		*pbBlob = NULL;
 	}
@@ -101,7 +48,7 @@ void ReadSettingBlob(HANDLE hContact, char *ModuleName, char *SettingName, WORD 
 
 void WriteSettingIntArray(HANDLE hContact,char *ModuleName,char *SettingName,const int *Value, int Size)
 {
-	WriteSettingBlob(hContact, ModuleName, SettingName, WORD(sizeof(int)*Size), (void*)Value);
+	db_set_blob(hContact, ModuleName, SettingName, (void*)Value, sizeof(int)*Size);
 }
 
 bool ReadSettingIntArray(HANDLE hContact,char *ModuleName,char *SettingName,int *Value, int Size)

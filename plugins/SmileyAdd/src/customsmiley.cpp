@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "customsmiley.h"
+#include "general.h"
 
 SmileyPackCListType g_SmileyPackCStore;
 
@@ -43,9 +43,8 @@ bool SmileyPackCListType::AddSmileyPack(HANDLE hContact, TCHAR* dir)
 
 bool SmileyPackCListType::AddSmiley(HANDLE hContact, TCHAR* path)
 {
-	SmileyPackCType* smpack = GetSmileyPack(hContact);
-	if (smpack == NULL)
-	{  
+	SmileyPackCType *smpack = GetSmileyPack(hContact);
+	if (smpack == NULL) {  
 		smpack = new SmileyPackCType;
 
 		smpack->SetId(hContact);
@@ -58,9 +57,9 @@ bool SmileyPackCListType::AddSmiley(HANDLE hContact, TCHAR* path)
 SmileyPackCType* SmileyPackCListType::GetSmileyPack(HANDLE id)
 {
 	for (int i = 0; i < m_SmileyPacks.getCount(); i++)
-	{
-		if (m_SmileyPacks[i].GetId() == id) return &m_SmileyPacks[i];
-	}
+		if (m_SmileyPacks[i].GetId() == id)
+			return &m_SmileyPacks[i];
+
 	return NULL;
 }
 
@@ -78,14 +77,14 @@ bool SmileyCType::CreateTriggerText(char* text)
 	int len = (int)strlen(text);
 	if (len == 0) return false;
 
-	int reslen = Netlib_GetBase64DecodedBufferSize(len)+1;
-	char* res = (char*)alloca(reslen);
+	unsigned reslen;
+	char* res = (char*)mir_base64_decode(text, &reslen);
+	if (res == NULL)
+		return false;
 
-	NETLIBBASE64 nlb = { text, len, ( PBYTE )res, reslen };
-	if (!CallService(MS_NETLIB_BASE64DECODE, 0, LPARAM( &nlb ))) return false;
-	res[nlb.cbDecoded] = 0; 
-
+	char save = res[reslen]; res[reslen] = 0; // safe because of mir_alloc
 	TCHAR *txt = mir_utf8decodeT(res);
+	res[reslen] = save;
 
 	if (txt == NULL) return false;
 
@@ -142,10 +141,8 @@ bool SmileyPackCType::LoadSmiley(TCHAR* path)
 
 	bkstring name = dirs.substr(slash+1, dot - slash - 1); 
 
-	for (int i=0; i < m_SmileyList.getCount(); i++)
-	{
-		if (m_SmileyList[i].GetTriggerText() == name)
-		{
+	for (int i=0; i < m_SmileyList.getCount(); i++) {
+		if (m_SmileyList[i].GetTriggerText() == name) {
 			m_SmileyList[i].LoadFromResource(dirs, 0);
 			return true; 
 		}
@@ -164,8 +161,7 @@ bool SmileyPackCType::LoadSmiley(TCHAR* path)
 void SmileyPackCType::AddTriggersToSmileyLookup(void)
 {
 	bkstring empty;
-	for (int dist=0; dist<m_SmileyList.getCount(); dist++)
-	{
+	for (int dist=0; dist<m_SmileyList.getCount(); dist++) {
 		SmileyLookup *dats = new SmileyLookup(m_SmileyList[dist].GetTriggerText(), false, dist, empty); 
 		m_SmileyLookup.insert(dats);
 	}

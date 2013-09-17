@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -45,9 +45,7 @@ HWND g_hwndHotkeyHost = NULL, g_hwndHkOptions = NULL;
 HANDLE hEvChanged = 0;
 
 static BOOL bModuleInitialized = FALSE;
-
-HHOOK hhkKeyboard = NULL;
-static LRESULT CALLBACK sttKeyboardProc(int code, WPARAM wParam, LPARAM lParam);
+static HHOOK hhkKeyboard = NULL;
 
 WORD GetHotkeyValue(INT_PTR idHotkey)
 {
@@ -375,13 +373,13 @@ int LoadSkinHotkeys(void)
 
 		WORD key;
 		if ((key = db_get_w(NULL, "Clist", szSetting, 0))) {
-			DBDeleteContactSetting(NULL, "Clist", szSetting);
-			DBWriteContactSettingWord(NULL, DBMODULENAME, newSettings[i], key);
+			db_unset(NULL, "Clist", szSetting);
+			db_set_w(NULL, DBMODULENAME, newSettings[i], key);
 		}
 
 		mir_snprintf(szSetting, SIZEOF(szSetting), "HKEn%s", oldSettings[i]);
 		if ((key = db_get_b(NULL, "Clist", szSetting, 0))) {
-			DBDeleteContactSetting(NULL, "Clist", szSetting);
+			db_unset(NULL, "Clist", szSetting);
 			db_set_b(NULL, DBMODULENAME "Off", newSettings[i], (BYTE)(key == 0));
 		}
 	}

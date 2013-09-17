@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -357,7 +358,7 @@ public:
 
 		va_list args;
 		va_start(args, path);
-		_vsntprintf(m_buf, BUFSIZE, path, args);
+		mir_vsntprintf(m_buf, BUFSIZE, path, args);
 		m_buf[BUFSIZE-1] = 0;
 		va_end(args);
 	}
@@ -369,7 +370,7 @@ public:
 
 		va_list args;
 		va_start(args, path);
-		_vsnprintf(buf, BUFSIZE, path, args);
+		mir_vsnprintf(buf, BUFSIZE, path, args);
 		buf[BUFSIZE-1] = 0;
 		MultiByteToWideChar(CP_ACP, 0, buf, -1, m_buf, BUFSIZE);
 		va_end(args);

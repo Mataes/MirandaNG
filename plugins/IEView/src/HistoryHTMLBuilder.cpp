@@ -18,10 +18,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-#include "HistoryHTMLBuilder.h"
 
-#include "Options.h"
-#include "Utils.h"
+#include "ieview_common.h"
 
 // srmm stuff
 #define SMF_LOG_SHOWNICK 1
@@ -91,7 +89,7 @@ char *HistoryHTMLBuilder::timestampToString(DWORD dwFlags, time_t check) {
 	dbtts.szFormat = (char *)"d t";
 	CallService(MS_DB_TIME_TIMESTAMPTOSTRING, check, (LPARAM) & dbtts);
 	strncat(szResult, str, 500);
-	Utils::UTF8Encode(szResult, szResult, 500);
+	lstrcpynA(szResult, ptrA(mir_utf8encode(szResult)), 500);
 	return szResult;
 }
 
@@ -100,39 +98,39 @@ void HistoryHTMLBuilder::loadMsgDlgFont(const char *dbSetting, LOGFONTA * lf, CO
 	int style;
 	DBVARIANT dbv;
 	if (bkgColour) {
-		wsprintfA(str, "Back.%s", dbSetting);
-		*bkgColour = DBGetContactSettingDword(NULL, HPPMOD, str, 0xFFFFFF);
+		mir_snprintf(str, SIZEOF(str), "Back.%s", dbSetting);
+		*bkgColour = db_get_dw(NULL, HPPMOD, str, 0xFFFFFF);
 	}
 	if (colour) {
-		wsprintfA(str, "Font.%s.Color", dbSetting);
-		*colour = DBGetContactSettingDword(NULL, HPPMOD, str, 0x000000);
+		mir_snprintf(str, SIZEOF(str), "Font.%s.Color", dbSetting);
+		*colour = db_get_dw(NULL, HPPMOD, str, 0x000000);
 	}
 	if (lf) {
-		wsprintfA(str, "Font.%s.Size", dbSetting);
-		lf->lfHeight = (char) DBGetContactSettingByte(NULL, HPPMOD, str, 10);
+		mir_snprintf(str, SIZEOF(str), "Font.%s.Size", dbSetting);
+		lf->lfHeight = (char) db_get_b(NULL, HPPMOD, str, 10);
 		lf->lfWidth = 0;
 		lf->lfEscapement = 0;
 		lf->lfOrientation = 0;
-		wsprintfA(str, "Font.%s.Style.Bold", dbSetting);
-		style = DBGetContactSettingByte(NULL, HPPMOD, str, 0);
+		mir_snprintf(str, SIZEOF(str), "Font.%s.Style.Bold", dbSetting);
+		style = db_get_b(NULL, HPPMOD, str, 0);
 		lf->lfWeight = style & FONTF_BOLD ? FW_BOLD : FW_NORMAL;
-		wsprintfA(str, "Font.%s.Style.Italic", dbSetting);
-		style = DBGetContactSettingByte(NULL, HPPMOD, str, 0) << 1;
+		mir_snprintf(str, SIZEOF(str), "Font.%s.Style.Italic", dbSetting);
+		style = db_get_b(NULL, HPPMOD, str, 0) << 1;
 		lf->lfItalic = style & FONTF_ITALIC ? 1 : 0;
 		lf->lfUnderline = style & FONTF_UNDERLINE ? 1 : 0;
 		lf->lfStrikeOut = 0;
-		wsprintfA(str, "Font.%s.Charset", dbSetting);
-		lf->lfCharSet = DBGetContactSettingByte(NULL, HPPMOD, str, DEFAULT_CHARSET);
+		mir_snprintf(str, SIZEOF(str), "Font.%s.Charset", dbSetting);
+		lf->lfCharSet = db_get_b(NULL, HPPMOD, str, DEFAULT_CHARSET);
 		lf->lfOutPrecision = OUT_DEFAULT_PRECIS;
 		lf->lfClipPrecision = CLIP_DEFAULT_PRECIS;
 		lf->lfQuality = DEFAULT_QUALITY;
 		lf->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-		wsprintfA(str, "Font.%s.Name", dbSetting);
-		if (DBGetContactSetting(NULL, HPPMOD, str, &dbv))
+		mir_snprintf(str, SIZEOF(str), "Font.%s.Name", dbSetting);
+		if (db_get(NULL, HPPMOD, str, &dbv))
 			lstrcpyA(lf->lfFaceName, "Verdana");
 		else {
 			lstrcpynA(lf->lfFaceName, dbv.pszVal, sizeof(lf->lfFaceName));
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 }
@@ -165,7 +163,7 @@ void HistoryHTMLBuilder::buildHead(IEView *view, IEVIEWEVENT *event) {
 	} else {
 		Utils::appendText(&output, &outputSize, "<html><head>");
 		Utils::appendText(&output, &outputSize, "<style type=\"text/css\">\n");
-		COLORREF lineColor = DBGetContactSettingDword(NULL, HPPMOD, "LineColour", 0xFFFFFF);
+		COLORREF lineColor = db_get_dw(NULL, HPPMOD, "LineColour", 0xFFFFFF);
 		lineColor= 0;//(((lineColor & 0xFF) << 16) | (lineColor & 0xFF00) | ((lineColor & 0xFF0000) >> 16));
 		bkgColor = 0xFFFFFF;
 		if (protoSettings->getHistoryFlags() & Options::LOG_IMAGE_ENABLED) {
@@ -220,21 +218,20 @@ void HistoryHTMLBuilder::buildHead(IEView *view, IEVIEWEVENT *event) {
 	setLastEventType(-1);
 }
 
-void HistoryHTMLBuilder::appendEventNonTemplate(IEView *view, IEVIEWEVENT *event) {
-
-	DWORD dwFlags = DBGetContactSettingByte(NULL, HPPMOD, SRMSGSET_SHOWICONS, 0) ? SMF_LOG_SHOWICONS : 0;
-	char *szRealProto = getRealProto(event->hContact);
+void HistoryHTMLBuilder::appendEventNonTemplate(IEView *view, IEVIEWEVENT *event)
+{
+	DWORD dwFlags = db_get_b(NULL, HPPMOD, SRMSGSET_SHOWICONS, 0) ? SMF_LOG_SHOWICONS : 0;
+	ptrA szRealProto( getRealProto(event->hContact));
 	IEVIEWEVENTDATA* eventData = event->eventData;
 	for (int eventIdx = 0; eventData!=NULL && (eventIdx < event->count || event->count==-1); eventData = eventData->next, eventIdx++) {
 		int outputSize;
-		char *output;
-		output = NULL;
+		char *output = NULL;
 		int isSent = eventData->dwFlags & IEEDF_SENT;
 		int isRTL = eventData->dwFlags & IEEDF_RTL;
-		if (eventData->iType == IEED_EVENT_MESSAGE || eventData->iType == IEED_EVENT_STATUSCHANGE
-			|| eventData->iType == IEED_EVENT_URL || eventData->iType == IEED_EVENT_FILE) {
-			char *szName = NULL;
-			char *szText = NULL;
+		if (eventData->iType == IEED_EVENT_MESSAGE || eventData->iType == IEED_EVENT_STATUSCHANGE ||
+				eventData->iType == IEED_EVENT_URL || eventData->iType == IEED_EVENT_FILE)
+		{
+			ptrA szName, szText;
 			if (eventData->dwFlags & IEEDF_UNICODE_NICK)
 				szName = encodeUTF8(event->hContact, szRealProto, eventData->pszNickW, ENF_NAMESMILEYS, true);
 			else
@@ -249,47 +246,44 @@ void HistoryHTMLBuilder::appendEventNonTemplate(IEView *view, IEVIEWEVENT *event
 			const char *className = NULL;
 			const char *iconFile = NULL;
 			switch (eventData->iType) {
-				case IEED_EVENT_SYSTEM:
-					Utils::appendText(&output, &outputSize, "<div class=\"%s\">", "divSystem");
-					break;
-				case IEED_EVENT_FILE:
-					iconFile = "file.gif";
-					Utils::appendText(&output, &outputSize, "<div class=\"%s\">", isSent ? "divFileOut" : "divFileIn");
-					break;
-				case IEED_EVENT_URL:
-					iconFile = "url.gif";
-					Utils::appendText(&output, &outputSize, "<div class=\"%s\">", isSent ? "divUrlOut" : "divUrlIn");
-					break;
-				default:
-					iconFile = "message.gif";
-					Utils::appendText(&output, &outputSize, "<div class=\"%s\">", isSent ? "divMessageOut" : "divMessageIn");
+			case IEED_EVENT_SYSTEM:
+				Utils::appendText(&output, &outputSize, "<div class=\"%s\">", "divSystem");
+				break;
+			case IEED_EVENT_FILE:
+				iconFile = "file.gif";
+				Utils::appendText(&output, &outputSize, "<div class=\"%s\">", isSent ? "divFileOut" : "divFileIn");
+				break;
+			case IEED_EVENT_URL:
+				iconFile = "url.gif";
+				Utils::appendText(&output, &outputSize, "<div class=\"%s\">", isSent ? "divUrlOut" : "divUrlIn");
+				break;
+			default:
+				iconFile = "message.gif";
+				Utils::appendText(&output, &outputSize, "<div class=\"%s\">", isSent ? "divMessageOut" : "divMessageIn");
 			}
-			if (dwFlags & SMF_LOG_SHOWICONS && iconFile != NULL) {
+			if (dwFlags & SMF_LOG_SHOWICONS && iconFile != NULL)
 				Utils::appendIcon(&output, &outputSize, iconFile);
-			} else {
+			else
 				Utils::appendText(&output, &outputSize, " ");
-			}
+
 			Utils::appendText(&output, &outputSize, "<span class=\"%s\">%s:</span>", isSent ? "nameOut" : "nameIn", szName);
 			Utils::appendText(&output, &outputSize, "<span class=\"%s\">%s</span><br>", isSent ? "timeOut" : "timeIn", timestampToString(dwFlags, eventData->time));
-			if (eventData->iType == IEED_EVENT_FILE) {
+			if (eventData->iType == IEED_EVENT_FILE)
 				Utils::appendText(&output, &outputSize, "%s:<br> %s", isSent ? Translate("Outgoing File Transfer") : Translate("Incoming File Transfer"), szText);
-			} else if (eventData->iType == IEED_EVENT_URL) {
+			else if (eventData->iType == IEED_EVENT_URL)
 				Utils::appendText(&output, &outputSize, "%s:<br> %s", isSent ? Translate("URL sent") : Translate("URL received"), szText);
-			} else {
+			else
 				Utils::appendText(&output, &outputSize, "%s", szText);
-			}
+
 			Utils::appendText(&output, &outputSize, "</div>\n");
 			setLastEventType(MAKELONG(eventData->dwFlags, eventData->iType));
 			setLastEventTime(eventData->time);
-			if (szName!=NULL) delete szName;
-			if (szText!=NULL) delete szText;
 		}
 		if (output != NULL) {
 			view->write(output);
 			free(output);
 		}
 	}
-	if (szRealProto!=NULL) delete szRealProto;
 	view->documentClose();
 }
 

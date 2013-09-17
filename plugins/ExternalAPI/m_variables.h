@@ -37,37 +37,6 @@
 #endif
 
 // --------------------------------------------------------------------------
-// Memory management
-// --------------------------------------------------------------------------
-
-// Release memory that was allocated by the Variables plugin, e.g. returned
-// strings.
-
-#define MS_VARS_FREEMEMORY  "Vars/FreeMemory"
-
-// Parameters:
-// ------------------------
-// wParam = (WPARAM)(void *)pntr
-//   Pointer to memory that was allocated by the Variables plugin (e.g. a
-//   returned string) (can be NULL).
-// lParam = 0
-
-// Return Value:
-// ------------------------
-// Does return 0 on success, nozero otherwise.
-
-// Note: Do only use this service to free memory that was *explicitliy*
-// stated that it should be free with this service.
-
-// Helper function for easy using:
-#ifndef VARIABLES_NOHELPER
-__inline static void variables_free(void *pntr) {
-
-  CallService(MS_VARS_FREEMEMORY, (WPARAM)pntr, 0);
-}
-#endif
-
-// --------------------------------------------------------------------------
 // String formatting
 // --------------------------------------------------------------------------
 
@@ -90,7 +59,7 @@ __inline static void variables_free(void *pntr) {
 // ------------------------
 // Returns a pointer to the resolved string or NULL in case of an error.
 
-// Note: The returned pointer needs to be freed using MS_VARS_FREEMEMORY.
+// Note: The returned pointer needs to be freed using mir_free().
 
 typedef struct {
   int cbSize;  // Set this to sizeof(FORMATINFO).
@@ -138,7 +107,7 @@ typedef struct {
 
 // Helper #1: variables_parse
 // ------------------------
-// The returned string needs to be freed using MS_VARS_FREEMEMORY.
+// The returned string needs to be freed using mir_free.
 
 #ifndef VARIABLES_NOHELPER
 __inline static TCHAR *variables_parse(TCHAR *tszFormat, TCHAR *tszExtraText, HANDLE hContact) {
@@ -180,51 +149,37 @@ __inline static TCHAR *variables_parse_ex(TCHAR *tszFormat, TCHAR *tszExtraText,
 // Note: The returned pointer needs to be released using your own free().
 
 #ifndef VARIABLES_NOHELPER
-__inline static TCHAR *variables_parsedup(TCHAR *tszFormat, TCHAR *tszExtraText, HANDLE hContact) {
-
-  if (ServiceExists(MS_VARS_FORMATSTRING)) {
-    FORMATINFO fi;
-    TCHAR *tszParsed, *tszResult;
-
-    ZeroMemory(&fi, sizeof(fi));
-    fi.cbSize = sizeof(fi);
-    fi.tszFormat = tszFormat;
-    fi.tszExtraText = tszExtraText;
-    fi.hContact = hContact;
-    fi.flags |= FIF_TCHAR;
-    tszParsed = (TCHAR *)CallService(MS_VARS_FORMATSTRING, (WPARAM)&fi, 0);
-    if (tszParsed) {
-      tszResult = mir_tstrdup(tszParsed);
-      CallService(MS_VARS_FREEMEMORY, (WPARAM)tszParsed, 0);
-      return tszResult;
-    }
-  }
-  return tszFormat?mir_tstrdup(tszFormat):tszFormat;
+__inline static TCHAR *variables_parsedup(TCHAR *tszFormat, TCHAR *tszExtraText, HANDLE hContact)
+{
+	if ( ServiceExists(MS_VARS_FORMATSTRING)) {
+		FORMATINFO fi = { sizeof(fi) };
+		fi.tszFormat = tszFormat;
+		fi.tszExtraText = tszExtraText;
+		fi.hContact = hContact;
+		fi.flags |= FIF_TCHAR;
+		TCHAR *tszParsed = (TCHAR *)CallService(MS_VARS_FORMATSTRING, (WPARAM)&fi, 0);
+		if (tszParsed)
+			return tszParsed;
+	}
+	return tszFormat ? mir_tstrdup(tszFormat) : tszFormat;
 }
 
 __inline static TCHAR *variables_parsedup_ex(TCHAR *tszFormat, TCHAR *tszExtraText, HANDLE hContact,
-										  TCHAR **tszaTemporaryVars, int cbTemporaryVarsSize) {
-
-  if (ServiceExists(MS_VARS_FORMATSTRING)) {
-    FORMATINFO fi;
-    TCHAR *tszParsed, *tszResult;
-
-    ZeroMemory(&fi, sizeof(fi));
-    fi.cbSize = sizeof(fi);
-    fi.tszFormat = tszFormat;
-    fi.tszExtraText = tszExtraText;
-    fi.hContact = hContact;
-    fi.flags |= FIF_TCHAR;
-    fi.tszaTemporaryVars = tszaTemporaryVars;
-    fi.cbTemporaryVarsSize = cbTemporaryVarsSize;
-    tszParsed = (TCHAR *)CallService(MS_VARS_FORMATSTRING, (WPARAM)&fi, 0);
-    if (tszParsed) {
-      tszResult = mir_tstrdup(tszParsed);
-      CallService(MS_VARS_FREEMEMORY, (WPARAM)tszParsed, 0);
-      return tszResult;
-    }
-  }
-  return tszFormat?mir_tstrdup(tszFormat):tszFormat;
+										  TCHAR **tszaTemporaryVars, int cbTemporaryVarsSize)
+{
+	if ( ServiceExists(MS_VARS_FORMATSTRING)) {
+		FORMATINFO fi = { sizeof(fi) };
+		fi.tszFormat = tszFormat;
+		fi.tszExtraText = tszExtraText;
+		fi.hContact = hContact;
+		fi.flags |= FIF_TCHAR;
+		fi.tszaTemporaryVars = tszaTemporaryVars;
+		fi.cbTemporaryVarsSize = cbTemporaryVarsSize;
+		TCHAR *tszParsed = (TCHAR *)CallService(MS_VARS_FORMATSTRING, (WPARAM)&fi, 0);
+		if (tszParsed)
+			return tszParsed;
+	}
+	return tszFormat ? mir_tstrdup(tszFormat) : tszFormat;
 }
 #endif
 
@@ -337,8 +292,6 @@ typedef struct {
 // Available Memory Storage Types:
 // These values describe which method Variables Plugin will use to free the
 // buffer returned by the parse function or service
-#define TR_MEM_VARIABLES    1  // Memory is allocated using the functions
-                               // retrieved by MS_VARS_GET_MMI.
 #define TR_MEM_MIRANDA      2  // Memory is allocated using Miranda's Memory
                                // Manager Interface (using the functions
                                // returned by MS_SYSTEM_GET_MMI), if
@@ -602,7 +555,6 @@ __inline static int variables_skin_helpbutton(HWND hwndDlg, UINT uIDButton) {
 }
 #endif
 
-
 #define MS_VARS_SHOWHELP    "Vars/ShowHelp"
 
 // WARNING: This service is obsolete, please use MS_VARS_SHOWHELPEX
@@ -632,70 +584,6 @@ __inline static int variables_skin_helpbutton(HWND hwndDlg, UINT uIDButton) {
 
 // Example:
 // CallService(MS_VARS_SHOWHELP, (WPARAM)hwndEdit, (LPARAM)"some initial text");
-
-// --------------------------------------------------------------------------
-// Retrieve a contact's HANDLE given a string
-// --------------------------------------------------------------------------
-
-#define MS_VARS_GETCONTACTFROMSTRING    "Vars/GetContactFromString"
-
-// Searching for contacts in the database. You can find contacts in db by
-// searching for their name, e.g first name.
-
-// Parameters:
-// ------------------------
-// wParam = (WPARAM)(CONTACTSINFO *)&ci
-//   See below.
-// lParam = 0
-
-// Return Value:
-// ------------------------
-// Returns number of contacts found matching the given string representation.
-// The hContacts array of CONTACTSINFO struct contains these hContacts after
-// the call.
-
-// Note: The hContacts array needs to be freed after use using
-// MS_VARS_FREEMEMORY.
-
-typedef struct {
-  int cbSize;  // Set this to sizeof(CONTACTSINFO).
-  union {
-    char *szContact;  // String to search for, e.g. last name (can't be NULL).
-    WCHAR *wszContact;
-    TCHAR *tszContact;
-  };
-  HANDLE *hContacts;  // (output) Array of contacts found.
-  DWORD flags;  // Contact details that will be matched with the search
-                // string (flags can be combined).
-} CONTACTSINFO;
-
-// Possible flags:
-#define CI_PROTOID      0x00000001  // The contact in the string is encoded
-                                    // in the format <PROTOID:UNIQUEID>, e.g.
-                                    // <ICQ:12345678>.
-#define CI_NICK         0x00000002  // Search nick names.
-#define CI_LISTNAME     0x00000004  // Search custom names shown in contact
-                                    // list.
-#define CI_FIRSTNAME    0x00000008  // Search contact's first names (contact
-                                    // details).
-#define CI_LASTNAME     0x00000010  // Search contact's last names (contact
-                                    // details).
-#define CI_EMAIL        0x00000020  // Search contact's email adresses
-                                    // (contact details).
-#define CI_UNIQUEID     0x00000040  // Search unique ids of the contac, e.g.
-                                    // UIN.
-#define CI_CNFINFO	    0x40000000  // Searches one of the CNF_* flags (set
-                                    // flags to CI_CNFINFO|CNF_X), only one
-                                    // CNF_ type possible
-#define CI_UNICODE      0x80000000  // tszContact is a unicode string
-                                    // (WCHAR*).
-
-#if defined(UNICODE) || defined(_UNICODE)
-#define CI_TCHAR    CI_UNICODE  // Strings in structure are TCHAR*.
-#else
-#define CI_TCHAR    0
-#endif
-
 
 
 #endif //__M_VARS

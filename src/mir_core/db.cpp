@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -36,12 +36,14 @@ MIR_CORE_DLL(int) db_get_b(HANDLE hContact, const char *szModule, const char *sz
 		cgs.szModule = szModule;
 		cgs.szSetting = szSetting;
 		cgs.pValue = &dbv;
-		if ( !currDb->GetContactSetting(hContact, &cgs))
+		if ( !currDb->GetContactSetting(hContact, &cgs)) {
 			switch(dbv.type) {
 				case DBVT_BYTE:	return dbv.bVal;
 				case DBVT_WORD:   return BYTE(dbv.wVal);
 				case DBVT_DWORD:	return BYTE(dbv.dVal);
 			}
+			currDb->FreeVariant(&dbv);
+		}
 	}
 	return errorValue;
 }
@@ -54,12 +56,14 @@ MIR_CORE_DLL(int) db_get_w(HANDLE hContact, const char *szModule, const char *sz
 		cgs.szModule = szModule;
 		cgs.szSetting = szSetting;
 		cgs.pValue = &dbv;
-		if ( !currDb->GetContactSetting(hContact, &cgs))
+		if ( !currDb->GetContactSetting(hContact, &cgs)) {
 			switch(dbv.type) {
 				case DBVT_BYTE:	return dbv.bVal;
 				case DBVT_WORD:   return dbv.wVal;
 				case DBVT_DWORD:	return WORD(dbv.dVal);
 			}
+			currDb->FreeVariant(&dbv);
+		}
 	}
 	return errorValue;
 }
@@ -72,12 +76,15 @@ MIR_CORE_DLL(DWORD) db_get_dw(HANDLE hContact, const char *szModule, const char 
 		cgs.szModule = szModule;
 		cgs.szSetting = szSetting;
 		cgs.pValue = &dbv;
-		if ( !currDb->GetContactSetting(hContact, &cgs))
+		if ( !currDb->GetContactSetting(hContact, &cgs)) {
 			switch(dbv.type) {
 				case DBVT_BYTE:	return dbv.bVal;
 				case DBVT_WORD:   return dbv.wVal;
 				case DBVT_DWORD:	return dbv.dVal;
+				default: currDb->FreeVariant(&dbv);
 			}
+			currDb->FreeVariant(&dbv);
+		}
 	}
 
 	return errorValue;
@@ -131,6 +138,17 @@ MIR_CORE_DLL(wchar_t*) db_get_wsa(HANDLE hContact, const char *szModule, const c
 /////////////////////////////////////////////////////////////////////////////////////////
 // setting data
 
+MIR_CORE_DLL(INT_PTR) db_set(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv)
+{
+	if (currDb == NULL) return 1;
+
+	DBCONTACTWRITESETTING cws;
+	cws.szModule = szModule;
+	cws.szSetting = szSetting;
+	cws.value = *dbv;
+	return currDb->WriteContactSetting(hContact, &cws);
+}
+
 MIR_CORE_DLL(INT_PTR) db_set_b(HANDLE hContact, const char *szModule, const char *szSetting, BYTE val)
 {
 	if (currDb == NULL) return 1;
@@ -175,7 +193,7 @@ MIR_CORE_DLL(INT_PTR) db_set_s(HANDLE hContact, const char *szModule, const char
 	cws.szModule = szModule;
 	cws.szSetting = szSetting;
 	cws.value.type = DBVT_ASCIIZ;
-	cws.value.pszVal = (char*)val;
+	cws.value.pszVal = (char*)(val == NULL ? "" : val);
 	return currDb->WriteContactSetting(hContact, &cws);
 }
 
@@ -187,7 +205,7 @@ MIR_CORE_DLL(INT_PTR) db_set_ws(HANDLE hContact, const char *szModule, const cha
 	cws.szModule = szModule;
 	cws.szSetting = szSetting;
 	cws.value.type = DBVT_WCHAR;
-	cws.value.pwszVal = (WCHAR*)val;
+	cws.value.pwszVal = (WCHAR*)(val == NULL ? L"" : val);
 	return currDb->WriteContactSetting(hContact, &cws);
 }
 
@@ -199,7 +217,7 @@ MIR_CORE_DLL(INT_PTR) db_set_utf(HANDLE hContact, const char *szModule, const ch
 	cws.szModule = szModule;
 	cws.szSetting = szSetting;
 	cws.value.type = DBVT_UTF8;
-	cws.value.pszVal = (char*)val;
+	cws.value.pszVal = (char*)(val == NULL ? "" : val);
 	return currDb->WriteContactSetting(hContact, &cws);
 }
 
@@ -214,6 +232,69 @@ MIR_CORE_DLL(INT_PTR) db_set_blob(HANDLE hContact, const char *szModule, const c
 	cws.value.cpbVal = (WORD)len;
 	cws.value.pbVal = (unsigned char*)val;
 	return currDb->WriteContactSetting(hContact, &cws);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// events
+
+MIR_CORE_DLL(HANDLE) db_event_add(HANDLE hContact, DBEVENTINFO *dbei)
+{
+	return (currDb == NULL) ? 0 : currDb->AddEvent(hContact, dbei);
+}
+
+MIR_CORE_DLL(int) db_event_count(HANDLE hContact)
+{
+	return (currDb == NULL) ? 0 : currDb->GetEventCount(hContact);
+}
+
+MIR_CORE_DLL(int) db_event_delete(HANDLE hContact, HANDLE hDbEvent)
+{
+	return (currDb == NULL) ? 0 : currDb->DeleteEvent(hContact, hDbEvent);
+}
+
+MIR_CORE_DLL(HANDLE) db_event_first(HANDLE hContact)
+{
+	return (currDb == NULL) ? 0 : currDb->FindFirstEvent(hContact);
+}
+
+MIR_CORE_DLL(HANDLE) db_event_firstUnread(HANDLE hContact)
+{
+	return (currDb == NULL) ? 0 : currDb->FindFirstUnreadEvent(hContact);
+}
+
+MIR_CORE_DLL(int) db_event_get(HANDLE hDbEvent, DBEVENTINFO *dbei)
+{
+	return (currDb == NULL) ? 1 : currDb->GetEvent(hDbEvent, dbei);
+}
+
+MIR_CORE_DLL(int) db_event_getBlobSize(HANDLE hDbEvent)
+{
+	return (currDb == NULL) ? 0 : currDb->GetBlobSize(hDbEvent);
+}
+
+MIR_CORE_DLL(HANDLE) db_event_getContact(HANDLE hDbEvent)
+{
+	return (currDb == NULL) ? 0 : currDb->GetEventContact(hDbEvent);
+}
+
+MIR_CORE_DLL(HANDLE) db_event_last(HANDLE hDbEvent)
+{
+	return (currDb == NULL) ? 0 : currDb->FindLastEvent(hDbEvent);
+}
+
+MIR_CORE_DLL(int) db_event_markRead(HANDLE hContact, HANDLE hDbEvent)
+{
+	return (currDb == NULL) ? 0 : currDb->MarkEventRead(hContact, hDbEvent);
+}
+
+MIR_CORE_DLL(HANDLE) db_event_next(HANDLE hDbEvent)
+{
+	return (currDb == NULL) ? 0 : currDb->FindNextEvent(hDbEvent);
+}
+
+MIR_CORE_DLL(HANDLE) db_event_prev(HANDLE hDbEvent)
+{
+	return (currDb == NULL) ? 0 : currDb->FindPrevEvent(hDbEvent);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -247,4 +328,14 @@ MIR_CORE_DLL(HANDLE) db_find_next(HANDLE hContact, const char *szProto)
 extern "C" MIR_CORE_DLL(void) db_setCurrent(MIDatabase* _db)
 {
 	currDb = _db;
+}
+
+MIR_CORE_DLL(BOOL) db_set_resident(const char *szModule, const char *szService, BOOL bEnable)
+{
+	if (currDb == NULL || szModule == NULL || szService == NULL)
+		return FALSE;
+
+	char str[MAXMODULELABELLENGTH * 2];
+	mir_snprintf(str, SIZEOF(str), "%s/%s", szModule, szService);
+	return currDb->SetSettingResident(bEnable, str);
 }

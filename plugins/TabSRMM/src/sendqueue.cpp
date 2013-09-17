@@ -26,50 +26,13 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: sendqueue.cpp 13750 2011-08-03 20:10:43Z george.hazan $
- *
  * Implements a queued, asynchronous sending system for tabSRMM.
  *
  */
 
 #include "commonheaders.h"
-#pragma hdrstop
 
 SendQueue *sendQueue = 0;
-
-extern      const TCHAR *pszIDCSAVE_save, *pszIDCSAVE_close;
-
-static char *pss_msg = "/SendMsg";
-static char *pss_msgw = "/SendMsgW";
-
-/**
- * get the service name to send a message
- *
- * @param hContact (HANDLE) contact's handle
- * @param dat      _MessageWindowData
- * @param dwFlags
- *
- * @return (char *) name of the service to send a message to this contact
- */
-char *SendQueue::MsgServiceName(const HANDLE hContact = 0, const TWindowData *dat = 0, int dwFlags = 0)
-{
-	char	szServiceName[100];
-	char	*szProto = GetContactProto(hContact);
-
-	if (szProto == NULL)
-		return pss_msg;
-
-	if (dat) {
-		if (dat->sendMode & SMODE_FORCEANSI || !(dwFlags & PREF_UNICODE))
-			return pss_msg;
-	}
-
-	_snprintf(szServiceName, sizeof(szServiceName), "%s%sW", szProto, PSS_MESSAGE);
-	if (ServiceExists(szServiceName))
-		return pss_msgw;
-
-	return pss_msg;
-}
 
 /*
  * searches the queue for a message belonging to the given contact which has been marked
@@ -90,6 +53,7 @@ int SendQueue::findNextFailed(const TWindowData *dat) const
 	}
 	return -1;
 }
+
 void SendQueue::handleError(TWindowData *dat, const int iEntry) const
 {
 	if (dat) {
@@ -109,7 +73,7 @@ void SendQueue::handleError(TWindowData *dat, const int iEntry) const
  */
 int SendQueue::addTo(TWindowData *dat, const int iLen, int dwFlags)
 {
-	int iLength = 0, i;
+	int i;
 	int iFound = NR_SENDJOBS;
 
 	if (m_currentIndex >= NR_SENDJOBS) {
@@ -117,7 +81,7 @@ int SendQueue::addTo(TWindowData *dat, const int iLen, int dwFlags)
 		return 0;
 	}
 	/*
-	 * find a free entry in the send queue...
+	 * find a mir_free entry in the send queue...
 	 */
 	for (i=0; i < NR_SENDJOBS; i++) {
 		if (m_jobs[i].hOwner != 0 || m_jobs[i].iStatus != 0) {
@@ -138,24 +102,13 @@ entry_found:
 		_DebugPopup(dat->hContact, _T("Send queue full"));
 		return 0;
 	}
-	iLength = iLen;
-	if (iLength > 0) {
-		if (m_jobs[iFound].sendBuffer == NULL) {
-			if (iLength < HISTORY_INITIAL_ALLOCSIZE)
-				iLength = HISTORY_INITIAL_ALLOCSIZE;
-			m_jobs[iFound].sendBuffer = (char *)malloc(iLength);
-			m_jobs[iFound].dwLen = iLength;
-		}
-		else {
-			if (iLength > m_jobs[iFound].dwLen) {
-				m_jobs[iFound].sendBuffer = (char *)realloc(m_jobs[iFound].sendBuffer, iLength);
-				m_jobs[iFound].dwLen = iLength;
-			}
-		}
-		CopyMemory(m_jobs[iFound].sendBuffer, dat->sendBuffer, iLen);
-	}
-	m_jobs[iFound].dwFlags = dwFlags;
-	m_jobs[iFound].dwTime = time(NULL);
+
+	SendJob &job = m_jobs[iFound];
+	job.szSendBuffer = (char*)mir_alloc(iLen);
+	CopyMemory(job.szSendBuffer, dat->sendBuffer, iLen);
+
+	job.dwFlags = dwFlags;
+	job.dwTime = time(NULL);
 
 	HWND	hwndDlg = dat->hwnd;
 
@@ -174,21 +127,19 @@ entry_found:
 
 #define SPLIT_WORD_CUTOFF 20
 
-static int SendChunkW(WCHAR *chunk, HANDLE hContact, char *szSvc, DWORD dwFlags)
+static int SendChunkW(WCHAR *chunk, HANDLE hContact, DWORD dwFlags)
 {
-	BYTE	*pBuf = NULL;
-	int		wLen = lstrlenW(chunk), id;
+	int wLen = lstrlenW(chunk);
 	DWORD	memRequired = (wLen + 1) * sizeof(WCHAR);
-	DWORD	codePage = DBGetContactSettingDword(hContact, SRMSGMOD_T, "ANSIcodepage", CP_ACP);
-	int		mbcsSize = WideCharToMultiByte(codePage, 0, chunk, -1, (char *)pBuf, 0, 0, 0);
+	DWORD	codePage = db_get_dw(hContact, SRMSGMOD_T, "ANSIcodepage", CP_ACP);
 
+	int mbcsSize = WideCharToMultiByte(codePage, 0, chunk, -1, NULL, 0, 0, 0);
 	memRequired += mbcsSize;
-	pBuf = (BYTE *)mir_alloc(memRequired);
-	WideCharToMultiByte(codePage, 0, chunk, -1, (char *)pBuf, mbcsSize, 0, 0);
-	CopyMemory(&pBuf[mbcsSize], chunk, (wLen + 1) * sizeof(WCHAR));
-	id = CallContactService(hContact, szSvc, dwFlags, (LPARAM)pBuf);
-	mir_free(pBuf);
-	return id;
+
+	ptrA pBuf((char*)mir_alloc(memRequired));
+	WideCharToMultiByte(codePage, 0, chunk, -1, pBuf, mbcsSize, 0, 0);
+	CopyMemory(&pBuf[mbcsSize], chunk, (wLen+1) * sizeof(WCHAR));
+	return CallContactService(hContact, PSS_MESSAGE, dwFlags, (LPARAM)pBuf);
 }
 
 static int SendChunkA(char *chunk, HANDLE hContact, char *szSvc, DWORD dwFlags)
@@ -198,31 +149,19 @@ static int SendChunkA(char *chunk, HANDLE hContact, char *szSvc, DWORD dwFlags)
 
 static void DoSplitSendW(LPVOID param)
 {
-	struct  SendJob *job = sendQueue->getJobByIndex((int)param);
-	int     id;
+	SendJob *job = sendQueue->getJobByIndex((int)param);
 	BOOL    fFirstSend = FALSE;
-	WCHAR   *wszBegin, *wszTemp, *wszSaved, savedChar;
-	int     iLen, iCur = 0, iSavedCur = 0, i;
+	WCHAR   *wszSaved, savedChar;
+	int     iCur = 0, iSavedCur = 0, i;
 	BOOL    fSplitting = TRUE;
-	char    szServiceName[100], *svcName;
 	HANDLE  hContact = job->hOwner;
 	DWORD   dwFlags = job->dwFlags;
 	int     chunkSize = job->chunkSize / 2;
 	char    *szProto = GetContactProto(hContact);
 
-	if (szProto == NULL)
-		svcName = pss_msg;
-	else {
-		_snprintf(szServiceName, sizeof(szServiceName), "%s%sW", szProto, PSS_MESSAGE);
-		if (ServiceExists(szServiceName))
-			svcName = pss_msgw;
-		else
-			svcName = pss_msg;
-	}
-
-	iLen = lstrlenA(job->sendBuffer);
-	wszBegin = (WCHAR *) & job->sendBuffer[iLen + 1];
-	wszTemp = (WCHAR *)mir_alloc(sizeof(WCHAR) * (lstrlenW(wszBegin) + 1));
+	int iLen = lstrlenA(job->szSendBuffer);
+	WCHAR *wszBegin = (WCHAR*) & job->szSendBuffer[iLen + 1];
+	WCHAR *wszTemp = (WCHAR*)mir_alloc(sizeof(WCHAR) * (lstrlenW(wszBegin) + 1));
 	CopyMemory(wszTemp, wszBegin, sizeof(WCHAR) * (lstrlenW(wszBegin) + 1));
 	wszBegin = wszTemp;
 
@@ -255,7 +194,7 @@ static void DoSplitSendW(LPVOID param)
 			}
 			savedChar = *wszSaved;
 			*wszSaved = 0;
-			id = SendChunkW(wszTemp, hContact, svcName, dwFlags);
+			int id = SendChunkW(wszTemp, hContact, dwFlags);
 			if (!fFirstSend) {
 				job->hSendId = (HANDLE)id;
 				fFirstSend = TRUE;
@@ -269,7 +208,7 @@ static void DoSplitSendW(LPVOID param)
 			}
 		}
 		else {
-			id = SendChunkW(wszTemp, hContact, svcName, dwFlags);
+			int id = SendChunkW(wszTemp, hContact, dwFlags);
 			if (!fFirstSend) {
 				job->hSendId = (HANDLE)id;
 				fFirstSend = TRUE;
@@ -284,22 +223,19 @@ static void DoSplitSendW(LPVOID param)
 
 static void DoSplitSendA(LPVOID param)
 {
-	struct  SendJob *job = sendQueue->getJobByIndex((int)param);
+	SendJob *job = sendQueue->getJobByIndex((int)param);
 	int     id;
 	BOOL    fFirstSend = FALSE;
 	char    *szBegin, *szTemp, *szSaved, savedChar;
 	int     iLen, iCur = 0, iSavedCur = 0, i;
 	BOOL    fSplitting = TRUE;
-	char    *svcName;
 	HANDLE  hContact = job->hOwner;
 	DWORD   dwFlags = job->dwFlags;
 	int     chunkSize = job->chunkSize;
 
-	svcName = pss_msg;
-
-	iLen = lstrlenA(job->sendBuffer);
+	iLen = lstrlenA(job->szSendBuffer);
 	szTemp = (char *)mir_alloc(iLen + 1);
-	CopyMemory(szTemp, job->sendBuffer, iLen + 1);
+	CopyMemory(szTemp, job->szSendBuffer, iLen + 1);
 	szBegin = szTemp;
 
 	do {
@@ -359,18 +295,15 @@ static void DoSplitSendA(LPVOID param)
 int SendQueue::getSendLength(const int iEntry, int sendMode)
 {
 	if (m_jobs[iEntry].dwFlags & PREF_UNICODE && !(sendMode & SMODE_FORCEANSI)) {
-		int     iLen;
-		WCHAR   *wszBuf;
-		char    *utf8;
-		iLen = lstrlenA(m_jobs[iEntry].sendBuffer);
-		wszBuf = (WCHAR *) & m_jobs[iEntry].sendBuffer[iLen + 1];
-		utf8 = mir_utf8encodeT(wszBuf);
+		int iLen = lstrlenA(m_jobs[iEntry].szSendBuffer);
+		WCHAR *wszBuf = (WCHAR *) & m_jobs[iEntry].szSendBuffer[iLen + 1];
+		char *utf8 = mir_utf8encodeT(wszBuf);
 		m_jobs[iEntry].iSendLength = lstrlenA(utf8);
 		mir_free(utf8);
 		return(m_jobs[iEntry].iSendLength);
 	}
 	else {
-		m_jobs[iEntry].iSendLength = lstrlenA(m_jobs[iEntry].sendBuffer);
+		m_jobs[iEntry].iSendLength = lstrlenA(m_jobs[iEntry].szSendBuffer);
 		return(m_jobs[iEntry].iSendLength);
 	}
 }
@@ -380,127 +313,121 @@ int SendQueue::sendQueued(TWindowData *dat, const int iEntry)
 	HWND	hwndDlg = dat->hwnd;
 
 	if (dat->sendMode & SMODE_MULTIPLE) {
-		HANDLE			hContact, hItem;
-		int				iJobs = 0;
-		int				iMinLength = 0;
-		CContactCache*	c = 0;
-
-		hContact = db_find_first();
+		int iJobs = 0;
+		int iMinLength = 0;
 
 		m_jobs[iEntry].hOwner = dat->hContact;
 		m_jobs[iEntry].iStatus = SQ_INPROGRESS;
 		m_jobs[iEntry].hwndOwner = hwndDlg;
 
-		int	iSendLength = getSendLength(iEntry, dat->sendMode);
+		int iSendLength = getSendLength(iEntry, dat->sendMode);
 
-		do {
-			hItem = (HANDLE) SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM) hContact, 0);
-			if (hItem && SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM) hItem, 0)) {
-				c = CContactCache::getContactCache(hContact);
+		for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+			HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+			if (hItem && SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM)hItem, 0)) {
+				CContactCache *c = CContactCache::getContactCache(hContact);
 				if (c)
 					iMinLength = (iMinLength == 0 ? c->getMaxMessageLength() : min(c->getMaxMessageLength(), iMinLength));
 			}
-		} while (hContact = db_find_next(hContact));
+		}
 
 		if (iSendLength >= iMinLength) {
 			TCHAR	tszError[256];
-
 			mir_sntprintf(tszError, 256, TranslateT("The message cannot be sent delayed or to multiple contacts, because it exceeds the maximum allowed message length of %d bytes"), iMinLength);
 			::SendMessage(dat->hwnd, DM_ACTIVATETOOLTIP, IDC_MESSAGE, reinterpret_cast<LPARAM>(tszError));
 			sendQueue->clearJob(iEntry);
 			return 0;
 		}
 
-		hContact = db_find_first();
-		do {
-			hItem = (HANDLE) SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM) hContact, 0);
-			if (hItem && SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM) hItem, 0)) {
+		for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+			HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+			if (hItem && SendDlgItemMessage(hwndDlg, IDC_CLIST, CLM_GETCHECKMARK, (WPARAM)hItem, 0)) {
 				doSendLater(iEntry, 0, hContact, false);
 				iJobs++;
 			}
-		} while (hContact = db_find_next(hContact));
+		}
 
 		sendQueue->clearJob(iEntry);
 		if (iJobs)
 			sendLater->flushQueue();							// force queue processing
 		return 0;
 	}
+
+	if (dat->hContact == NULL)
+		return 0;  //never happens
+
+	dat->nMax = dat->cache->getMaxMessageLength();                      // refresh length info
+
+	if (dat->sendMode & SMODE_FORCEANSI && db_get_b(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 1))
+		db_set_b(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 0);
+	else if (!(dat->sendMode & SMODE_FORCEANSI) && !db_get_b(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 0))
+		db_set_b(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 1);
+
+	if (M.GetByte("autosplit", 1) && !(dat->sendMode & SMODE_SENDLATER)) {
+		BOOL    fSplit = FALSE;
+		DWORD   dwOldFlags;
+
+		/*
+		 * determine send buffer length
+		 */
+		if (getSendLength(iEntry, dat->sendMode) >= dat->nMax)
+			fSplit = true;
+
+		if (!fSplit)
+			goto send_unsplitted;
+
+		m_jobs[iEntry].hOwner = dat->hContact;
+		m_jobs[iEntry].hwndOwner = hwndDlg;
+		m_jobs[iEntry].iStatus = SQ_INPROGRESS;
+		m_jobs[iEntry].iAcksNeeded = 1;
+		m_jobs[iEntry].chunkSize = dat->nMax;
+
+		dwOldFlags = m_jobs[iEntry].dwFlags;
+		if (dat->sendMode & SMODE_FORCEANSI)
+			m_jobs[iEntry].dwFlags &= ~PREF_UNICODE;
+
+		if (!(m_jobs[iEntry].dwFlags & PREF_UNICODE) || dat->sendMode & SMODE_FORCEANSI)
+			mir_forkthread(DoSplitSendA, (LPVOID)iEntry);
+		else
+			mir_forkthread(DoSplitSendW, (LPVOID)iEntry);
+		m_jobs[iEntry].dwFlags = dwOldFlags;
+	}
 	else {
-		if (dat->hContact == NULL)
-			return 0;  //never happens
-
-		dat->nMax = dat->cache->getMaxMessageLength();                      // refresh length info
-
-		if (dat->sendMode & SMODE_FORCEANSI && M->GetByte(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 1))
-			M->WriteByte(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 0);
-		else if (!(dat->sendMode & SMODE_FORCEANSI) && !M->GetByte(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 0))
-			M->WriteByte(dat->cache->getActiveContact(), dat->cache->getActiveProto(), "UnicodeSend", 1);
-
-		if (M->GetByte("autosplit", 1) && !(dat->sendMode & SMODE_SENDLATER)) {
-			BOOL    fSplit = FALSE;
-			DWORD   dwOldFlags;
-
-			/*
-			 * determine send buffer length
-			 */
-			if (getSendLength(iEntry, dat->sendMode) >= dat->nMax)
-				fSplit = true;
-
-			if (!fSplit)
-				goto send_unsplitted;
-
-			m_jobs[iEntry].hOwner = dat->hContact;
-			m_jobs[iEntry].hwndOwner = hwndDlg;
-			m_jobs[iEntry].iStatus = SQ_INPROGRESS;
-			m_jobs[iEntry].iAcksNeeded = 1;
-			m_jobs[iEntry].chunkSize = dat->nMax;
-
-			dwOldFlags = m_jobs[iEntry].dwFlags;
-			if (dat->sendMode & SMODE_FORCEANSI)
-				m_jobs[iEntry].dwFlags &= ~PREF_UNICODE;
-
-			if (!(m_jobs[iEntry].dwFlags & PREF_UNICODE) || dat->sendMode & SMODE_FORCEANSI)
-				mir_forkthread(DoSplitSendA, (LPVOID)iEntry);
-			else
-				mir_forkthread(DoSplitSendW, (LPVOID)iEntry);
-			m_jobs[iEntry].dwFlags = dwOldFlags;
-		}
-		else {
 
 send_unsplitted:
 
-			m_jobs[iEntry].hOwner = dat->hContact;
-			m_jobs[iEntry].hwndOwner = hwndDlg;
-			m_jobs[iEntry].iStatus = SQ_INPROGRESS;
-			m_jobs[iEntry].iAcksNeeded = 1;
-			if (dat->sendMode & SMODE_SENDLATER) {
-				TCHAR	tszError[256];
+		m_jobs[iEntry].hOwner = dat->hContact;
+		m_jobs[iEntry].hwndOwner = hwndDlg;
+		m_jobs[iEntry].iStatus = SQ_INPROGRESS;
+		m_jobs[iEntry].iAcksNeeded = 1;
+		if (dat->sendMode & SMODE_SENDLATER) {
+			TCHAR	tszError[256];
 
-				int iSendLength = getSendLength(iEntry, dat->sendMode);
-				if (iSendLength >= dat->nMax) {
-					mir_sntprintf(tszError, 256, TranslateT("The message cannot be sent delayed or to multiple contacts, because it exceeds the maximum allowed message length of %d bytes"), dat->nMax);
-					SendMessage(dat->hwnd, DM_ACTIVATETOOLTIP, IDC_MESSAGE, reinterpret_cast<LPARAM>(tszError));
-					clearJob(iEntry);
-					return 0;
-				}
-				doSendLater(iEntry, dat);
+			int iSendLength = getSendLength(iEntry, dat->sendMode);
+			if (iSendLength >= dat->nMax) {
+				mir_sntprintf(tszError, 256, TranslateT("The message cannot be sent delayed or to multiple contacts, because it exceeds the maximum allowed message length of %d bytes"), dat->nMax);
+				SendMessage(dat->hwnd, DM_ACTIVATETOOLTIP, IDC_MESSAGE, reinterpret_cast<LPARAM>(tszError));
 				clearJob(iEntry);
 				return 0;
 			}
-			m_jobs[iEntry].hSendId = (HANDLE) CallContactService(dat->hContact, MsgServiceName(dat->hContact, dat, m_jobs[iEntry].dwFlags), (dat->sendMode & SMODE_FORCEANSI) ? (m_jobs[iEntry].dwFlags & ~PREF_UNICODE) : m_jobs[iEntry].dwFlags, (LPARAM) m_jobs[iEntry].sendBuffer);
-
-			if (dat->sendMode & SMODE_NOACK) {              // fake the ack if we are not interested in receiving real acks
-				ACKDATA ack = {0};
-				ack.hContact = dat->hContact;
-				ack.hProcess = m_jobs[iEntry].hSendId;
-				ack.type = ACKTYPE_MESSAGE;
-				ack.result = ACKRESULT_SUCCESS;
-				SendMessage(hwndDlg, HM_EVENTSENT, (WPARAM)MAKELONG(iEntry, 0), (LPARAM)&ack);
-			}
-			else
-				SetTimer(hwndDlg, TIMERID_MSGSEND + iEntry, PluginConfig.m_MsgTimeout, NULL);
+			doSendLater(iEntry, dat);
+			clearJob(iEntry);
+			return 0;
 		}
+		m_jobs[iEntry].hSendId = (HANDLE)CallContactService(dat->hContact, PSS_MESSAGE,
+			(dat->sendMode & SMODE_FORCEANSI) ? (m_jobs[iEntry].dwFlags & ~PREF_UNICODE) : m_jobs[iEntry].dwFlags, (LPARAM)m_jobs[iEntry].szSendBuffer);
+
+		if (dat->sendMode & SMODE_NOACK) {              // fake the ack if we are not interested in receiving real acks
+			ACKDATA ack = {0};
+			ack.hContact = dat->hContact;
+			ack.hProcess = m_jobs[iEntry].hSendId;
+			ack.type = ACKTYPE_MESSAGE;
+			ack.result = ACKRESULT_SUCCESS;
+			SendMessage(hwndDlg, HM_EVENTSENT, (WPARAM)MAKELONG(iEntry, 0), (LPARAM)&ack);
+		}
+		else SetTimer(hwndDlg, TIMERID_MSGSEND + iEntry, PluginConfig.m_MsgTimeout, NULL);
 	}
+
 	dat->iOpenJobs++;
 	m_currentIndex++;
 
@@ -512,22 +439,16 @@ send_unsplitted:
 	if (!(dat->sendMode & SMODE_NOACK))
 		::HandleIconFeedback(dat, PluginConfig.g_IconSend);
 
-	if (M->GetByte(SRMSGSET_AUTOMIN, SRMSGDEFSET_AUTOMIN))
+	if (M.GetByte(SRMSGSET_AUTOMIN, SRMSGDEFSET_AUTOMIN))
 		::SendMessage(dat->pContainer->hwnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
 	return 0;
 }
 
 void SendQueue::clearJob(const int iIndex)
 {
-	m_jobs[iIndex].hOwner = 0;
-	m_jobs[iIndex].hwndOwner = 0;
-	m_jobs[iIndex].iStatus = 0;
-	m_jobs[iIndex].iAcksNeeded = 0;
-	m_jobs[iIndex].dwFlags = 0;
-	m_jobs[iIndex].chunkSize = 0;
-	m_jobs[iIndex].dwTime = 0;
-	m_jobs[iIndex].hSendId = 0;
-	m_jobs[iIndex].iSendLength = 0;
+	SendJob &job = m_jobs[iIndex];
+	mir_free(job.szSendBuffer);
+	memset(&job, 0, sizeof(SendJob));
 }
 
 /*
@@ -561,17 +482,15 @@ void SendQueue::checkQueue(const TWindowData *dat) const
 
 void SendQueue::logError(const TWindowData *dat, int iSendJobIndex, const TCHAR *szErrMsg) const
 {
-	DBEVENTINFO	dbei = {0};
-	int				iMsgLen;
-
 	if (dat == 0)
 		return;
 
+	int iMsgLen;
+	DBEVENTINFO	dbei = { sizeof(dbei) };
 	dbei.eventType = EVENTTYPE_ERRMSG;
-	dbei.cbSize = sizeof(dbei);
 	if (iSendJobIndex >= 0) {
-		dbei.pBlob = (BYTE *)m_jobs[iSendJobIndex].sendBuffer;
-		iMsgLen = lstrlenA(m_jobs[iSendJobIndex].sendBuffer) + 1;
+		dbei.pBlob = (BYTE *)m_jobs[iSendJobIndex].szSendBuffer;
+		iMsgLen = lstrlenA(m_jobs[iSendJobIndex].szSendBuffer) + 1;
 	}
 	else {
 		iMsgLen = 0;
@@ -601,7 +520,7 @@ void SendQueue::EnableSending(const TWindowData *dat, const int iMode)
 {
 	if (dat) {
 		HWND hwndDlg = dat->hwnd;
-		::SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_SETREADONLY, (WPARAM) iMode ? FALSE : TRUE, 0);
+		::SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_SETREADONLY, (WPARAM)iMode ? FALSE : TRUE, 0);
 		Utils::enableDlgControl(hwndDlg, IDC_CLIST, iMode ? TRUE : FALSE);
 		::EnableSendButton(dat, iMode);
 	}
@@ -650,13 +569,13 @@ void SendQueue::recallFailed(const TWindowData *dat, int iEntry) const
 		if (iLen == 0) {                    // message area is empty, so we can recall the failed message...
 			SETTEXTEX stx = {ST_DEFAULT, 1200};
 			if (m_jobs[iEntry].dwFlags & PREF_UNICODE)
-				SendDlgItemMessage(dat->hwnd, IDC_MESSAGE, EM_SETTEXTEX, (WPARAM)&stx, (LPARAM)&m_jobs[iEntry].sendBuffer[lstrlenA(m_jobs[iEntry].sendBuffer) + 1]);
+				SendDlgItemMessage(dat->hwnd, IDC_MESSAGE, EM_SETTEXTEX, (WPARAM)&stx, (LPARAM)&m_jobs[iEntry].szSendBuffer[lstrlenA(m_jobs[iEntry].szSendBuffer) + 1]);
 			else {
 				stx.codepage = (m_jobs[iEntry].dwFlags & PREF_UTF) ? CP_UTF8 : CP_ACP;
-				SendDlgItemMessage(dat->hwnd, IDC_MESSAGE, EM_SETTEXTEX, (WPARAM)&stx, (LPARAM)m_jobs[iEntry].sendBuffer);
+				SendDlgItemMessage(dat->hwnd, IDC_MESSAGE, EM_SETTEXTEX, (WPARAM)&stx, (LPARAM)m_jobs[iEntry].szSendBuffer);
 			}
 			UpdateSaveAndSendButton(const_cast<TWindowData *>(dat));
-			SendDlgItemMessage(dat->hwnd, IDC_MESSAGE, EM_SETSEL, (WPARAM) - 1, (LPARAM) - 1);
+			SendDlgItemMessage(dat->hwnd, IDC_MESSAGE, EM_SETSEL, (WPARAM)- 1, (LPARAM)- 1);
 		}
 	}
 }
@@ -664,14 +583,13 @@ void SendQueue::recallFailed(const TWindowData *dat, int iEntry) const
 void SendQueue::UpdateSaveAndSendButton(TWindowData *dat)
 {
 	if (dat) {
-		int		len;
 		HWND	hwndDlg = dat->hwnd;
 
-		GETTEXTLENGTHEX	gtxl = {0};
+		GETTEXTLENGTHEX gtxl = {0};
 		gtxl.codepage = CP_UTF8;
 		gtxl.flags = GTL_DEFAULT | GTL_PRECISE | GTL_NUMBYTES;
 
-		len = SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_GETTEXTLENGTHEX, (WPARAM) & gtxl, 0);
+		int len = SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_GETTEXTLENGTHEX, (WPARAM)& gtxl, 0);
 		if (len && GetSendButtonState(hwndDlg) == PBS_DISABLED)
 			EnableSendButton(dat, TRUE);
 		else if (len == 0 && GetSendButtonState(hwndDlg) != PBS_DISABLED)
@@ -679,14 +597,14 @@ void SendQueue::UpdateSaveAndSendButton(TWindowData *dat)
 
 		if (len) {          // looks complex but avoids flickering on the button while typing.
 			if (!(dat->dwFlags & MWF_SAVEBTN_SAV)) {
-				SendDlgItemMessage(hwndDlg, IDC_SAVE, BM_SETIMAGE, IMAGE_ICON, (LPARAM) PluginConfig.g_buttonBarIcons[ICON_BUTTON_SAVE]);
-				SendDlgItemMessage(hwndDlg, IDC_SAVE, BUTTONADDTOOLTIP, (WPARAM) pszIDCSAVE_save, 0);
+				SendDlgItemMessage(hwndDlg, IDC_SAVE, BM_SETIMAGE, IMAGE_ICON, (LPARAM)PluginConfig.g_buttonBarIcons[ICON_BUTTON_SAVE]);
+				SendDlgItemMessage(hwndDlg, IDC_SAVE, BUTTONADDTOOLTIP, (WPARAM)pszIDCSAVE_save, BATF_TCHAR);
 				dat->dwFlags |= MWF_SAVEBTN_SAV;
 			}
 		}
 		else {
-			SendDlgItemMessage(hwndDlg, IDC_SAVE, BM_SETIMAGE, IMAGE_ICON, (LPARAM) PluginConfig.g_buttonBarIcons[ICON_BUTTON_CANCEL]);
-			SendDlgItemMessage(hwndDlg, IDC_SAVE, BUTTONADDTOOLTIP, (WPARAM) pszIDCSAVE_close, 0);
+			SendDlgItemMessage(hwndDlg, IDC_SAVE, BM_SETIMAGE, IMAGE_ICON, (LPARAM)PluginConfig.g_buttonBarIcons[ICON_BUTTON_CANCEL]);
+			SendDlgItemMessage(hwndDlg, IDC_SAVE, BUTTONADDTOOLTIP, (WPARAM)pszIDCSAVE_close, BATF_TCHAR);
 			dat->dwFlags &= ~MWF_SAVEBTN_SAV;
 		}
 		dat->textLen = len;
@@ -695,30 +613,28 @@ void SendQueue::UpdateSaveAndSendButton(TWindowData *dat)
 
 void SendQueue::NotifyDeliveryFailure(const TWindowData *dat)
 {
-	POPUPDATAT_V2	ppd = {0};
-	int				ibsize = 1023;
-
-	if (M->GetByte("adv_noErrorPopups", 0))
+	if (M.GetByte("adv_noErrorPopups", 0))
 		return;
 
-	if (CallService(MS_POPUP_QUERY, PUQS_GETSTATUS, 0) == 1) {
-		ZeroMemory((void*)&ppd, sizeof(ppd));
-		ppd.lchContact = dat->hContact;
-		mir_sntprintf(ppd.lptzContactName, MAX_CONTACTNAME, _T("%s"), dat->cache->getNick());
-		mir_sntprintf(ppd.lptzText, MAX_SECONDLINE, _T("%s"), TranslateT("A message delivery has failed.\nClick to open the message window."));
-		if (!(BOOL)M->GetByte(MODULE, OPT_COLDEFAULT_ERR, TRUE))
-		{
-			ppd.colorText = (COLORREF)M->GetDword(MODULE, OPT_COLTEXT_ERR, DEFAULT_COLTEXT);
-			ppd.colorBack = (COLORREF)M->GetDword(MODULE, OPT_COLBACK_ERR, DEFAULT_COLBACK);
-		}
-		else
-			ppd.colorText = ppd.colorBack = 0;
-		ppd.PluginWindowProc = reinterpret_cast<WNDPROC>(Utils::PopupDlgProcError);
-		ppd.lchIcon = PluginConfig.g_iconErr;
-		ppd.PluginData = (void*)dat->hContact;
-		ppd.iSeconds = (int)M->GetDword(MODULE, OPT_DELAY_ERR, (DWORD)DEFAULT_DELAY);
-		CallService(MS_POPUP_ADDPOPUPT, (WPARAM)&ppd, 0);
+	if ( CallService(MS_POPUP_QUERY, PUQS_GETSTATUS, 0) != 1)
+		return;
+
+	POPUPDATAT ppd = { 0 };
+	ppd.lchContact = dat->hContact;
+	lstrcpyn(ppd.lptzContactName, dat->cache->getNick(), MAX_CONTACTNAME);
+	lstrcpyn(ppd.lptzText, TranslateT("A message delivery has failed.\nClick to open the message window."), MAX_SECONDLINE);
+
+	if (!(BOOL)M.GetByte(MODULE, OPT_COLDEFAULT_ERR, TRUE)) {
+		ppd.colorText = (COLORREF)M.GetDword(MODULE, OPT_COLTEXT_ERR, DEFAULT_COLTEXT);
+		ppd.colorBack = (COLORREF)M.GetDword(MODULE, OPT_COLBACK_ERR, DEFAULT_COLBACK);
 	}
+	else ppd.colorText = ppd.colorBack = 0;
+
+	ppd.PluginWindowProc = reinterpret_cast<WNDPROC>(Utils::PopupDlgProcError);
+	ppd.lchIcon = PluginConfig.g_iconErr;
+	ppd.PluginData = (void*)dat->hContact;
+	ppd.iSeconds = (int)M.GetDword(MODULE, OPT_DELAY_ERR, (DWORD)DEFAULT_DELAY);
+	PUAddPopupT(&ppd);
 }
 
 /*
@@ -727,21 +643,19 @@ void SendQueue::NotifyDeliveryFailure(const TWindowData *dat)
 
 int SendQueue::RTL_Detect(const WCHAR *pszwText)
 {
-	WORD	*infoTypeC2;
-	int		i, n = 0;
-	int		iLen = lstrlenW(pszwText);
+	int i, n = 0;
+	int iLen = lstrlenW(pszwText);
 
-	infoTypeC2 = (WORD *)mir_alloc(sizeof(WORD) * (iLen + 2));
-
+	WORD *infoTypeC2 = (WORD *)mir_alloc(sizeof(WORD) * (iLen + 2));
 	if (infoTypeC2) {
 		ZeroMemory(infoTypeC2, sizeof(WORD) * (iLen + 2));
 
 		GetStringTypeW(CT_CTYPE2, pszwText, iLen, infoTypeC2);
 
-		for (i=0; i < iLen; i++) {
+		for (i=0; i < iLen; i++)
 			if (infoTypeC2[i] == C2_RIGHTTOLEFT)
 				n++;
-		}
+
 		mir_free(infoTypeC2);
 		return(n >= 2 ? 1 : 0);
 	}
@@ -750,18 +664,16 @@ int SendQueue::RTL_Detect(const WCHAR *pszwText)
 
 int SendQueue::ackMessage(TWindowData *dat, WPARAM wParam, LPARAM lParam)
 {
-	ACKDATA				*ack = (ACKDATA *) lParam;
-	DBEVENTINFO			dbei = { 0};
-	HANDLE				hNewEvent;
-	int					iFound = SendQueue::NR_SENDJOBS, iNextFailed;
+	ACKDATA *ack = (ACKDATA *) lParam;
+	
 	TContainerData *m_pContainer = 0;
 	if (dat)
 		m_pContainer = dat->pContainer;
 
-	iFound = (int)(LOWORD(wParam));
-	//i = (int)(HIWORD(wParam));
+	int iFound = (int)(LOWORD(wParam));
+	SendJob &job = m_jobs[iFound];
 
-	if (m_jobs[iFound].iStatus == SQ_ERROR) {      // received ack for a job which is already in error state...
+	if (job.iStatus == SQ_ERROR) {      // received ack for a job which is already in error state...
 		if (dat) {                        // window still open
 			if (dat->iCurrentQueueError == iFound) {
 				dat->iCurrentQueueError = -1;
@@ -772,8 +684,7 @@ int SendQueue::ackMessage(TWindowData *dat, WPARAM wParam, LPARAM lParam)
 		 * we must discard this job, because there is no message window open to handle the
 		 * error properly. But we display a tray notification to inform the user about the problem.
 		 */
-		else
-			goto inform_and_discard;
+		else goto inform_and_discard;
 	}
 
 	// failed acks are only handled when the window is still open. with no window open, they will be *silently* discarded
@@ -788,64 +699,65 @@ int SendQueue::ackMessage(TWindowData *dat, WPARAM wParam, LPARAM lParam)
 				SkinPlaySound("SendError");
 
 			TCHAR *szAckMsg = mir_a2t((char *)ack->lParam);
-			mir_sntprintf(m_jobs[iFound].szErrorMsg, safe_sizeof(m_jobs[iFound].szErrorMsg),
-						 TranslateT("Delivery failure: %s"), szAckMsg);
-			m_jobs[iFound].iStatus = SQ_ERROR;
+			mir_sntprintf(job.szErrorMsg, SIZEOF(job.szErrorMsg), TranslateT("Delivery failure: %s"), szAckMsg);
+			job.iStatus = SQ_ERROR;
 			mir_free(szAckMsg);
 			KillTimer(dat->hwnd, TIMERID_MSGSEND + iFound);
 			if (!(dat->dwFlags & MWF_ERRORSTATE))
 				handleError(dat, iFound);
 			return 0;
 		}
-		else {
+
 inform_and_discard:
-			_DebugPopup(m_jobs[iFound].hOwner, TranslateT("A message delivery has failed after the contacts chat window was closed. You may want to resend the last message"));
-			clearJob(iFound);
-			return 0;
-		}
+		_DebugPopup(job.hOwner, TranslateT("A message delivery has failed after the contacts chat window was closed. You may want to resend the last message"));
+		clearJob(iFound);
+		return 0;
 	}
 
-	dbei.cbSize = sizeof(dbei);
+	DBEVENTINFO dbei = { sizeof(dbei) };
 	dbei.eventType = EVENTTYPE_MESSAGE;
 	dbei.flags = DBEF_SENT;
-	dbei.szModule = GetContactProto(m_jobs[iFound].hOwner);
+	dbei.szModule = GetContactProto(job.hOwner);
 	dbei.timestamp = time(NULL);
-	dbei.cbBlob = lstrlenA(m_jobs[iFound].sendBuffer) + 1;
+	dbei.cbBlob = lstrlenA(job.szSendBuffer) + 1;
 
 	if (dat)
 		dat->cache->updateStats(TSessionStats::BYTES_SENT, dbei.cbBlob - 1);
 	else {
-		CContactCache *c = CContactCache::getContactCache(m_jobs[iFound].hOwner);
+		CContactCache *c = CContactCache::getContactCache(job.hOwner);
 		if (c)
 			c->updateStats(TSessionStats::BYTES_SENT, dbei.cbBlob - 1);
 	}
 
-	if (m_jobs[iFound].dwFlags & PREF_UNICODE)
+	if (job.dwFlags & PREF_UNICODE)
 		dbei.cbBlob *= sizeof(TCHAR) + 1;
-	if (m_jobs[iFound].dwFlags & PREF_RTL)
+	if (job.dwFlags & PREF_RTL)
 		dbei.flags |= DBEF_RTL;
-	if (m_jobs[iFound].dwFlags & PREF_UTF)
+	if (job.dwFlags & PREF_UTF)
 		dbei.flags |= DBEF_UTF;
-	dbei.pBlob = (PBYTE) m_jobs[iFound].sendBuffer;
-	hNewEvent = (HANDLE) CallService(MS_DB_EVENT_ADD, (WPARAM) m_jobs[iFound].hOwner, (LPARAM) & dbei);
+	dbei.pBlob = (PBYTE)job.szSendBuffer;
 
-	if (m_pContainer) {
+	MessageWindowEvent evt = { sizeof(evt), (int)job.hSendId, job.hOwner, &dbei };
+	NotifyEventHooks(PluginConfig.m_event_WriteEvent, 0, (LPARAM)&evt);
+
+	job.szSendBuffer = (char*)dbei.pBlob;
+	HANDLE hNewEvent = db_event_add(job.hOwner, &dbei);
+
+	if (m_pContainer)
 		if (!nen_options.iNoSounds && !(m_pContainer->dwFlags & CNT_NOSOUND))
 			SkinPlaySound("SendMsg");
-	}
 
-	if (dat && (m_jobs[iFound].hOwner == dat->hContact)) {
+	if (dat && (job.hOwner == dat->hContact))
 		if (dat->hDbEventFirst == NULL) {
 			dat->hDbEventFirst = hNewEvent;
 			SendMessage(dat->hwnd, DM_REMAKELOG, 0, 0);
 		}
-	}
 
-	m_jobs[iFound].hSendId = NULL;
-	m_jobs[iFound].iAcksNeeded--;
+	job.hSendId = NULL;
+	job.iAcksNeeded--;
 
-	if (m_jobs[iFound].iAcksNeeded == 0) {              // everything sent
-		//if (m_jobs[iFound].hOwner != 0 && dat)
+	if (job.iAcksNeeded == 0) {              // everything sent
+		//if (job.hOwner != 0 && dat)
 		//	EnableSending(dat, TRUE);
 		clearJob(iFound);
 		if (dat) {
@@ -856,12 +768,14 @@ inform_and_discard:
 	}
 	if (dat) {
 		checkQueue(dat);
-		if ((iNextFailed = findNextFailed(dat)) >= 0 && !(dat->dwFlags & MWF_ERRORSTATE))
+
+		int iNextFailed = findNextFailed(dat);
+		if (iNextFailed >= 0 && !(dat->dwFlags & MWF_ERRORSTATE))
 			handleError(dat, iNextFailed);
 		//MAD: close on send mode
 		else {
-			if (M->GetByte("AutoClose", 0)) {
-				if (M->GetByte("adv_AutoClose_2", 0))
+			if (M.GetByte("AutoClose", 0)) {
+				if (M.GetByte("adv_AutoClose_2", 0))
 					SendMessage(dat->hwnd, WM_CLOSE, 0, 1);
 				else
 					SendMessage(dat->pContainer->hwnd, WM_CLOSE, 0, 0);
@@ -874,8 +788,9 @@ inform_and_discard:
 
 LRESULT SendQueue::WarnPendingJobs(unsigned int uNrMessages)
 {
-	return(MessageBox(0, TranslateT("There are unsent messages waiting for confirmation.\nWhen you close the window now, Miranda will try to send them but may be unable to inform you about possible delivery errors.\nDo you really want to close the Window(s)?"),
-					  TranslateT("Message window warning"), MB_YESNO | MB_ICONHAND));
+	return MessageBox(0,
+		TranslateT("There are unsent messages waiting for confirmation.\nWhen you close the window now, Miranda will try to send them but may be unable to inform you about possible delivery errors.\nDo you really want to close the Window(s)?"),
+		TranslateT("Message window warning"), MB_YESNO | MB_ICONHAND);
 }
 
 /**
@@ -917,8 +832,8 @@ int SendQueue::doSendLater(int iJobIndex, TWindowData *dat, HANDLE hContact, boo
 		EnableSendButton(dat, FALSE);
 		if (dat->pContainer->hwndActive == dat->hwnd)
 			UpdateReadChars(dat);
-		SendDlgItemMessage(dat->hwnd, IDC_SAVE, BM_SETIMAGE, IMAGE_ICON, (LPARAM) PluginConfig.g_buttonBarIcons[ICON_BUTTON_CANCEL]);
-		SendDlgItemMessage(dat->hwnd, IDC_SAVE, BUTTONADDTOOLTIP, (WPARAM)pszIDCSAVE_close, 0);
+		SendDlgItemMessage(dat->hwnd, IDC_SAVE, BM_SETIMAGE, IMAGE_ICON, (LPARAM)PluginConfig.g_buttonBarIcons[ICON_BUTTON_CANCEL]);
+		SendDlgItemMessage(dat->hwnd, IDC_SAVE, BUTTONADDTOOLTIP, (WPARAM)pszIDCSAVE_close, BATF_TCHAR);
 		dat->dwFlags &= ~MWF_SAVEBTN_SAV;
 		mir_free(utfText);
 
@@ -928,39 +843,38 @@ int SendQueue::doSendLater(int iJobIndex, TWindowData *dat, HANDLE hContact, boo
 
 	if (iJobIndex >= 0 && iJobIndex < NR_SENDJOBS) {
 		SendJob*	job = &m_jobs[iJobIndex];
-		char		szKeyName[20];
-		TCHAR 		tszTimestamp[30], tszHeader[150];
-		time_t 		now = time(0);
+		char szKeyName[20];
+		TCHAR tszHeader[150];
 
 		if (fIsSendLater) {
-			TCHAR *formatTime = _T("%Y.%m.%d - %H:%M");
-			_tcsftime(tszTimestamp, 30, formatTime, _localtime32((__time32_t *)&now));
+			time_t now = time(0);
+			TCHAR tszTimestamp[30];
+			_tcsftime(tszTimestamp, SIZEOF(tszTimestamp), _T("%Y.%m.%d - %H:%M"), _localtime32((__time32_t *)&now));
 			tszTimestamp[29] = 0;
 			mir_snprintf(szKeyName, 20, "S%d", now);
-			mir_sntprintf(tszHeader, safe_sizeof(tszHeader), TranslateT("\n(Sent delayed. Original timestamp %s)"), tszTimestamp);
+			mir_sntprintf(tszHeader, SIZEOF(tszHeader), TranslateT("\n(Sent delayed. Original timestamp %s)"), tszTimestamp);
 		}
-		else
-			mir_sntprintf(tszHeader, safe_sizeof(tszHeader), _T("M%d|"), time(0));
+		else mir_sntprintf(tszHeader, SIZEOF(tszHeader), _T("M%d|"), time(0));
 
 		if (job->dwFlags & PREF_UTF || !(job->dwFlags & PREF_UNICODE)) {
 			char *utf_header = mir_utf8encodeT(tszHeader);
-			UINT required = lstrlenA(utf_header) + lstrlenA(job->sendBuffer) + 10;
+			UINT required = lstrlenA(utf_header) + lstrlenA(job->szSendBuffer) + 10;
 			char *tszMsg = reinterpret_cast<char *>(mir_alloc(required));
 
 			if (fIsSendLater) {
-				mir_snprintf(tszMsg, required, "%s%s", job->sendBuffer, utf_header);
-				DBWriteContactSettingString(hContact ? hContact : job->hOwner, "SendLater", szKeyName, tszMsg);
+				mir_snprintf(tszMsg, required, "%s%s", job->szSendBuffer, utf_header);
+				db_set_s(hContact ? hContact : job->hOwner, "SendLater", szKeyName, tszMsg);
 			}
 			else {
-				mir_snprintf(tszMsg, required, "%s%s", utf_header, job->sendBuffer);
+				mir_snprintf(tszMsg, required, "%s%s", utf_header, job->szSendBuffer);
 				sendLater->addJob(tszMsg, (LPARAM)hContact);
 			}
 			mir_free(utf_header);
 			mir_free(tszMsg);
 		}
 		else if (job->dwFlags & PREF_UNICODE) {
-			int iLen = lstrlenA(job->sendBuffer);
-			wchar_t *wszMsg = (wchar_t *)&job->sendBuffer[iLen + 1];
+			int iLen = lstrlenA(job->szSendBuffer);
+			wchar_t *wszMsg = (wchar_t *)&job->szSendBuffer[iLen + 1];
 
 			UINT required = sizeof(TCHAR) * (lstrlen(tszHeader) + lstrlenW(wszMsg) + 10);
 
@@ -971,19 +885,19 @@ int SendQueue::doSendLater(int iJobIndex, TWindowData *dat, HANDLE hContact, boo
 				mir_sntprintf(tszMsg, required, _T("%s%s"), tszHeader, wszMsg);
 			char *utf = mir_utf8encodeT(tszMsg);
 			if (fIsSendLater)
-				DBWriteContactSettingString(hContact ? hContact : job->hOwner, "SendLater", szKeyName, utf);
+				db_set_s(hContact ? hContact : job->hOwner, "SendLater", szKeyName, utf);
 			else
 				sendLater->addJob(utf, (LPARAM)hContact);
 			mir_free(utf);
 			mir_free(tszMsg);
 		}
 		if (fIsSendLater) {
-			int iCount = M->GetDword(hContact ? hContact : job->hOwner, "SendLater", "count", 0);
+			int iCount = db_get_dw(hContact ? hContact : job->hOwner, "SendLater", "count", 0);
 			iCount++;
-			M->WriteDword(hContact ? hContact : job->hOwner, "SendLater", "count", iCount);
+			db_set_dw(hContact ? hContact : job->hOwner, "SendLater", "count", iCount);
 			sendLater->addContact(hContact ? hContact : job->hOwner);
 		}
 		return(iJobIndex);
 	}
-	return(-1);
+	return -1;
 }

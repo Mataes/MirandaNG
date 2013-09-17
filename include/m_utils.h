@@ -1,3 +1,4 @@
+
 /*
 
 Miranda IM: the free IM client for Microsoft* Windows*
@@ -277,7 +278,7 @@ __forceinline INT_PTR Utils_AssertInsideScreen(RECT *rc) {
 
 /************************ Colour Picker Control (0.1.2.1+) **********************/
 
-#define WNDCLASS_COLOURPICKER  _T("ColourPicker")
+#define WNDCLASS_COLOURPICKER  "ColourPicker"
 
 #define CPM_SETCOLOUR		   0x1000	  //lParam = new colour
 #define CPM_GETCOLOUR		   0x1001	  //returns colour
@@ -414,16 +415,34 @@ typedef struct
 #define MS_UTILS_REPLACEVARS "Utils/ReplaceVars"
 
 __forceinline char* Utils_ReplaceVars(const char *szData) {
-	REPLACEVARSDATA dat = {0};
-	dat.cbSize = sizeof(dat);
+	REPLACEVARSDATA dat = { sizeof(dat) };
 	return (char*)CallService(MS_UTILS_REPLACEVARS, (WPARAM)szData, (LPARAM)&dat);
 }
 __forceinline TCHAR* Utils_ReplaceVarsT(const TCHAR *szData) {
-	REPLACEVARSDATA dat = {0};
-	dat.cbSize = sizeof(dat);
-	dat.dwFlags = RVF_TCHAR;
+	REPLACEVARSDATA dat = { sizeof(dat), RVF_TCHAR };
 	return (TCHAR*)CallService(MS_UTILS_REPLACEVARS, (WPARAM)szData, (LPARAM)&dat);
 }
+
+#if defined(__cplusplus)
+	#if !defined(M_SYSTEM_CPP_H__)
+		#include "m_system_cpp.h"
+	#endif
+
+	struct VARS : public ptrA
+	{
+		__forceinline VARS(const char *str) :
+			ptrA( Utils_ReplaceVars(str))
+			{}
+	};
+
+	struct VARST : public ptrT
+	{
+		__forceinline VARST(const TCHAR *str) :
+			ptrT( Utils_ReplaceVarsT(str))
+			{}
+	};
+#endif
+
 #ifdef _UNICODE
 	#define MS_UTILS_PATHTORELATIVEW         "Utils/PathToRelativeW"
 	#define MS_UTILS_PATHTOABSOLUTEW         "Utils/PathToAbsoluteW"
@@ -439,13 +458,6 @@ __forceinline TCHAR* Utils_ReplaceVarsT(const TCHAR *szData) {
 	#define MS_UTILS_PATHTOABSOLUTET         MS_UTILS_PATHTOABSOLUTE
 	#define MS_UTILS_CREATEDIRTREET          MS_UTILS_CREATEDIRTREE
 	#define MS_UTILS_GETBITMAPFILTERSTRINGST MS_UTILS_GETBITMAPFILTERSTRINGS
-#endif
-
-// allows to include TCHAR* strings into mir_snprintf and NetLib_Logf calls
-#if defined(_UNICODE)
-	#define TCHAR_STR_PARAM "%S"
-#else
-	#define TCHAR_STR_PARAM "%s"
 #endif
 
 #endif // M_UTILS_H__

@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "commonheaders.h"
 #include "file.h"
 
@@ -161,7 +162,7 @@ static INT_PTR CALLBACK FtMgrPageDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
 		if (i == dat->wnds->realCount)
 			PostMessage(GetParent(hwnd), WM_TIMER, 1, NULL);
 
-		if(dat->runningCount == 0 && (int)wParam == ACKRESULT_SUCCESS && DBGetContactSettingByte(NULL, "SRFile", "AutoClose", 1))
+		if(dat->runningCount == 0 && (int)wParam == ACKRESULT_SUCCESS && db_get_b(NULL, "SRFile", "AutoClose", 1))
 			ShowWindow(hwndFtMgr, SW_HIDE);
 		break;
 
@@ -413,7 +414,7 @@ static INT_PTR CALLBACK FtMgrDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 
 	case WM_CLOSE:
 		ShowWindow(hwnd, SW_HIDE);
-		if (DBGetContactSettingByte(NULL, "SRFile", "AutoClear", 1)) {
+		if (db_get_b(NULL, "SRFile", "AutoClear", 1)) {
 			PostMessage(dat->hwndIncoming, WM_FT_CLEANUP, 0, 0);
 			PostMessage(dat->hwndOutgoing, WM_FT_CLEANUP, 0, 0);
 		}
@@ -455,7 +456,7 @@ static INT_PTR CALLBACK FtMgrDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 				if ( !prg.run)
 					pTaskbarInterface->SetProgressValue(hwnd, 1, 1);
 			}
-			else if (prg.run) 
+			else if (prg.run)
 				pTaskbarInterface->SetProgressState(hwnd, TBPF_NORMAL);
 			else if (prg.init || prg.scan)
 				pTaskbarInterface->SetProgressState(hwnd, TBPF_INDETERMINATE);
@@ -465,7 +466,7 @@ static INT_PTR CALLBACK FtMgrDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 			}
 
 			if (prg.run)
-				pTaskbarInterface->SetProgressValue(hwnd, prg.totalProgress, prg.totalBytes);	
+				pTaskbarInterface->SetProgressValue(hwnd, prg.totalProgress, prg.totalBytes);
 		}
 		break;
 	}
@@ -475,7 +476,7 @@ static INT_PTR CALLBACK FtMgrDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
 
 HWND FtMgr_Show(bool bForceActivate, bool bFromMenu)
 {
-	bool bAutoMin = DBGetContactSettingByte(NULL, "SRFile", "AutoMin", 0) != 0; /* lqbe */
+	bool bAutoMin = db_get_b(NULL, "SRFile", "AutoMin", 0) != 0; /* lqbe */
 
 	bool bJustCreated = (hwndFtMgr == NULL);
 	if (bJustCreated)
@@ -519,7 +520,7 @@ void FtMgr_ShowPage(int page)
 
 HWND FtMgr_AddTransfer(FileDlgData *fdd)
 {
-	bool bForceActivate = fdd->send || !DBGetContactSettingByte(NULL, "SRFile", "AutoAccept", 0);
+	bool bForceActivate = fdd->send || !db_get_b(NULL, "SRFile", "AutoAccept", 0);
 	TFtMgrData *dat = (TFtMgrData*)GetWindowLongPtr(FtMgr_Show(bForceActivate, false), GWLP_USERDATA);
 	if (dat == NULL)
 		return NULL;

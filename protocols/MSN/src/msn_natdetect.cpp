@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2007-2012 Boris Krasnovskiy.
 
 This program is free software; you can redistribute it and/or
@@ -18,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "msn_global.h"
 #include "msn_proto.h"
-#include "SDK/netfw.h"
+#include <netfw.h>
 
 #ifndef CLSID_NetFwMgr
 #define MDEF_CLSID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \

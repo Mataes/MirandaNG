@@ -1,15 +1,4 @@
 #include "StdAfx.h"
-#include "CurrencyConverter.h"
-#include "ModuleInfo.h"
-#include "resource.h"
-
-#include "QuotesProviderGoogle.h"
-#include "QuotesProviders.h"
-#include "WinCtrlHelper.h"
-#include "EconomicRateInfo.h"
-#include "Locale.h"
-#include "DBUtils.h"
-#include "IconLib.h"
 
 #define WINDOW_PREFIX "CurrenyConverter_"
 
@@ -228,8 +217,8 @@ namespace
 								CQuotesProviderGoogle::CQuote from = rSection.GetQuote(nFrom);
 								CQuotesProviderGoogle::CQuote to = rSection.GetQuote(nTo);
 
-								DBWriteContactSettingTString(NULL,QUOTES_MODULE_NAME,DB_STR_CC_QUOTE_FROM_ID,from.GetID().c_str());
-								DBWriteContactSettingTString(NULL,QUOTES_MODULE_NAME,DB_STR_CC_QUOTE_TO_ID,to.GetID().c_str());
+								db_set_ts(NULL,QUOTES_MODULE_NAME,DB_STR_CC_QUOTE_FROM_ID,from.GetID().c_str());
+								db_set_ts(NULL,QUOTES_MODULE_NAME,DB_STR_CC_QUOTE_TO_ID,to.GetID().c_str());
 
 								const CQuotesProviderGoogle* pProvider = get_google_provider();
 								assert(pProvider);

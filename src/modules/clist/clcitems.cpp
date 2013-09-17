@@ -2,8 +2,8 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "clc.h"
 
@@ -106,17 +107,15 @@ ClcGroup* fnAddGroup(HWND hwnd, struct ClcData *dat, const TCHAR *szName, DWORD 
 			group->totalMembers = 0;
 			if (flags != (DWORD) - 1 && pNextField == NULL && calcTotalMembers) {
 				DWORD style = GetWindowLongPtr(hwnd, GWL_STYLE);
-				HANDLE hContact = db_find_first();
-				while (hContact) {
-					ClcCacheEntry* cache = cli.pfnGetCacheEntry(hContact);
+				for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+					ClcCacheEntry *cache = cli.pfnGetCacheEntry(hContact);
 					if ( !lstrcmp(cache->tszGroup, szName) && (style & CLS_SHOWHIDDEN || !cache->bIsHidden))
 						group->totalMembers++;
-
-					hContact = db_find_next(hContact);
 				}
 			}
 		}
-	} while (pNextField);
+	}
+		while (pNextField);
 	return group;
 }
 
@@ -227,7 +226,7 @@ void fnAddContactToTree(HWND hwnd, struct ClcData *dat, HANDLE hContact, int upd
 		if (szProto != NULL)
 			status = db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE);
 
-	if (DBGetContactSettingTString(hContact, "CList", "Group", &dbv))
+	if (db_get_ts(hContact, "CList", "Group", &dbv))
 		group = &dat->list;
 	else {
 		group = cli.pfnAddGroup(hwnd, dat, dbv.ptszVal, (DWORD) - 1, 0, 0);
@@ -321,7 +320,7 @@ void fnDeleteItemFromTree(HWND hwnd, HANDLE hItem)
 		int i, nameOffset;
 		if ( !IsHContactContact(hItem))
 			return;
-		if (DBGetContactSettingTString(hItem, "CList", "Group", &dbv))
+		if (db_get_ts(hItem, "CList", "Group", &dbv))
 			return;
 
 		//decrease member counts of all parent groups too
@@ -332,7 +331,7 @@ void fnDeleteItemFromTree(HWND hwnd, HANDLE hItem)
 				break;
 			if (group->cl.items[i]->type == CLCIT_GROUP) {
 				int len = lstrlen(group->cl.items[i]->szText);
-				if ( !_tcsncmp(group->cl.items[i]->szText, dbv.ptszVal + nameOffset, len) && 
+				if ( !_tcsncmp(group->cl.items[i]->szText, dbv.ptszVal + nameOffset, len) &&
 					 (dbv.ptszVal[nameOffset + len] == '\\' || dbv.ptszVal[nameOffset + len] == '\0')) {
 					group->totalMembers--;
 					if (dbv.ptszVal[nameOffset + len] == '\0')
@@ -347,33 +346,26 @@ void fnDeleteItemFromTree(HWND hwnd, HANDLE hItem)
 
 void fnRebuildEntireList(HWND hwnd, struct ClcData *dat)
 {
-	char *szProto;
 	DWORD style = GetWindowLongPtr(hwnd, GWL_STYLE);
-	HANDLE hContact;
 	ClcGroup *group;
-	DBVARIANT dbv;
 
 	dat->list.expanded = 1;
 	dat->list.hideOffline = db_get_b(NULL, "CLC", "HideOfflineRoot", 0) && style&CLS_USEGROUPS;
 	dat->list.cl.count = dat->list.cl.limit = 0;
 	dat->selection = -1;
-	{
-		int i;
-		TCHAR *szGroupName;
-		DWORD groupFlags;
 
-		for (i = 1;; i++) {
-			szGroupName = cli.pfnGetGroupName(i, &groupFlags);
-			if (szGroupName == NULL)
-				break;
-			cli.pfnAddGroup(hwnd, dat, szGroupName, groupFlags, i, 0);
-		}
+	for (int i = 1;; i++) {
+		DWORD groupFlags;
+		TCHAR *szGroupName = cli.pfnGetGroupName(i, &groupFlags);
+		if (szGroupName == NULL)
+			break;
+		cli.pfnAddGroup(hwnd, dat, szGroupName, groupFlags, i, 0);
 	}
 
-	hContact = db_find_first();
-	while (hContact) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		if (style & CLS_SHOWHIDDEN || !db_get_b(hContact, "CList", "Hidden", 0)) {
-			if (DBGetContactSettingTString(hContact, "CList", "Group", &dbv))
+			DBVARIANT dbv;
+			if (db_get_ts(hContact, "CList", "Group", &dbv))
 				group = &dat->list;
 			else {
 				group = cli.pfnAddGroup(hwnd, dat, dbv.ptszVal, (DWORD) - 1, 0, 0);
@@ -383,16 +375,17 @@ void fnRebuildEntireList(HWND hwnd, struct ClcData *dat)
 
 			if (group != NULL) {
 				group->totalMembers++;
-				
+
 				if (dat->filterSearch && dat->szQuickSearch[0] != '\0') {
 					TCHAR *name = cli.pfnGetContactDisplayName(hContact, GCDNF_TCHAR);
 					TCHAR *lowered_name = CharLowerW(NEWTSTR_ALLOCA(name));
 					TCHAR *lowered_search = CharLowerW(NEWTSTR_ALLOCA(dat->szQuickSearch));
-					
+
 					if (_tcsstr(lowered_name, lowered_search))
 						cli.pfnAddContactToGroup(dat, group, hContact);
-				} else if ( !(style & CLS_NOHIDEOFFLINE) && (style & CLS_HIDEOFFLINE || group->hideOffline)) {
-					szProto = GetContactProto(hContact);
+				}
+				else if ( !(style & CLS_NOHIDEOFFLINE) && (style & CLS_HIDEOFFLINE || group->hideOffline)) {
+					char *szProto = GetContactProto(hContact);
 					if (szProto == NULL) {
 						if ( !cli.pfnIsHiddenMode(dat, ID_STATUS_OFFLINE))
 							cli.pfnAddContactToGroup(dat, group, hContact);
@@ -403,7 +396,6 @@ void fnRebuildEntireList(HWND hwnd, struct ClcData *dat)
 				else cli.pfnAddContactToGroup(dat, group, hContact);
 			}
 		}
-		hContact = db_find_next(hContact);
 	}
 
 	if (style & CLS_HIDEEMPTYGROUPS) {

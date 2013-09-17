@@ -117,14 +117,10 @@ LRESULT CALLBACK TopToolBarProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 {
 	static bool supressRepos = false;
 
-	if (g_ctrl->fnWindowProc != NULL)
-		if ( g_ctrl->fnWindowProc(hwnd, msg, wParam, lParam))
-			return g_ctrl->lResult;
-
 	switch(msg) {
 	case WM_CREATE:
 		g_ctrl->hWnd = hwnd;
-		PostMessage(hwnd, TTB_UPDATEFRAMEVISIBILITY, 1, 0);
+		PostMessage(hwnd, TTB_UPDATEFRAMEVISIBILITY, 0, 0);
 		return FALSE;
 
 	case WM_DESTROY:
@@ -154,7 +150,7 @@ LRESULT CALLBACK TopToolBarProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 				GetClientRect(g_ctrl->hWnd, &rcClient);
 				if (rcClient.bottom - rcClient.top != iHeight && iHeight) {
 					supressRepos = true;
-					PostMessage(hwnd, TTB_UPDATEFRAMEVISIBILITY, -1, 0);
+					PostMessage(hwnd, TTB_UPDATEFRAMEVISIBILITY, 0, 0);
 				}
 			}
 			return 0;
@@ -208,12 +204,10 @@ LRESULT CALLBACK TopToolBarProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 	case TTB_UPDATEFRAMEVISIBILITY:
 		{
-			BOOL vis=(BOOL)wParam;
-			BOOL curvis = IsWindowVisible(hwnd);
 			bool bResize = false;
-			int Height = ArrangeButtons();
 
 			if (g_ctrl->bAutoSize) {
+				int Height = ArrangeButtons();
 				INT_PTR frameopt = CallService(MS_CLIST_FRAMES_GETFRAMEOPTIONS, MAKEWPARAM(FO_HEIGHT, g_ctrl->hFrame), 0);
 				if (Height != frameopt) {
 					CallService(MS_CLIST_FRAMES_SETFRAMEOPTIONS, MAKEWPARAM(FO_HEIGHT, g_ctrl->hFrame), Height);
@@ -224,28 +218,17 @@ LRESULT CALLBACK TopToolBarProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			if (g_ctrl->bOrderChanged)
 				bResize = TRUE, g_ctrl->bOrderChanged = FALSE;
 
-			if ((curvis != vis || bResize) && vis != -1) {
-				INT_PTR frameopt = CallService(MS_CLIST_FRAMES_GETFRAMEOPTIONS, MAKEWPARAM(FO_FLAGS, g_ctrl->hFrame), 0);
-				frameopt &= ~F_VISIBLE;
-				frameopt |= vis ? F_VISIBLE : 0;
-				CallService(MS_CLIST_FRAMES_SETFRAMEOPTIONS, MAKEWPARAM(FO_FLAGS, g_ctrl->hFrame), frameopt);
-			}
+			if (bResize)
+				CallService(MS_CLIST_FRAMES_UPDATEFRAME, (WPARAM)g_ctrl->hFrame, FU_FMPOS);
 		}
 		break;
 
-	case TTB_SETCUSTOM:
-		{
-			TTBCtrlCustomize *pCustom = (TTBCtrlCustomize*)lParam;
-			if (pCustom == NULL || g_ctrl->fnWindowProc)
-				break;
+	case TTB_SETCUSTOMDATASIZE:
+		g_ctrl = (TTBCtrl*)mir_realloc(g_ctrl, lParam);
+		if (lParam > sizeof(TTBCtrl))
+			memset(g_ctrl+1, 0, lParam - sizeof(TTBCtrl));
 
-			g_ctrl = (TTBCtrl*)mir_realloc(g_ctrl, pCustom->cbLen);
-			if (pCustom->cbLen > sizeof(TTBCtrl))
-				memset(g_ctrl+1, 0, pCustom->cbLen - sizeof(TTBCtrl));
-
-			g_ctrl->fnWindowProc = pCustom->fnWindowProc;
-			SetWindowLongPtr(hwnd, 0, (LONG_PTR)g_ctrl);
-		}
+		SetWindowLongPtr(hwnd, 0, (LONG_PTR)g_ctrl);
 		break;
 
 	default:
@@ -285,21 +268,22 @@ INT_PTR OnEventFire(WPARAM wParam, LPARAM lParam)
 	// if we're working in skinned clist, receive the standard buttons & customizations
 	if (g_CustomProc && g_ctrl->hWnd)
 		g_CustomProc(TTB_WINDOW_HANDLE, g_ctrl->hWnd, g_CustomProcParam);
+	else
+		InitInternalButtons();
 
 	// if there's no customized frames, create our own
 	if (g_ctrl->hFrame == NULL) {
-		CLISTFrame Frame = { 0 };
-		Frame.cbSize = sizeof(Frame);
+		CLISTFrame Frame = { sizeof(Frame) };
 		Frame.tname = _T("Toolbar");
 		Frame.hWnd = g_ctrl->hWnd;
 		Frame.align = alTop;
 		Frame.Flags = F_VISIBLE | F_NOBORDER | F_LOCKED | F_TCHAR;
 		Frame.height = g_ctrl->nLastHeight;
+		Frame.hIcon = LoadSkinnedIcon(SKINICON_OTHER_FRAME);
 		g_ctrl->hFrame = (HANDLE)CallService(MS_CLIST_FRAMES_ADDFRAME, (WPARAM)&Frame, 0);
 	}
 
-	// receive all buttons
-	NotifyEventHooks(hTTBInitButtons, 0, 0);
+	// receive buttons
 	NotifyEventHooks(hTTBModuleLoaded, 0, 0);
 
 	return 0;
@@ -310,7 +294,7 @@ INT_PTR OnEventFire(WPARAM wParam, LPARAM lParam)
 int LoadBackgroundOptions()
 {
 	//load options
-	bkColour = DBGetContactSettingDword(NULL, TTB_OPTDIR, "BkColour", TTBDEFAULT_BKCOLOUR);
+	bkColour = db_get_dw(NULL, TTB_OPTDIR, "BkColour", TTBDEFAULT_BKCOLOUR);
 	if (hBmpBackground) {
 		DeleteObject(hBmpBackground);
 		hBmpBackground = NULL;
@@ -318,12 +302,12 @@ int LoadBackgroundOptions()
 
 	if (db_get_b(NULL, TTB_OPTDIR, "UseBitmap", TTBDEFAULT_USEBITMAP)) {
 		DBVARIANT dbv;
-		if (!DBGetContactSetting(NULL, TTB_OPTDIR, "BkBitmap", &dbv)) {
+		if (!db_get(NULL, TTB_OPTDIR, "BkBitmap", &dbv)) {
 			hBmpBackground = (HBITMAP)CallService(MS_UTILS_LOADBITMAP, 0, (LPARAM)dbv.pszVal);
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
-	backgroundBmpUse = DBGetContactSettingWord(NULL, TTB_OPTDIR, "BkBmpUse", TTBDEFAULT_BKBMPUSE);
+	backgroundBmpUse = db_get_w(NULL, TTB_OPTDIR, "BkBmpUse", TTBDEFAULT_BKBMPUSE);
 
 	RECT rc;
 	GetClientRect(g_ctrl->hWnd, &rc);

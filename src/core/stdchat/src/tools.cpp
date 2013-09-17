@@ -1,7 +1,7 @@
 /*
 Chat module plugin for Miranda IM
 
-Copyright 2000-2010 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -19,10 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "chat.h"
 
 extern HICON        hIcons[30];
-extern BOOL         PopUpInstalled;
 extern FONTINFO     aFonts[OPTIONS_FONTCOUNT];
 extern HMENU        g_hMenu;
 extern HANDLE       hBuildMenuEvent ;
@@ -93,22 +93,22 @@ static void __stdcall ShowRoomFromPopup(void * pi)
 	ShowRoom(si, WINDOW_VISIBLE, TRUE);
 }
 
-static INT_PTR CALLBACK PopupDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK PopupDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch(message) {
 	case WM_COMMAND:
 		if (HIWORD(wParam) == STN_CLICKED) {
-			SESSION_INFO* si = (SESSION_INFO*)CallService(MS_POPUP_GETPLUGINDATA, (WPARAM)hWnd,0);;
+			SESSION_INFO *si = (SESSION_INFO*) PUGetPluginData(hWnd);
 
 			CallFunctionAsync(ShowRoomFromPopup, si);
 
-			PUDeletePopUp(hWnd);
+			PUDeletePopup(hWnd);
 			return TRUE;
 		}
 		break;
 	case WM_CONTEXTMENU:
 		{
-			SESSION_INFO* si = (SESSION_INFO*)CallService(MS_POPUP_GETPLUGINDATA, (WPARAM)hWnd,0);
+			SESSION_INFO *si = (SESSION_INFO*) PUGetPluginData(hWnd);
 			if (si->hContact)
 				if (CallService(MS_CLIST_GETEVENT, (WPARAM)si->hContact, 0))
 					CallService(MS_CLIST_REMOVEEVENT, (WPARAM)si->hContact, (LPARAM)"chaticon");
@@ -116,14 +116,14 @@ static INT_PTR CALLBACK PopupDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPA
 			if (si->hWnd && KillTimer(si->hWnd, TIMERID_FLASHWND))
 				FlashWindow(si->hWnd, FALSE);
 
-			PUDeletePopUp( hWnd );
+			PUDeletePopup(hWnd);
 		}
 		break;
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-static int ShowPopup (HANDLE hContact, SESSION_INFO* si, HICON hIcon,  char* pszProtoName,  TCHAR* pszRoomName, COLORREF crBkg, const TCHAR* fmt, ...)
+static int ShowPopup(HANDLE hContact, SESSION_INFO* si, HICON hIcon,  char* pszProtoName,  TCHAR* pszRoomName, COLORREF crBkg, const TCHAR* fmt, ...)
 {
 	POPUPDATAT pd = {0};
 	va_list marker;
@@ -133,19 +133,22 @@ static int ShowPopup (HANDLE hContact, SESSION_INFO* si, HICON hIcon,  char* psz
 		return 0;
 
 	va_start(marker, fmt);
-	_vsntprintf(szBuf, 4096, fmt, marker);
+	mir_vsntprintf(szBuf, 4096, fmt, marker);
 	va_end(marker);
 
 	pd.lchContact = hContact;
 
 	if ( hIcon )
-		pd.lchIcon = hIcon ;
+		pd.lchIcon = hIcon;
 	else
 		pd.lchIcon = LoadIconEx( "window", FALSE );
 
-	mir_sntprintf(pd.lptzContactName, MAX_CONTACTNAME-1, _T(TCHAR_STR_PARAM) _T(" - %s"),
-		pszProtoName, CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM)hContact, GCDNF_TCHAR ));
-	lstrcpyn( pd.lptzText, TranslateTS(szBuf), MAX_SECONDLINE-1);
+	PROTOACCOUNT *pa = ProtoGetAccount(pszProtoName);
+	mir_sntprintf(pd.lptzContactName, MAX_CONTACTNAME-1, _T("%s - %s"),
+		(pa == NULL) ? _A2T(pszProtoName) : pa->tszAccountName,
+		pcli->pfnGetContactDisplayName(hContact, 0));
+
+	lstrcpyn( pd.lptzText, TranslateTS(szBuf), MAX_SECONDLINE);
 	pd.iSeconds = g_Settings.iPopupTimeout;
 
 	if (g_Settings.iPopupStyle == 2) {
@@ -161,9 +164,9 @@ static int ShowPopup (HANDLE hContact, SESSION_INFO* si, HICON hIcon,  char* psz
 		pd.colorText = crBkg;
 	}
 
-	pd.PluginWindowProc = (WNDPROC)PopupDlgProc;
+	pd.PluginWindowProc = PopupDlgProc;
 	pd.PluginData = si;
-	return PUAddPopUpT(&pd);
+	return PUAddPopupT(&pd);
 }
 
 static BOOL DoTrayIcon(SESSION_INFO* si, GCEVENT * gce)
@@ -284,28 +287,25 @@ static BOOL DoPopup(SESSION_INFO* si, GCEVENT * gce)
 
 BOOL DoSoundsFlashPopupTrayStuff(SESSION_INFO* si, GCEVENT * gce, BOOL bHighlight, int bManyFix)
 {
-	BOOL bInactive;
-	int iEvent;
-
 	if (!gce || !si ||  gce->bIsMe || si->iType == GCW_SERVER)
 		return FALSE;
 
-	bInactive = si->hWnd == NULL || GetForegroundWindow() != si->hWnd;
+	BOOL bInactive = si->hWnd == NULL || GetForegroundWindow() != si->hWnd;
 	// bInactive |=  GetActiveWindow() != si->hWnd; // Removed this, because it seemed to be FALSE, even when window was focused, causing incorrect notifications
 
-	iEvent = gce->pDest->iType;
+	int iEvent = gce->pDest->iType;
 
 	if ( bHighlight ) {
 		gce->pDest->iType |= GC_EVENT_HIGHLIGHT;
 		if (bInactive || !g_Settings.SoundsFocus)
 			SkinPlaySound("ChatHighlight");
-		if (!g_Settings.TabsEnable && bInactive && si->hWnd && DBGetContactSettingByte(NULL, "Chat", "FlashWindowHighlight", 0) != 0)
+		if (!g_Settings.TabsEnable && bInactive && si->hWnd && db_get_b(NULL, "Chat", "FlashWindowHighlight", 0) != 0)
 			SetTimer(si->hWnd, TIMERID_FLASHWND, 900, NULL);
-		if (DBGetContactSettingByte(si->hContact, "CList", "Hidden", 0) != 0)
-			DBDeleteContactSetting(si->hContact, "CList", "Hidden");
+		if (db_get_b(si->hContact, "CList", "Hidden", 0) != 0)
+			db_unset(si->hContact, "CList", "Hidden");
 		if (bInactive)
 			DoTrayIcon(si, gce);
-		if (bInactive || !g_Settings.PopUpInactiveOnly)
+		if (bInactive || !g_Settings.PopupInactiveOnly)
 			DoPopup(si, gce);
 		if (g_Settings.TabsEnable && bInactive && g_TabSession.hWnd)
 			SendMessage(g_TabSession.hWnd, GC_SETMESSAGEHIGHLIGHT, 0, (LPARAM) si);
@@ -319,7 +319,7 @@ BOOL DoSoundsFlashPopupTrayStuff(SESSION_INFO* si, GCEVENT * gce, BOOL bHighligh
 	// stupid thing to not create multiple popups for a QUIT event for instance
 	if (bManyFix == 0) {
 		// do popups
-		if (bInactive || !g_Settings.PopUpInactiveOnly)
+		if (bInactive || !g_Settings.PopupInactiveOnly)
 			DoPopup(si, gce);
 
 		// do sounds and flashing
@@ -353,7 +353,7 @@ BOOL DoSoundsFlashPopupTrayStuff(SESSION_INFO* si, GCEVENT * gce, BOOL bHighligh
 
 			if (bInactive && !( si->wState & STATE_TALK )) {
 				si->wState |= STATE_TALK;
-				DBWriteContactSettingWord(si->hContact, si->pszModule,"ApparentMode",(LPARAM)(WORD) 40071);
+				db_set_w(si->hContact, si->pszModule,"ApparentMode",(LPARAM)(WORD) 40071);
 			}
 			if (g_Settings.TabsEnable && bInactive && g_TabSession.hWnd)
 				SendMessage(g_TabSession.hWnd, GC_SETTABHIGHLIGHT, 0, (LPARAM) si);
@@ -404,7 +404,7 @@ void CheckColorsInModule(const char* pszModule)
 	MODULEINFO * pMod = MM_FindModule( pszModule );
 	int i = 0;
 	COLORREF crFG;
-	COLORREF crBG = (COLORREF)DBGetContactSettingDword(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
+	COLORREF crBG = (COLORREF)db_get_dw(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
 
 	LoadMsgDlgFont(17, NULL, &crFG);
 
@@ -535,7 +535,7 @@ BOOL LogToFile(SESSION_INFO* si, GCEVENT * gce)
 	ValidateFilename(szName);
 	mir_sntprintf(szFolder, MAX_PATH, _T("%s\\%s"), g_Settings.pszLogDir, szName );
 
-	CallService(MS_UTILS_CREATEDIRTREET, 0, (LPARAM)szFolder);
+	CreateDirectoryTreeT(szFolder);
 
 	mir_sntprintf( szName, MAX_PATH, _T("%s.log"), si->ptszID );
 	ValidateFilename(szName);
@@ -716,16 +716,15 @@ UINT CreateGCMenu(HWND hwndDlg, HMENU *hMenu, int iIndex, POINT pt, SESSION_INFO
 	}
 	else if (iIndex == 0)
 	{
-		TCHAR szTemp[30], szTemp2[30];
-		lstrcpyn(szTemp, TranslateT("&Message"), 24);
-		if ( pszUID )
-			mir_sntprintf( szTemp2, SIZEOF(szTemp2), _T("%s %s"), szTemp, pszUID);
+		TCHAR szTemp[30];
+		if (pszUID)
+			mir_sntprintf(szTemp, SIZEOF(szTemp), TranslateT("&Message %s"), pszUID);
 		else
-			lstrcpyn(szTemp2, szTemp, 24);
+			lstrcpyn(szTemp, TranslateT("&Message"), SIZEOF(szTemp));
 
-		if ( lstrlen(szTemp2) > 22 )
-			lstrcpyn( szTemp2+22, _T("..."), 4 );
-		ModifyMenu( *hMenu, ID_MESS, MF_STRING|MF_BYCOMMAND, ID_MESS, szTemp2 );
+		if (lstrlen(szTemp) > 22)
+			lstrcpy(szTemp+22, _T("..."));
+		ModifyMenu(*hMenu, ID_MESS, MF_STRING|MF_BYCOMMAND, ID_MESS, szTemp);
 		gcmi.Type = MENU_ON_NICKLIST;
 	}
 

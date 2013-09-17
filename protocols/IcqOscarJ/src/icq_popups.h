@@ -24,7 +24,7 @@
 // -----------------------------------------------------------------------------
 //  DESCRIPTION:
 //
-//  Headers for PopUp Plugin support
+//  Headers for Popup Plugin support
 //
 // -----------------------------------------------------------------------------
 #ifndef __ICQ_POPUPS_H
@@ -33,8 +33,7 @@
 
 #define POPTYPE_SPAM    254  // this is for spambots
 
-
-void InitPopUps();
+int  ModuleLoad(WPARAM, LPARAM);
 void InitPopupOpts(WPARAM wParam);
 
 

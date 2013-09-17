@@ -4,23 +4,8 @@
  * (c) majvan 2002-2004
  */
 
-#pragma warning( disable : 4290 )
 #include "../yamn.h"
 
-//- imported ---------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------
-
-extern SWMRG *AccountBrowserSO;
-extern struct WndHandles *MessageWnd;
-
-extern int GetCharsetFromString(char *input,size_t size);
-extern void SendMsgToRecepients(struct WndHandles *FirstWin,UINT msg,WPARAM wParam,LPARAM lParam);
-extern void ConvertCodedStringToUnicode(char *stream,WCHAR **storeto,DWORD cp,int mode);
-extern DWORD WINAPI MailBrowser(LPVOID Param);
-extern DWORD WINAPI NoNewMailProc(LPVOID Param);
-extern DWORD WINAPI BadConnection(LPVOID Param);
-
-//--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 
 //Copies one string to another
@@ -98,7 +83,7 @@ void CopyToHeader(char *srcstart,char *srcend,char **dest,int mode)
 	if (srcstart>=srcend)
 		return;
 
-	if (NULL!=*dest)
+	if (NULL != *dest)
 		delete[] *dest;
 	if (NULL==(*dest=new char[srcend-srcstart+1]))
 		return;
@@ -127,7 +112,7 @@ void ExtractAddressFromLine(char *finder,char **storeto,char **storetonick)
 		return;
 	}
 	while(WS(finder)) finder++;
-	if ((*finder)!='<')
+	if ((*finder) != '<')
 	{
 		char *finderend=finder+1;
 		do
@@ -138,12 +123,12 @@ void ExtractAddressFromLine(char *finder,char **storeto,char **storetonick)
 		}while(ENDLINEWS(finderend));
 		finderend--;
 		while(WS(finderend) || ENDLINE(finderend)) finderend--;				//find the end of text, no whitespace
-		if (*finderend!='>')						//not '>' at the end of line
+		if (*finderend != '>')						//not '>' at the end of line
 			CopyToHeader(finder,finderend+1,storeto,MIME_MAIL);
 		else								//at the end of line, there's '>'
 		{
 			char *finder2=finderend;
-			while((*finder2!='<') && (finder2>finder)) finder2--;		//go to matching '<' or to the start
+			while((*finder2 != '<') && (finder2>finder)) finder2--;		//go to matching '<' or to the start
 			CopyToHeader(finder2,finderend+1,storeto,MIME_MAIL);
 			if (*finder2=='<')						//if we found '<', the rest copy as from nick
 			{
@@ -160,7 +145,7 @@ void ExtractAddressFromLine(char *finder,char **storeto,char **storetonick)
 		{
 			if (ENDLINEWS(finderend))							//after endline information continues
 				finderend+=2;
-			while(!ENDLINE(finderend) && (*finderend!='>') && !EOS(finderend)) finderend++;		//seek to the matching < or to the end of line or to the end of string
+			while(!ENDLINE(finderend) && (*finderend != '>') && !EOS(finderend)) finderend++;		//seek to the matching < or to the end of line or to the end of string
 		}while(ENDLINEWS(finderend));
 		CopyToHeader(finder,finderend+1,storeto,MIME_MAIL);				//go to first '>' or to the end and copy
 		finder=finderend+1;
@@ -201,7 +186,7 @@ char *ExtractFromContentType(char *ContentType,char *value)
 	char *lowered = _strdup(ContentType);
 	ToLower(lowered);
 	char *finder=strstr(lowered,value);
-	if (finder==NULL){
+	if (finder==NULL) {
 		free (lowered);
 		return NULL;
 	}
@@ -213,13 +198,13 @@ char *ExtractFromContentType(char *ContentType,char *value)
 
 	temp=finder-1;
 	while((temp>ContentType) && WS(temp)) temp--;			//now we have to find, if the word "Charset=" is located after ';' like "; Charset="
-	if (*temp!=';' && !ENDLINE(temp) && temp!=ContentType)
+	if (*temp != ';' && !ENDLINE(temp) && temp != ContentType)
 		return NULL;
 	finder=finder+strlen(value);						//jump over value string
 
 	while(WS(finder)) finder++;					//jump over whitespaces
 	temp=finder;
-	while(*temp!=0 && *temp!=';') temp++;				//jump to the end of setting (to the next ;)
+	while(*temp != 0 && *temp != ';') temp++;				//jump to the end of setting (to the next ;)
 	temp--;
 	while(WS(temp))	temp--;						//remove whitespaces from the end
 	if (*finder=='\"') { //remove heading and tailing quotes
@@ -228,7 +213,7 @@ char *ExtractFromContentType(char *ContentType,char *value)
 	}
 	if (NULL==(CopiedString=new char[++temp-finder+1]))
 		return NULL;
-	for (copier=CopiedString;finder!=temp;*copier++=*finder++);			//copy string
+	for (copier=CopiedString;finder != temp;*copier++=*finder++);			//copy string
 	*copier=0;						//and end it with zero character
 
 	return CopiedString;
@@ -236,7 +221,7 @@ char *ExtractFromContentType(char *ContentType,char *value)
 
 void ExtractShortHeader(struct CMimeItem *items,struct CShortHeader *head)
 {
-	for (;items!=NULL;items=items->Next)
+	for (;items != NULL;items=items->Next)
 	{
 		//at the start of line
 		//MessageBox(NULL,items->value,items->name,0);
@@ -314,7 +299,7 @@ void ExtractShortHeader(struct CMimeItem *items,struct CShortHeader *head)
 			DebugLog(DecodeFile,"</Extracting>\n");
 			#endif
 			ToLower(ContentType);
-			if (NULL!=(CharSetStr=ExtractFromContentType(ContentType,"charset=")))
+			if (NULL != (CharSetStr=ExtractFromContentType(ContentType,"charset=")))
 			{
 				head->CP=GetCharsetFromString(CharSetStr,strlen(CharSetStr));
 				delete[] CharSetStr;
@@ -328,7 +313,7 @@ void ExtractShortHeader(struct CMimeItem *items,struct CShortHeader *head)
 			#ifdef DEBUG_DECODE
 			DebugLog(DecodeFile,"<Extracting importance>");
 			#endif
-			if (head->Priority!=-1)
+			if (head->Priority != -1)
 			{
 				if (0==strncmp(items->value,"low",3))
 					head->Priority=5;
@@ -372,17 +357,17 @@ void ExtractHeader(struct CMimeItem *items,int &CP,struct CHeader *head)
 	head->Priority=ShortHeader.Priority==-1 ? 3 : ShortHeader.Priority;
 	CP=ShortHeader.CP==-1 ? CP : ShortHeader.CP;
 	#ifdef DEBUG_DECODE
-	if (NULL!=ShortHeader.From)
+	if (NULL != ShortHeader.From)
 		DebugLog(DecodeFile,"<Decoded from>%s</Decoded)\n",ShortHeader.From);
-	if (NULL!=ShortHeader.FromNick)
+	if (NULL != ShortHeader.FromNick)
 		DebugLog(DecodeFile,"<Decoded from-nick>%s</Decoded)\n",ShortHeader.FromNick);
-	if (NULL!=ShortHeader.ReturnPath)
+	if (NULL != ShortHeader.ReturnPath)
 		DebugLog(DecodeFile,"<Decoded return-path>%s</Decoded)\n",ShortHeader.ReturnPath);
-	if (NULL!=ShortHeader.ReturnPathNick)
+	if (NULL != ShortHeader.ReturnPathNick)
 		DebugLog(DecodeFile,"<Decoded return-path nick>%s</Decoded)\n",ShortHeader.ReturnPathNick);
-	if (NULL!=ShortHeader.Subject)
+	if (NULL != ShortHeader.Subject)
 		DebugLog(DecodeFile,"<Decoded subject>%s</Decoded)\n",ShortHeader.Subject);
-	if (NULL!=ShortHeader.Date)
+	if (NULL != ShortHeader.Date)
 		DebugLog(DecodeFile,"<Decoded date>%s</Decoded)\n",ShortHeader.Date);
 	DebugLog(DecodeFile,"</Extracting header>\n");
 	DebugLog(DecodeFile,"<Convert>\n");
@@ -391,38 +376,38 @@ void ExtractHeader(struct CMimeItem *items,int &CP,struct CHeader *head)
 	ConvertCodedStringToUnicode(ShortHeader.From,&head->From,CP,MIME_PLAIN);
 
 	#ifdef DEBUG_DECODE
-	if (NULL!=head->From)
+	if (NULL != head->From)
 		DebugLogW(DecodeFile,L"<Converted from>%s</Converted>\n",head->From);
 	#endif
 	ConvertCodedStringToUnicode(ShortHeader.FromNick,&head->FromNick,CP,MIME_MAIL);
 	#ifdef DEBUG_DECODE
-	if (NULL!=head->FromNick)
+	if (NULL != head->FromNick)
 		DebugLogW(DecodeFile,L"<Converted from-nick>%s</Converted>\n",head->FromNick);
 	#endif
 	ConvertCodedStringToUnicode(ShortHeader.ReturnPath,&head->ReturnPath,CP,MIME_PLAIN);
 	#ifdef DEBUG_DECODE
-	if (NULL!=head->ReturnPath)
+	if (NULL != head->ReturnPath)
 		DebugLogW(DecodeFile,L"<Converted return-path>%s</Converted>\n",head->ReturnPath);
 	#endif
 	ConvertCodedStringToUnicode(ShortHeader.ReturnPathNick,&head->ReturnPathNick,CP,MIME_MAIL);
 	#ifdef DEBUG_DECODE
-	if (NULL!=head->ReturnPathNick)
+	if (NULL != head->ReturnPathNick)
 		DebugLogW(DecodeFile,L"<Converted return-path nick>%s</Converted>\n",head->ReturnPathNick);
 	#endif
 	ConvertCodedStringToUnicode(ShortHeader.Subject,&head->Subject,CP,MIME_PLAIN);
 	#ifdef DEBUG_DECODE
-	if (NULL!=head->Subject)
+	if (NULL != head->Subject)
 		DebugLogW(DecodeFile,L"<Converted subject>%s</Converted>\n",head->Subject);
 	#endif
 	ConvertCodedStringToUnicode(ShortHeader.Date,&head->Date,CP,MIME_PLAIN);
 	#ifdef DEBUG_DECODE
-	if (NULL!=head->Date)
+	if (NULL != head->Date)
 		DebugLogW(DecodeFile,L"<Converted date>%s</Converted>\n",head->Date);
 	#endif
 
 	ConvertCodedStringToUnicode(ShortHeader.Body,&head->Body,CP,MIME_PLAIN);
 	#ifdef DEBUG_DECODE
-	if (NULL!=head->Body)
+	if (NULL != head->Body)
 		DebugLogW(DecodeFile,L"<Converted Body>%s</Converted>\n",head->Body);
 	#endif
 
@@ -439,40 +424,40 @@ void ExtractHeader(struct CMimeItem *items,int &CP,struct CHeader *head)
 
 void DeleteShortHeaderContent(struct CShortHeader *head)
 {
-	if (head->From!=NULL) delete[] head->From;
-	if (head->FromNick!=NULL) delete[] head->FromNick;
-	if (head->ReturnPath!=NULL) delete[] head->ReturnPath;
-	if (head->ReturnPathNick!=NULL) delete[] head->ReturnPathNick;
-	if (head->Subject!=NULL) delete[] head->Subject;
-	if (head->Date!=NULL) delete[] head->Date;
-	if (head->To!=NULL) DeleteShortNames(head->To);
-	if (head->Cc!=NULL) DeleteShortNames(head->Cc);
-	if (head->Bcc!=NULL) DeleteShortNames(head->Bcc);
-	if (head->Body!=NULL) delete[] head->Body;
+	if (head->From != NULL) delete[] head->From;
+	if (head->FromNick != NULL) delete[] head->FromNick;
+	if (head->ReturnPath != NULL) delete[] head->ReturnPath;
+	if (head->ReturnPathNick != NULL) delete[] head->ReturnPathNick;
+	if (head->Subject != NULL) delete[] head->Subject;
+	if (head->Date != NULL) delete[] head->Date;
+	if (head->To != NULL) DeleteShortNames(head->To);
+	if (head->Cc != NULL) DeleteShortNames(head->Cc);
+	if (head->Bcc != NULL) DeleteShortNames(head->Bcc);
+	if (head->Body != NULL) delete[] head->Body;
 }
 
 void DeleteHeaderContent(struct CHeader *head)
 {
-	if (head->From!=NULL) delete[] head->From;
-	if (head->FromNick!=NULL) delete[] head->FromNick;
-	if (head->ReturnPath!=NULL) delete[] head->ReturnPath;
-	if (head->ReturnPathNick!=NULL) delete[] head->ReturnPathNick;
-	if (head->Subject!=NULL) delete[] head->Subject;
-	if (head->Date!=NULL) delete[] head->Date;
-	if (head->Body!=NULL) delete[] head->Body;
-	if (head->To!=NULL) DeleteNames(head->To);
-	if (head->Cc!=NULL) DeleteNames(head->Cc);
-	if (head->Bcc!=NULL) DeleteNames(head->Bcc);
+	if (head->From != NULL) delete[] head->From;
+	if (head->FromNick != NULL) delete[] head->FromNick;
+	if (head->ReturnPath != NULL) delete[] head->ReturnPath;
+	if (head->ReturnPathNick != NULL) delete[] head->ReturnPathNick;
+	if (head->Subject != NULL) delete[] head->Subject;
+	if (head->Date != NULL) delete[] head->Date;
+	if (head->Body != NULL) delete[] head->Body;
+	if (head->To != NULL) DeleteNames(head->To);
+	if (head->Cc != NULL) DeleteNames(head->Cc);
+	if (head->Bcc != NULL) DeleteNames(head->Bcc);
 }
 
 void DeleteNames(PYAMN_MIMENAMES Names)
 {
 	PYAMN_MIMENAMES Parser=Names,Old;
-	for (;Parser!=NULL;Parser=Parser->Next)
+	for (;Parser != NULL;Parser=Parser->Next)
 	{
-		if (Parser->Value!=NULL)
+		if (Parser->Value != NULL)
 			delete[] Parser->Value;
-		if (Parser->ValueNick!=NULL)
+		if (Parser->ValueNick != NULL)
 			delete[] Parser->ValueNick;
 		Old=Parser;
 		Parser=Parser->Next;
@@ -483,11 +468,11 @@ void DeleteNames(PYAMN_MIMENAMES Names)
 void DeleteShortNames(PYAMN_MIMESHORTNAMES Names)
 {
 	PYAMN_MIMESHORTNAMES Parser=Names,Old;
-	for (;Parser!=NULL;Parser=Parser->Next)
+	for (;Parser != NULL;Parser=Parser->Next)
 	{
-		if (Parser->Value!=NULL)
+		if (Parser->Value != NULL)
 			delete[] Parser->Value;
-		if (Parser->ValueNick!=NULL)
+		if (Parser->ValueNick != NULL)
 			delete[] Parser->ValueNick;
 		Old=Parser;
 		Parser=Parser->Next;
@@ -498,7 +483,7 @@ void DeleteShortNames(PYAMN_MIMESHORTNAMES Names)
 
 void inline ToLower(char *string)
 {
-	for (;*string!=0;string++)
+	for (;*string != 0;string++)
 		if (*string>='A' && *string<='Z') *string=*string-'A'+'a';
 }
 
@@ -531,7 +516,7 @@ void ParseAPart(APartDataType *data)
 			while(ENDLINEWS(finder)) finder++;
 
 			//at the start of line
-			if (finder>data->Src){
+			if (finder>data->Src) {
 				if (*(finder-2)=='\r' || *(finder-2)=='\n') 
 					*(finder-2)=0;
 				if (*(finder-1)=='\r' || *(finder-1)=='\n') 
@@ -539,7 +524,7 @@ void ParseAPart(APartDataType *data)
 			}
 			prev1=finder;
 
-			while(*finder!=':' && !EOS(finder) && !ENDLINE(finder)) finder++;
+			while(*finder != ':' && !EOS(finder) && !ENDLINE(finder)) finder++;
 			if (ENDLINE(finder)||EOS(finder)) {
 				// no ":" in the line? here the body begins;
 				data->body = prev1;
@@ -572,7 +557,7 @@ void ParseAPart(APartDataType *data)
 				finder++;
 				if (ENDLINE(finder)) {
 					// end of headers. message body begins
-					if (finder>data->Src){
+					if (finder>data->Src) {
 						if (*(finder-2)=='\r' || *(finder-2)=='\n') 
 							*(finder-2)=0;
 						if (*(finder-1)=='\r' || *(finder-1)=='\n') 
@@ -584,7 +569,7 @@ void ParseAPart(APartDataType *data)
 					while (!EOS(finder+1))finder++;
 					if (ENDLINE(finder))finder--;
 					prev2 = finder;
-					if (prev2>prev1){ // yes, we have body
+					if (prev2>prev1) { // yes, we have body
 						data->body = prev1;
 					}
 					break; // there is nothing else
@@ -594,7 +579,7 @@ void ParseAPart(APartDataType *data)
 	}
 	catch(...)
 	{
-		MessageBox(NULL,_T("Translate header error"),_T(""),0);
+		MessageBox(NULL, TranslateT("Translate header error"), _T(""), 0);
 	}
 	if (data->body) data->bodyLen = (int)strlen(data->body);
 }
@@ -616,7 +601,7 @@ WCHAR *ParseMultipartBody(char *src, char *bond)
 	APartDataType *partData = new APartDataType[numparts];
 	memset(partData, 0, sizeof(APartDataType)*numparts);
 	partData[0].Src = courbond = srcback;
-	for (i=1;(courbond=strstr(courbond,bond));i++,courbond+=sizebond){
+	for (i=1;(courbond=strstr(courbond,bond));i++,courbond+=sizebond) {
 		*(courbond-2) = 0;
 		partData[i].Src = courbond+sizebond;
 		while (ENDLINE(partData[i].Src)) partData[i].Src++;
@@ -624,14 +609,14 @@ WCHAR *ParseMultipartBody(char *src, char *bond)
 	size_t resultSize=0;
 	for (i=0;i<numparts;i++) {
 		ParseAPart(&partData[i]);
-		if (partData[i].body){
-			if (partData[i].TransEnc){
+		if (partData[i].body) {
+			if (partData[i].TransEnc) {
 				if (!_stricmp(partData[i].TransEnc,"base64")) partData[i].TransEncType=TE_BASE64;
 				else if (!_stricmp(partData[i].TransEnc,"quoted-printable"))partData[i].TransEncType=TE_QUOTEDPRINTABLE;
 			}
-			if (partData[i].ContType){
+			if (partData[i].ContType) {
 				char *CharSetStr;
-				if (NULL!=(CharSetStr=ExtractFromContentType(partData[i].ContType,"charset=")))
+				if (NULL != (CharSetStr=ExtractFromContentType(partData[i].ContType,"charset=")))
 				{
 					partData[i].CodePage=GetCharsetFromString(CharSetStr,strlen(CharSetStr));
 					delete[] CharSetStr;
@@ -639,7 +624,7 @@ WCHAR *ParseMultipartBody(char *src, char *bond)
 			}
 			if (partData[i].ContType && !_strnicmp(partData[i].ContType,"text",4)) {
 				char *localBody=0;
-				switch (partData[i].TransEncType){
+				switch (partData[i].TransEncType) {
 					case TE_BASE64:
 					{
 						int size =partData[i].bodyLen*3/4+5;
@@ -658,7 +643,7 @@ WCHAR *ParseMultipartBody(char *src, char *bond)
 			} else if (partData[i].ContType && !_strnicmp(partData[i].ContType,"multipart/",10)) {
 				//Multipart in mulitipart recursive? should be SPAM. Ah well
 				char *bondary=NULL;
-				if (NULL!=(bondary=ExtractFromContentType(partData[i].ContType,"boundary=")))
+				if (NULL != (bondary=ExtractFromContentType(partData[i].ContType,"boundary=")))
 				{
 					partData[i].wBody = ParseMultipartBody(partData[i].body,bondary);
 					delete[] bondary;
@@ -674,42 +659,42 @@ FailBackRaw:
 	dest = new WCHAR[resultSize+1];
 	size_t destpos = 0;
 	for (i=0;i<numparts;i++) {
-		if (i){ // part before first boudary should not have headers
-			char infoline[104]; size_t linesize = 0;
-			_snprintf(infoline,100,"%s %d",Translate("Part"),i);
+		if (i) { // part before first boudary should not have headers
+			char infoline[1024]; size_t linesize = 0;
+			mir_snprintf(infoline, SIZEOF(infoline), "%s %d", Translate("Part"), i);
 			linesize = strlen(infoline);
-			if (partData[i].TransEnc){
-				_snprintf(infoline+linesize,100-linesize,"; %s",partData[i].TransEnc);
+			if (partData[i].TransEnc) {
+				mir_snprintf(infoline + linesize, SIZEOF(infoline) - linesize, "; %s", partData[i].TransEnc);
 				linesize = strlen(infoline);
 			}
-			if (partData[i].ContType){
+			if (partData[i].ContType) {
 				char *CharSetStr=strchr(partData[i].ContType,';');
-				if (CharSetStr){
+				if (CharSetStr) {
 					CharSetStr[0]=0;
-					_snprintf(infoline+linesize,100-linesize,"; %s",partData[i].ContType);
+					mir_snprintf(infoline + linesize, SIZEOF(infoline) - linesize, "; %s", partData[i].ContType);
 					linesize = strlen(infoline);
 					partData[i].ContType=CharSetStr+1;
-					if (NULL!=(CharSetStr=ExtractFromContentType(partData[i].ContType,"charset=")))
-					{
-						_snprintf(infoline+linesize,100-linesize,"; %s",CharSetStr);
+					if (NULL != (CharSetStr=ExtractFromContentType(partData[i].ContType,"charset="))) {
+						mir_snprintf(infoline + linesize, SIZEOF(infoline) - linesize, "; %s", CharSetStr);
 						linesize = strlen(infoline);
 						delete[] CharSetStr;
 					}
-					if (NULL!=(CharSetStr=ExtractFromContentType(partData[i].ContType,"name=")))
-					{
-						_snprintf(infoline+linesize,100-linesize,"; \"%s\"",CharSetStr);
+					if (NULL != (CharSetStr=ExtractFromContentType(partData[i].ContType,"name="))) {
+						mir_snprintf(infoline + linesize, SIZEOF(infoline) - linesize, "; \"%s\"", CharSetStr);
 						linesize = strlen(infoline);
 						delete[] CharSetStr;
 					}
-				} else {
-					_snprintf(infoline+linesize,100-linesize,"; %s",partData[i].ContType);
+				}
+				else {
+					mir_snprintf(infoline + linesize, SIZEOF(infoline) - linesize, "; %s", partData[i].ContType);
 					linesize = strlen(infoline);
 				}
 			}
-			sprintf(infoline+linesize,".\r\n");
-			{WCHAR *temp=0;
+			mir_snprintf(infoline + linesize, SIZEOF(infoline) - linesize, ".\r\n");
+			{
+				WCHAR *temp=0;
 				dest[destpos] = dest[destpos+1] = dest[destpos+2] = 0x2022; // bullet;
-				destpos+=3;
+				destpos += 3;
 				ConvertStringToUnicode(infoline,CP_ACP,&temp);
 				size_t wsize = wcslen(temp);
 				wcscpy(&dest[destpos],temp);
@@ -717,7 +702,8 @@ FailBackRaw:
 				delete[] temp;
 			}
 		} // if (i)
-		if (partData[i].wBody){
+
+		if (partData[i].wBody) {
 			size_t wsize = wcslen(partData[i].wBody);
 			wcscpy(&dest[destpos],partData[i].wBody);
 			destpos += wsize;

@@ -20,44 +20,36 @@
 */
 
 #include "common.h"
-#include "indsnd.h"
-#include "options.h"
-#include "popup.h"
-#include "utils.h"
-#include "version.h"
-#include "xstatus.h"
 
 HINSTANCE hInst;
 
 LIST<DBEVENT> eventList( 10 );
 
-HANDLE hStatusModeChange, hServiceMenu, hHookContactStatusChanged, hEnableDisableMenu;
-HANDLE hToolbarButton;
+HANDLE hStatusModeChange, hServiceMenu, hHookContactStatusChanged, hToolbarButton;
+HGENMENU hEnableDisableMenu;
 
 char szMetaModuleName[256] = {0};
 STATUS StatusList[STATUS_COUNT];
-DWORD LoadTime = 0;
+HWND SecretWnd;
 int hLangpack;
-
-extern OPTIONS opt;
 
 PLUGININFOEX pluginInfoEx = {
 	sizeof(PLUGININFOEX),
-	"NewXstatusNotify YM",
-	__VERSION_DWORD,
-	"Notifies you when a contact changes his/her (X)status or status message.",
-	"Luca Santarelli, Vasilich, yaho",
-	"yaho@miranda-easy.net",
-	"© 2001-2004 Luca Santarelli, 2005-2007 Vasilich, 2007-2011 yaho",
-	"http://miranda-ng.org/",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
-	MIID_NXSN
+	// EBF19652-E434-4D79-9897-91A0FF226F51
+	{0xebf19652, 0xe434, 0x4d79, {0x98, 0x97, 0x91, 0xa0, 0xff, 0x22, 0x6f, 0x51}}
 };
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	hInst = hinstDLL;
-	DisableThreadLibraryCalls(hInst);
 	return TRUE;
 }
 
@@ -244,7 +236,7 @@ static int CompareStatusMsg(STATUSMSGINFO *smi, DBCONTACTWRITESETTING *cws_new) 
 		break;
 	}
 
-	if ( !DBGetContactSettingW(smi->hContact, "UserOnline", "OldStatusMsg", &dbv_old)) {
+	if ( !db_get_s(smi->hContact, "UserOnline", "OldStatusMsg", &dbv_old, 0)) {
 		switch (dbv_old.type) {
 		case DBVT_ASCIIZ:
 			smi->oldstatusmsg = (CheckStr(dbv_old.pszVal, 0, 1) ? NULL : mir_dupToUnicodeEx(dbv_old.pszVal, CP_ACP));
@@ -307,14 +299,6 @@ BOOL FreeSmiStr(STATUSMSGINFO *smi)
 	mir_free(smi->newstatusmsg);
 	mir_free(smi->oldstatusmsg);
 	return 0;
-}
-
-// return TRUE if timeout is over
-BOOL TimeoutCheck()
-{
-	if (GetTickCount() - LoadTime > TMR_CONNECTIONTIMEOUT)
-		return TRUE;
-	return FALSE;
 }
 
 TCHAR* AddCR(const TCHAR *statusmsg)
@@ -478,11 +462,11 @@ int ProcessStatus(DBCONTACTWRITESETTING *cws, HANDLE hContact)
 		if (_stricmp(smi.proto, "mRadio") == 0 && !cws->value.type == DBVT_DELETED) {
 			TCHAR buf[MAX_PATH];
 			mir_sntprintf(buf, SIZEOF(buf), _T(" (%s)"), TranslateT("connecting"));
-			mir_ptr<char> pszUtf( mir_utf8encodeT(buf));
+			ptrA pszUtf( mir_utf8encodeT(buf));
 			mir_sntprintf(buf, SIZEOF(buf), _T(" (%s)"), TranslateT("aborting"));
-			mir_ptr<char> pszUtf2( mir_utf8encodeT(buf));
+			ptrA pszUtf2( mir_utf8encodeT(buf));
 			mir_sntprintf(buf, SIZEOF(buf), _T(" (%s)"), TranslateT("playing"));
-			mir_ptr<char> pszUtf3( mir_utf8encodeT(buf));
+			ptrA pszUtf3( mir_utf8encodeT(buf));
 			if (_stricmp(cws->value.pszVal, pszUtf) == 0 || _stricmp(cws->value.pszVal, pszUtf2) == 0 || _stricmp(cws->value.pszVal, pszUtf3) == 0)
 				return 0;
 		}
@@ -495,18 +479,14 @@ int ProcessStatus(DBCONTACTWRITESETTING *cws, HANDLE hContact)
 
 			if (cws->value.type == DBVT_DELETED)
 				db_unset(smi.hContact, "UserOnline", "OldStatusMsg");
-			else {
-				DBCONTACTWRITESETTING cws_old;
-				cws_old.szModule = "UserOnline";
-				cws_old.szSetting = "OldStatusMsg";
-				cws_old.value = cws->value;
-				CallService(MS_DB_CONTACT_WRITESETTING, (WPARAM)smi.hContact, (LPARAM)&cws_old);
-			}
+			else
+				db_set(smi.hContact, "UserOnline", "OldStatusMsg", &cws->value);
+
 			smi.cust = (TCHAR*)CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM)smi.hContact, GCDNF_TCHAR);
 
 			if (opt.IgnoreEmpty && (smi.compare == 2))
 				retem = FALSE;
-			else if (!TimeoutCheck() && !opt.PopupOnConnect)
+			else if (!db_get_b(0, MODULE, smi.proto, 1) && !opt.PopupOnConnect)
 				rettime = FALSE;
 
 			char status[8];
@@ -550,7 +530,7 @@ int ProcessStatus(DBCONTACTWRITESETTING *cws, HANDLE hContact)
 				ppd.PluginWindowProc = PopupDlgProc;
 				ppd.PluginData = NULL;
 				ppd.iSeconds = opt.PopupTimeout;
-				PUAddPopUpT(&ppd);
+				PUAddPopupT(&ppd);
 				mir_free(str);
 			}
 			mir_free(smi.newstatusmsg);
@@ -586,7 +566,7 @@ int StatusModeChanged(WPARAM wParam, LPARAM lParam)
 	if (opt.AutoDisable && (!opt.OnlyGlobalChanges || szProto == NULL)) {
 		if (opt.DisablePopupGlobally && ServiceExists(MS_POPUP_QUERY)) {
 			char szSetting[12];
-			wsprintfA(szSetting, "p%d", wParam);
+			mir_snprintf(szSetting, SIZEOF(szSetting), "p%d", wParam);
 			BYTE hlpDisablePopup = db_get_b(0, MODULE, szSetting, 0);
 
 			if (hlpDisablePopup != opt.PopupAutoDisabled) {
@@ -610,7 +590,7 @@ int StatusModeChanged(WPARAM wParam, LPARAM lParam)
 
 		if (opt.DisableSoundGlobally) {
 			char szSetting[12];
-			wsprintfA(szSetting, "s%d", wParam);
+			mir_snprintf(szSetting, SIZEOF(szSetting), "s%d", wParam);
 			BYTE hlpDisableSound = db_get_b(0, MODULE, szSetting, 0);
 
 			if (hlpDisableSound != opt.SoundAutoDisabled) {
@@ -670,7 +650,7 @@ void ShowStatusChangePopup(HANDLE hContact, char *szProto, WORD oldStatus, WORD 
 
 		if (opt.ShowPreviousStatus) {
 			TCHAR buff[MAX_STATUSTEXT];
-			wsprintf(buff, TranslateTS(STRING_SHOWPREVIOUSSTATUS), StatusList[Index(oldStatus)].lpzStandardText);
+			mir_sntprintf(buff, SIZEOF(buff), TranslateTS(STRING_SHOWPREVIOUSSTATUS), StatusList[Index(oldStatus)].lpzStandardText);
 			_tcscat(_tcscat(stzStatusText, _T(" ")), buff);
 		}
 	}
@@ -696,14 +676,14 @@ void ShowStatusChangePopup(HANDLE hContact, char *szProto, WORD oldStatus, WORD 
 
 	ppd.PluginWindowProc = PopupDlgProc;
 
-	PLUGINDATA *pdp = (PLUGINDATA *)mir_alloc(sizeof(PLUGINDATA));
+	PLUGINDATA *pdp = (PLUGINDATA *)mir_calloc(sizeof(PLUGINDATA));
 	pdp->oldStatus = oldStatus;
 	pdp->newStatus = newStatus;
 	pdp->hAwayMsgHook = NULL;
 	pdp->hAwayMsgProcess = NULL;
 	ppd.PluginData = pdp;
 	ppd.iSeconds = opt.PopupTimeout;
-	PUAddPopUpT(&ppd);
+	PUAddPopupT(&ppd);
 }
 
 void BlinkIcon(HANDLE hContact, char* szProto, WORD status)
@@ -741,23 +721,23 @@ void PlayChangeSound(HANDLE hContact, WORD oldStatus, WORD newStatus)
 		if (stzSoundFile[0]) {
 			//Now make path to IndSound absolute, as it isn't registered
 			TCHAR stzSoundPath[MAX_PATH];
-			CallService(MS_UTILS_PATHTOABSOLUTET, (WPARAM)stzSoundFile, (LPARAM)stzSoundPath);
-			PlaySound(stzSoundPath, NULL, SND_ASYNC | SND_FILENAME | SND_NOSTOP);
+			PathToAbsoluteT(stzSoundFile, stzSoundPath);
+			SkinPlaySoundFile(stzSoundPath);
 			return;
 		}
 	}
 
 	char szSoundFile[MAX_PATH] = {0};
 
-	if (!db_get_b(0, "SkinSoundsOff", "UserFromOffline", 0) && 
+	if (!db_get_b(0, "SkinSoundsOff", "UserFromOffline", 0) &&
 		!db_get_s(0,"SkinSounds", "UserFromOffline", &dbv) &&
-		oldStatus == ID_STATUS_OFFLINE) 
+		oldStatus == ID_STATUS_OFFLINE)
 	{
 		strcpy(szSoundFile, "UserFromOffline");
 		db_free(&dbv);
 	}
 	else if (!db_get_b(0, "SkinSoundsOff", StatusList[Index(newStatus)].lpzSkinSoundName, 0) &&
-		!DBGetContactSetting(0, "SkinSounds", StatusList[Index(newStatus)].lpzSkinSoundName, &dbv))
+		!db_get(0, "SkinSounds", StatusList[Index(newStatus)].lpzSkinSoundName, &dbv))
 	{
 		strcpy(szSoundFile, StatusList[Index(newStatus)].lpzSkinSoundName);
 		db_free(&dbv);
@@ -772,19 +752,37 @@ int ContactStatusChanged(WPARAM wParam, LPARAM lParam)
 	WORD oldStatus = LOWORD(lParam);
 	WORD newStatus = HIWORD(lParam);
 	HANDLE hContact = (HANDLE)wParam;
-	char buff[8], szProto[64], szSubProto[64];
 	bool bEnablePopup = true, bEnableSound = true;
 
 	char *hlpProto = GetContactProto(hContact);
 	if (hlpProto == NULL || opt.TempDisabled)
 		return 0;
 
+	char szProto[64];
 	strcpy(szProto, hlpProto);
 	WORD myStatus = (WORD)CallProtoService(szProto, PS_GETSTATUS, 0, 0);
 
+	if (newStatus == ID_STATUS_OFFLINE && oldStatus > ID_STATUS_OFFLINE && !ServiceExists("LastSeenUserDetails")) { // if SeenPlugin not installed write Last Seen info
+		SYSTEMTIME systime;
+		GetLocalTime(&systime);
+
+		db_set_w(hContact, "SeenModule", "Year", systime.wYear);
+		db_set_w(hContact, "SeenModule", "Month", systime.wMonth);
+		db_set_w(hContact, "SeenModule", "Day", systime.wDay);
+		db_set_w(hContact, "SeenModule", "Hours", systime.wHour);
+		db_set_w(hContact, "SeenModule", "Minutes", systime.wMinute);
+		db_set_w(hContact, "SeenModule", "Seconds", systime.wSecond);
+		db_set_w(hContact, "SeenModule", "Status", oldStatus);
+	}
+
 	if (strcmp(szProto, szMetaModuleName) == 0) { //this contact is Meta
 		HANDLE hSubContact = (HANDLE)CallService(MS_MC_GETMOSTONLINECONTACT, (WPARAM)hContact, 0);
-		strcpy(szSubProto, GetContactProto(hSubContact));
+		hlpProto = GetContactProto(hSubContact);
+		if (hlpProto == NULL)
+			return 0;
+
+		char szSubProto[64];
+		strcpy(szSubProto, hlpProto);
 
 		if (newStatus == ID_STATUS_OFFLINE) {
 			// read last online proto for metaconatct if exists,
@@ -803,12 +801,13 @@ int ContactStatusChanged(WPARAM wParam, LPARAM lParam)
 		strcpy(szProto, szSubProto);
 	}
 	else {
-		if (myStatus == ID_STATUS_OFFLINE)
+		if (myStatus == ID_STATUS_OFFLINE || !db_get_b(0, MODULE, szProto, 1)) 
 			return 0;
 	}
 
 	if (!opt.FromOffline || oldStatus != ID_STATUS_OFFLINE) { // Either it wasn't a change from Offline or we didn't enable that.
-		wsprintfA(buff, "%d", newStatus);
+		char buff[8];
+		mir_snprintf(buff, SIZEOF(buff), "%d", newStatus);
 		if (db_get_b(0, MODULE, buff, 1) == 0)
 			return 0; // "Notify when a contact changes to one of..." is unchecked
 	}
@@ -821,15 +820,15 @@ int ContactStatusChanged(WPARAM wParam, LPARAM lParam)
 		return 0;
 
 	// check if that proto from which we received statuschange notification, isn't in autodisable list
-	char statusIDs[12], statusIDp[12];
 	if (opt.AutoDisable) {
-		wsprintfA(statusIDs, "s%d", myStatus);
-		wsprintfA(statusIDp, "p%d", myStatus);
+		char statusIDs[12], statusIDp[12];
+		mir_snprintf(statusIDs, SIZEOF(statusIDs), "s%d", myStatus);
+		mir_snprintf(statusIDp, SIZEOF(statusIDp), "p%d", myStatus);
 		bEnableSound = db_get_b(0, MODULE, statusIDs, 1) ? FALSE : TRUE;
 		bEnablePopup = db_get_b(0, MODULE, statusIDp, 1) ? FALSE : TRUE;
 	}
 
-	if (bEnablePopup && db_get_b(hContact, MODULE, "EnablePopups", 1) && TimeoutCheck())
+	if (bEnablePopup && db_get_b(hContact, MODULE, "EnablePopups", 1))
 		ShowStatusChangePopup(hContact, szProto, oldStatus, newStatus);
 
 	if (opt.BlinkIcon)
@@ -848,7 +847,7 @@ int ContactStatusChanged(WPARAM wParam, LPARAM lParam)
 		_tcsncpy(stzOldStatus, StatusList[Index(oldStatus)].lpzStandardText, MAX_STATUSTEXT);
 		GetTimeFormat(LOCALE_USER_DEFAULT, 0, NULL,_T("HH':'mm"), stzTime, SIZEOF(stzTime));
 		GetDateFormat(LOCALE_USER_DEFAULT, 0, NULL,_T("dd/MM/yyyy"), stzDate, SIZEOF(stzDate));
-		wsprintf(stzText, TranslateT("%s, %s. %s changed to: %s (was: %s).\r\n"), stzDate, stzTime, stzName, stzStatus, stzOldStatus);
+		mir_sntprintf(stzText, SIZEOF(stzText), TranslateT("%s, %s. %s changed to: %s (was: %s).\r\n"), stzDate, stzTime, stzName, stzStatus, stzOldStatus);
 		LogToFile(stzText);
 	}
 
@@ -1005,6 +1004,20 @@ void InitStatusList()
 	StatusList[index].colorText = db_get_dw(NULL, MODULE, "40081tx", COLOR_TX_DEFAULT);
 }
 
+VOID CALLBACK ConnectionTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) 
+{
+	if (uMsg == WM_TIMER) {
+		KillTimer(hwnd, idEvent);
+
+		//We've received a timer message: enable the popups for a specified protocol.
+		char szProto[256];
+		if ( GetAtomNameA((ATOM)idEvent, szProto, sizeof(szProto)) > 0) {
+			db_set_b(0, MODULE, szProto, 1);
+			DeleteAtom((ATOM)idEvent);
+		}
+	}
+}
+
 int ProtoAck(WPARAM wParam,LPARAM lParam)
 {
 	ACKDATA *ack = (ACKDATA *)lParam;
@@ -1024,7 +1037,13 @@ int ProtoAck(WPARAM wParam,LPARAM lParam)
 		else if (oldStatus < ID_STATUS_ONLINE && newStatus >= ID_STATUS_ONLINE) {
 			//The protocol changed from a disconnected status to a connected status.
 			//Enable the popups for this protocol.
-			LoadTime = GetTickCount();
+			int idTimer = AddAtomA(szProto);
+			if (idTimer) {
+				char TimerProtoName[256];
+				mir_snprintf(TimerProtoName, sizeof(TimerProtoName), "ConnectionTimeout%s", szProto);
+				UINT ConnectTimer = db_get_dw(0, MODULE, TimerProtoName, db_get_dw(0, MODULE, "ConnectionTimeout", 10000));
+				SetTimer(SecretWnd, idTimer, ConnectTimer, ConnectionTimerProc);
+			}
 		}
 	}
 
@@ -1047,7 +1066,7 @@ INT_PTR EnableDisableMenuCommand(WPARAM wParam, LPARAM lParam)
 		mi.icolibItem = GetIconHandle(ICO_NOTIFICATION_ON);
 	}
 
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hEnableDisableMenu, (LPARAM)&mi);
+	Menu_ModifyItem(hEnableDisableMenu, &mi);
 	CallService(MS_TTB_SETBUTTONSTATE, (WPARAM)hToolbarButton, opt.TempDisabled ? TTBST_RELEASED : TTBST_PUSHED);
 	return 0;
 }
@@ -1055,8 +1074,8 @@ INT_PTR EnableDisableMenuCommand(WPARAM wParam, LPARAM lParam)
 void InitMainMenuItem()
 {
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_TCHAR | CMIF_ICONFROMICOLIB;
-	mi.ptszPopupName = ServiceExists(MS_POPUP_ADDPOPUP) ? _T("PopUps") : NULL;
+	mi.flags = CMIF_TCHAR;
+	mi.ptszPopupName = ServiceExists(MS_POPUP_ADDPOPUP) ? _T("Popups") : NULL;
 	mi.pszService = MS_STATUSCHANGE_MENUCOMMAND;
 	hEnableDisableMenu = Menu_AddMainMenuItem(&mi);
 
@@ -1068,13 +1087,13 @@ void InitMainMenuItem()
 
 static IconItem iconList[] =
 {
-	{ "Notification enabled",	ICO_NOTIFICATION_OFF, IDI_NOTIFICATION_OFF },
-	{ "Notification disabled",	ICO_NOTIFICATION_ON,	 IDI_NOTIFICATION_ON  }
+	{ LPGEN("Notification enabled"),	ICO_NOTIFICATION_OFF, IDI_NOTIFICATION_OFF },
+	{ LPGEN("Notification disabled"),	ICO_NOTIFICATION_ON,	 IDI_NOTIFICATION_ON  }
 };
 
 void InitIcolib()
 {
-	Icon_Register(hInst, MODULE, iconList, SIZEOF(iconList), MODULE);
+	Icon_Register(hInst, LPGEN("New Status Notify"), iconList, SIZEOF(iconList), MODULE);
 }
 
 void InitSound()
@@ -1090,8 +1109,7 @@ void InitSound()
 
 int InitTopToolbar(WPARAM, LPARAM)
 {
-	TTBButton tbb = {0};
-	tbb.cbSize = sizeof(TTBButton);
+	TTBButton tbb = { sizeof(tbb) };
 	tbb.pszService = MS_STATUSCHANGE_MENUCOMMAND;
 	tbb.dwFlags = (opt.TempDisabled ? 0 : TTBBF_PUSHED) | TTBBF_ASPUSHBUTTON;
 	tbb.name = LPGEN("Toggle status notification");
@@ -1113,6 +1131,10 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	HookEvent(ME_MSG_WINDOWEVENT, OnWindowEvent);
 	HookEvent(ME_TTB_MODULELOADED, InitTopToolbar);
 
+	SecretWnd = CreateWindowEx(WS_EX_TOOLWINDOW,_T("static"),_T("ConnectionTimerWindow"),0,
+		CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,CW_USEDEFAULT,HWND_DESKTOP,
+		NULL,hInst,NULL);
+
 	int count = 0;
 	PROTOACCOUNT **accounts = NULL;
 	CallService(MS_PROTO_ENUMACCOUNTS, (WPARAM)&count, (LPARAM)&accounts);
@@ -1126,6 +1148,12 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+static int OnShutdown(WPARAM, LPARAM)
+{
+	DestroyWindow(SecretWnd);
+	return 0;
+}
+
 extern "C" int __declspec(dllexport) Load(void)
 {
 	mir_getLP(&pluginInfoEx);
@@ -1135,6 +1163,7 @@ extern "C" int __declspec(dllexport) Load(void)
 	//We create this Hook which will notify everyone when a contact changes his status.
 	hHookContactStatusChanged = CreateHookableEvent(ME_STATUSCHANGE_CONTACTSTATUSCHANGED);
 	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
+	HookEvent(ME_SYSTEM_PRESHUTDOWN, OnShutdown);
 	//We add the option page and the user info page (it's needed because options are loaded after plugins)
 	HookEvent(ME_OPT_INITIALISE, OptionsInitialize);
 	//This is needed for "NoSound"-like routines.
@@ -1146,8 +1175,8 @@ extern "C" int __declspec(dllexport) Load(void)
 	InitIcolib();
 	InitSound();
 
-	CallService(MS_DB_SETSETTINGRESIDENT, (WPARAM)TRUE, (LPARAM)"MetaContacts/LastOnline");
-	CallService(MS_DB_SETSETTINGRESIDENT, (WPARAM)TRUE, (LPARAM)"NewStatusNotify/LastPopupText");
+	db_set_resident("MetaContacts", "LastOnline");
+	db_set_resident("NewStatusNotify", "LastPopupText");
 	return 0;
 }
 

@@ -90,6 +90,8 @@ procedure mFreeMem(var ptr);
 function  mReallocMem(var dst; size:integer):pointer;
 
 // String processing
+function FormatStrW(fmt:pWideChar; arr:array of pWideChar):pWideChar;
+
 function WideToCombo(src:PWideChar;var dst;cp:integer=CP_ACP):integer;
 
 function ChangeUnicode(str:PWideChar):PWideChar;
@@ -124,8 +126,8 @@ function StrReplace (src,SubStr,NewStr:PAnsiChar):PAnsiChar;
 function StrReplaceW(src,SubStr,NewStr:pWideChar):PWideChar;
 function CharReplace (dst:pAnsiChar;old,new:AnsiChar):PAnsiChar;
 function CharReplaceW(dst:pWideChar;old,new:WideChar):PWideChar;
-function StrCmp (a,b:PAnsiChar;n:cardinal=0):integer;
-function StrCmpW(a,b:PWideChar;n:cardinal=0):integer;
+function StrCmp (a,b:PAnsiChar;n:integer=0):integer;
+function StrCmpW(a,b:PWideChar;n:integer=0):integer;
 function StrEnd (const a:PAnsiChar):PAnsiChar;
 function StrEndW(const a:PWideChar):PWideChar;
 function StrScan (src:PAnsiChar;c:AnsiChar):PAnsiChar;
@@ -183,6 +185,8 @@ function StrToInt(src:pWideChar):int64; overload;
 function StrToInt(src:PAnsiChar):int64; overload;
 function HexToInt(src:pWideChar;len:cardinal=$FFFF):int64; overload;
 function HexToInt(src:PAnsiChar;len:cardinal=$FFFF):int64; overload;
+function NumToInt(src:pWideChar):int64; overload;
+function NumToInt(src:pAnsiChar):int64; overload;
 
 // filename work
 function ChangeExt (src,ext:PAnsiChar):PAnsiChar;
@@ -210,7 +214,7 @@ implementation
 // Murmur 2.0
 function Hash(s:pointer; len:integer{const Seed: LongWord=$9747b28c}): LongWord;
 var
-  hash: LongWord;
+  lhash: LongWord;
   k: LongWord;
   tmp,data: pByte;
 const
@@ -222,7 +226,7 @@ begin
   //The default seed, $9747b28c, is from the original C library
 
   // Initialize the hash to a 'random' value
-  hash := {seed xor }len;
+  lhash := {seed xor }len;
 
   // Mix 4 bytes at a time into the hash
   data := s;
@@ -235,8 +239,8 @@ begin
     k := k xor (k shr r);
     k := k*m;
 
-    hash := hash*m;
-    hash := hash xor k;
+    lhash := lhash*m;
+    lhash := lhash xor k;
 
     inc(data,4);
     dec(len,4);
@@ -247,27 +251,27 @@ begin
   begin
     tmp:=data;
     inc(tmp,2);
-    hash := hash xor (LongWord(tmp^) shl 16);
+    lhash := lhash xor (LongWord(tmp^) shl 16);
   end;
   if len >= 2 then
   begin
     tmp:=data;
     inc(tmp);
-    hash := hash xor (LongWord(tmp^) shl 8);
+    lhash := lhash xor (LongWord(tmp^) shl 8);
   end;
   if len >= 1 then
   begin
-    hash := hash xor (LongWord(data^));
-    hash := hash * m;
+    lhash := lhash xor (LongWord(data^));
+    lhash := lhash * m;
   end;
 
   // Do a few final mixes of the hash to ensure the last few
   // bytes are well-incorporated.
-  hash := hash xor (hash shr 13);
-  hash := hash * m;
-  hash := hash xor (hash shr 15);
+  lhash := lhash xor (lhash shr 13);
+  lhash := lhash * m;
+  lhash := lhash xor (lhash shr 15);
 
-  Result := hash;
+  Result := lhash;
 end;
 
 function BSwap(value:dword):dword;
@@ -902,6 +906,8 @@ begin
   result:=dst;
 end;
 
+//----- Memory work -----
+
 procedure FillWord(var buf;count:cardinal;value:word); register;
 {$IFNDEF WIN64}assembler;
 {
@@ -966,6 +972,7 @@ asm
      POP     ESI
 end;
 }
+
 {$IFNDEF WIN64}
 // Delphi 2009 realization
 function CompareMem(P1, P2: Pointer; Length: Integer): Boolean; assembler;
@@ -1033,10 +1040,6 @@ asm
 end;
 {$ELSE}
 function CompareMem(P1, P2: Pointer; Length: Integer): Boolean;
-  {$IFNDEF COMPILER_16_UP}
-begin
-  result:=CompareByte(P1,P2,Length)=0;
-  {$ELSE}
 var
   i:integer;
 begin
@@ -1051,25 +1054,8 @@ begin
     inc(pbyte(p2));
   end;
   result:=true;
-  {$ENDIF}
 end; 
 {$ENDIF}
-
-function Min(a,b:integer):integer;
-begin
-  if a>b then
-    result:=b
-  else
-    result:=a;
-end;
-
-function Max(a,b:integer):integer;
-begin
-  if a<b then
-    result:=b
-  else
-    result:=a;
-end;
 
 function mGetMem(var dst;size:integer):pointer;
 begin
@@ -1102,6 +1088,22 @@ begin
   ReallocMem(pointer(dst),size);
 {$ENDIF}
   result:=pointer(dst);
+end;
+
+function Min(a,b:integer):integer;
+begin
+  if a>b then
+    result:=b
+  else
+    result:=a;
+end;
+
+function Max(a,b:integer):integer;
+begin
+  if a<b then
+    result:=b
+  else
+    result:=a;
 end;
 
 function UnEscape(buf:PAnsiChar):PAnsiChar;
@@ -1194,6 +1196,46 @@ begin
       dst^:=#0;
     end;
   end;
+end;
+
+function FormatStrW(fmt:pWideChar; arr:array of pWideChar):pWideChar;
+var
+  i,len:integer;
+  pc:pWideChar;
+  number:integer;
+begin
+  result:=nil;
+  if (fmt=nil) or (fmt^=#0) then
+    exit;
+
+  // calculate length
+  len:=StrLenW(fmt); // -2*Length(arr)
+  for i:=0 to HIGH(arr) do
+    inc(len,StrLenW(arr[i]));
+
+  // format
+  mGetMem(result,(len+1)*SizeOf(WideChar));
+  pc:=result;
+  number:=0;
+  while fmt^<>#0 do
+  begin
+    if (fmt^='%') and ((fmt+1)^='s') then
+    begin
+      if number<=HIGH(arr) then
+      begin
+        pc:=StrCopyEW(pc,arr[number]);
+        inc(number);
+      end;
+      inc(fmt,2);
+    end
+    else
+    begin
+      pc^:=fmt^;
+      inc(pc);
+      inc(fmt);
+    end;
+  end;
+  pc^:=#0;
 end;
 
 // ----- base string functions -----
@@ -1508,7 +1550,7 @@ begin
   end;
 end;
 
-function StrCmp(a,b:PAnsiChar;n:cardinal=0):integer; // CompareString
+function StrCmp(a,b:PAnsiChar;n:integer=0):integer; // CompareString
 begin
   result:=0;
   if (a=nil) and (b=nil) then
@@ -1528,7 +1570,7 @@ begin
   until n=0;
 end;
 
-function StrCmpW(a,b:PWideChar;n:cardinal=0):integer;
+function StrCmpW(a,b:PWideChar;n:integer=0):integer;
 begin
   result:=0;
   if (a=nil) and (b=nil) then
@@ -2052,6 +2094,34 @@ var
   buf:array [0..63] of AnsiChar;
 begin
   result:=FastAnsiToWideBuf(IntToTime(buf,time),dst);
+end;
+
+function NumToInt(src:pWideChar):int64;
+begin
+  if (src[0]='$') and
+     (AnsiChar(src[1]) in sHexNum) then
+    result:=HexToInt(src+1)
+  else
+  if (src[0]='0') and
+     (src[1]='x') and
+     (AnsiChar(src[2]) in sHexNum) then
+    result:=HexToInt(src+2)
+  else
+    result:=StrToInt(src);
+end;
+
+function NumToInt(src:pAnsiChar):int64;
+begin
+  if (src[0]='$') and
+     (src[1] in sHexNum) then
+    result:=HexToInt(src+1)
+  else
+  if (src[0]='0') and
+     (src[1]='x') and
+     (src[2] in sHexNum) then
+    result:=HexToInt(src+2)
+  else
+    result:=StrToInt(src);
 end;
 
 function StrToInt(src:pWideChar):int64;

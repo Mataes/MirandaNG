@@ -30,19 +30,10 @@
  *
  * (C) 2005-2009 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: chat.h 12272 2010-08-04 08:24:08Z silvercircle $
- *
  */
 
 #ifndef _CHAT_H_
 #define _CHAT_H_
-
-#pragma warning( disable : 4786 ) // limitation in MSVC's debugger.
-#pragma warning( disable : 4996 ) // limitation in MSVC's debugger.
-
-#define WIN32_LEAN_AND_MEAN
-
-#include "m_stdhdr.h"
 
 //defines
 #define OPTIONS_FONTCOUNT 20
@@ -101,6 +92,14 @@
 #define ICON_STATUS0			18
 #define ICON_STATUS5			19
 
+enum TChatStatusEx
+{
+	CHAT_STATUS_NORMAL,
+	CHAT_STATUS_AWAY,
+	CHAT_STATUS_OFFLINE,
+	CHAT_STATUS_MAX
+};
+
 // special service for tweaking performance
 #define MS_GC_GETEVENTPTR  "GChat/GetNewEventPtr"
 typedef INT_PTR (*GETEVENTFUNC)(WPARAM wParam, LPARAM lParam);
@@ -112,240 +111,195 @@ class CMUCHighlight;
 
 //structs
 
-typedef struct  MODULE_INFO_TYPE
+struct MODULEINFO
 {
-	char*		pszModule;
-	TCHAR*		ptszModDispName;
-	char*		pszHeader;
-	BOOL		bBold;
-	BOOL		bUnderline;
-	BOOL		bItalics;
-	BOOL		bColor;
-	BOOL		bBkgColor;
-	BOOL		bChanMgr;
-	BOOL		bAckMsg;
-	int			nColorCount;
-	COLORREF*	crColors;
-	/*
-	HICON		hOnlineIcon;
-	HICON		hOfflineIcon;
-	HICON		hOnlineTalkIcon;
-	HICON		hOfflineTalkIcon;
-	int			OnlineIconIndex;
-	int			OfflineIconIndex;
-	*/
-	int			iMaxText;
-	DWORD		idleTimeStamp;
-	DWORD		lastIdleCheck;
-	TCHAR		tszIdleMsg[60];
+	char          *pszModule;
+	TCHAR         *ptszModDispName;
+	char          *pszHeader;
+	bool           bBold, bUnderline, bItalics, bColor, bBkgColor, bChanMgr, bAckMsg;
+	int            nColorCount;
+	COLORREF      *crColors;
+				      
+	int            iMaxText;
+	DWORD          idleTimeStamp;
+	DWORD          lastIdleCheck;
+	TCHAR          tszIdleMsg[60];
 	CMUCHighlight* Highlight;
-	struct MODULE_INFO_TYPE *next;
-}
-	MODULEINFO;
+	MODULEINFO *   next;
+};
 
-typedef struct COMMAND_INFO_TYPE
+struct COMMAND_INFO
 {
 	char*  lpCommand;
-	struct COMMAND_INFO_TYPE *last, *next;
-}
-	COMMAND_INFO;
+	COMMAND_INFO *last, *next;
+};
 
-typedef struct
+struct FONTINFO
 {
 	LOGFONT  lf;
 	COLORREF color;
-}
-	FONTINFO;
+};
 
-typedef struct LOG_INFO_TYPE
+struct LOGINFO
 {
-	TCHAR*  ptszText;
-	TCHAR*  ptszNick;
-	TCHAR*  ptszUID;
-	TCHAR*  ptszStatus;
-	TCHAR*  ptszUserInfo;
-	BOOL    bIsMe;
-	BOOL    bIsHighlighted;
-	time_t  time;
-	int     iType;
-	DWORD   dwFlags;
-	struct  LOG_INFO_TYPE *next;
-	struct  LOG_INFO_TYPE *prev;
-}
-	LOGINFO;
+	TCHAR   *ptszText, *ptszNick, *ptszUID, *ptszStatus, *ptszUserInfo;
+	bool     bIsMe, bIsHighlighted;
+	time_t   time;
+	int      iType;
+	DWORD    dwFlags;
+	LOGINFO *next, *prev;
+};
 
-typedef struct STATUSINFO_TYPE
+struct STATUSINFO
 {
-	TCHAR*  pszGroup;
-	HICON   hIcon;
-	WORD    Status;
-	struct  STATUSINFO_TYPE *next;
-}
-	STATUSINFO;
+	TCHAR      *pszGroup;
+	HICON       hIcon;
+	WORD        Status;
+	STATUSINFO *next;
+};
 
-typedef struct  USERINFO_TYPE
+struct USERINFO
 {
-	TCHAR* pszNick;
-	TCHAR* pszUID;
-	WORD   Status;
-	int    iStatusEx;
-	WORD   ContactStatus;
-	struct USERINFO_TYPE *next;
-}
-	USERINFO;
+	TCHAR        *pszNick, *pszUID;
+	WORD          Status;
+	WORD          ContactStatus;
+	TChatStatusEx iStatusEx;
+	USERINFO     *next;
+};
 
-typedef struct SESSIONINFO_TYPE
+struct SESSION_INFO
 {
-	HWND        hWnd;
-
-	BOOL        bFGSet;
-	BOOL        bBGSet;
-	BOOL        bFilterEnabled;
-	BOOL        bNicklistEnabled;
-	BOOL        bInitDone;
-
-	char*       pszModule;
-	TCHAR*      ptszID;
-	TCHAR*      ptszName;
-	TCHAR*      ptszStatusbarText;
-	TCHAR*      ptszTopic;
-	TCHAR		pszLogFileName[MAX_PATH + 50];
-
-	char*    	pszID;		// ugly fix for returning static ANSI strings in GC_INFO
-	char*    	pszName;   // just to fix a bug quickly, should die after porting IRC to Unicode
-
-	int         iType;
-	int         iFG;
-	int         iBG;
-	int         iSplitterY;
-	int         iSplitterX;
-	int         iLogFilterFlags;
-    int         iLogPopupFlags;
-    int         iLogTrayFlags;
-	int         iDiskLogFlags;
-	int         nUsersInNicklist;
-	int         iEventCount;
-	int         iStatusCount;
-
-	WORD        wStatus;
-	WORD        wState;
-	WORD        wCommandsNum;
-	DWORD       dwItemData;
-	DWORD       dwFlags;
-	HANDLE      hContact;
-	HWND		hwndFilter;
-	time_t      LastTime;
-    TCHAR          szSearch[255];
-    int            iSearchItem;
-	CMUCHighlight* Highlight;
-	COMMAND_INFO*  lpCommands;
-	COMMAND_INFO*  lpCurrentCommand;
-	LOGINFO*       pLog;
-	LOGINFO*       pLogEnd;
-	USERINFO*      pUsers;
-	USERINFO*      pMe;
-	STATUSINFO*    pStatuses;
+	HWND            hWnd;
+				       
+	bool            bFGSet, bBGSet, bFilterEnabled, bNicklistEnabled, bInitDone;
+				       
+	char           *pszModule;
+	TCHAR          *ptszID;
+	TCHAR          *ptszName;
+	TCHAR          *ptszStatusbarText;
+	TCHAR          *ptszTopic;
+	TCHAR           pszLogFileName[MAX_PATH + 50];
+				       
+	char           *pszID;      // ugly fix for returning static ANSI strings in GC_INFO
+	char           *pszName;   // just to fix a bug quickly, should die after porting IRC to Unicode
+				       
+	int             iType;
+	int             iFG;
+	int             iBG;
+	int             iSplitterY;
+	int             iSplitterX;
+	int             iLogFilterFlags;
+	int             iLogPopupFlags;
+	int             iLogTrayFlags;
+	int             iDiskLogFlags;
+	int             nUsersInNicklist;
+	int             iEventCount;
+	int             iStatusCount;
+				       
+	WORD            wStatus;
+	WORD            wState;
+	WORD            wCommandsNum;
+	DWORD           dwItemData;
+	DWORD           dwFlags;
+	HANDLE          hContact;
+	HWND            hwndFilter;
+	time_t          LastTime;
+	int             iSearchItem;
+	TCHAR           szSearch[255];
+	CMUCHighlight  *Highlight;
+	COMMAND_INFO   *lpCommands;
+	COMMAND_INFO   *lpCurrentCommand;
+	LOGINFO        *pLog;
+	LOGINFO        *pLogEnd;
+	USERINFO       *pUsers;
+	USERINFO       *pMe;
+	STATUSINFO     *pStatuses;
 	TContainerData *pContainer;
 	TWindowData    *dat;
-	int            wasTrimmed;
-	SESSIONINFO_TYPE*  next;
-}  SESSION_INFO;
+	int             wasTrimmed;
+	SESSION_INFO   *next;
+};
 
-typedef struct
+struct LOGSTREAMDATA
 {
-	char*         buffer;
+	char         *buffer;
 	int           bufferOffset, bufferLen;
 	HWND          hwnd;
-	LOGINFO*      lin;
-	BOOL          bStripFormat;
-	BOOL          bRedraw;
-	SESSION_INFO* si;
+	LOGINFO      *lin;
+	bool          bStripFormat, bRedraw;
+	SESSION_INFO *si;
 	int           crCount;
-	TWindowData*  dat;
-}
-	LOGSTREAMDATA;
+	TWindowData  *dat;
+};
 
-struct TMUCSettings {
+struct TMUCSettings
+{
 	HICON       hIconOverlay;
-	BOOL        ShowTime;
-	BOOL        ShowTimeIfChanged;
-	BOOL        LoggingEnabled;
-	BOOL        FlashWindow;
-	BOOL        FlashWindowHightlight;
-	BOOL        OpenInDefault;
-	BOOL        HighlightEnabled;
-	BOOL        LogIndentEnabled;
-	BOOL        StripFormat;
-	BOOL        BBCodeInPopups;
-	BOOL        TrayIconInactiveOnly;
-	BOOL        AddColonToAutoComplete;
-	BOOL        LogLimitNames;
-	BOOL        TimeStampEventColour;
+	bool        bShowTime, bShowTimeIfChanged, bLoggingEnabled;
+	bool        bFlashWindow, bFlashWindowHightlight;
+	bool        bOpenInDefault;
+	bool        bLogIndentEnabled;
+	bool        bStripFormat;
+	bool        bBBCodeInPopups;
+	bool        bTrayIconInactiveOnly;
+	bool        bAddColonToAutoComplete;
+	bool        bLogLimitNames;
+	bool        bTimeStampEventColour;
 	DWORD       dwIconFlags;
 	int         LogTextIndent;
 	long        LoggingLimit;
 	int         iEventLimit;
-	int			iEventLimitThreshold;
+	int         iEventLimitThreshold;
 	int         iPopupStyle;
 	int         iPopupTimeout;
 	int         iSplitterX;
 	int         iSplitterY;
-	TCHAR*      pszTimeStamp;
-	TCHAR*      pszTimeStampLog;
-	TCHAR*      pszIncomingNick;
-	TCHAR*      pszOutgoingNick;
-	TCHAR	    pszLogDir[MAX_PATH + 20];
-	LONG		iNickListFontHeight;
-	HFONT		UserListFont, UserListHeadingsFont;
+	TCHAR      *pszTimeStamp;
+	TCHAR      *pszTimeStampLog;
+	TCHAR      *pszIncomingNick;
+	TCHAR      *pszOutgoingNick;
+	TCHAR       pszLogDir[MAX_PATH + 20];
+	LONG        iNickListFontHeight;
 	HFONT       NameFont;
-	COLORREF    crUserListColor;
 	COLORREF    crUserListBGColor;
-	COLORREF    crUserListHeadingsColor;
 	COLORREF    crPUTextColour;
 	COLORREF    crPUBkgColour;
-	BYTE        ClassicIndicators;
-	//MAD
-	BYTE		LogClassicIndicators;
-	BYTE		AlternativeSorting;
-	BYTE		AnnoyingHighlight;
-	BYTE		CreateWindowOnHighlight;
-	//MAD_
-	BYTE        LogSymbols;
-	BYTE        ClickableNicks;
-	BYTE        ColorizeNicks;
-	BYTE        ColorizeNicksInLog;
-	BYTE        ScaleIcons;
-	BYTE        UseDividers;
-	BYTE        DividersUsePopupConfig;
-    BYTE        MathMod;
+
+	HFONT       UserListFonts[CHAT_STATUS_MAX];
+	COLORREF    UserListColors[CHAT_STATUS_MAX];
+
 	COLORREF    nickColors[8];
 	HBRUSH      SelectionBGBrush;
-	BOOL		DoubleClick4Privat;
-	BOOL		ShowContactStatus;
-	BOOL		ContactStatusFirst;
-	HANDLE		hGroup;
+	bool        bDoubleClick4Privat, bShowContactStatus, bContactStatusFirst;
+
+	bool        bLogClassicIndicators, bAlternativeSorting, bAnnoyingHighlight, bCreateWindowOnHighlight;
+	bool        bLogSymbols, bClassicIndicators, bClickableNicks, bColorizeNicks, bColorizeNicksInLog;
+	bool        bScaleIcons, bUseDividers, bDividersUsePopupConfig, bMathMod;
+
+	HANDLE      hGroup;
 	CMUCHighlight* Highlight;
 };
 
-struct FLASH_PARAMS {
+struct FLASH_PARAMS
+{
 	HANDLE hContact;
 	const char* sound;
 	int   iEvent;
 	HICON hNotifyIcon;
-	BOOL  bActiveTab, bHighlight, bInactive, bMustFlash, bMustAutoswitch;
+	bool  bActiveTab, bHighlight, bInactive, bMustFlash, bMustAutoswitch;
 	HWND  hWnd;
 };
 
 extern TMUCSettings g_Settings;
 
-typedef struct{
-	MODULEINFO*   pModule;
-	int           xPosition;
-	int           yPosition;
-	HWND          hWndTarget;
-	BOOL          bForeground;
-	SESSION_INFO* si;
-} COLORCHOOSER;
+struct COLORCHOOSER
+{
+	MODULEINFO *pModule;
+	int   xPosition, yPosition;
+	HWND  hWndTarget;
+	bool  bForeground;
+	SESSION_INFO *si;
+};
 
 #pragma comment(lib,"comctl32.lib")
 
@@ -354,13 +308,7 @@ typedef struct{
 #include "chatprototypes.h"
 #include "chat_resource.h"
 
-#define mir_tstrdup mir_wstrdup
-
-TCHAR* a2t(const char* str);
-char*  t2a(const TCHAR* str, DWORD codepage);
 TCHAR* a2tf(const TCHAR* str, int flags, DWORD cp = 0);
-TCHAR* replaceStr(TCHAR** dest, const TCHAR* src);
-char*  replaceStrA(char** dest, const char* src);
 
 extern char *szChatIconString;
 

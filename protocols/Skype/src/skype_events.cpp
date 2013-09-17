@@ -1,21 +1,65 @@
-#include "skype_proto.h"
+#include "skype.h"
 
 int CSkypeProto::OnModulesLoaded(WPARAM, LPARAM)
 {
-	this->InitChat();
+	/*if (::ServiceExists(MS_ASSOCMGR_ADDNEWURLTYPE))
+	{
+		::CreateServiceFunction(MODULE"/ParseSkypeURI", &CSkypeProto::ParseSkypeUri);
+		::AssocMgr_AddNewUrlTypeT("skype:", TranslateT("Skype URI API"), g_hInstance, IDI_SKYPE, MODULE"/ParseSkypeURI", 0);
+	}*/
 
-	this->HookEvent(ME_OPT_INITIALISE, &CSkypeProto::OnOptionsInit);
-	this->HookEvent(ME_USERINFO_INITIALISE, &CSkypeProto::OnUserInfoInit);
-	
-	this->login = ::DBGetString(NULL, this->m_szModuleName, "sid");
-	this->rememberPassword = this->GetSettingByte("RememberPassword") > 0;
+	return 0;
+}
+
+int CSkypeProto::OnProtoModulesLoaded(WPARAM, LPARAM)
+{
+	this->InitNetLib();
+	this->InitChatModule();
+	this->InitCustomFolders();
+	this->InitInstanceHookList();
+
+	if (::ServiceExists(MS_BB_ADDBUTTON))
+	{
+		BBButton bbd = { sizeof(bbd) };
+		bbd.pszModuleName = MODULE;
+
+		bbd.bbbFlags = BBBF_ISCHATBUTTON | BBBF_ISRSIDEBUTTON;
+		bbd.ptszTooltip = ::TranslateT("Invite contacts to conference");
+		bbd.hIcon = CSkypeProto::GetSkinIconHandle("addContacts");
+		bbd.dwButtonID = BBB_ID_CONF_INVITE;
+		bbd.dwDefPos = 100 + bbd.dwButtonID;
+		::CallService(MS_BB_ADDBUTTON, 0, (LPARAM)&bbd);
+
+		bbd.bbbFlags = BBBF_ISIMBUTTON | BBBF_ISRSIDEBUTTON;
+		bbd.ptszTooltip = ::TranslateT("Spawn conference");
+		bbd.hIcon = CSkypeProto::GetSkinIconHandle("conference");
+		bbd.dwButtonID = BBB_ID_CONF_SPAWN;
+		bbd.dwDefPos = 100 + bbd.dwButtonID;
+		::CallService(MS_BB_ADDBUTTON, 0, (LPARAM)&bbd);
+
+		this->HookProtoEvent(ME_MSG_WINDOWEVENT, &CSkypeProto::OnSrmmWindowOpen);
+	}
 
 	return 0;
 }
 
 int CSkypeProto::OnPreShutdown(WPARAM, LPARAM)
 {
+	if (::ServiceExists(MS_BB_REMOVEBUTTON))
+	{
+		BBButton bbd = { sizeof(bbd) };
+		bbd.pszModuleName = MODULE;
+
+		bbd.dwButtonID = BBB_ID_CONF_INVITE;
+		::CallService(MS_BB_REMOVEBUTTON, 0, (LPARAM)&bbd);
+
+		bbd.dwButtonID = BBB_ID_CONF_SPAWN;
+		::CallService(MS_BB_REMOVEBUTTON, 0, (LPARAM)&bbd);
+	}
+
 	this->SetStatus(ID_STATUS_OFFLINE);
+
+	this->UninitNetLib();
 
 	return 0;
 }
@@ -23,17 +67,18 @@ int CSkypeProto::OnPreShutdown(WPARAM, LPARAM)
 int CSkypeProto::OnContactDeleted(WPARAM wParam, LPARAM lParam)
 {
 	HANDLE hContact = (HANDLE)wParam;
-	if (hContact && this->IsOnline())
+	if (hContact)
 	{
-		if (this->IsChatRoom(hContact))
+		if (this->isChatRoom(hContact))
 		{
-			char *chatID = ::DBGetString(hContact, this->m_szModuleName, "ChatRoomID");
-			this->LeaveChat(chatID);
-
-			CConversation::Ref conversation;
-			g_skype->GetConversationByIdentity(chatID, conversation);
-			conversation->RetireFrom();
-			conversation->Delete();
+			this->OnLeaveChat(wParam, 0);
+			ptrW cid(::db_get_wsa(hContact, this->m_szModuleName, SKYPE_SETTINGS_SID));
+			if (cid != NULL)
+			{
+				ConversationRef conversation;
+				if (this->GetConversationByIdentity((char *)_T2A(cid), conversation))
+					conversation->Delete();
+			}
 		}
 		else
 			this->RevokeAuth(wParam, lParam);
@@ -42,211 +87,196 @@ int CSkypeProto::OnContactDeleted(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void CSkypeProto::OnMessageSended(CConversation::Ref conversation, CMessage::Ref message)
+INT_PTR __cdecl CSkypeProto::OnAccountManagerInit(WPARAM wParam, LPARAM lParam)
 {
-	SEString data;
+	return (int)::CreateDialogParam(
+		g_hInstance,
+		MAKEINTRESOURCE(IDD_ACCMGR),
+		(HWND)lParam,
+		&CSkypeProto::SkypeMainOptionsProc,
+		(LPARAM)this);
+}
 
-	uint timestamp;
-	message->GetPropTimestamp(timestamp);
+int __cdecl CSkypeProto::OnOptionsInit(WPARAM wParam, LPARAM lParam)
+{
+	char *title = ::mir_t2a(this->m_tszUserName);
 
-	message->GetPropAuthor(data);
-	char *sid = ::mir_strdup(data);
+	OPTIONSDIALOGPAGE odp = {0};
+	odp.cbSize = sizeof(odp);
+	odp.hInstance = g_hInstance;
+	odp.pszTitle = title;
+	odp.dwInitParam = LPARAM(this);
+	odp.flags = ODPF_BOLDGROUPS;
+	odp.pszGroup = LPGEN("Network");
 
-	message->GetPropBodyXml(data);
-	char *text = ::mir_strdup(data);
+	odp.pszTab = LPGEN("Account");
+	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_MAIN);
+	odp.pfnDlgProc = CSkypeProto::SkypeMainOptionsProc;
+	::Options_AddPage(wParam, &odp);
 
-	CConversation::TYPE type;
-	conversation->GetPropType(type);
-	if (type == CConversation::DIALOG)
+	odp.pszTab = LPGEN("Blocked contacts");
+	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_BLOCKED);
+	odp.pfnDlgProc = CSkypeProto::SkypeBlockedOptionsProc;
+	::Options_AddPage(wParam, &odp);
+
+	odp.pszTab = LPGEN("Privacy");
+	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_PRIVACY);
+	odp.pfnDlgProc = CSkypeProto::SkypePrivacyOptionsProc;
+	::Options_AddPage(wParam, &odp);
+
+	::mir_free(title);
+	return 0;
+}
+
+int __cdecl CSkypeProto::OnUserInfoInit(WPARAM wParam, LPARAM lParam)
+{
+	if ((!this->IsProtoContact((HANDLE)lParam)) && lParam)
+		return 0;
+
+	OPTIONSDIALOGPAGE odp = {0};
+	odp.cbSize = sizeof(odp);
+	odp.flags = ODPF_TCHAR | ODPF_USERINFOTAB | ODPF_DONTTRANSLATE;
+	odp.hInstance = g_hInstance;
+	odp.dwInitParam = LPARAM(this);
+	odp.position = -1900000000;
+	odp.ptszTitle = this->m_tszUserName;
+
+	HANDLE hContact = (HANDLE)lParam;
+	if (hContact) 
 	{
-		CParticipant::Refs participants;
-		conversation->GetParticipants(participants, CConversation::OTHER_CONSUMERS);
-		
-		for (uint i = 0; i < participants.size(); i ++)
+		char *szProto = (char *)CallService(MS_PROTO_GETCONTACTBASEPROTO, (WPARAM)hContact, 0);
+		if (szProto != NULL && !strcmp(szProto, m_szModuleName)) 
 		{
-			participants[i]->GetPropIdentity(data);
-			char *contactSid = ::mir_strdup(data);
-			//todo: get nickname
-			this->RaiseMessageSendedEvent(
-				timestamp,
-				contactSid,
-				contactSid,
-				text);
+			odp.pfnDlgProc = SkypeDlgProc;
+			odp.pszTemplate = MAKEINTRESOURCEA(IDD_INFO_SKYPE);
+			UserInfo_AddPage(wParam, &odp);
 		}
-	}
-	else
+	} 
+	else 
 	{
-		conversation->GetPropIdentity(data);
-		char *cid = ::mir_strdup(data);
+		NeedUpdate = 0;
+		odp.pfnDlgProc = ContactSkypeDlgProc;
+		odp.pszTemplate = MAKEINTRESOURCEA(IDD_OWNINFO_CONTACT);
+		odp.ptszTab = LPGENT("Contacts");
+		UserInfo_AddPage(wParam, &odp);
 
-		this->SendChatMessage(cid, sid, ::mir_utf8decodeA(text));
+		odp.pfnDlgProc = HomeSkypeDlgProc;
+		odp.pszTemplate = MAKEINTRESOURCEA(IDD_OWNINFO_HOME);
+		odp.ptszTab = LPGENT("Home");
+		UserInfo_AddPage(wParam, &odp);
 
-		::mir_free(cid);
+		odp.pfnDlgProc = PersonalSkypeDlgProc;
+		odp.pszTemplate = MAKEINTRESOURCEA(IDD_OWNINFO_PERSONAL);
+		odp.ptszTab = LPGENT("General");
+		UserInfo_AddPage(wParam, &odp);
+
+		odp.pfnDlgProc = AccountSkypeDlgProc;
+		odp.pszTemplate = MAKEINTRESOURCEA(IDD_OWNINFO_ACCOUNT);
+		odp.ptszTab = LPGENT("Skype account");
+		UserInfo_AddPage(wParam, &odp);
 	}
+
+	return 0;
 }
 
-void CSkypeProto::OnMessageReceived(CConversation::Ref conversation, CMessage::Ref message)
+int __cdecl CSkypeProto::OnSrmmWindowOpen(WPARAM, LPARAM lParam)
 {
-	SEString data;
+	MessageWindowEventData *ev = (MessageWindowEventData*)lParam;
+	if (ev->uType == MSG_WINDOW_EVT_OPENING && ev->hContact) 
+	{ 
+		BBButton bbd = { sizeof(bbd) };
+		bbd.pszModuleName = MODULE;
+		bbd.bbbFlags = (!::strcmp(::GetContactProto(ev->hContact), this->m_szModuleName)) ? 0 : BBSF_HIDDEN | BBSF_DISABLED;
 
-	uint timestamp;
-	message->GetPropTimestamp(timestamp);
+		bbd.dwButtonID = BBB_ID_CONF_INVITE;
+		::CallService(MS_BB_SETBUTTONSTATE, (WPARAM)ev->hContact, (LPARAM)&bbd);
 
-	message->GetPropAuthor(data);
-	char *sid = ::mir_strdup(data);
-		
-	message->GetPropBodyXml(data);
-	char *text = ::mir_strdup(data);
-
-	CConversation::TYPE type;
-	conversation->GetPropType(type);
-	if (type == CConversation::DIALOG)
-	{
-		message->GetPropAuthorDisplayname(data);
-		char *nick = ::mir_utf8decodeA(data);
-
-		this->RaiseMessageReceivedEvent(
-			(DWORD)timestamp, 
-			sid, 
-			nick, 
-			text);
-	}
-	else
-	{
-		conversation->GetPropIdentity(data);
-		char *cid = ::mir_strdup(data);
-
-		this->SendChatMessage(cid, sid, ::mir_utf8decodeA(text));
-
-		::mir_free(cid);
-	}
-
-	/*int len = ::strlen(text) + 8;
-	wchar_t *xml = new wchar_t[len];
-	::mir_sntprintf(xml, len, L"<m>%s</m>", ::mir_utf8decodeW(text));
-
-	int bytesProcessed = 0;
-	HXML hXml = xi.parseString(xml, &bytesProcessed, NULL);*/
+		bbd.dwButtonID = BBB_ID_CONF_SPAWN;
+		::CallService(MS_BB_SETBUTTONSTATE, (WPARAM)ev->hContact, (LPARAM)&bbd);
+	} 
+	return 0; 
 }
 
-void CSkypeProto::OnMessage(CConversation::Ref conversation, CMessage::Ref message)
+int __cdecl CSkypeProto::OnTabSRMMButtonPressed(WPARAM wParam, LPARAM lParam)
+{
+	HANDLE hContact = (HANDLE)wParam;
+	CustomButtonClickData *cbcd = (CustomButtonClickData *)lParam;
+	
+	switch (cbcd->dwButtonId)
+	{
+	case BBB_ID_CONF_INVITE:
+		if (this->IsOnline() && this->isChatRoom(hContact))
+			this->ChatRoomInvite(hContact);
+		break;
+
+	case BBB_ID_CONF_SPAWN:
+		if (this->IsOnline() && !this->isChatRoom(hContact))
+		{
+			SEStringList targets;
+			ptrW sid(::db_get_wsa(hContact, this->m_szModuleName, SKYPE_SETTINGS_SID));
+			targets.append((char *)_T2A(sid));
+
+			ConversationRef conversation, conference;
+			this->GetConversationByParticipants(targets, conversation);
+
+			StringList invitedContacts(sid);
+			ChatRoomParam *param = new ChatRoomParam(NULL, invitedContacts, this);
+			
+			if (::DialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_CHATROOM_CREATE), NULL, CSkypeProto::ChatRoomProc, (LPARAM)param) == IDOK && param->invitedContacts.size() > 0)
+			{				
+				for (size_t i = 0; i < param->invitedContacts.size(); i++)
+				{
+					SEString contact(_T2A(param->invitedContacts[i]));
+					if ( !targets.contains(contact))
+						targets.append(contact);
+				}
+				conversation->SpawnConference(targets, conference);
+			}
+		}
+		break;
+	}
+
+	return 1;
+}
+
+void CSkypeProto::OnMessage(
+	const MessageRef & message,
+	const bool & changesInboxTimestamp,
+	const MessageRef & supersedesHistoryMessage,
+	const ConversationRef & conversation)
 {
 	CMessage::TYPE messageType;
 	message->GetPropType(messageType);
-
-	CMessage::SENDING_STATUS sendingStatus;
-	message->GetPropSendingStatus(sendingStatus);
-
-	CMessage::CONSUMPTION_STATUS status;
-	message->GetPropConsumptionStatus(status);
-
-	// it's old message (hystory sync)
-	if (status == CMessage::CONSUMED) return;
 
 	switch (messageType)
 	{
 	case CMessage::POSTED_EMOTE:
 	case CMessage::POSTED_TEXT:
+	case CMessage::STARTED_LIVESESSION:
+	case CMessage::ENDED_LIVESESSION:
 		{
-			SEString data;
-
-			message->GetPropAuthor(data);
-			char *sid = ::mir_strdup(data);
-
-			if (::stricmp(sid, this->login) == 0)
-				this->OnMessageSended(conversation, message);
+			CConversation::TYPE type;
+			conversation->GetPropType(type);
+			if (type == 0 || type == CConversation::DIALOG)
+				this->OnMessageEvent(conversation, message);
 			else
-				this->OnMessageReceived(conversation, message);
+				this->OnChatEvent(conversation, message);
 		}
 		break;
 
 	case CMessage::ADDED_CONSUMERS:
-		{
-			SEString data;
-
-			conversation->GetPropIdentity(data);
-			char *cid = ::mir_strdup(data);
-
-			HANDLE hContact = this->GetChatRoomByID(cid);
-			if ( !hContact || ::DBGetContactSettingWord(hContact, this->m_szModuleName, "Status", ID_STATUS_OFFLINE) == ID_STATUS_OFFLINE)
-			{
-				SEStringList empty;
-				this->StartChat(cid, empty);
-				
-				CParticipant::Refs participants;
-				conversation->GetParticipants(participants, CConversation::OTHER_CONSUMERS);
-				for (uint i = 0; i < participants.size(); i++)
-				{
-					participants[i]->GetPropIdentity(data);
-					this->AddChatContact(cid, data);
-				}
-			}
-
-			{
-				message->GetPropIdentities(data);
-
-				StringList alreadyInChat(this->GetChatUsers(cid), " ");
-				StringList needToAdd(data, " ");
-				
-				for (int i = 0; i < needToAdd.getCount(); i++)
-				{
-					char *sid = needToAdd[i];
-					if (::stricmp(sid, this->login) != 0 && !alreadyInChat.contains(sid))
-						this->AddChatContact(cid, sid);
-				}
-			}
-		}
-		break;
-
 	case CMessage::RETIRED:
-		{
-			SEString data;
-
-			conversation->GetPropIdentity(data);
-			char *cid = ::mir_strdup(data);
-
-			StringList alreadyInChat(this->GetChatUsers(cid), " ");
-			
-			message->GetPropAuthor(data);	
-			char *sid = ::mir_strdup(data);
-			if (::stricmp(sid, this->login) != 0)
-				if (alreadyInChat.contains(sid))
-					this->RemoveChatContact(cid, sid);
-		}
-		break;
 	case CMessage::RETIRED_OTHERS:
-		{
-			SEString data;
-
-			conversation->GetPropIdentity(data);
-			char *cid = ::mir_strdup(data);
-
-			message->GetPropIdentities(data);
-
-			StringList alreadyInChat(this->GetChatUsers(cid), " ");
-			StringList needToKick(data, " ");
-				
-			for (int i = 0; i < needToKick.getCount(); i++)
-			{
-				char *sid = needToKick[i];
-				if (::stricmp(sid, this->login) != 0 && !alreadyInChat.contains(sid))
-					this->KickChatContact(cid, sid);
-			}
-		}
+	case CMessage::SPAWNED_CONFERENCE:
+		this->OnChatEvent(conversation, message);
 		break;
 
-	case CMessage::SPAWNED_CONFERENCE:
-		{
-			SEString data;
-			conversation->GetPropIdentity(data);
-			char *cid = ::mir_strdup(data);
+	case CMessage::POSTED_FILES:
+		this->OnFileEvent(conversation, message);
+		break;
 
-			/*HANDLE hContact = this->GetChatRoomByID(cid);
-			if ( !hContact || ::DBGetContactSettingWord(hContact, this->m_szModuleName, "Status", ID_STATUS_OFFLINE) == ID_STATUS_OFFLINE)
-			{
-				this->JoinChat(cid);
-			}*/
-		}
+	case CMessage::POSTED_CONTACTS:
+			this->OnContactsEvent(conversation, message);
 		break;
 
 	//case CMessage::REQUESTED_AUTH:

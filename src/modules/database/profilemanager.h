@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people 
 listed in contributors.txt.
 
@@ -31,7 +31,6 @@ struct PROFILEMANAGERDATA
 };
 
 char* makeFileName(const TCHAR* tszOriginalName);
-int makeDatabase(TCHAR *profile, DATABASELINK * link, HWND hwndDlg);
 int getProfileManager(PROFILEMANAGERDATA * pd);
 int getProfilePath(TCHAR *buf, size_t cch);
 int isValidProfileName(const TCHAR *name);
@@ -40,3 +39,4 @@ bool shouldAutoCreate(TCHAR *szProfile);
 
 extern TCHAR g_profileDir[MAX_PATH];
 extern TCHAR g_profileName[MAX_PATH];
+extern bool  g_bDbCreated;

@@ -1,5 +1,5 @@
 /*
-   Splash Screen Plugin for Miranda-IM (www.miranda-im.org)
+   Splash Screen Plugin for Miranda NG (www.miranda-ng.org)
    (c) 2004-2007 nullbie, (c) 2005-2007 Thief
 
    This program is free software; you can redistribute it and/or modify
@@ -15,12 +15,6 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-   File name      : $URL: http://svn.miranda.im/mainrepo/splashscreen/trunk/src/services.cpp $
-   Revision       : $Rev: 951 $
-   Last change on : $Date: 2007-10-16 18:46:53 +0400 (Вт, 16 окт 2007) $
-   Last change by : $Author: Thief $
-
 */
 
 #include "headers.h"
@@ -29,22 +23,21 @@ INT_PTR ShowSplashService(WPARAM wparam,LPARAM lparam)
 {
 	bserviceinvoked = true;
 	TCHAR szOldfn [256];
-	TCHAR* pos;
 	TCHAR* filename = (TCHAR*) wparam;
 	int timetoshow = (int) lparam;
 
-	lstrcpy(szOldfn, szSplashFile);
+	_tcscpy_s(szOldfn, szSplashFile);
 	options.showtime = timetoshow;
 
-	pos = _tcsrchr(filename, _T(':'));
+	TCHAR *pos = _tcsrchr(filename, _T(':'));
 	if (pos == NULL)
 		mir_sntprintf(szSplashFile, SIZEOF(szSplashFile), _T("%s\\%s"), szMirDir, filename);
 	else
-		lstrcpy(szSplashFile, filename);
+		_tcscpy_s(szSplashFile, filename);
 
 	ShowSplash(false);
 
-	lstrcpy(szSplashFile, szOldfn);
+	_tcscpy_s(szSplashFile, szOldfn);
 
 	return 0;
 }
@@ -56,7 +49,9 @@ INT_PTR TestService(WPARAM wParam,LPARAM lParam)
 
 	OPENFILENAME ofn={0};
 	ofn.lStructSize = OPENFILENAME_SIZE_VERSION_400;
-	ofn.lpstrFilter = _T("PNG and BMP files\0*.png;*.bmp\0\0");
+	TCHAR tmp[MAX_PATH];
+	mir_sntprintf(tmp, SIZEOF(tmp), _T("%s (*.png, *.bmp)%c*.png;*.bmp%c%c"), TranslateT("Graphic files"), 0, 0, 0);
+	ofn.lpstrFilter = tmp;
 	ofn.hwndOwner=0;
 	ofn.lpstrFile = szTempPath;
 	ofn.nMaxFile = MAX_PATH;

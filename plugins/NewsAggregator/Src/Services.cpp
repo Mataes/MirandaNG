@@ -19,83 +19,82 @@ Boston, MA 02111-1307, USA.
 
 #include "common.h"
 
-int g_nStatus = ID_STATUS_OFFLINE;
+int g_nStatus = ID_STATUS_ONLINE;
 UINT_PTR timerId = 0;
+HANDLE hTBButton = NULL, hNewsAggregatorFolder = NULL;
 
-void SetContactStatus(HANDLE hContact,int nNewStatus)
+void SetContactStatus(HANDLE hContact, int nNewStatus)
 {
-	if(DBGetContactSettingWord(hContact,MODULE,"Status",ID_STATUS_OFFLINE) != nNewStatus)
-		DBWriteContactSettingWord(hContact,MODULE,"Status",nNewStatus);
+	if(db_get_w(hContact, MODULE, "Status", ID_STATUS_ONLINE) != nNewStatus)
+		db_set_w(hContact, MODULE, "Status", nNewStatus);
 }
 
 static void __cdecl WorkingThread(void* param)
 {
 	int nStatus = (int)param;
-//	UpdateAll(FALSE, FALSE);
-	HANDLE hContact= db_find_first();
-	while (hContact != NULL) 
-	{
-		if(IsMyContact(hContact)) 
-		{
-			SetContactStatus(hContact, nStatus);
-		}
-		hContact = db_find_next(hContact);
-	}
+
+	for (HANDLE hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE))
+		SetContactStatus(hContact, nStatus);
 }
 
-int NewsAggrInit(WPARAM wParam,LPARAM lParam)
+int OnFoldersChanged(WPARAM, LPARAM)
 {
-	HANDLE hContact= db_find_first();
-	while (hContact != NULL) 
-	{
-		if(IsMyContact(hContact)) 
-		{
-			SetContactStatus(hContact, ID_STATUS_OFFLINE);
-		}
-		hContact = db_find_next(hContact);
+	FoldersGetCustomPathT(hNewsAggregatorFolder, tszRoot, MAX_PATH, _T(""));
+	return 0;
+}
+
+int NewsAggrInit(WPARAM wParam, LPARAM lParam)
+{
+	hNewsAggregatorFolder = FoldersRegisterCustomPathT(LPGEN("Avatars"), LPGEN("News Aggregator"), MIRANDA_USERDATAT _T("\\Avatars\\")_T(DEFAULT_AVATARS_FOLDER));
+	if (hNewsAggregatorFolder)
+		FoldersGetCustomPathT(hNewsAggregatorFolder, tszRoot, MAX_PATH, _T(""));
+	else
+		lstrcpyn(tszRoot, VARST( _T("%miranda_userdata%\\Avatars\\"_T(DEFAULT_AVATARS_FOLDER))), SIZEOF(tszRoot));
+
+	for (HANDLE hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
+		if (!db_get_b(NULL, MODULE, "StartupRetrieve", 1))
+			db_set_dw(hContact, MODULE, "LastCheck", time(NULL));
+		SetContactStatus(hContact, ID_STATUS_ONLINE);
 	}
+
 	NetlibInit();
 	InitIcons();
 	InitMenu();
 
+	HookEvent(ME_TTB_MODULELOADED, OnToolbarLoaded);
+	HookEvent(ME_FOLDERS_PATH_CHANGED, OnFoldersChanged);
+
 	// timer for the first update
-	timerId = SetTimer(NULL, 0, 5000, timerProc2);  // first update is 5 sec after load
+	timerId = SetTimer(NULL, 0, 10000, timerProc2); // first update is 10 sec after load
 
 	return 0;
 }
 
-int NewsAggrPreShutdown(WPARAM wParam,LPARAM lParam)
+int NewsAggrPreShutdown(WPARAM wParam, LPARAM lParam)
 {
 	if (hAddFeedDlg)
-	{
 		SendMessage(hAddFeedDlg, WM_CLOSE, 0, 0);
-	}
+
 	WindowList_Broadcast(hChangeFeedDlgList, WM_CLOSE, 0, 0);
 
-	mir_forkthread(WorkingThread, (void*)ID_STATUS_OFFLINE);
 	KillTimer(NULL, timerId);
 	NetlibUnInit();
-
 	return 0;
 }
 
 INT_PTR NewsAggrGetName(WPARAM wParam, LPARAM lParam)
 {
-	if(lParam)
-	{
-		lstrcpynA((char*)lParam, MODULE, wParam);
+	if(lParam) {
+		lstrcpynA((char *)lParam, MODULE, wParam);
 		return 0;
 	}
-	else
-	{
-		return 1;
-	}
-}	
 
-INT_PTR NewsAggrGetCaps(WPARAM wp,LPARAM lp)
+	return 1;
+}
+
+INT_PTR NewsAggrGetCaps(WPARAM wp, LPARAM lp)
 {
-	switch(wp)
-	{        
+	switch(wp) {
 	case PFLAGNUM_1:
 		return PF1_IM | PF1_PEER2PEER;
 	case PFLAGNUM_3:
@@ -112,66 +111,59 @@ INT_PTR NewsAggrGetCaps(WPARAM wp,LPARAM lp)
 	}
 }
 
-INT_PTR NewsAggrSetStatus(WPARAM wp,LPARAM /*lp*/)
+INT_PTR NewsAggrSetStatus(WPARAM wp, LPARAM)
 {
 	int nStatus = wp;
-	if ((ID_STATUS_ONLINE == nStatus) || (ID_STATUS_OFFLINE == nStatus))
-	{
+	if ((ID_STATUS_ONLINE == nStatus) || (ID_STATUS_OFFLINE == nStatus)) {
 		int nOldStatus = g_nStatus;
-		if(nStatus != g_nStatus)
-		{
+		if(nStatus != g_nStatus) {
 			g_nStatus = nStatus;
-			mir_forkthread(WorkingThread, (void*)g_nStatus);
+			mir_forkthread(WorkingThread, (void *)g_nStatus);
 			ProtoBroadcastAck(MODULE, NULL, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)nOldStatus, g_nStatus);
 		}
-
 	}
 
 	return 0;
 }
 
-INT_PTR NewsAggrGetStatus(WPARAM/* wp*/,LPARAM/* lp*/)
+INT_PTR NewsAggrGetStatus(WPARAM, LPARAM)
 {
 	return g_nStatus;
 }
 
-INT_PTR NewsAggrLoadIcon(WPARAM wParam,LPARAM lParam)
+INT_PTR NewsAggrLoadIcon(WPARAM wParam, LPARAM lParam)
 {
 	return (LOWORD(wParam) == PLI_PROTOCOL) ? (INT_PTR)CopyIcon(LoadIconEx("main", FALSE)) : 0;
 }
 
-static void __cdecl AckThreadProc(HANDLE param) 
+static void __cdecl AckThreadProc(HANDLE param)
 {
 	Sleep(100);
-	ProtoBroadcastAck(MODULE, param, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE) 1, 0);
+	ProtoBroadcastAck(MODULE, param, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE)1, 0);
 }
 
-INT_PTR NewsAggrGetInfo(WPARAM wParam,LPARAM lParam)
+INT_PTR NewsAggrGetInfo(WPARAM wParam, LPARAM lParam)
 {
-	CCSDATA *ccs = (CCSDATA *) lParam;
+	CCSDATA *ccs = (CCSDATA *)lParam;
 	mir_forkthread(AckThreadProc, ccs->hContact);
 	return 0;
 }
 
-INT_PTR CheckAllFeeds(WPARAM wParam,LPARAM lParam)
+INT_PTR CheckAllFeeds(WPARAM wParam, LPARAM lParam)
 {
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) 
-	{
-		if (IsMyContact(hContact) && lParam && DBGetContactSettingDword(hContact, MODULE, "UpdateTime", 60)) 
+	for (HANDLE hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
+		if (lParam && db_get_dw(hContact, MODULE, "UpdateTime", DEFAULT_UPDATE_TIME))
 			UpdateListAdd(hContact);
-		else if (IsMyContact(hContact) && !lParam)
+		else if (!lParam)
 			UpdateListAdd(hContact);
-		hContact = db_find_next(hContact);
 	}
 	if (!ThreadRunning)
-		mir_forkthread(UpdateThreadProc, NULL);
-
+		mir_forkthread(UpdateThreadProc, (LPVOID)FALSE);
 
 	return 0;
 }
 
-INT_PTR AddFeed(WPARAM wParam,LPARAM lParam)
+INT_PTR AddFeed(WPARAM wParam, LPARAM lParam)
 {
 	hAddFeedDlg = CreateDialog(hInst, MAKEINTRESOURCE(IDD_ADDFEED), NULL, DlgProcAddFeedOpts);
 	ShowWindow(hAddFeedDlg, SW_SHOW);
@@ -180,15 +172,12 @@ INT_PTR AddFeed(WPARAM wParam,LPARAM lParam)
 
 INT_PTR ChangeFeed(WPARAM wParam, LPARAM lParam)
 {
-	HANDLE hContact = (HANDLE) wParam;
-	HWND hChangeFeedDlg = WindowList_Find(hChangeFeedDlgList,hContact);
-	if (!hChangeFeedDlg)
-	{
+	HANDLE hContact = (HANDLE)wParam;
+	HWND hChangeFeedDlg = WindowList_Find(hChangeFeedDlgList, hContact);
+	if (!hChangeFeedDlg) {
 		hChangeFeedDlg = CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_ADDFEED), NULL, DlgProcChangeFeedMenu, (LPARAM)hContact);
 		ShowWindow(hChangeFeedDlg, SW_SHOW);
-	}
-	else
-	{
+	} else {
 		SetForegroundWindow(hChangeFeedDlg);
 		SetFocus(hChangeFeedDlg);
 	}
@@ -197,11 +186,13 @@ INT_PTR ChangeFeed(WPARAM wParam, LPARAM lParam)
 
 INT_PTR ImportFeeds(WPARAM wParam, LPARAM lParam)
 {
+	CreateDialog(hInst, MAKEINTRESOURCE(IDD_FEEDIMPORT), NULL, DlgProcImportOpts);
 	return 0;
 }
 
 INT_PTR ExportFeeds(WPARAM wParam, LPARAM lParam)
 {
+	CreateDialog(hInst, MAKEINTRESOURCE(IDD_FEEDEXPORT), NULL, DlgProcExportOpts);
 	return 0;
 }
 
@@ -210,36 +201,74 @@ INT_PTR CheckFeed(WPARAM wParam, LPARAM lParam)
 	HANDLE hContact = (HANDLE)wParam;
 	if(IsMyContact(hContact))
 		UpdateListAdd(hContact);
-	if (!ThreadRunning)
-		mir_forkthread(UpdateThreadProc, NULL);
+	if ( !ThreadRunning)
+		mir_forkthread(UpdateThreadProc, (LPVOID)FALSE);
 	return 0;
 }
 
 INT_PTR NewsAggrGetAvatarInfo(WPARAM wParam, LPARAM lParam)
 {
-	PROTO_AVATAR_INFORMATIONT* pai = (PROTO_AVATAR_INFORMATIONT*) lParam;
-
-	if (!IsMyContact(pai->hContact))
+	PROTO_AVATAR_INFORMATIONT *pai = (PROTO_AVATAR_INFORMATIONT *)lParam;
+	if ( !IsMyContact(pai->hContact))
 		return GAIR_NOAVATAR;
 
 	// if GAIF_FORCE is set, we are updating the feed
 	// otherwise, cached avatar is used
-	if (wParam & GAIF_FORCE && DBGetContactSettingDword(pai->hContact, MODULE, "UpdateTime", 60))
+	if (wParam & GAIF_FORCE && db_get_dw(pai->hContact, MODULE, "UpdateTime", DEFAULT_UPDATE_TIME))
 		UpdateListAdd(pai->hContact);
-	if (!ThreadRunning)
-		mir_forkthread(UpdateThreadProc, NULL);
+	if (db_get_b(NULL, MODULE, "AutoUpdate", 1) != 0 && !ThreadRunning)
+		mir_forkthread(UpdateThreadProc, (LPVOID)TRUE);
 
-	DBVARIANT dbv = {0};
-	if(DBGetContactSettingTString(pai->hContact,MODULE,"ImageURL",&dbv))
-	{
+	DBVARIANT dbv;
+	if(db_get_ts(pai->hContact, MODULE, "ImageURL", &dbv))
 		return GAIR_NOAVATAR;
-	}
-	DBFreeVariant(&dbv);
+
+	db_free(&dbv);
 	return GAIR_WAITFOR;
 }
 
 INT_PTR NewsAggrRecvMessage(WPARAM wParam, LPARAM lParam)
 {
 	CallService(MS_PROTO_RECVMSG, 0, lParam);
+	return 0;
+}
+
+void UpdateMenu(BOOL State)
+{
+	CLISTMENUITEM mi = { sizeof(mi) };
+
+	if (!State) { // to enable auto-update
+		mi.ptszName = LPGENT("Auto Update Enabled");
+		mi.icolibItem = GetIconHandle("enabled");
+	}
+	else { // to disable auto-update
+		mi.ptszName = LPGENT("Auto Update Disabled");
+		mi.icolibItem = GetIconHandle("disabled");
+	}
+
+	mi.flags = CMIM_ICON | CMIM_NAME | CMIF_TCHAR;
+	Menu_ModifyItem(hService2[0], &mi);
+	CallService(MS_TTB_SETBUTTONSTATE, (WPARAM)hTBButton, State ? TTBST_PUSHED : TTBST_RELEASED);
+	db_set_b(NULL, MODULE, "AutoUpdate", !State);
+}
+
+// update the newsaggregator auto-update menu item when click on it
+INT_PTR EnableDisable(WPARAM wParam, LPARAM lParam)
+{
+	UpdateMenu(db_get_b(NULL, MODULE, "AutoUpdate", 1));
+	return 0;
+}
+
+int OnToolbarLoaded(WPARAM wParam, LPARAM lParam)
+{
+	TTBButton ttb = { sizeof(ttb) };
+	ttb.name = LPGEN("Enable/disable auto update");
+	ttb.pszService = MS_NEWSAGGREGATOR_ENABLED;
+	ttb.pszTooltipUp = LPGEN("Auto Update Enabled");
+	ttb.pszTooltipDn = LPGEN("Auto Update Disabled");
+	ttb.hIconHandleUp = GetIconHandle("enabled");
+	ttb.hIconHandleDn = GetIconHandle("disabled");
+	ttb.dwFlags = (db_get_b(NULL, MODULE, "AutoUpdate", 1) ? 0 : TTBBF_PUSHED) | TTBBF_ASPUSHBUTTON | TTBBF_VISIBLE;
+	hTBButton = TopToolbar_AddButton(&ttb);
 	return 0;
 }

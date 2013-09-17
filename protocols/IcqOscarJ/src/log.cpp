@@ -29,7 +29,7 @@
 // -----------------------------------------------------------------------------
 #include "icqoscar.h"
 
-extern BOOL bPopUpService;
+extern BOOL bPopupService;
 
 static const char *szLevelDescr[] = {LPGEN("ICQ Note"), LPGEN("ICQ Warning"), LPGEN("ICQ Error"), LPGEN("ICQ Fatal")};
 
@@ -46,9 +46,9 @@ void __cdecl CIcqProto::icq_LogMessageThread(void* arg)
 	if (!err)
 		return;
 
-	if (bPopUpService && getSettingByte(NULL, "PopupsLogEnabled", DEFAULT_LOG_POPUPS_ENABLED))
+	if (bPopupService && getByte("PopupsLogEnabled", DEFAULT_LOG_POPUPS_ENABLED))
 	{
-		ShowPopUpMsg(NULL, err->szTitle, err->szMsg, err->bLevel); 
+		ShowPopupMsg(NULL, err->szTitle, err->szMsg, err->bLevel); 
 
 		SAFE_FREE((void**)&err->szMsg);
 		SAFE_FREE((void**)&err);
@@ -69,10 +69,10 @@ void CIcqProto::icq_LogMessage(int level, const char *szMsg)
 {
 	NetLog_Server("%s", szMsg);
 
-	int displayLevel = getSettingByte(NULL, "ShowLogLevel", LOG_WARNING);
+	int displayLevel = getByte("ShowLogLevel", LOG_WARNING);
 	if (level >= displayLevel)
 	{
-		if (!bErrorBoxVisible || !getSettingByte(NULL, "IgnoreMultiErrorBox", 0))
+		if (!bErrorBoxVisible || !getByte("IgnoreMultiErrorBox", 0))
 		{ 
 			// error not shown or allowed multi - show messagebox
 			LogMessageInfo *lmi = (LogMessageInfo*)SAFE_MALLOC(sizeof(LogMessageInfo));
@@ -138,7 +138,7 @@ void CIcqProto::icq_LogUsingErrorCode(int level, DWORD dwError, const char *szMs
 		}
 	}
 
-	null_snprintf(szBuf, sizeof(szBuf), "%s%s%s (%s %d)", 
+	mir_snprintf(szBuf, sizeof(szBuf), "%s%s%s (%s %d)", 
 		szMsg ? ICQTranslateUtfStatic(szMsg, str, 1024) : "", 
 		szMsg ? "\r\n\r\n" : "",
 		ICQTranslateUtfStatic(pszErrorMsg, szErrorMsg, 512), 
@@ -156,6 +156,6 @@ void CIcqProto::icq_LogFatalParam(const char *szMsg, WORD wError)
 	char str[MAX_PATH];
 	char buf[MAX_PATH];
 
-	null_snprintf(buf, MAX_PATH, ICQTranslateUtfStatic(szMsg, str, MAX_PATH), wError);
+	mir_snprintf(buf, MAX_PATH, ICQTranslateUtfStatic(szMsg, str, MAX_PATH), wError);
 	icq_LogMessage(LOG_FATAL, buf);
 }

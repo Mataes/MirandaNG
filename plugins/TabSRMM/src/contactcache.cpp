@@ -26,8 +26,6 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: contactcache.cpp 13336 2011-01-27 20:02:17Z george.hazan $
- *
  * contact cache implementation
  *
  * the contact cache provides various services to the message window(s)
@@ -37,18 +35,12 @@
 
 #include "commonheaders.h"
 
-CContactCache* CContactCache::m_cCache = 0;
+static OBJLIST<CContactCache> arContacts(50, HandleKeySortT);
 
 CContactCache::CContactCache(const HANDLE hContact)
 {
-	ZeroMemory(this, sizeof(CContactCache));
-
-	m_Valid = m_isMeta = false;
 	m_hContact = hContact;
 	m_wOldStatus = m_wStatus = m_wMetaStatus = ID_STATUS_OFFLINE;
-
-	m_szStatusMsg = m_ListeningInfo = m_xStatusMsg = 0;
-	m_nMax = 0;
 
 	if (hContact) {
 		m_szProto = ::GetContactProto(m_hContact);
@@ -71,19 +63,17 @@ CContactCache::CContactCache(const HANDLE hContact)
  */
 void CContactCache::initPhaseTwo()
 {
-	PROTOACCOUNT*	acc = 0;
-
 	m_szAccount = 0;
 	if (m_szProto) {
-		acc = reinterpret_cast<PROTOACCOUNT *>(::CallService(MS_PROTO_GETACCOUNT, 0, (LPARAM)m_szProto));
+		PROTOACCOUNT *acc = reinterpret_cast<PROTOACCOUNT *>(::CallService(MS_PROTO_GETACCOUNT, 0, (LPARAM)m_szProto));
 		if (acc && acc->tszAccountName)
 			m_szAccount = acc->tszAccountName;
 	}
 
 	m_Valid = (m_szProto != 0 && m_szAccount != 0) ? true : false;
 	if (m_Valid) {
-		m_isMeta = (PluginConfig.bMetaEnabled && !strcmp(m_szProto, PluginConfig.szMetaName)) ? true : false;
-		m_isSubcontact = (M->GetByte(m_hContact, PluginConfig.szMetaName, "IsSubcontact", 0) ? true : false);
+		m_isMeta = PluginConfig.bMetaEnabled && !strcmp(m_szProto, PluginConfig.szMetaName);
+		m_isSubcontact = db_get_b(m_hContact, PluginConfig.szMetaName, "IsSubcontact", 0) != 0;
 		if (m_isMeta)
 			updateMeta(true);
 		updateState();
@@ -136,7 +126,7 @@ bool CContactCache::updateNick()
 	bool	fChanged = false;
 
 	if (m_Valid) {
-		TCHAR	*tszNick = reinterpret_cast<TCHAR *>(::CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM)m_hContact, GCDNF_TCHAR));
+		TCHAR	*tszNick = pcli->pfnGetContactDisplayName(m_hContact, 0);
 		if (tszNick)
 			fChanged = (_tcscmp(m_szNick, tszNick) ? true : false);
 		mir_sntprintf(m_szNick, 80, _T("%s"), tszNick ? tszNick : _T("<undef>"));
@@ -150,14 +140,12 @@ bool CContactCache::updateNick()
  */
 bool CContactCache::updateStatus()
 {
-	if (m_Valid) {
-		m_wOldStatus = m_wStatus;
-		m_wStatus = (WORD)DBGetContactSettingWord(m_hContact, m_szProto, "Status", ID_STATUS_OFFLINE);
+	if (!m_Valid)
+		return false;
 
-		return(m_wOldStatus != m_wStatus);
-	}
-	else
-		return(false);
+	m_wOldStatus = m_wStatus;
+	m_wStatus = (WORD)db_get_w(m_hContact, m_szProto, "Status", ID_STATUS_OFFLINE);
+	return m_wOldStatus != m_wStatus;
 }
 
 /**
@@ -176,7 +164,7 @@ void CContactCache::updateMeta(bool fForce)
 				PROTOACCOUNT *acc = reinterpret_cast<PROTOACCOUNT *>(::CallService(MS_PROTO_GETACCOUNT, 0, (LPARAM)m_szMetaProto));
 				if (acc && acc->tszAccountName)
 					m_szAccount = acc->tszAccountName;
-				m_wMetaStatus = DBGetContactSettingWord(m_hSubContact, m_szMetaProto, "Status", ID_STATUS_OFFLINE);
+				m_wMetaStatus = db_get_w(m_hSubContact, m_szMetaProto, "Status", ID_STATUS_OFFLINE);
 				MultiByteToWideChar(CP_ACP, 0, m_szMetaProto, -1, m_tszMetaProto, 40);
 				m_tszMetaProto[39] = 0;
 			}
@@ -194,37 +182,27 @@ void CContactCache::updateMeta(bool fForce)
  */
 bool CContactCache::updateUIN()
 {
-	bool		fChanged = false;
+	m_szUIN[0] = 0;
 
 	if (m_Valid) {
-		CONTACTINFO ci = {0};
-
+		CONTACTINFO ci = { sizeof(ci) };
 		ci.hContact = getActiveContact();
 		ci.szProto = const_cast<char *>(getActiveProto());
-		ci.cbSize = sizeof(ci);
-
 		ci.dwFlag = CNF_DISPLAYUID | CNF_TCHAR;
-		if (!CallService(MS_CONTACT_GETCONTACTINFO, 0, (LPARAM) & ci)) {
+		if (!CallService(MS_CONTACT_GETCONTACTINFO, 0, (LPARAM)&ci)) {
 			switch (ci.type) {
-				case CNFT_ASCIIZ:
-					mir_sntprintf(m_szUIN, safe_sizeof(m_szUIN), _T("%s"), reinterpret_cast<TCHAR *>(ci.pszVal));
-					mir_free((void*)ci.pszVal);
-					break;
-				case CNFT_DWORD:
-					mir_sntprintf(m_szUIN, safe_sizeof(m_szUIN), _T("%u"), ci.dVal);
-					break;
-				default:
-					m_szUIN[0] = 0;
-					break;
+			case CNFT_ASCIIZ:
+				mir_sntprintf(m_szUIN, SIZEOF(m_szUIN), _T("%s"), reinterpret_cast<TCHAR *>(ci.pszVal));
+				mir_free((void*)ci.pszVal);
+				break;
+			case CNFT_DWORD:
+				mir_sntprintf(m_szUIN, SIZEOF(m_szUIN), _T("%u"), ci.dVal);
+				break;
 			}
-		} else
-			m_szUIN[0] = 0;
-
+		}
 	}
-	else
-		m_szUIN[0] = 0;
 
-	return(fChanged);
+	return false;
 }
 
 void CContactCache::updateStats(int iType, size_t value)
@@ -233,27 +211,25 @@ void CContactCache::updateStats(int iType, size_t value)
 		allocStats();
 
 	switch(iType) {
-		case TSessionStats::UPDATE_WITH_LAST_RCV:
-			if (m_stats->lastReceivedChars) {
-				m_stats->iReceived++;
-				m_stats->messageCount++;
-			}
-			else
-				return;
-			m_stats->iReceivedBytes += m_stats->lastReceivedChars;
-			m_stats->lastReceivedChars = 0;
+	case TSessionStats::UPDATE_WITH_LAST_RCV:
+		if (!m_stats->lastReceivedChars)
 			break;
-		case TSessionStats::INIT_TIMER:
-			m_stats->started = time(0);
-			return;
-		case TSessionStats::SET_LAST_RCV:
-			m_stats->lastReceivedChars = (unsigned int)value;
-			return;
-		case TSessionStats::BYTES_SENT:
-			m_stats->iSent++;
-			m_stats->messageCount++;
-			m_stats->iSentBytes += (unsigned int)value;
-			break;
+		m_stats->iReceived++;
+		m_stats->messageCount++;
+		m_stats->iReceivedBytes += m_stats->lastReceivedChars;
+		m_stats->lastReceivedChars = 0;
+		break;
+	case TSessionStats::INIT_TIMER:
+		m_stats->started = time(0);
+		break;
+	case TSessionStats::SET_LAST_RCV:
+		m_stats->lastReceivedChars = (unsigned int)value;
+		break;
+	case TSessionStats::BYTES_SENT:
+		m_stats->iSent++;
+		m_stats->messageCount++;
+		m_stats->iSentBytes += (unsigned int)value;
+		break;
 	}
 }
 
@@ -332,11 +308,11 @@ void CContactCache::saveHistory(WPARAM wParam, LPARAM lParam)
 			if (m_history[m_iHistoryTop].szText == NULL) {
 				if (iLength < HISTORY_INITIAL_ALLOCSIZE)
 					iLength = HISTORY_INITIAL_ALLOCSIZE;
-				m_history[m_iHistoryTop].szText = (TCHAR *)malloc(iLength);
+				m_history[m_iHistoryTop].szText = (TCHAR*)mir_alloc(iLength);
 				m_history[m_iHistoryTop].lLen = iLength;
 			} else {
 				if (iLength > m_history[m_iHistoryTop].lLen) {
-					m_history[m_iHistoryTop].szText = (TCHAR *)realloc(m_history[m_iHistoryTop].szText, iLength);
+					m_history[m_iHistoryTop].szText = (TCHAR*)mir_realloc(m_history[m_iHistoryTop].szText, iLength);
 					m_history[m_iHistoryTop].lLen = iLength;
 				}
 			}
@@ -350,7 +326,7 @@ void CContactCache::saveHistory(WPARAM wParam, LPARAM lParam)
 		}
 	}
 	if (szFromStream)
-		free(szFromStream);
+		mir_free(szFromStream);
 	if (oldTop)
 		m_iHistoryTop = oldTop;
 }
@@ -379,7 +355,8 @@ void CContactCache::inputHistoryEvent(WPARAM wParam)
 			if (m_iHistoryCurrent == 0)
 				return;
 			m_iHistoryCurrent--;
-		} else {
+		}
+		else {
 			m_iHistoryCurrent++;
 			if (m_iHistoryCurrent > m_iHistoryTop)
 				m_iHistoryCurrent = m_iHistoryTop;
@@ -388,15 +365,16 @@ void CContactCache::inputHistoryEvent(WPARAM wParam)
 			if (m_history[m_iHistorySize].szText != NULL) {           // replace the temp buffer
 				::SetWindowText(hwndEdit, _T(""));
 				::SendMessage(hwndEdit, EM_SETTEXTEX, (WPARAM)&stx, (LPARAM)m_history[m_iHistorySize].szText);
-				::SendMessage(hwndEdit, EM_SETSEL, (WPARAM) - 1, (LPARAM) - 1);
+				::SendMessage(hwndEdit, EM_SETSEL, (WPARAM)- 1, (LPARAM)- 1);
 			}
-		} else {
+		}
+		else {
 			if (m_history[m_iHistoryCurrent].szText != NULL) {
 				::SetWindowText(hwndEdit, _T(""));
 				::SendMessage(hwndEdit, EM_SETTEXTEX, (WPARAM)&stx, (LPARAM)m_history[m_iHistoryCurrent].szText);
-				::SendMessage(hwndEdit, EM_SETSEL, (WPARAM) - 1, (LPARAM) - 1);
-			} else
-				::SetWindowText(hwndEdit, _T(""));
+				::SendMessage(hwndEdit, EM_SETSEL, (WPARAM)- 1, (LPARAM)- 1);
+			}
+			else ::SetWindowText(hwndEdit, _T(""));
 		}
 		::SendMessage(m_hwnd, WM_COMMAND, MAKEWPARAM(::GetDlgCtrlID(hwndEdit), EN_CHANGE), (LPARAM)hwndEdit);
 		m_dat->dwFlags &= ~MWF_NEEDHISTORYSAVE;
@@ -413,15 +391,15 @@ void CContactCache::inputHistoryEvent(WPARAM wParam)
  */
 void CContactCache::allocHistory()
 {
-	m_iHistorySize = M->GetByte("historysize", 15);
+	m_iHistorySize = M.GetByte("historysize", 15);
 	if (m_iHistorySize < 10)
 		m_iHistorySize = 10;
-	m_history = (TInputHistory *)malloc(sizeof(TInputHistory) * (m_iHistorySize + 1));
+	m_history = (TInputHistory *)mir_alloc(sizeof(TInputHistory) * (m_iHistorySize + 1));
 	m_iHistoryCurrent = 0;
 	m_iHistoryTop = 0;
 	if (m_history)
 		ZeroMemory(m_history, sizeof(TInputHistory) * m_iHistorySize);
-	m_history[m_iHistorySize].szText = (TCHAR *)malloc((HISTORY_INITIAL_ALLOCSIZE + 1) * sizeof(TCHAR));
+	m_history[m_iHistorySize].szText = (TCHAR*)mir_alloc((HISTORY_INITIAL_ALLOCSIZE + 1) * sizeof(TCHAR));
 	m_history[m_iHistorySize].lLen = HISTORY_INITIAL_ALLOCSIZE;
 }
 
@@ -440,10 +418,10 @@ void CContactCache::releaseAlloced()
 	if (m_history) {
 		for (i=0; i <= m_iHistorySize; i++) {
 			if (m_history[i].szText != 0) {
-				free(m_history[i].szText);
+				mir_free(m_history[i].szText);
 			}
 		}
-		free(m_history);
+		mir_free(m_history);
 		m_history = 0;
 	}
 	if ( lstrcmp( m_tszProto, C_INVALID_PROTO_T ))
@@ -474,8 +452,8 @@ void CContactCache::deletedHandler()
  */
 void CContactCache::updateFavorite()
 {
-	m_isFavorite = M->GetByte(m_hContact, SRMSGMOD_T, "isFavorite", 0) ? true : false;
-	m_isRecent = M->GetDword(m_hContact, "isRecent", 0) ? true : false;
+	m_isFavorite = db_get_b(m_hContact, SRMSGMOD_T, "isFavorite", 0) != 0;
+	m_isRecent = M.GetDword(m_hContact, "isRecent", 0) ? true : false;
 }
 
 /**
@@ -496,33 +474,33 @@ void CContactCache::updateStatusMsg(const char *szKey)
 		if (m_szStatusMsg)
 			mir_free(m_szStatusMsg);
 		m_szStatusMsg = 0;
-		res = M->GetTString(m_hContact, "CList", "StatusMsg", &dbv);
+		res = db_get_ts(m_hContact, "CList", "StatusMsg", &dbv);
 		if (res == 0) {
 			m_szStatusMsg = (lstrlen(dbv.ptszVal) > 0 ? getNormalizedStatusMsg(dbv.ptszVal) : 0);
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 	if (szKey == 0 || (szKey && !strcmp("ListeningTo", szKey))) {
 		if (m_ListeningInfo)
 			mir_free(m_ListeningInfo);
 		m_ListeningInfo = 0;
-		res = M->GetTString(m_hContact, m_szProto, "ListeningTo", &dbv);
+		res = db_get_ts(m_hContact, m_szProto, "ListeningTo", &dbv);
 		if (res == 0) {
 			m_ListeningInfo = (lstrlen(dbv.ptszVal) > 0 ? mir_tstrdup(dbv.ptszVal) : 0);
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 	if (szKey == 0 || (szKey && !strcmp("XStatusMsg", szKey))) {
 		if (m_xStatusMsg)
 			mir_free(m_xStatusMsg);
 		m_xStatusMsg = 0;
-		res = M->GetTString(m_hContact, m_szProto, "XStatusMsg", &dbv);
+		res = db_get_ts(m_hContact, m_szProto, "XStatusMsg", &dbv);
 		if (res == 0) {
 			m_xStatusMsg = (lstrlen(dbv.ptszVal) > 0 ? mir_tstrdup(dbv.ptszVal) : 0);
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
-	m_xStatus = M->GetByte(m_hContact, m_szProto, "XStatusId", 0);
+	m_xStatus = db_get_b(m_hContact, m_szProto, "XStatusId", 0);
 }
 
 /**
@@ -534,34 +512,51 @@ void CContactCache::updateStatusMsg(const char *szKey)
  * @return	CContactCache*		pointer to the cache entry for this contact
  */
 
-CContactCache* CContactCache::getContactCache(const HANDLE hContact)
+CContactCache* CContactCache::getContactCache(HANDLE hContact)
 {
-	CContactCache *c = m_cCache, *cTemp;
+	CContactCache *cc = arContacts.find((CContactCache*)&hContact);
+	if (cc == NULL) {
+		cc = new CContactCache(hContact);
+		arContacts.insert(cc);
+	}
+	return cc;
+}
 
-	cTemp = c;
+/**
+ * when the state of the meta contacts protocol changes from enabled to disabled
+ * (or vice versa), this updates the contact cache
+ *
+ * it is ONLY called from the DBSettingChanged() event handler when the relevant
+ * database value is touched.
+ */
+void CContactCache::cacheUpdateMetaChanged()
+{
+	bool fMetaActive = (PluginConfig.g_MetaContactsAvail && PluginConfig.bMetaEnabled) ? true : false;
 
-	while(c) {
-		cTemp = c;
-		if (c->m_hContact == hContact) {
-			c->inc();
-			return(c);
+	for (int i=0; i < arContacts.getCount(); i++) {
+		CContactCache &c = arContacts[i];
+		if (c.isMeta() && PluginConfig.bMetaEnabled == false) {
+			c.closeWindow();
+			c.resetMeta();
 		}
-		c = c->m_next;
+
+		// meta contacts are enabled, but current contact is a subcontact - > close window
+
+		if (fMetaActive && c.isSubContact())
+			c.closeWindow();
+
+		// reset meta contact information, if metacontacts protocol became avail
+
+		if (fMetaActive && !strcmp(c.getProto(), PluginConfig.szMetaName))
+			c.resetMeta();
 	}
-	CContactCache* _c = new CContactCache(hContact);
-	if (cTemp) {
-		cTemp->m_next = _c;
-		return(_c);
-	}
-	m_cCache = _c;
-	return(_c);
 }
 
 /**
  * normalize the status message with proper cr/lf sequences.
  * @param src TCHAR*:		original status message
  * @param fStripAll bool:	strip all cr/lf sequences and replace them with spaces (use for title bar)
- * @return TCHAR*:			converted status message. CALLER is responsible to free it, MUST use mir_free()
+ * @return TCHAR*:			converted status message. CALLER is responsible to mir_free it, MUST use mir_free()
  */
 TCHAR* CContactCache::getNormalizedStatusMsg(const TCHAR *src, bool fStripAll)
 {
@@ -588,7 +583,7 @@ TCHAR* CContactCache::getNormalizedStatusMsg(const TCHAR *src, bool fStripAll)
 	}
 
 	if (i) {
-		tszResult = (TCHAR *)mir_alloc((dest.length() + 1) * sizeof(TCHAR));
+		tszResult = (TCHAR*)mir_alloc((dest.length() + 1) * sizeof(TCHAR));
 		_tcscpy(tszResult, dest.c_str());
 		tszResult[dest.length()] = 0;
 	}
@@ -637,7 +632,7 @@ int CContactCache::getMaxMessageLength()
 
 		m_nMax = CallProtoService(szProto, PS_GETCAPS, PFLAG_MAXLENOFMESSAGE, reinterpret_cast<LPARAM>(hContact));
 		if (m_nMax) {
-			if (M->GetByte("autosplit", 1)) {
+			if (M.GetByte("autosplit", 1)) {
 				if (m_hwnd)
 					::SendDlgItemMessage(m_hwnd, IDC_MESSAGE, EM_EXLIMITTEXT, 0, 20000);
 			}

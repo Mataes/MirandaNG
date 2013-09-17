@@ -1,21 +1,23 @@
 /*
- Copyright (C) 2009 Ricardo Pescuma Domenecci
 
- This is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
+Copyright (C) 2009 Ricardo Pescuma Domenecci
+Copyright (C) 2012-13 Miranda NG Project
 
- This is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
+This is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
 
- You should have received a copy of the GNU Library General Public
- License along with this file; see the file license.txt.  If
- not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- Boston, MA 02111-1307, USA.
- */
+This is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Library General Public
+License along with this file; see the file license.txt.  If
+not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+*/
 
 #include "..\..\core\commonheaders.h"
 
@@ -24,9 +26,7 @@
 ExtraIconGroup::ExtraIconGroup(const char *_name) :
 	ExtraIcon(_name), setValidExtraIcon(false), insideApply(false)
 {
-	char setting[512];
-	mir_snprintf(setting, SIZEOF(setting), "%s/%s", MODULE_NAME, _name);
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (WPARAM) setting);
+	db_set_resident(MODULE_NAME, _name);
 }
 
 ExtraIconGroup::~ExtraIconGroup()
@@ -92,7 +92,7 @@ void ExtraIconGroup::setSlot(int slot)
 
 ExtraIcon * ExtraIconGroup::getCurrentItem(HANDLE hContact) const
 {
-	int id = (int)DBGetContactSettingDword(hContact, MODULE_NAME, name.c_str(), 0);
+	int id = (int)db_get_dw(hContact, MODULE_NAME, name.c_str(), 0);
 	if (id < 1)
 		return NULL;
 

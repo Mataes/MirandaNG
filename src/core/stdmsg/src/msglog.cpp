@@ -1,6 +1,7 @@
 /*
-Copyright 2000-2010 Miranda IM project, 
-all portions of this codebase are copyrighted to the people 
+
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -17,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "commonheaders.h"
 
 extern IconItem iconList[];
@@ -41,7 +43,7 @@ struct LogStreamData
 	int bufferOffset, bufferLen;
 	int eventsToInsert;
 	int isEmpty;
-	struct SrmmWindowData *dlgDat;
+	SrmmWindowData *dlgDat;
 };
 
 static char szSep2[40], szSep2_RTL[50];
@@ -76,7 +78,7 @@ static int AppendToBufferWithRTF(char **buffer, int *cbBufferEnd, int *cbBufferA
 		return 0;
 
 	lineLen = (int)_tcslen(line) * 9 + 8;
-	if (*cbBufferEnd + lineLen > *cbBufferAlloced) 
+	if (*cbBufferEnd + lineLen > *cbBufferAlloced)
 	{
 		cbBufferAlloced[0] += (lineLen + 1024 - lineLen % 1024);
 		*buffer = (char *) mir_realloc(*buffer, *cbBufferAlloced);
@@ -86,9 +88,9 @@ static int AppendToBufferWithRTF(char **buffer, int *cbBufferEnd, int *cbBufferA
 	strcpy(d, "{\\uc1 ");
 	d += 6;
 
-	for (; *line; line++, textCharsCount++) 
+	for (; *line; line++, textCharsCount++)
 	{
-		if (*line == '\r' && line[1] == '\n') 
+		if (*line == '\r' && line[1] == '\n')
 		{
 			memcpy(d, "\\par ", 5);
 			line++;
@@ -98,17 +100,17 @@ static int AppendToBufferWithRTF(char **buffer, int *cbBufferEnd, int *cbBufferA
 			memcpy(d, "\\par ", 5);
 			d += 5;
 		}
-		else if (*line == '\t') 
+		else if (*line == '\t')
 		{
 			memcpy(d, "\\tab ", 5);
 			d += 5;
 		}
-		else if (*line == '\\' || *line == '{' || *line == '}') 
+		else if (*line == '\\' || *line == '{' || *line == '}')
 		{
 			*d++ = '\\';
 			*d++ = (char) *line;
 		}
-		else if (*line == '[' && (g_dat->flags & SMF_SHOWFORMAT))
+		else if (*line == '[' && (g_dat.flags & SMF_SHOWFORMAT))
 		{
 			int i, found = 0;
 			for (i = 0; i < SIZEOF(bbcodes); ++i)
@@ -141,8 +143,7 @@ static int AppendToBufferWithRTF(char **buffer, int *cbBufferEnd, int *cbBufferA
 						{
 							*tag = 0;
 							*tage = 0;
-							d += sprintf(d, "{\\field{\\*\\fldinst HYPERLINK \"%s\"}{\\fldrslt %s}}", mir_t2a(tagu), mir_t2a(tag + 1));
-//							d += sprintf(d, "{\\field{\\*\\fldinst HYPERLINK \"%s\"}{\\fldrslt \\ul\\cf%d %s}}", mir_t2a(tagu), msgDlgFontCount, mir_t2a(tag + 1));
+							d += sprintf(d, "{\\field{\\*\\fldinst HYPERLINK \"%s\"}{\\fldrslt %s}}", mir_t2a(tagu), mir_t2a(tag + 1)); //!!!!!!!!!!
 							line = tage + 5;
 							found = 1;
 						}
@@ -166,11 +167,11 @@ static int AppendToBufferWithRTF(char **buffer, int *cbBufferEnd, int *cbBufferA
 			if (!found)
 			{
 				if (*line < 128)  *d++ = (char) *line;
-				else d += sprintf(d, "\\u%d ?", *line);
+				else d += sprintf(d, "\\u%d ?", *line); //!!!!!!!!!!
 			}
 		}
 		else if (*line < 128) *d++ = (char) *line;
-		else d += sprintf(d, "\\u%d ?", *line);
+		else d += sprintf(d, "\\u%d ?", *line); //!!!!!!!!!!
 	}
 
 	*(d++) = '}';
@@ -182,7 +183,7 @@ static int AppendToBufferWithRTF(char **buffer, int *cbBufferEnd, int *cbBufferA
 
 #define FONT_FORMAT "{\\f%u\\fnil\\fcharset%u %S;}"
 
-static char *CreateRTFHeader(struct SrmmWindowData *dat)
+static char *CreateRTFHeader(SrmmWindowData *dat)
 {
 	char *buffer;
 	int bufferAlloced, bufferEnd;
@@ -200,15 +201,13 @@ static char *CreateRTFHeader(struct SrmmWindowData *dat)
 	buffer[0] = '\0';
 	AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "{\\rtf1\\ansi\\deff0{\\fonttbl");
 
-	for (i = 0; i < msgDlgFontCount; i++) {
-		LoadMsgDlgFont(i, &lf, NULL);
+	for (i = 0; LoadMsgDlgFont(i, &lf, NULL); i++)
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, FONT_FORMAT, i, lf.lfCharSet, lf.lfFaceName);
-	}
+
 	AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "}{\\colortbl ");
-	for (i = 0; i < msgDlgFontCount; i++) {
-		LoadMsgDlgFont(i, NULL, &colour);
+	for (i = 0; LoadMsgDlgFont(i, NULL, &colour); i++)
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\red%u\\green%u\\blue%u;", GetRValue(colour), GetGValue(colour), GetBValue(colour));
-	}
+
 	if (GetSysColorBrush(COLOR_HOTLIGHT) == NULL)
 		colour = RGB(0, 0, 255);
 	else
@@ -220,7 +219,7 @@ static char *CreateRTFHeader(struct SrmmWindowData *dat)
 }
 
 //mir_free() the return value
-static char *CreateRTFTail(struct SrmmWindowData *dat)
+static char *CreateRTFTail(SrmmWindowData *dat)
 {
 	char *buffer;
 	int bufferAlloced, bufferEnd;
@@ -240,17 +239,17 @@ static char *SetToStyle(int style)
 	LOGFONT lf;
 
 	LoadMsgDlgFont(style, &lf, NULL);
-	wsprintfA(szStyle, "\\f%u\\cf%u\\b%d\\i%d\\fs%u", style, style, lf.lfWeight >= FW_BOLD ? 1 : 0, lf.lfItalic, 2 * abs(lf.lfHeight) * 74 / logPixelSY);
+	mir_snprintf(szStyle, SIZEOF(szStyle), "\\f%u\\cf%u\\b%d\\i%d\\fs%u", style, style, lf.lfWeight >= FW_BOLD ? 1 : 0, lf.lfItalic, 2 * abs(lf.lfHeight) * 74 / logPixelSY);
 	return szStyle;
 }
 
 int DbEventIsForMsgWindow(DBEVENTINFO *dbei)
 {
-	DBEVENTTYPEDESCR* et = ( DBEVENTTYPEDESCR* )CallService( MS_DB_EVENT_GETTYPE, ( WPARAM )dbei->szModule, ( LPARAM )dbei->eventType );
+	DBEVENTTYPEDESCR* et = ( DBEVENTTYPEDESCR* )CallService(MS_DB_EVENT_GETTYPE, ( WPARAM )dbei->szModule, ( LPARAM )dbei->eventType );
 	return et && ( et->flags & DETF_MSGWINDOW );
 }
 
-int DbEventIsShown(DBEVENTINFO * dbei, struct SrmmWindowData *dat)
+int DbEventIsShown(DBEVENTINFO * dbei, SrmmWindowData *dat)
 {
 	switch (dbei->eventType) {
 		case EVENTTYPE_MESSAGE:
@@ -265,30 +264,29 @@ int DbEventIsShown(DBEVENTINFO * dbei, struct SrmmWindowData *dat)
 }
 
 //mir_free() the return value
-static char *CreateRTFFromDbEvent(struct SrmmWindowData *dat, HANDLE hContact, HANDLE hDbEvent, struct LogStreamData *streamData)
+static char *CreateRTFFromDbEvent(SrmmWindowData *dat, HANDLE hContact, HANDLE hDbEvent, struct LogStreamData *streamData)
 {
 	char *buffer;
 	int bufferAlloced, bufferEnd;
-	DBEVENTINFO dbei = { 0 };
 	int showColon = 0;
 
-	dbei.cbSize = sizeof(dbei);
-	dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, (WPARAM) hDbEvent, 0);
+	DBEVENTINFO dbei = { sizeof(dbei) };
+	dbei.cbBlob = db_event_getBlobSize(hDbEvent);
 	if (dbei.cbBlob == -1)
 		return NULL;
+
 	dbei.pBlob = (PBYTE) mir_alloc(dbei.cbBlob);
-	CallService(MS_DB_EVENT_GET, (WPARAM) hDbEvent, (LPARAM) & dbei);
+	db_event_get(hDbEvent, &dbei);
 	if (!DbEventIsShown(&dbei, dat)) {
 		mir_free(dbei.pBlob);
 		return NULL;
 	}
-	if (!(dbei.flags & DBEF_SENT) && (dbei.eventType == EVENTTYPE_MESSAGE || DbEventIsForMsgWindow(&dbei)))
-	{
-		CallService(MS_DB_EVENT_MARKREAD, (WPARAM) hContact, (LPARAM) hDbEvent);
+	if (!(dbei.flags & DBEF_SENT) && (dbei.eventType == EVENTTYPE_MESSAGE || DbEventIsForMsgWindow(&dbei))) {
+		db_event_markRead(hContact, hDbEvent);
 		CallService(MS_CLIST_REMOVEEVENT, (WPARAM) hContact, (LPARAM) hDbEvent);
 	}
 	else if (dbei.eventType == EVENTTYPE_STATUSCHANGE || dbei.eventType == EVENTTYPE_JABBER_CHATSTATES || dbei.eventType == EVENTTYPE_JABBER_PRESENCE) {
-		CallService(MS_DB_EVENT_MARKREAD, (WPARAM) hContact, (LPARAM) hDbEvent);
+		db_event_markRead(hContact, hDbEvent);
 	}
 	bufferEnd = 0;
 	bufferAlloced = 1024;
@@ -299,41 +297,38 @@ static char *CreateRTFFromDbEvent(struct SrmmWindowData *dat, HANDLE hContact, H
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\par");
 
 	if (dbei.flags & DBEF_RTL) {
-        AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\rtlpar");
+		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\rtlpar");
 		dat->bIsAutoRTL = TRUE;
 	}
-    else
-        AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\ltrpar");
+	else AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\ltrpar");
 
 	streamData->isEmpty = 0;
 
 	if (dat->bIsAutoRTL) {
-		if(dbei.flags & DBEF_RTL) {
+		if(dbei.flags & DBEF_RTL)
 			AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\ltrch\\rtlch");
-		}else{
+		else
 			AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\rtlch\\ltrch");
-		}
 	}
 
-	if (g_dat->flags&SMF_SHOWICONS) {
+	if (g_dat.flags & SMF_SHOWICONS) {
 		int i;
 
 		switch (dbei.eventType) {
-			case EVENTTYPE_MESSAGE:
-				if (dbei.flags & DBEF_SENT) {
-					i = LOGICON_MSG_OUT;
-				}
-				else {
-					i = LOGICON_MSG_IN;
-				}
-				break;
-			case EVENTTYPE_JABBER_CHATSTATES:
-			case EVENTTYPE_JABBER_PRESENCE:
-			case EVENTTYPE_STATUSCHANGE:
-			case EVENTTYPE_FILE:
-			default:
-				i = LOGICON_MSG_NOTICE;
-				break;
+		case EVENTTYPE_MESSAGE:
+			if (dbei.flags & DBEF_SENT)
+				i = LOGICON_MSG_OUT;
+			else
+				i = LOGICON_MSG_IN;
+			break;
+
+		case EVENTTYPE_JABBER_CHATSTATES:
+		case EVENTTYPE_JABBER_PRESENCE:
+		case EVENTTYPE_STATUSCHANGE:
+		case EVENTTYPE_FILE:
+		default:
+			i = LOGICON_MSG_NOTICE;
+			break;
 		}
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, "\\f0\\fs14");
 		while (bufferAlloced - bufferEnd < logIconBmpSize[i])
@@ -342,15 +337,15 @@ static char *CreateRTFFromDbEvent(struct SrmmWindowData *dat, HANDLE hContact, H
 		CopyMemory(buffer + bufferEnd, pLogIconBmpBits[i], logIconBmpSize[i]);
 		bufferEnd += logIconBmpSize[i];
 	}
-	if (g_dat->flags & SMF_SHOWTIME) 
-	{
-		const TCHAR* szFormat; 
+
+	if (g_dat.flags & SMF_SHOWTIME) {
+		const TCHAR* szFormat;
 		TCHAR str[64];
-		
-		if (g_dat->flags & SMF_SHOWSECS) 
-			szFormat = g_dat->flags & SMF_SHOWDATE ? _T("d s") : _T("s");
+
+		if (g_dat.flags & SMF_SHOWSECS)
+			szFormat = g_dat.flags & SMF_SHOWDATE ? _T("d s") : _T("s");
 		else
-			szFormat = g_dat->flags & SMF_SHOWDATE ? _T("d t") : _T("t");
+			szFormat = g_dat.flags & SMF_SHOWDATE ? _T("d t") : _T("t");
 
 		tmi.printTimeStamp(NULL, dbei.timestamp, szFormat, str, SIZEOF(str), 0);
 
@@ -358,7 +353,8 @@ static char *CreateRTFFromDbEvent(struct SrmmWindowData *dat, HANDLE hContact, H
 		AppendToBufferWithRTF(&buffer, &bufferEnd, &bufferAlloced, str);
 		showColon = 1;
 	}
-	if (!(g_dat->flags&SMF_HIDENAMES) && dbei.eventType != EVENTTYPE_STATUSCHANGE && dbei.eventType != EVENTTYPE_JABBER_CHATSTATES && dbei.eventType != EVENTTYPE_JABBER_PRESENCE) {
+
+	if (!(g_dat.flags&SMF_HIDENAMES) && dbei.eventType != EVENTTYPE_STATUSCHANGE && dbei.eventType != EVENTTYPE_JABBER_CHATSTATES && dbei.eventType != EVENTTYPE_JABBER_PRESENCE) {
 		TCHAR* szName;
 		CONTACTINFO ci = {0};
 
@@ -371,7 +367,7 @@ static char *CreateRTFFromDbEvent(struct SrmmWindowData *dat, HANDLE hContact, H
 				szName = ci.pszVal;
 			}
 		}
-		else szName = ( TCHAR* ) CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM) hContact, GCDNF_TCHAR);
+		else szName = pcli->pfnGetContactDisplayName(hContact, 0);
 
 		AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, " %s ", SetToStyle(dbei.flags & DBEF_SENT ? MSGFONTID_MYNAME : MSGFONTID_YOURNAME));
 		AppendToBufferWithRTF(&buffer, &bufferEnd, &bufferAlloced, szName);
@@ -386,7 +382,7 @@ static char *CreateRTFFromDbEvent(struct SrmmWindowData *dat, HANDLE hContact, H
 	switch (dbei.eventType) {
 		default:
 		case EVENTTYPE_MESSAGE:
-		{	
+		{
 			TCHAR* msg = DbGetEventTextT( &dbei, CP_ACP );
 			AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, " %s ", SetToStyle(dbei.flags & DBEF_SENT ? MSGFONTID_MYMSG : MSGFONTID_YOURMSG));
 			AppendToBufferWithRTF(&buffer, &bufferEnd, &bufferAlloced, msg);
@@ -412,7 +408,7 @@ static char *CreateRTFFromDbEvent(struct SrmmWindowData *dat, HANDLE hContact, H
 					szName = ci.pszVal;
 				}
 			}
-			else szName = ( TCHAR* )CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM) hContact, GCDNF_TCHAR);
+			else szName = pcli->pfnGetContactDisplayName(hContact, 0);
 
 			AppendToBuffer(&buffer, &bufferEnd, &bufferAlloced, " %s ", SetToStyle(MSGFONTID_NOTICE));
 			AppendToBufferWithRTF(&buffer, &bufferEnd, &bufferAlloced, szName);
@@ -460,10 +456,10 @@ static DWORD CALLBACK LogStreamInEvents(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG 
 {
 	struct LogStreamData *dat = (struct LogStreamData *) dwCookie;
 
-	if (dat->buffer == NULL) 
+	if (dat->buffer == NULL)
 	{
 		dat->bufferOffset = 0;
-		switch (dat->stage) 
+		switch (dat->stage)
 		{
 			case STREAMSTAGE_HEADER:
 				dat->buffer = CreateRTFHeader(dat->dlgDat);
@@ -471,18 +467,18 @@ static DWORD CALLBACK LogStreamInEvents(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG 
 				break;
 
 			case STREAMSTAGE_EVENTS:
-				if (dat->eventsToInsert) 
+				if (dat->eventsToInsert)
 				{
-					do 
+					do
 					{
 						dat->buffer = CreateRTFFromDbEvent(dat->dlgDat, dat->hContact, dat->hDbEvent, dat);
 						if (dat->buffer)
 							dat->hDbEventLast = dat->hDbEvent;
-						dat->hDbEvent = (HANDLE) CallService(MS_DB_EVENT_FINDNEXT, (WPARAM) dat->hDbEvent, 0);
+						dat->hDbEvent = db_event_next(dat->hDbEvent);
 						if (--dat->eventsToInsert == 0)
 							break;
 					} while (dat->buffer == NULL && dat->hDbEvent);
-					if (dat->buffer) 
+					if (dat->buffer)
 					{
 						dat->isEmpty = 0;
 						break;
@@ -503,7 +499,7 @@ static DWORD CALLBACK LogStreamInEvents(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG 
 	*pcb = min(cb, dat->bufferLen - dat->bufferOffset);
 	CopyMemory(pbBuff, dat->buffer + dat->bufferOffset, *pcb);
 	dat->bufferOffset += *pcb;
-	if (dat->bufferOffset == dat->bufferLen) 
+	if (dat->bufferOffset == dat->bufferLen)
 	{
 		mir_free(dat->buffer);
 		dat->buffer = NULL;
@@ -515,7 +511,7 @@ void StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAppend)
 {
 	EDITSTREAM stream = {0};
 	struct LogStreamData streamData = {0};
-	struct SrmmWindowData *dat = (struct SrmmWindowData*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
+	SrmmWindowData *dat = (SrmmWindowData*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
 	CHARRANGE oldSel, sel;
 	POINT scrollPos;
 	BOOL bottomScroll = TRUE;
@@ -546,7 +542,7 @@ void StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAppend)
 		if (!bottomScroll)
 			SendMessage(hwndLog, EM_GETSCROLLPOS, 0, (LPARAM) & scrollPos);
 	}
-	if (fAppend) 
+	if (fAppend)
 	{
 		sel.cpMin = sel.cpMax = -1;
 		SendMessage(hwndLog, EM_EXSETSEL, 0, (LPARAM) & sel);
@@ -592,7 +588,7 @@ void LoadMsgLogIcons(void)
 	int rtfHeaderSize;
 	PBYTE pBmpBits;
 
-	hBkgBrush = CreateSolidBrush(DBGetContactSettingDword(NULL, SRMMMOD, SRMSGSET_BKGCOLOUR, SRMSGDEFSET_BKGCOLOUR));
+	hBkgBrush = CreateSolidBrush(db_get_dw(NULL, SRMMMOD, SRMSGSET_BKGCOLOUR, SRMSGDEFSET_BKGCOLOUR));
 	bih.biSize = sizeof(bih);
 	bih.biBitCount = 24;
 	bih.biCompression = BI_RGB;
@@ -610,9 +606,10 @@ void LoadMsgLogIcons(void)
 
 	for (i = 0; i < SIZEOF(pLogIconBmpBits); i++) {
 		hIcon = Skin_GetIconByHandle(iconList[i].hIcolib);
-		pLogIconBmpBits[i] = (PBYTE) mir_alloc(RTFPICTHEADERMAXSIZE + (bih.biSize + widthBytes * bih.biHeight) * 2);
+		size_t size = RTFPICTHEADERMAXSIZE + (bih.biSize + widthBytes * bih.biHeight) * 2;
+		pLogIconBmpBits[i] = (PBYTE) mir_alloc(size);
 		//I can't seem to get binary mode working. No matter.
-		rtfHeaderSize = sprintf((char*)pLogIconBmpBits[i], "{\\pict\\dibitmap0\\wbmbitspixel%u\\wbmplanes1\\wbmwidthbytes%u\\picw%u\\pich%u ", bih.biBitCount, widthBytes, bih.biWidth, bih.biHeight);
+		rtfHeaderSize = mir_snprintf((char*)pLogIconBmpBits[i], size, "{\\pict\\dibitmap0\\wbmbitspixel%u\\wbmplanes1\\wbmwidthbytes%u\\picw%u\\pich%u ", bih.biBitCount, widthBytes, bih.biWidth, bih.biHeight);
 		hoBmp = (HBITMAP) SelectObject(hdcMem, hBmp);
 		FillRect(hdcMem, &rc, hBkgBrush);
 		DrawIconEx(hdcMem, 0, 0, hIcon, bih.biWidth, bih.biHeight, 0, NULL, DI_NORMAL);
@@ -623,9 +620,9 @@ void LoadMsgLogIcons(void)
 		{
 			int n;
 			for (n = 0; n < sizeof(BITMAPINFOHEADER); n++)
-				sprintf((char*)pLogIconBmpBits[i] + rtfHeaderSize + n * 2, "%02X", ((PBYTE) & bih)[n]);
+				sprintf((char*)pLogIconBmpBits[i] + rtfHeaderSize + n * 2, "%02X", ((PBYTE) & bih)[n]); //!!!!!!!!!!!!!
 			for (n = 0; n < widthBytes * bih.biHeight; n += 4)
-				sprintf((char*)pLogIconBmpBits[i] + rtfHeaderSize + (bih.biSize + n) * 2, "%02X%02X%02X%02X", pBmpBits[n], pBmpBits[n + 1], pBmpBits[n + 2], pBmpBits[n + 3]);
+				sprintf((char*)pLogIconBmpBits[i] + rtfHeaderSize + (bih.biSize + n) * 2, "%02X%02X%02X%02X", pBmpBits[n], pBmpBits[n + 1], pBmpBits[n + 2], pBmpBits[n + 3]); //!!!!!!!!!!!!!
 		}
 		logIconBmpSize[i] = rtfHeaderSize + (bih.biSize + widthBytes * bih.biHeight) * 2 + 1;
 		pLogIconBmpBits[i][logIconBmpSize[i] - 1] = '}';

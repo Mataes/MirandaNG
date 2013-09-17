@@ -84,9 +84,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "metacontacts.h"
 
-// Use VersionNo.h to set the version number, and ensure resource file is not open
-#include "version.h"
-
 BOOL os_unicode_enabled = FALSE;
 int hLangpack;
 CLIST_INTERFACE *pcli = NULL;
@@ -94,15 +91,16 @@ CLIST_INTERFACE *pcli = NULL;
 //! Information gathered by Miranda, displayed in the plugin pane of the Option Dialog
 PLUGININFOEX pluginInfo={
 	sizeof(PLUGININFOEX),
-	__PLUGIN_NAME,		// altered here and on file listing, so as not to match original
+	__PLUGIN_NAME,
 	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
-	__DESC,
+	__DESCRIPTION,
 	__AUTHOR,
 	__AUTHOREMAIL,
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,
-	{ 0x4c4a27cf, 0x5e64, 0x4242, { 0xa3, 0x32, 0xb9, 0x8b, 0x8, 0x24, 0x3e, 0x89 } } // {4C4A27CF-5E64-4242-A332-B98B08243E89}
+	// {4C4A27CF-5E64-4242-A332-B98B08243E89}
+	{0x4c4a27cf, 0x5e64, 0x4242, {0xa3, 0x32, 0xb9, 0x8b, 0x8, 0x24, 0x3e, 0x89}}
 };
 
 HINSTANCE hInstance;	//!< Global reference to the application
@@ -116,7 +114,7 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 	return &pluginInfo;
 }
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = { MIID_PROTOCOL, MIID_METACONTACTS, MIID_LAST };
+extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_PROTOCOL, MIID_LAST};
 
 /** DLL entry point
 * Required to store the instance handle
@@ -144,31 +142,25 @@ extern "C" __declspec(dllexport) int Unload(void)
 extern "C" __declspec(dllexport) int Load(void)
 {
 	mir_getLP(&pluginInfo);
-	pcli = ( CLIST_INTERFACE* )CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)hInstance);
+	mir_getCLI();
 
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)(META_PROTO "/Status"));
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)(META_PROTO "/IdleTS"));
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)(META_PROTO "/ContactCountCheck"));
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)(META_PROTO "/Handle"));
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (LPARAM)(META_PROTO "/WindowOpen"));
+	db_set_resident(META_PROTO, "Status");
+	db_set_resident(META_PROTO, "IdleTS");
+	db_set_resident(META_PROTO, "ContactCountCheck");
+	db_set_resident(META_PROTO, "Handle");
+	db_set_resident(META_PROTO, "WindowOpen");
 
 	//set all contacts to 'offline', and initialize subcontact counter for db consistency check
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) {
-		char *proto = GetContactProto(hContact);
-		if (proto && !lstrcmpA( META_PROTO, proto)) {
-			db_set_w(hContact, META_PROTO, "Status", ID_STATUS_OFFLINE);
-			db_set_dw(hContact, META_PROTO, "IdleTS", 0);
-			db_set_b(hContact, META_PROTO, "ContactCountCheck", 0);
+	for (HANDLE hContact = db_find_first(META_PROTO); hContact; hContact = db_find_next(hContact, META_PROTO)) {
+		db_set_w(hContact, META_PROTO, "Status", ID_STATUS_OFFLINE);
+		db_set_dw(hContact, META_PROTO, "IdleTS", 0);
+		db_set_b(hContact, META_PROTO, "ContactCountCheck", 0);
 
-			// restore any saved defaults that might have remained if miranda was closed or crashed while a convo was happening
-			if (db_get_dw(hContact, META_PROTO, "SavedDefault", (DWORD)-1) != (DWORD)-1) {
-				db_set_dw(hContact, META_PROTO, "Default", db_get_dw(hContact, META_PROTO, "SavedDefault", 0));
-				db_set_dw(hContact, META_PROTO, "SavedDefault", (DWORD)-1);
-			}
+		// restore any saved defaults that might have remained if miranda was closed or crashed while a convo was happening
+		if (db_get_dw(hContact, META_PROTO, "SavedDefault", (DWORD)-1) != (DWORD)-1) {
+			db_set_dw(hContact, META_PROTO, "Default", db_get_dw(hContact, META_PROTO, "SavedDefault", 0));
+			db_set_dw(hContact, META_PROTO, "SavedDefault", (DWORD)-1);
 		}
-
-		hContact = db_find_next(hContact);
 	}	
 
 	Meta_ReadOptions(&options);

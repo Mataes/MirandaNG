@@ -1,10 +1,10 @@
 /*
 Popup Plus plugin for Miranda IM
 
-Copyright	� 2002 Luca Santarelli,
-			� 2004-2007 Victor Pavlychko
-			� 2010 MPK
-			� 2010 Merlin_de
+Copyright	© 2002 Luca Santarelli,
+			© 2004-2007 Victor Pavlychko
+			© 2010 MPK
+			© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/popup_wnd2.cpp $
-Revision       : $Revision: 1651 $
-Last change on : $Date: 2010-07-15 20:31:06 +0300 (Чт, 15 июл 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #include "headers.h"
@@ -80,7 +71,7 @@ bool	LoadPopupWnd2()
 	if (!g_wndClass.cPopupWnd2) {
 		res = false;
 		TCHAR msg[1024];
-		wsprintf(msg, TranslateT("Failed to register %s class."),wcl.lpszClassName);
+		mir_sntprintf(msg, SIZEOF(msg), TranslateT("Failed to register %s class."), wcl.lpszClassName);
 		MessageBox(NULL, msg, _T(MODULNAME_LONG), MB_ICONSTOP|MB_OK);
 	}
 
@@ -102,7 +93,7 @@ bool	LoadPopupWnd2()
 		err = GetLastError();
 		if (!g_wndClass.cPopupEditBox) {
 			TCHAR msg[2048];
-			wsprintf(msg, _T("Failed to register custom edit box window class.\r\n\r\ncbSize: %i\r\nstyle: %p\r\nlpfnWndProc: %i\r\ncbClsExtra: %i\r\ncbWndExtra: %i\r\nhInstance: %i\r\nhIcon: %i\r\nhCursor: %i\r\nhbrBackground: %i\r\nlpszMenuName: %s\r\nlpszClassName: %s\r\nhIconSm: %i\r\n"),
+			mir_sntprintf(msg, SIZEOF(msg), TranslateT("Failed to register custom edit box window class.\r\n\r\ncbSize: %i\r\nstyle: %p\r\nlpfnWndProc: %i\r\ncbClsExtra: %i\r\ncbWndExtra: %i\r\nhInstance: %i\r\nhIcon: %i\r\nhCursor: %i\r\nhbrBackground: %i\r\nlpszMenuName: %s\r\nlpszClassName: %s\r\nhIconSm: %i\r\n"),
 				wclw.cbSize,		//UINT        cbSize;
 				wclw.style,			//UINT        style;
 				wclw.lpfnWndProc,	//WNDPROC     lpfnWndProc;
@@ -139,7 +130,7 @@ bool	LoadPopupWnd2()
 	if (!g_wndClass.cPopupMenuHostWnd) {
 		res = false;
 		TCHAR msg[1024];
-		wsprintf(msg, TranslateT("Failed to register %s class."),wcl.lpszClassName);
+		mir_sntprintf(msg, SIZEOF(msg), TranslateT("Failed to register %s class."), wcl.lpszClassName);
 		MSGERROR(msg);
 	}
 
@@ -165,7 +156,7 @@ PopupWnd2::PopupWnd2(POPUPDATA2 *ppd, POPUPOPTIONS *theCustomOptions, bool rende
 {
 	m_signature = POPUP_OBJECT_SIGNARURE;
 	m_textType = TT_NONE;
-	m_options = theCustomOptions ? theCustomOptions : &PopUpOptions;
+	m_options = theCustomOptions ? theCustomOptions : &PopupOptions;
 	m_hfnText = fonts.text;
 	m_hfnTitle = fonts.title;
 	updateData(ppd);
@@ -195,7 +186,7 @@ PopupWnd2::~PopupWnd2()
 
 void PopupWnd2::startThread()
 {
-	_beginthread(WindowThread, 0, this);
+	mir_forkthread(WindowThread, this);
 }
 
 void PopupWnd2::create()
@@ -337,22 +328,21 @@ void PopupWnd2::animate()
 	{
 		m_bReshapeWindow = false;
 
-		if (m_hwnd && m_bmp && m_options->DropShadow && PopUpOptions.EnableFreeformShadows /*DoWeNeedRegionForThisSkin()*/)
+		if (m_hwnd && m_bmp && m_options->DropShadow && PopupOptions.EnableFreeformShadows /*DoWeNeedRegionForThisSkin()*/)
 			SetWindowRgn(m_hwnd, m_bmp->buildOpaqueRgn(skin->getShadowRegionOpacity()), FALSE);
 
 
-		if (MyDwmEnableBlurBehindWindow && PopUpOptions.EnableAeroGlass)
-		{
+		if (MyDwmEnableBlurBehindWindow && PopupOptions.EnableAeroGlass) {
 			DWM_BLURBEHIND bb = {0};
 			bb.dwFlags = DWM_BB_ENABLE|DWM_BB_BLURREGION;
 			bb.fEnable = TRUE;
 			bb.hRgnBlur = m_bmp->buildOpaqueRgn(254, false);
 			MyDwmEnableBlurBehindWindow(m_hwnd, &bb);
+			DeleteObject(bb.hRgnBlur);
 		}
 
 		// update tooltips
-		for (int i=0; i < m_actionCount; ++i)
-		{
+		for (int i=0; i < m_actionCount; ++i) {
 			char *title = strchr(m_actions[i].actionA.lpzTitle, '/');
 			if (title) title++;
 			else title = m_actions[i].actionA.lpzTitle;
@@ -379,10 +369,10 @@ void PopupWnd2::show()
 			m_btAlpha1 = m_options->UseTransparency ? m_options->Alpha : 255;
 			updateLayered(m_btAlpha0);
 
-			if (*PopUpOptions.Effect)
+			if (*PopupOptions.Effect)
 			{
 				char vfxService[128];
-				mir_snprintf(vfxService, sizeof(vfxService), "PopUp/Vfx/"TCHAR_STR_PARAM, PopUpOptions.Effect);
+				mir_snprintf(vfxService, sizeof(vfxService), "Popup/Vfx/%S", PopupOptions.Effect);
 				if (ServiceExists(vfxService))
 					if (effect = (IPopupPlusEffect *)CallService(vfxService, 0, 0))
 					{
@@ -477,10 +467,10 @@ void PopupWnd2::hide()
 			m_btAlpha1 = 0;
 			updateLayered(m_btAlpha0);
 
-			if (*PopUpOptions.Effect)
+			if (*PopupOptions.Effect)
 			{
 				char vfxService[128];
-				mir_snprintf(vfxService, sizeof(vfxService), "PopUp/Vfx/"TCHAR_STR_PARAM, PopUpOptions.Effect);
+				mir_snprintf(vfxService, sizeof(vfxService), "Popup/Vfx/%S", PopupOptions.Effect);
 				if (ServiceExists(vfxService))
 					if (effect = (IPopupPlusEffect *)CallService(vfxService, 0, 0))
 					{
@@ -625,16 +615,16 @@ int PopupWnd2::fixActions(POPUPACTION *theActions, int count)
 {
 	bool isIm = (m_hContact && (CallProtoService(GetContactProto(m_hContact), PS_GETCAPS, PFLAGNUM_1, 0) & PF1_IM)) ? true : false;
 
-	bool enableDefaultGen = (m_hContact || !(PopUpOptions.actions&ACT_DEF_NOGLOBAL)) ? true : false;
-	bool enableDefaultUsr = (isIm || m_hContact && !(PopUpOptions.actions&ACT_DEF_IMONLY)) ? true : false;
-	bool iconSize = PopUpOptions.actions&ACT_LARGE ? TRUE : FALSE;
+	bool enableDefaultGen = (m_hContact || !(PopupOptions.actions&ACT_DEF_NOGLOBAL)) ? true : false;
+	bool enableDefaultUsr = (isIm || m_hContact && !(PopupOptions.actions&ACT_DEF_IMONLY)) ? true : false;
+	bool iconSize = PopupOptions.actions&ACT_LARGE ? TRUE : FALSE;
 
-	if (PopUpOptions.actions & ACT_ENABLE) {
+	if (PopupOptions.actions & ACT_ENABLE) {
 		if (enableDefaultUsr && isIm && IsActionEnabled("General/Quick reply")) ++m_actionCount;
 		if (enableDefaultUsr && isIm && IsActionEnabled("General/Send message")) ++m_actionCount;
 		if (enableDefaultUsr && IsActionEnabled("General/User details")) ++m_actionCount;
 		if (enableDefaultUsr && IsActionEnabled("General/Contact menu")) ++m_actionCount;
-		if (enableDefaultUsr && DBGetContactSettingByte(m_hContact, "CList", "NotOnList", 0) && IsActionEnabled("General/Add permanently")) ++m_actionCount;
+		if (enableDefaultUsr && db_get_b(m_hContact, "CList", "NotOnList", 0) && IsActionEnabled("General/Add permanently")) ++m_actionCount;
 		if (enableDefaultGen && (m_iTimeout != -1) && IsActionEnabled("General/Pin popup")) ++m_actionCount;
 		if (enableDefaultGen && IsActionEnabled("General/Dismiss popup")) ++m_actionCount;
 		if (enableDefaultGen && IsActionEnabled("General/Copy to clipboard")) ++m_actionCount;
@@ -677,7 +667,7 @@ int PopupWnd2::fixActions(POPUPACTION *theActions, int count)
 			++iAction;
 		}
 		
-		if (enableDefaultUsr && DBGetContactSettingByte(m_hContact, "CList", "NotOnList", 0) && IsActionEnabled("General/Add permanently")) {
+		if (enableDefaultUsr && db_get_b(m_hContact, "CList", "NotOnList", 0) && IsActionEnabled("General/Add permanently")) {
 			m_actions[iAction].actionA.cbSize = sizeof(POPUPACTION);
 			m_actions[iAction].actionA.lchIcon = IcoLib_GetIcon(ICO_ACT_ADD,iconSize);
 			lstrcpyA(m_actions[iAction].actionA.lpzTitle, "General/Add permanently");
@@ -756,65 +746,6 @@ void PopupWnd2::setIcon(HICON hNewIcon)
 		CallService(MS_SKIN2_ADDREFICON, (WPARAM)m_hIcon, 0);
 		m_bIcoLib = true;
 	}
-}
-
-void PopupWnd2::updateData(POPUPDATA *ppd)
-{
-	m_hContact	= ppd->lchContact;
-
-	m_clBack	= ppd->colorBack;
-	m_clClock	= m_clTitle = m_clText = ppd->colorText;
-	m_iTimeout	= m_options->DisplayTime;
-
-	mir_free(m_lpzText);  mir_free(m_lpzTitle);
-	mir_free(m_lpwzText); mir_free(m_lpwzTitle);
-	if (m_textType == TT_NONE)
-		m_textType = TT_ANSI;
-	m_lpzTitle = mir_strdup(ppd->lpzContactName);
-	m_lpzText = mir_strdup(ppd->lpzText);
-	m_lpwzTitle	= m_lpwzText = NULL;
-	setIcon(ppd->lchIcon);
-
-	m_PluginData = ppd->PluginData;
-	m_PluginWindowProc = ppd->PluginWindowProc;
-
-	if (m_options->DisplayTime)
-		GetTimeFormatA(LOCALE_USER_DEFAULT, 0, NULL,"HH':'mm", m_time, SIZEOF(m_time));
-	else m_time[0] = 0;
-
-	fixDefaults();
-
-	if (m_textType == TT_MTEXT) buildMText();
-}
-
-void PopupWnd2::updateData(POPUPDATAEX_V2 *ppd)
-{
-	m_hContact	= ppd->lchContact;
-
-	m_clBack	= ppd->colorBack;
-	m_clClock = m_clTitle = m_clText = ppd->colorText;
-	m_iTimeout = ppd->iSeconds ? ppd->iSeconds : m_options->Seconds;
-
-	if (m_textType == TT_NONE) m_textType = TT_ANSI;
-	mir_free(m_lpzText);  mir_free(m_lpzTitle);
-	mir_free(m_lpwzText); mir_free(m_lpwzTitle);
-	m_lpzTitle = mir_strdup(ppd->lpzContactName);
-	m_lpzText = mir_strdup(ppd->lpzText);
-	m_lpwzTitle = m_lpwzText = NULL;
-	setIcon(ppd->lchIcon);
-	m_hNotification = ppd->hNotification;
-
-	m_PluginData = ppd->PluginData;
-	m_PluginWindowProc = ppd->PluginWindowProc;
-
-	if (m_options->DisplayTime)
-		GetTimeFormatA(LOCALE_USER_DEFAULT, 0, NULL,"HH':'mm", m_time, SIZEOF(m_time));
-	else m_time[0] = 0;
-
-	fixDefaults();
-	fixActions(ppd->lpActions, ppd->actionCount);
-
-	if (m_textType == TT_MTEXT) buildMText();
 }
 
 void PopupWnd2::updateData(POPUPDATAW_V2 *ppd)
@@ -905,7 +836,7 @@ void PopupWnd2::updateData(POPUPDATA2 *ppd)
 
 void PopupWnd2::buildMText()
 {
-	if (!(htuText && htuTitle && PopUpOptions.UseMText))
+	if (!(htuText && htuTitle && PopupOptions.UseMText))
 		return;
 
 	if (m_mtText) MText.Destroy(m_mtText);
@@ -999,7 +930,7 @@ LRESULT CALLBACK NullWindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 	{
 		case WM_COMMAND:
 		case WM_CONTEXTMENU:
-			PUDeletePopUp(hwnd);
+			PUDeletePopup(hwnd);
 			break;
 	}
 	return DefWindowProc(hwnd, message, wParam, lParam);
@@ -1012,26 +943,12 @@ struct	ReplyEditData
 	WNDPROC		oldWndProc;
 };
 
-bool	IsMsgServiceNameW(HANDLE hContact) {
-	if (g_popup.isMirUnicode) {
-		char szServiceName[100];
-		char *szProto = GetContactProto(hContact);
-		if (szProto == NULL)
-			return false;
-
-		mir_snprintf(szServiceName, sizeof(szServiceName), "%s%sW", szProto, PSS_MESSAGE);
-		if (ServiceExists(szServiceName))
-			return true;
-	}
-	return false;
-}
-
 BOOL	IsUtfSendAvailable(HANDLE hContact)
 {
 	char* szProto = GetContactProto(hContact);
-	if(szProto == NULL) return FALSE;
+	if (szProto == NULL) return FALSE;
 	//check for MetaContact and get szProto from subcontact
-	if(strcmp(szProto, gszMetaProto)==0) {
+	if (strcmp(szProto, gszMetaProto)==0) {
 		HANDLE hSubContact = (HANDLE)CallService(MS_MC_GETDEFAULTCONTACT, (WPARAM)hContact, 0);
 		if (!hSubContact) return FALSE;
 		szProto = GetContactProto(hSubContact);
@@ -1047,12 +964,12 @@ void	AddMessageToDB(HANDLE hContact, char *msg, int flag/*bool utf*/)
 	dbei.flags = DBEF_SENT | ((flag&PREF_UTF)==PREF_UTF ? DBEF_UTF : 0);
 	dbei.szModule = GetContactProto(hContact);
 	dbei.timestamp = time(NULL);
-	if(g_popup.isOsUnicode && !((flag&PREF_UTF)==PREF_UTF) && (flag&PREF_UNICODE)==PREF_UNICODE)
+	if ( !((flag & PREF_UTF) == PREF_UTF) && (flag & PREF_UNICODE) == PREF_UNICODE)
 		dbei.cbBlob = (lstrlenW((LPWSTR)msg) + 1)*sizeof(WCHAR/*TCHAR*/);
 	else
 		dbei.cbBlob = lstrlenA(msg) + 1;
 	dbei.pBlob = (PBYTE)msg;
-	CallService(MS_DB_EVENT_ADD, (WPARAM)hContact, (LPARAM)&dbei);
+	db_event_add(hContact, &dbei);
 }
 
 LRESULT CALLBACK ReplyEditWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1060,101 +977,76 @@ LRESULT CALLBACK ReplyEditWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM
 	ReplyEditData *dat = (ReplyEditData *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 	WNDPROC oldWndProc = dat ? dat->oldWndProc : NULL;
 
-	switch (message)
-	{
-/*
-		case WM_ERASEBKGND:
-		{
-			HDC hdc = (HDC)wParam;
-			RECT rc; GetClientRect(hwnd, &rc);
-			FillRect(hdc, &rc, GetSysColorBrush(COLOR_WINDOW));
-			SetTextColor(hdc, GetSysColor(COLOR_GRAYTEXT));
-			DrawText(hdc, "Quick Reply", -1, &rc, DT_BOTTOM|DT_RIGHT|DT_SINGLELINE);
-			return TRUE;
-		}
-*/
-		case WM_KEYDOWN:
-		{
-			switch (wParam)
+	switch (message) {
+	case WM_KEYDOWN:
+		switch (wParam) {
+		case VK_RETURN:
 			{
-				case VK_RETURN:
-				{
-					char *buf = NULL;
-					int flag = 0;
-					bool bSendW = IsMsgServiceNameW(dat->hContact);
-					//if (g_popup.isMirUnicode)
-					if (IsWindowUnicode(hwnd))
-					{
-						WCHAR msg[2048];
-						LPWSTR bufW = NULL;
+				char *buf = NULL;
+				int flag = 0;
+				if (IsWindowUnicode(hwnd)) {
+					WCHAR msg[2048];
+					LPWSTR bufW = NULL;
 
-						SendMessageW(hwnd, WM_GETTEXT, SIZEOF(msg), (LPARAM)msg);
+					SendMessageW(hwnd, WM_GETTEXT, SIZEOF(msg), (LPARAM)msg);
 
-						if(wcslen(msg)==0){
-							DestroyWindow(hwnd);
-							return 0;
-						}
-						// we have unicode message, check if it is possible and reasonable to send it as unicode
-						if (IsUtfSendAvailable(dat->hContact)) {
-							buf = mir_utf8encodeW(msg);
-							flag = PREF_UTF;
-						}
-						else if(bSendW){
-							bufW = mir_wstrdup(msg)	/*mir_tstrdup(msg)*/;
-							buf = (char*)bufW;
-							flag = PREF_UNICODE		/*PREF_TCHAR*/;
-						}
-						else {
-							buf = mir_u2a(msg);
-							flag = 0;
-						}
+					if (wcslen(msg)==0){
+						DestroyWindow(hwnd);
+						return 0;
+					}
+					// we have unicode message, check if it is possible and reasonable to send it as unicode
+					if (IsUtfSendAvailable(dat->hContact)) {
+						buf = mir_utf8encodeW(msg);
+						flag = PREF_UTF;
 					}
 					else {
-						char msg[2048];
-						GetWindowTextA(hwnd, msg, SIZEOF(msg));
-						if(strlen(msg)==0){
-							DestroyWindow(hwnd);
-							return 0;
-						}
-						// we have message, check if it is possible and reasonable to send it as unicode
-						if ( IsUtfSendAvailable( dat->hContact )) {
-							buf = mir_utf8encode(msg);
-							flag = PREF_UTF;
-						}
-						else {
-							buf = mir_strdup(msg)	/*mir_tstrdup(msg)*/;
-							flag = 0				/*PREF_TCHAR*/;
-						}
+						buf = mir_u2a(msg);
+						flag = 0;
 					}
-					
-					CallContactService(dat->hContact, bSendW ? (PSS_MESSAGE"W"):PSS_MESSAGE, flag, (LPARAM)buf);
-					AddMessageToDB(dat->hContact, buf, flag);
-					mir_free(buf);
+				}
+				else {
+					char msg[2048];
+					GetWindowTextA(hwnd, msg, SIZEOF(msg));
+					if (strlen(msg)==0){
+						DestroyWindow(hwnd);
+						return 0;
+					}
+					// we have message, check if it is possible and reasonable to send it as unicode
+					if ( IsUtfSendAvailable( dat->hContact )) {
+						buf = mir_utf8encode(msg);
+						flag = PREF_UTF;
+					}
+					else {
+						buf = mir_strdup(msg)	/*mir_tstrdup(msg)*/;
+						flag = 0				/*PREF_TCHAR*/;
+					}
+				}
 
-					DestroyWindow(hwnd);
-					return 0;
-				}
-				case VK_ESCAPE:
-				{
-					DestroyWindow(hwnd);
-					return 0;
-				}
+				CallContactService(dat->hContact, PSS_MESSAGE, flag, (LPARAM)buf);
+				AddMessageToDB(dat->hContact, buf, flag);
+				mir_free(buf);
 			}
-			break;
+			DestroyWindow(hwnd);
+			return 0;
+
+		case VK_ESCAPE:
+			DestroyWindow(hwnd);
+			return 0;
 		}
+		break;
 
-		case WM_ACTIVATE:
-			if (wParam == WA_INACTIVE)
-				DestroyWindow(hwnd);
-			break;
+	case WM_ACTIVATE:
+		if (wParam == WA_INACTIVE)
+			DestroyWindow(hwnd);
+		break;
 
-		case WM_DESTROY:
-			PopupThreadUnlock();
-			if (!(PopUpOptions.actions&ACT_DEF_KEEPWND))
-				PUDeletePopUp(dat->hwndPopup);
-			SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)dat->oldWndProc);
-			SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-			mir_free(dat);
+	case WM_DESTROY:
+		PopupThreadUnlock();
+		if (!(PopupOptions.actions&ACT_DEF_KEEPWND))
+			PUDeletePopup(dat->hwndPopup);
+		SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)dat->oldWndProc);
+		SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+		mir_free(dat);
 	}
 
 	if (oldWndProc)
@@ -1172,7 +1064,7 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 	case UM_INITPOPUP:
 		if (!m_customPopup) PopupThreadAddWindow(this);
 		if (m_iTimeout > 0) SetTimer(m_hwnd, POPUP_TIMER, m_iTimeout*1000, 0);
-		if (m_hContact && !m_hbmAvatar && PopUpOptions.EnableAvatarUpdates)
+		if (m_hContact && !m_hbmAvatar && PopupOptions.EnableAvatarUpdates)
 			m_hhkAvatarChanged = HookEventMessage(ME_AV_AVATARCHANGED, m_hwnd, UM_AVATARCHANGED);
 		if (m_avatar->activeFrameDelay() > 0) SetTimer(m_hwnd, AVATAR_TIMER, m_avatar->activeFrameDelay(), 0);
 
@@ -1204,8 +1096,8 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 		switch (lParam) {
 		case ACT_DEF_MESSAGE:
 			CallServiceSync(MS_MSG_SENDMESSAGE, (WPARAM)m_hContact, 0);
-			if (!(PopUpOptions.actions&ACT_DEF_KEEPWND))
-				PUDeletePopUp(m_hwnd);
+			if (!(PopupOptions.actions&ACT_DEF_KEEPWND))
+				PUDeletePopup(m_hwnd);
 			break;
 
 		case ACT_DEF_REPLY:
@@ -1225,7 +1117,7 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 				dat->oldWndProc = (WNDPROC)GetWindowLongPtr(hwndEditBox, (LONG_PTR)GWLP_WNDPROC);
 				dat->hwndPopup = m_hwnd;
 				dat->hContact = m_hContact;
-				if(IsWindowUnicode(hwndEditBox)) {
+				if (IsWindowUnicode(hwndEditBox)) {
 
 					SendMessageW(hwndEditBox, WM_SETFONT, (WPARAM)fonts.text, TRUE);
 
@@ -1243,8 +1135,8 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 
 		case ACT_DEF_DETAILS:
 			CallServiceSync(MS_USERINFO_SHOWDIALOG, (WPARAM)m_hContact, 0);
-			if (!(PopUpOptions.actions&ACT_DEF_KEEPWND))
-				PUDeletePopUp(m_hwnd);
+			if (!(PopupOptions.actions&ACT_DEF_KEEPWND))
+				PUDeletePopup(m_hwnd);
 			break;
 
 		case ACT_DEF_MENU:
@@ -1259,8 +1151,8 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 				acs.handleType = HANDLE_CONTACT;
 				acs.szProto = 0;
 				CallServiceSync(MS_ADDCONTACT_SHOW, NULL, (LPARAM)&acs);
-				if (!(PopUpOptions.actions&ACT_DEF_KEEPWND))
-					PUDeletePopUp(m_hwnd);
+				if (!(PopupOptions.actions&ACT_DEF_KEEPWND))
+					PUDeletePopup(m_hwnd);
 			}
 			break;
 
@@ -1272,13 +1164,13 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 
 			m_bIsPinned = !m_bIsPinned;
 			{
-				bool iconSize = PopUpOptions.actions&ACT_LARGE ? TRUE : FALSE;
+				bool iconSize = PopupOptions.actions&ACT_LARGE ? TRUE : FALSE;
 				PUModifyActionIcon(m_hwnd, wParam, lParam, m_bIsPinned ? IcoLib_GetIcon(ICO_ACT_PINNED,iconSize) : IcoLib_GetIcon(ICO_ACT_PIN,iconSize));
 			}
 			break;
 
 		case ACT_DEF_DISMISS:
-			PUDeletePopUp(m_hwnd);
+			PUDeletePopup(m_hwnd);
 			break;
 
 		case ACT_DEF_COPY:
@@ -1290,13 +1182,15 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 				char* sztext;
 				if ((this->m_lpwzText) || (this->m_lpwzTitle))
 				{
-					text = (TCHAR*)mir_alloc((_tcslen(this->m_lpwzText) + _tcslen(this->m_lpwzTitle)+3)*sizeof(TCHAR));
-					mir_sntprintf(text, _tcslen(this->m_lpwzText) + _tcslen(this->m_lpwzTitle)+3, _T("%s\n\n%s"), this->m_lpwzTitle, this->m_lpwzText);
+					size_t size = _tcslen(this->m_lpwzText) + _tcslen(this->m_lpwzTitle) + 3;
+					text = (TCHAR*)mir_alloc(size * sizeof(TCHAR));
+					mir_sntprintf(text, size, _T("%s\n\n%s"), this->m_lpwzTitle, this->m_lpwzText);
 				}
 				else if ((this->m_lpzText) || (this->m_lpzTitle))
 				{
-					sztext = (char*)mir_alloc((lstrlenA(this->m_lpzText) + lstrlenA(this->m_lpzTitle)+3)*sizeof(char));
-					mir_snprintf(sztext, lstrlenA(this->m_lpzText) + lstrlenA(this->m_lpzTitle)+3, "%s\n\n%s", this->m_lpzTitle, this->m_lpzText);
+					int size = lstrlenA(this->m_lpzText) + lstrlenA(this->m_lpzTitle) + 3;
+					sztext = (char*)mir_alloc(size * sizeof(char));
+					mir_snprintf(sztext, size, "%s\n\n%s", this->m_lpzTitle, this->m_lpzText);
 					text = mir_a2t(sztext);
 				}
 				OpenClipboard(m_hwnd);
@@ -1309,7 +1203,7 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 				CloseClipboard();
 				if (sztext)
 					mir_free(text);
-				PUDeletePopUp(m_hwnd);
+				PUDeletePopup(m_hwnd);
 				break;
 			}
 		}
@@ -1332,8 +1226,8 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 	case UM_MENUDONE:
 		{
 			unlock();
-			if (!(PopUpOptions.actions&ACT_DEF_KEEPWND))
-				PUDeletePopUp(m_hwnd);
+			if (!(PopupOptions.actions&ACT_DEF_KEEPWND))
+				PUDeletePopup(m_hwnd);
 			break;
 		}
 
@@ -1348,8 +1242,8 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 				}
 
 			if (i == m_actionCount) {
-				if(PopUpOptions.overrideLeft!=false && (m_hContact!=NULL || PopUpOptions.overrideLeft == 5 ||  PopUpOptions.overrideLeft == 6)) {
-					switch (PopUpOptions.overrideLeft){
+				if (PopupOptions.overrideLeft!=false && (m_hContact!=NULL || PopupOptions.overrideLeft == 5 ||  PopupOptions.overrideLeft == 6)) {
+					switch (PopupOptions.overrideLeft){
 					default:
 					case 1:SendMessage(m_hwnd, UM_POPUPACTION,0, ACT_DEF_MESSAGE); break;
 					case 2:SendMessage(m_hwnd, UM_POPUPACTION,0, ACT_DEF_REPLY); break;
@@ -1371,8 +1265,8 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 		}
 
 	case WM_MBUTTONUP:
-		if ( PopUpOptions.overrideMiddle!=false && (m_hContact!=NULL || PopUpOptions.overrideMiddle == 5 ||  PopUpOptions.overrideMiddle == 6)) {
-			switch (PopUpOptions.overrideMiddle){
+		if ( PopupOptions.overrideMiddle!=false && (m_hContact!=NULL || PopupOptions.overrideMiddle == 5 ||  PopupOptions.overrideMiddle == 6)) {
+			switch (PopupOptions.overrideMiddle){
 			default:
 			case 1:SendMessage(m_hwnd, UM_POPUPACTION,0, ACT_DEF_MESSAGE); break;
 			case 2:SendMessage(m_hwnd, UM_POPUPACTION,0, ACT_DEF_REPLY); break;
@@ -1386,8 +1280,8 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 		break;
 
 	case WM_CONTEXTMENU:
-		if ( PopUpOptions.overrideRight!=false && (m_hContact!=NULL || PopUpOptions.overrideRight == 5 ||  PopUpOptions.overrideRight == 6)) {
-			switch (PopUpOptions.overrideRight){
+		if ( PopupOptions.overrideRight!=false && (m_hContact!=NULL || PopupOptions.overrideRight == 5 ||  PopupOptions.overrideRight == 6)) {
+			switch (PopupOptions.overrideRight){
 			default:
 			case 1:SendMessage(m_hwnd, UM_POPUPACTION,0, ACT_DEF_MESSAGE); break;
 			case 2:SendMessage(m_hwnd, UM_POPUPACTION,0, ACT_DEF_REPLY); break;
@@ -1459,8 +1353,6 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 			case CPT_TEXTW:  updateText((WCHAR *)lParam);       mir_free((void *)lParam); break;
 			case CPT_TITLE:  updateTitle((char *)lParam);       mir_free((void *)lParam); break;
 			case CPT_TITLEW: updateTitle((WCHAR *)lParam);      mir_free((void *)lParam); break;
-			case CPT_DATA:   updateData((POPUPDATA *)lParam);   mir_free((void *)lParam); break;
-			case CPT_DATAEX: updateData((POPUPDATAEX_V2 *)lParam); mir_free((void *)lParam); break;
 			case CPT_DATAW:  updateData((POPUPDATAW_V2 *)lParam);  mir_free((void *)lParam); break;
 		}
 		update();
@@ -1539,7 +1431,7 @@ LRESULT CALLBACK PopupWnd2::WindowProc(UINT message, WPARAM wParam, LPARAM lPara
 			m_bIsHovered = false;
 		}
 		if (m_hhkAvatarChanged)
-			PopUp_UnhookEventAsync((WPARAM)m_hwnd, (LPARAM)m_hhkAvatarChanged);
+			Popup_UnhookEventAsync((WPARAM)m_hwnd, (LPARAM)m_hhkAvatarChanged);
 		SendMessage(m_hwnd, UM_FREEPLUGINDATA, 0, 0);
 		SetWindowLongPtr(m_hwnd, GWLP_USERDATA, 0);
 		m_hwnd = 0;
@@ -1587,7 +1479,6 @@ LRESULT CALLBACK PopupWnd2::WindowProc(HWND hwnd, UINT message, WPARAM wParam, L
 
 void	WindowThread(void *arg)
 {
-	Thread_Push(0);
 	OleInitialize(NULL); // we may need OLE in this thread for smiley substitution
 
 	PopupWnd2 *wnd = (PopupWnd2 *)arg;
@@ -1601,9 +1492,6 @@ void	WindowThread(void *arg)
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
-
-	Thread_Pop();
-	_endthread();
 }
 
 // Menu Host

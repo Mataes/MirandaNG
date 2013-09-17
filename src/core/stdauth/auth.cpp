@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "commonheaders.h"
 
 #define MS_AUTH_SHOWREQUEST	"Auth/ShowRequest"
@@ -46,15 +47,14 @@ static int AuthEventAdded(WPARAM, LPARAM lParam)
 	TCHAR szTooltip[256];
 	const HANDLE hDbEvent = (HANDLE)lParam;
 
-	DBEVENTINFO dbei = {0};
-	dbei.cbSize = sizeof(dbei);
-	CallService(MS_DB_EVENT_GET, (WPARAM)lParam, (LPARAM)&dbei);
+	DBEVENTINFO dbei = { sizeof(dbei) };
+	db_event_get((HANDLE)lParam, &dbei);
 	if (dbei.flags & (DBEF_SENT | DBEF_READ) || (dbei.eventType != EVENTTYPE_AUTHREQUEST && dbei.eventType != EVENTTYPE_ADDED))
 		return 0;
 
-	dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, lParam, 0);
+	dbei.cbBlob = db_event_getBlobSize(hDbEvent);
 	dbei.pBlob = (PBYTE)alloca(dbei.cbBlob);
-	CallService(MS_DB_EVENT_GET, lParam, (LPARAM)&dbei);
+	db_event_get(hDbEvent, &dbei);
 
 	HANDLE hContact = DbGetAuthEventContact(&dbei);
 
@@ -91,7 +91,7 @@ static int AuthEventAdded(WPARAM, LPARAM lParam)
 		else
 			mir_sntprintf(szTooltip, SIZEOF(szTooltip), TranslateT("%u requests authorization"), *(PDWORD)dbei.pBlob);
 
-		cli.hIcon = LoadSkinIcon(SKINICON_OTHER_MIRANDA);
+		cli.hIcon = LoadSkinIcon(SKINICON_AUTH_REQUEST);
 		cli.pszService = MS_AUTH_SHOWREQUEST;
 		CallService(MS_CLIST_ADDEVENT, 0, (LPARAM)&cli);
 	}
@@ -102,7 +102,7 @@ static int AuthEventAdded(WPARAM, LPARAM lParam)
 		else
 			mir_sntprintf(szTooltip, SIZEOF(szTooltip), TranslateT("%u added you to their contact list"), *(PDWORD)dbei.pBlob);
 
-		cli.hIcon = LoadSkinIcon(SKINICON_OTHER_MIRANDA);
+		cli.hIcon = LoadSkinIcon(SKINICON_AUTH_ADD);
 		cli.pszService = MS_AUTH_SHOWADDED;
 		CallService(MS_CLIST_ADDEVENT, 0, (LPARAM)&cli);
 	}

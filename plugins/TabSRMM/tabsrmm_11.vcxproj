@@ -26,24 +26,24 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v110_xp</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -103,8 +103,6 @@
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin11\lib</AdditionalLibraryDirectories>
-      <AdditionalOptions>/PDBALTPATH:%_PDB%</AdditionalOptions>
-      <DelayLoadDLLs>mir_core.dll</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -114,7 +112,7 @@
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
       <AdditionalIncludeDirectories>..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN64;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <FloatingPointModel>Strict</FloatingPointModel>
@@ -137,8 +135,6 @@
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin11\lib</AdditionalLibraryDirectories>
-      <AdditionalOptions>/PDBALTPATH:%_PDB%</AdditionalOptions>
-      <DelayLoadDLLs>mir_core.dll</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -168,14 +164,14 @@
       <SubSystem>Windows</SubSystem>
       <BaseAddress>0x6a540000</BaseAddress>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin11\lib</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>mir_core.dll</DelayLoadDLLs>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN64;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -197,11 +193,43 @@
       <SubSystem>Windows</SubSystem>
       <BaseAddress>0x6a540000</BaseAddress>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin11\lib</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>mir_core.dll</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\buttonsbar.cpp" />
+    <ClCompile Include="src\chat\clist.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\colorchooser.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\log.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\main.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\manager.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\message.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\muchighlight.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\options.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\services.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\tools.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\chat\window.cpp">
+      <PrecompiledHeaderFile>..\commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="src\contactcache.cpp" />
     <ClCompile Include="src\container.cpp" />
     <ClCompile Include="src\containeroptions.cpp" />
@@ -213,7 +241,6 @@
     <ClCompile Include="src\ImageDataObject.cpp" />
     <ClCompile Include="src\infopanel.cpp" />
     <ClCompile Include="src\mim.cpp" />
-    <ClCompile Include="src\sendlater.cpp" />
     <ClCompile Include="src\modplus.cpp" />
     <ClCompile Include="src\msgdialog.cpp" />
     <ClCompile Include="src\msgdlgutils.cpp" />
@@ -222,12 +249,13 @@
     <ClCompile Include="src\msgoptions_plus.cpp" />
     <ClCompile Include="src\msgs.cpp" />
     <ClCompile Include="src\selectcontainer.cpp" />
+    <ClCompile Include="src\sendlater.cpp" />
     <ClCompile Include="src\sendqueue.cpp" />
     <ClCompile Include="src\sidebar.cpp" />
+    <ClCompile Include="src\srmm.cpp" />
     <ClCompile Include="src\stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\srmm.cpp" />
     <ClCompile Include="src\tabctrl.cpp" />
     <ClCompile Include="src\taskbar.cpp" />
     <ClCompile Include="src\templates.cpp" />
@@ -239,73 +267,42 @@
     <ClCompile Include="src\typingnotify.cpp" />
     <ClCompile Include="src\userprefs.cpp" />
     <ClCompile Include="src\utils.cpp" />
-    <ClCompile Include="src\chat\clist.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\colorchooser.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\log.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\main.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\manager.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\message.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\muchighlight.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\options.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\services.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\tools.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
-    <ClCompile Include="src\chat\window.cpp">
-      <PrecompiledHeaderFile>../commonheaders.h</PrecompiledHeaderFile>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\buttonbar.h" />
     <ClInclude Include="src\chat\chat.h" />
     <ClInclude Include="src\chat\chat_resource.h" />
     <ClInclude Include="src\chat\chatprototypes.h" />
     <ClInclude Include="src\chat\muchighlight.h" />
-    <ClInclude Include="src\include\resource.h" />
-    <ClInclude Include="src\include\sendlater.h" />
     <ClInclude Include="src\commonheaders.h" />
-    <ClInclude Include="src\include\contactcache.h" />
-    <ClInclude Include="src\include\controls.h" />
-    <ClInclude Include="src\include\functions.h" />
-    <ClInclude Include="src\include\generic_msghandlers.h" />
-    <ClInclude Include="src\include\globals.h" />
-    <ClInclude Include="src\include\ImageDataObject.h" />
-    <ClInclude Include="src\include\infopanel.h" />
-    <ClInclude Include="src\include\mim.h" />
-    <ClInclude Include="src\include\msgdlgutils.h" />
-    <ClInclude Include="src\include\msgs.h" />
-    <ClInclude Include="src\include\nen.h" />
-    <ClInclude Include="src\include\sendqueue.h" />
-    <ClInclude Include="src\include\sidebar.h" />
-    <ClInclude Include="src\include\taskbar.h" />
-    <ClInclude Include="src\include\templates.h" />
-    <ClInclude Include="src\include\themes.h" />
-    <ClInclude Include="src\include\translator.h" />
-    <ClInclude Include="src\include\typingnotify.h" />
-    <ClInclude Include="src\include\utils.h" />
-    <ClInclude Include="src\include\version.h" />
+    <ClInclude Include="src\contactcache.h" />
+    <ClInclude Include="src\controls.h" />
+    <ClInclude Include="src\functions.h" />
+    <ClInclude Include="src\generic_msghandlers.h" />
+    <ClInclude Include="src\globals.h" />
+    <ClInclude Include="src\ImageDataObject.h" />
+    <ClInclude Include="src\infopanel.h" />
+    <ClInclude Include="src\mim.h" />
+    <ClInclude Include="src\msgdlgutils.h" />
+    <ClInclude Include="src\msgs.h" />
+    <ClInclude Include="src\nen.h" />
+    <ClInclude Include="src\resource.h" />
+    <ClInclude Include="src\sendlater.h" />
+    <ClInclude Include="src\sendqueue.h" />
+    <ClInclude Include="src\sidebar.h" />
+    <ClInclude Include="src\taskbar.h" />
+    <ClInclude Include="src\templates.h" />
+    <ClInclude Include="src\themes.h" />
+    <ClInclude Include="src\translator.h" />
+    <ClInclude Include="src\typingnotify.h" />
+    <ClInclude Include="src\utils.h" />
+    <ClInclude Include="src\version.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\chat.rc" />
     <ResourceCompile Include="res\msgwindow.rc" />
     <ResourceCompile Include="res\resource.rc" />
+    <ResourceCompile Include="res\Version.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

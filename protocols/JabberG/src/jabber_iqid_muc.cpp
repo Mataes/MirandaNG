@@ -3,6 +3,7 @@
 Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -29,7 +30,7 @@ void CJabberProto::SetMucConfig(HXML node, void *from)
 {
 	if (m_ThreadInfo && from) {
 		XmlNodeIq iq(_T("set"), SerialNext(), (TCHAR*)from);
-		HXML query = iq << XQUERY(xmlnsOwner);
+		HXML query = iq << XQUERY(JABBER_FEAT_MUC_OWNER);
 		xmlAddChild(query, node);
 		m_ThreadInfo->send(iq);
 }	}
@@ -50,10 +51,10 @@ void CJabberProto::OnIqResultGetMuc(HXML iqNode)
 	if ( !_tcscmp(type, _T("result"))) {
 		if ((queryNode = xmlGetChild(iqNode , "query")) != NULL) {
 			str = xmlGetAttrValue(queryNode, _T("xmlns"));
-			if ( !lstrcmp(str, _T("http://jabber.org/protocol/muc#owner"))) {
+			if ( !lstrcmp(str, JABBER_FEAT_MUC_OWNER)) {
 				if ((xNode = xmlGetChild(queryNode , "x")) != NULL) {
 					str = xmlGetAttrValue(xNode, _T("xmlns"));
-					if ( !lstrcmp(str, _T(JABBER_FEAT_DATA_FORMS)))
+					if ( !lstrcmp(str, JABBER_FEAT_DATA_FORMS))
 						//LaunchForm(xNode);
 						FormCreateDialog(xNode, _T("Jabber Conference Room Configuration"), &CJabberProto::SetMucConfig, mir_tstrdup(from));
 }	}	}	}	}
@@ -191,7 +192,7 @@ static INT_PTR CALLBACK JabberMucJidListDlgProc(HWND hwndDlg, UINT msg, WPARAM w
 				{IDC_BTN_FILTERAPPLY,	"Apply filter",		"sd_filter_apply",	false},
 				{IDC_BTN_FILTERRESET,	"Reset filter",		"sd_filter_reset",	false},
 			};
-			for (int i = 0; i < SIZEOF(buttons); ++i)
+			for (int i = 0; i < SIZEOF(buttons); i++)
 			{
 				SendDlgItemMessage(hwndDlg, buttons[i].idc, BM_SETIMAGE, IMAGE_ICON, (LPARAM)dat->ppro->LoadIconEx(buttons[i].icon));
 				SendDlgItemMessage(hwndDlg, buttons[i].idc, BUTTONSETASFLATBTN, TRUE, 0);
@@ -248,7 +249,7 @@ static INT_PTR CALLBACK JabberMucJidListDlgProc(HWND hwndDlg, UINT msg, WPARAM w
 						dat->roomJid = mir_tstrdup(from);
 
 						if ((queryNode = xmlGetChild(iqNode , "query")) != NULL) {
-							TCHAR* localFrom = mir_tstrdup(from);
+							TCHAR *localFrom = mir_tstrdup(from);
 							mir_sntprintf(title, SIZEOF(title), TranslateT("%s, %d items (%s)"),
 								(dat->type == MUC_VOICELIST) ? TranslateT("Voice List") :
 								(dat->type == MUC_MEMBERLIST) ? TranslateT("Member List") :
@@ -347,7 +348,7 @@ static INT_PTR CALLBACK JabberMucJidListDlgProc(HWND hwndDlg, UINT msg, WPARAM w
 						//delete
 						TCHAR msgText[128];
 
-						mir_sntprintf(msgText, SIZEOF(msgText), _T("%s %s?"), TranslateT("Removing"), text);
+						mir_sntprintf(msgText, SIZEOF(msgText), TranslateT("Removing %s?"), text);
 						if (MessageBox(hwndDlg, msgText, dat->type2str(), MB_YESNO|MB_SETFOREGROUND) == IDYES) {
 							dat->ppro->DeleteMucListItem(dat, (TCHAR*)lvi.lParam);
 							mir_free((void *)lvi.lParam);
@@ -402,7 +403,7 @@ static INT_PTR CALLBACK JabberMucJidListDlgProc(HWND hwndDlg, UINT msg, WPARAM w
 			}
 			ListView_DeleteAllItems(hwndList);
 
-			CJabberProto* ppro = dat->ppro;
+			CJabberProto *ppro = dat->ppro;
 			switch (dat->type) {
 			case MUC_VOICELIST:
 				ppro->m_hwndMucVoiceList = NULL;
@@ -451,7 +452,7 @@ static void CALLBACK JabberMucJidListCreateDialogApcProc(void* param)
 	if ((from = xmlGetAttrValue(iqNode, _T("from"))) == NULL)   return;
 	if ((queryNode = xmlGetChild(iqNode , "query")) == NULL)   return;
 
-	CJabberProto* ppro = jidListInfo->ppro;
+	CJabberProto *ppro = jidListInfo->ppro;
 	switch (jidListInfo->type) {
 	case MUC_VOICELIST:
 		pHwndJidList = &ppro->m_hwndMucVoiceList;
@@ -476,7 +477,7 @@ static void CALLBACK JabberMucJidListCreateDialogApcProc(void* param)
 		return;
 	}
 
-	if (*pHwndJidList!=NULL && IsWindow(*pHwndJidList)) {
+	if (*pHwndJidList != NULL && IsWindow(*pHwndJidList)) {
 		SetForegroundWindow(*pHwndJidList);
 		SendMessage(*pHwndJidList, WM_JABBER_REFRESH, 0, (LPARAM)jidListInfo);
 	}

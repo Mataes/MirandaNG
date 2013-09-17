@@ -1,5 +1,4 @@
 #include "headers.h"
-#include <commctrl.h>
 
 TCHAR dbname[MAX_PATH];
 
@@ -28,13 +27,11 @@ INT_PTR CALLBACK DlgProcProgress(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM l
 
 INT_PTR DBSaveAs(WPARAM wParam, LPARAM lParam)
 {
-	HWND progress_dialog = 0;
 	TCHAR fname_buff[MAX_PATH], szFilter[128];
-	int i;
 	OPENFILENAME ofn = {0};
 	CallService(MS_DB_GETPROFILENAMET,MAX_PATH,(LPARAM)fname_buff);
 
-	i = mir_sntprintf(szFilter, 64, _T("%s (*.dat)"), TranslateT("Miranda Databases")) + 1;
+	int i = mir_sntprintf(szFilter, 64, _T("%s (*.dat)"), TranslateT("Miranda Databases")) + 1;
 	_tcscpy(szFilter + i, _T("*.dat")); 
 	i += 6;
 	i += mir_sntprintf(szFilter + i, 48, _T("%s (*.*)"), TranslateT("All Files")) + 1;
@@ -50,7 +47,7 @@ INT_PTR DBSaveAs(WPARAM wParam, LPARAM lParam)
 	ofn.lpstrDefExt = _T("dat");
 
 	if (GetSaveFileName(&ofn))
-		Backup(fname_buff);
+		mir_forkthread(BackupThread, (void*)fname_buff);
 
 	return 0;
 }
@@ -63,19 +60,17 @@ struct FileNameFound_Tag
 
 int RotateBackups(HWND progress_dialog, DWORD start_time)
 {
-	TCHAR backupfilename1[MAX_PATH] = {0}, backupfilename2[MAX_PATH] = {0}, backupfolderTmp[MAX_PATH] = {0};
-	TCHAR* backupfolder;
+	TCHAR backupfilename1[MAX_PATH] = {0}, backupfolderTmp[MAX_PATH] = {0};
 	unsigned int i = 0;
 	HWND prog = GetDlgItem(progress_dialog, IDC_PROGRESS);
 	MSG msg;
 
 	WIN32_FIND_DATA FindFileData;
-	HANDLE hFind;
 
-	backupfolder = Utils_ReplaceVarsT(options.folder);
-	
+	TCHAR *backupfolder = Utils_ReplaceVarsT(options.folder);
+
 	mir_sntprintf(backupfolderTmp, SIZEOF(backupfolderTmp), _T("%s\\*"), backupfolder);
-	hFind = FindFirstFile(backupfolderTmp, &FindFileData);
+	HANDLE hFind = FindFirstFile(backupfolderTmp, &FindFileData);
 	if (hFind == INVALID_HANDLE_VALUE) 
 		return 0;
 	_tcscpy(FileNameFound.Name, _T(""));
@@ -120,14 +115,16 @@ int RotateBackups(HWND progress_dialog, DWORD start_time)
 	return 0;
 }
 
+void BackupThread(void* backup_filename)
+{
+	Backup((TCHAR*)backup_filename);
+}
+
 int Backup(TCHAR* backup_filename)
 {
 	TCHAR source_file[MAX_PATH] = {0}, dest_file[MAX_PATH] = {0};
-	TCHAR* backupfolder,* pathtmp,* puText;
 	HWND progress_dialog;
 	DWORD start_time = GetTickCount();
-	int i;
-	size_t dest_file_len;
 
 	CallService(MS_DB_GETPROFILENAMET, MAX_PATH, (LPARAM)dbname);
 
@@ -139,7 +136,7 @@ int Backup(TCHAR* backup_filename)
 		TCHAR buffer[MAX_COMPUTERNAME_LENGTH+1];
 		DWORD size = sizeof(buffer);
 
-		backupfolder = Utils_ReplaceVarsT(options.folder);
+		TCHAR *backupfolder = Utils_ReplaceVarsT(options.folder);
 		// ensure the backup folder exists (either create it or return non-zero signifying error)
 		err = CreateDirectoryTree(backupfolder);
 		if(err != ERROR_ALREADY_EXISTS && err != 0) {
@@ -158,7 +155,7 @@ int Backup(TCHAR* backup_filename)
 		ShowPopup(dbname, TranslateT("Backup in Progress"));
 
 	if (!options.disable_progress) {
-		progress_dialog = CreateDialog(hInst, MAKEINTRESOURCE(IDD_COPYPROGRESS), 0, (DLGPROC)DlgProcProgress);
+		progress_dialog = CreateDialog(hInst, MAKEINTRESOURCE(IDD_COPYPROGRESS), 0, DlgProcProgress);
 		SetDlgItemText(progress_dialog, IDC_PROGRESSMESSAGE, TranslateT("Rotating backup files..."));
 	}
 
@@ -169,17 +166,19 @@ int Backup(TCHAR* backup_filename)
 	UpdateWindow(progress_dialog);
 
 	mir_sntprintf(source_file, MAX_PATH, _T("%s\\%s"), profilePath, dbname);
-	pathtmp = Utils_ReplaceVarsT(source_file);
+	TCHAR *pathtmp = Utils_ReplaceVarsT(source_file);
 	if (CopyFile(pathtmp, dest_file, 0))
 	{
 		SendMessage(progress_dialog, PBM_SETPOS, (WPARAM)(int)(100), 0);
 		UpdateWindow(progress_dialog);
-		DBWriteContactSettingDword(0, "AutoBackups", "LastBackupTimestamp", (DWORD)time(0));
+		db_set_dw(0, "AutoBackups", "LastBackupTimestamp", (DWORD)time(0));
 		if (!options.disable_popups)
 		{
-			dest_file_len = lstrlen(dest_file);
+			size_t dest_file_len = lstrlen(dest_file);
+			TCHAR *puText;
 			if(dest_file_len > 50)
 			{
+				int i;
 				puText = (TCHAR*)mir_alloc(sizeof(TCHAR) * (dest_file_len + 2));
 				for(i = (int)dest_file_len - 1; dest_file[i] != _T('\\'); i--);
 
@@ -202,10 +201,12 @@ int Backup(TCHAR* backup_filename)
 	return 0;
 }
 
-VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
-	time_t t = time(0), diff = t - (time_t)DBGetContactSettingDword(0, "AutoBackups", "LastBackupTimestamp", (DWORD)t);
+VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+{
+	time_t t = time(NULL);
+	time_t diff = t - (time_t)db_get_dw(0, "AutoBackups", "LastBackupTimestamp", (DWORD)t);
 	if(diff > (time_t)(options.period * (options.period_type == PT_MINUTES ? 60 : (options.period_type == PT_HOURS ? 60 * 60 : 60 * 60 * 24 ))))
-		Backup(NULL);
+		mir_forkthread(BackupThread, NULL);
 }
 
 int SetBackupTimer(void)
@@ -213,7 +214,7 @@ int SetBackupTimer(void)
 	if(options.backup_types & BT_PERIODIC)
 	{
 		if(timer_id == 0)
-			timer_id = SetTimer(0, 0, 1000 * 60, TimerProc);
+			timer_id = SetTimer(0, timer_id, 1000 * 60, TimerProc);
 	} 
 	else if(timer_id != 0) 
 	{
@@ -225,6 +226,6 @@ int SetBackupTimer(void)
 
 INT_PTR ABService(WPARAM wParam, LPARAM lParam)
 {
-	Backup((TCHAR*)wParam);
+	mir_forkthread(BackupThread, (void*)wParam);
 	return 0;
 }

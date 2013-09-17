@@ -18,14 +18,6 @@
 */
 
 #include "common.h"
-#include "options.h"
-#include "popup.h"
-#include "utils.h"
-#include "xstatus.h"
-
-extern LIST<DBEVENT> eventList;
-extern OPTIONS opt;
-extern TEMPLATES templates;
 
 XSTATUSCHANGE *NewXSC(HANDLE hContact, char *szProto, int xstatusType, int action, TCHAR *stzTitle, TCHAR *stzText)
 {
@@ -54,7 +46,7 @@ void RemoveLoggedEvents(HANDLE hContact)
 	for (int i = eventList.getCount()-1; i >= 0; i--) {
 		DBEVENT *dbevent = eventList[i];
 		if (dbevent->hContact == hContact) {
-			CallService(MS_DB_EVENT_DELETE, (WPARAM)dbevent->hContact, (LPARAM)dbevent->hDBEvent);
+			db_event_delete(dbevent->hContact, dbevent->hDBEvent);
 			eventList.remove(i);
 			mir_free(dbevent);
 		}	
@@ -215,7 +207,7 @@ void ShowPopup(XSTATUSCHANGE *xsc)
 
 	ppd.PluginWindowProc = (WNDPROC)PopupDlgProc;
 	ppd.iSeconds = opt.PopupTimeout; 
-	PUAddPopUpT(&ppd);
+	PUAddPopupT(&ppd);
 }
 
 void PlayXStatusSound(int action)
@@ -275,7 +267,7 @@ void LogToMessageWindow(XSTATUSCHANGE *xsc, BOOL opening)
 
 		dbei.timestamp = (DWORD)time(NULL);
 		dbei.szModule = xsc->szProto;
-		HANDLE hDBEvent = (HANDLE)CallService(MS_DB_EVENT_ADD, (WPARAM)xsc->hContact, (LPARAM)&dbei);
+		HANDLE hDBEvent = db_event_add(xsc->hContact, &dbei);
 		mir_free(blob);
 
 		if (!opt.KeepInHistory) {
@@ -315,19 +307,22 @@ void ExtraStatusChanged(XSTATUSCHANGE *xsc)
 	BOOL bEnablePopup = true, bEnableSound = true;
 	char buff[12] = {0};
 
-	wsprintfA(buff, "%d", ID_STATUS_EXTRASTATUS); 
+	mir_snprintf(buff, SIZEOF(buff), "%d", ID_STATUS_EXTRASTATUS); 
 
 	if (( db_get_b(0, MODULE, buff, 1) == 0)
-		 || (db_get_w(xsc->hContact, xsc->szProto, "Status", ID_STATUS_OFFLINE) == ID_STATUS_OFFLINE)
-		 || (!opt.HiddenContactsToo && db_get_b(xsc->hContact, "CList", "Hidden", 0))
-		 || (opt.TempDisabled))
-		return;
+		|| (db_get_w(xsc->hContact, xsc->szProto, "Status", ID_STATUS_OFFLINE) == ID_STATUS_OFFLINE)
+		|| (!opt.HiddenContactsToo && db_get_b(xsc->hContact, "CList", "Hidden", 0))
+		|| (opt.TempDisabled)
+		|| (opt.IgnoreEmpty && (xsc->stzTitle == NULL || xsc->stzTitle[0] == '\0') && (xsc->stzText == NULL || xsc->stzText[0] == '\0'))) {
+			 FreeXSC(xsc);
+			 return;
+	}
 
 	char statusIDs[12], statusIDp[12];
 	if (opt.AutoDisable) {
 		WORD myStatus = (WORD)CallProtoService(xsc->szProto, PS_GETSTATUS, 0, 0); 
-		wsprintfA(statusIDs, "s%d", myStatus);
-		wsprintfA(statusIDp, "p%d", myStatus);
+		mir_snprintf(statusIDs, SIZEOF(statusIDs), "s%d", myStatus);
+		mir_snprintf(statusIDp, SIZEOF(statusIDp), "p%d", myStatus);
 		bEnableSound = db_get_b(0, MODULE, statusIDs, 1) ? FALSE : TRUE;
 		bEnablePopup = db_get_b(0, MODULE, statusIDp, 1) ? FALSE : TRUE;
 	}
@@ -339,7 +334,7 @@ void ExtraStatusChanged(XSTATUSCHANGE *xsc)
 	if (opt.PDisableForMusic && xsc->type == TYPE_ICQ_XSTATUS && xstatusID == XSTATUS_MUSIC)
 		bEnableSound = bEnablePopup = false;
 
-	if (bEnablePopup && db_get_b(xsc->hContact, MODULE, "EnableXStatusNotify", 1) && TimeoutCheck()) 
+	if (bEnablePopup && db_get_b(xsc->hContact, MODULE, "EnableXStatusNotify", 1) && db_get_b(0, MODULE, xsc->szProto, 1)) 
 		ShowPopup(xsc);
 
 	if (bEnableSound && db_get_b(xsc->hContact, MODULE, "EnableXStatusNotify", 1)) 

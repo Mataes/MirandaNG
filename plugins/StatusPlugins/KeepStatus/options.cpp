@@ -44,15 +44,15 @@ static INT_PTR CALLBACK DlgProcKSBasicOpts(HWND hwndDlg,UINT msg,WPARAM wParam,L
 			LVITEM lvItem;
 			int i;
 			DBVARIANT dbv;
-			
-			SetDlgItemInt(hwndDlg, IDC_MAXRETRIES, DBGetContactSettingByte(NULL,MODULENAME,SETTING_MAXRETRIES,DEFAULT_MAXRETRIES),FALSE);
-			SetDlgItemInt(hwndDlg, IDC_INITDELAY, DBGetContactSettingDword(NULL,MODULENAME,SETTING_INITDELAY,DEFAULT_INITDELAY),FALSE);
-			CheckDlgButton(hwndDlg, IDC_CHECKCONNECTION, DBGetContactSettingByte(NULL, MODULENAME, SETTING_CHECKCONNECTION, 1) ? BST_CHECKED : BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_SHOWCONNECTIONPOPUPS, (DBGetContactSettingByte(NULL, MODULENAME, SETTING_SHOWCONNECTIONPOPUPS,FALSE)&&ServiceExists(MS_POPUP_SHOWMESSAGE))?BST_CHECKED:BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_CHKINET, DBGetContactSettingByte(NULL, MODULENAME, SETTING_CHKINET, FALSE)?BST_CHECKED:BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_CONTCHECK, DBGetContactSettingByte(NULL, MODULENAME, SETTING_CONTCHECK, FALSE)?BST_CHECKED:BST_UNCHECKED);
-			CheckDlgButton(hwndDlg, IDC_BYPING, DBGetContactSettingByte(NULL, MODULENAME, SETTING_BYPING, FALSE)?BST_CHECKED:BST_UNCHECKED);
-			if (!DBGetContactSetting(NULL, MODULENAME, SETTING_PINGHOST, &dbv))
+
+			SetDlgItemInt(hwndDlg, IDC_MAXRETRIES, db_get_b(NULL,MODULENAME,SETTING_MAXRETRIES,DEFAULT_MAXRETRIES),FALSE);
+			SetDlgItemInt(hwndDlg, IDC_INITDELAY, db_get_dw(NULL,MODULENAME,SETTING_INITDELAY,DEFAULT_INITDELAY),FALSE);
+			CheckDlgButton(hwndDlg, IDC_CHECKCONNECTION, db_get_b(NULL, MODULENAME, SETTING_CHECKCONNECTION, 1) ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_SHOWCONNECTIONPOPUPS, ( db_get_b(NULL, MODULENAME, SETTING_SHOWCONNECTIONPOPUPS,FALSE)&&ServiceExists(MS_POPUP_SHOWMESSAGE))?BST_CHECKED:BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CHKINET, db_get_b(NULL, MODULENAME, SETTING_CHKINET, FALSE)?BST_CHECKED:BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_CONTCHECK, db_get_b(NULL, MODULENAME, SETTING_CONTCHECK, FALSE)?BST_CHECKED:BST_UNCHECKED);
+			CheckDlgButton(hwndDlg, IDC_BYPING, db_get_b(NULL, MODULENAME, SETTING_BYPING, FALSE)?BST_CHECKED:BST_UNCHECKED);
+			if (!db_get(NULL, MODULENAME, SETTING_PINGHOST, &dbv))
 				SetDlgItemTextA(hwndDlg, IDC_PINGHOST, dbv.pszVal);
 			// proto list
 			HWND hList = GetDlgItem(hwndDlg,IDC_PROTOCOLLIST);
@@ -81,8 +81,8 @@ static INT_PTR CALLBACK DlgProcKSBasicOpts(HWND hwndDlg,UINT msg,WPARAM wParam,L
 				ListView_InsertItem(hList,&lvItem);
 
 				char dbSetting[128];
-				_snprintf(dbSetting, sizeof(dbSetting), "%s_enabled", protos[i]->szModuleName);
-				ListView_SetCheckState(hList, lvItem.iItem, DBGetContactSettingByte(NULL, MODULENAME, dbSetting, TRUE));
+				mir_snprintf(dbSetting, sizeof(dbSetting), "%s_enabled", protos[i]->szModuleName);
+				ListView_SetCheckState(hList, lvItem.iItem, db_get_b(NULL, MODULENAME, dbSetting, TRUE));
 				lvItem.iItem++;
 			}
 			EnableWindow(GetDlgItem(hwndDlg, IDC_MAXRETRIES), IsDlgButtonChecked(hwndDlg, IDC_CHECKCONNECTION));
@@ -115,7 +115,7 @@ static INT_PTR CALLBACK DlgProcKSBasicOpts(HWND hwndDlg,UINT msg,WPARAM wParam,L
 			break;
 		}
 		break;
-		
+
 	case WM_NOTIFY:
 		if (((NMHDR*)lParam)->idFrom == IDC_PROTOCOLLIST) {
 			switch(((NMHDR*)lParam)->code) {
@@ -126,19 +126,20 @@ static INT_PTR CALLBACK DlgProcKSBasicOpts(HWND hwndDlg,UINT msg,WPARAM wParam,L
 						SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 				}
 				break;
-		}	}
+			}
+		}
 
 		if (((LPNMHDR)lParam)->code == PSN_APPLY) {
 			int i;
 			LVITEM lvItem;
 
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_MAXRETRIES, (BYTE)GetDlgItemInt(hwndDlg,IDC_MAXRETRIES, NULL, FALSE));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_CHECKCONNECTION, (BYTE)SendMessage(GetParent(hwndDlg), KS_ISENABLED, (WPARAM)IDC_CHECKCONNECTION, 0));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_SHOWCONNECTIONPOPUPS, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_SHOWCONNECTIONPOPUPS));
-			DBWriteContactSettingDword(NULL, MODULENAME, SETTING_INITDELAY, (DWORD)GetDlgItemInt(hwndDlg,IDC_INITDELAY, NULL, FALSE));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_CHKINET, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CHKINET));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_CONTCHECK, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CONTCHECK));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_BYPING, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_BYPING));
+			db_set_b(NULL, MODULENAME, SETTING_MAXRETRIES, (BYTE)GetDlgItemInt(hwndDlg,IDC_MAXRETRIES, NULL, FALSE));
+			db_set_b(NULL, MODULENAME, SETTING_CHECKCONNECTION, (BYTE)SendMessage(GetParent(hwndDlg), KS_ISENABLED, (WPARAM)IDC_CHECKCONNECTION, 0));
+			db_set_b(NULL, MODULENAME, SETTING_SHOWCONNECTIONPOPUPS, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_SHOWCONNECTIONPOPUPS));
+			db_set_dw(NULL, MODULENAME, SETTING_INITDELAY, (DWORD)GetDlgItemInt(hwndDlg,IDC_INITDELAY, NULL, FALSE));
+			db_set_b(NULL, MODULENAME, SETTING_CHKINET, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CHKINET));
+			db_set_b(NULL, MODULENAME, SETTING_CONTCHECK, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CONTCHECK));
+			db_set_b(NULL, MODULENAME, SETTING_BYPING, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_BYPING));
 			if (IsDlgButtonChecked(hwndDlg, IDC_BYPING)) {
 				char *host;
 
@@ -148,7 +149,7 @@ static INT_PTR CALLBACK DlgProcKSBasicOpts(HWND hwndDlg,UINT msg,WPARAM wParam,L
 					if (host != NULL) {
 						memset(host, '\0', len+1);
 						GetDlgItemTextA(hwndDlg, IDC_PINGHOST, host, len+1);
-						DBWriteContactSettingString(NULL, MODULENAME, SETTING_PINGHOST, host);
+						db_set_s(NULL, MODULENAME, SETTING_PINGHOST, host);
 					}
 				}
 			}
@@ -162,12 +163,12 @@ static INT_PTR CALLBACK DlgProcKSBasicOpts(HWND hwndDlg,UINT msg,WPARAM wParam,L
 
 				char dbSetting[128];
 				mir_snprintf(dbSetting, sizeof(dbSetting), "%s_enabled", (char *)lvItem.lParam);
-				DBWriteContactSettingByte(NULL, MODULENAME, dbSetting, (BYTE)ListView_GetCheckState(hList, lvItem.iItem));
+				db_set_b(NULL, MODULENAME, dbSetting, (BYTE)ListView_GetCheckState(hList, lvItem.iItem));
 			}
 		}
 		break;
 	}
-	
+
 	return 0;
 }
 
@@ -176,18 +177,18 @@ static INT_PTR CALLBACK DlgProcKSAdvOpts(HWND hwndDlg,UINT msg,WPARAM wParam,LPA
 	switch(msg) {
 	case WM_INITDIALOG: {
 		TranslateDialogDefault(hwndDlg);
-		SetDlgItemInt(hwndDlg, IDC_MAXDELAY, DBGetContactSettingDword(NULL,MODULENAME,SETTING_MAXDELAY,DEFAULT_MAXDELAY),FALSE);
-		SetDlgItemInt(hwndDlg, IDC_MAXCONNECTINGTIME, DBGetContactSettingDword(NULL,MODULENAME,SETTING_MAXCONNECTINGTIME,0),FALSE);
-		CheckDlgButton(hwndDlg, IDC_INCREASEEXPONENTIAL, DBGetContactSettingByte(NULL, MODULENAME, SETTING_INCREASEEXPONENTIAL,FALSE)?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hwndDlg, IDC_CNCOTHERLOC, (DBGetContactSettingByte(NULL, MODULENAME, SETTING_CNCOTHERLOC, FALSE)&&(CallService(MS_SYSTEM_GETVERSION,0,0) >= 0x00040000))?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hwndDlg, IDC_LOGINERR, DBGetContactSettingByte(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_NOTHING)==LOGINERR_NOTHING?FALSE:TRUE);
-		CheckDlgButton(hwndDlg, IDC_CHECKAPMRESUME, (DBGetContactSettingByte(NULL, MODULENAME, SETTING_CHECKAPMRESUME, 1)&&(CallService(MS_SYSTEM_GETVERSION,0,0) >= 0x00040000)) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hwndDlg, IDC_FIRSTOFFLINE, (DBGetContactSettingByte(NULL, MODULENAME, SETTING_FIRSTOFFLINE, FALSE)));
-		CheckDlgButton(hwndDlg, IDC_NOLOCKED, (DBGetContactSettingByte(NULL, MODULENAME, SETTING_NOLOCKED, FALSE)));
-		SetDlgItemInt(hwndDlg, IDC_LOGINERR_DELAY, DBGetContactSettingDword(NULL, MODULENAME, SETTING_LOGINERR_DELAY, DEFAULT_MAXDELAY), FALSE);
-		SetDlgItemInt(hwndDlg, IDC_PINGCOUNT, DBGetContactSettingWord(NULL, MODULENAME, SETTING_PINGCOUNT, DEFAULT_PINGCOUNT), FALSE);
-		SetDlgItemInt(hwndDlg, IDC_CNTDELAY, DBGetContactSettingDword(NULL, MODULENAME, SETTING_CNTDELAY, CHECKCONTIN_DELAY), FALSE);
-		switch (DBGetContactSettingByte(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_CANCEL)) {
+		SetDlgItemInt(hwndDlg, IDC_MAXDELAY, db_get_dw(NULL,MODULENAME,SETTING_MAXDELAY,DEFAULT_MAXDELAY),FALSE);
+		SetDlgItemInt(hwndDlg, IDC_MAXCONNECTINGTIME, db_get_dw(NULL,MODULENAME,SETTING_MAXCONNECTINGTIME,0),FALSE);
+		CheckDlgButton(hwndDlg, IDC_INCREASEEXPONENTIAL, db_get_b(NULL, MODULENAME, SETTING_INCREASEEXPONENTIAL,FALSE)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_CNCOTHERLOC, ( db_get_b(NULL, MODULENAME, SETTING_CNCOTHERLOC, FALSE)&&(CallService(MS_SYSTEM_GETVERSION,0,0) >= 0x00040000))?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_LOGINERR, db_get_b(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_NOTHING)==LOGINERR_NOTHING?FALSE:TRUE);
+		CheckDlgButton(hwndDlg, IDC_CHECKAPMRESUME, ( db_get_b(NULL, MODULENAME, SETTING_CHECKAPMRESUME, 1)&&(CallService(MS_SYSTEM_GETVERSION,0,0) >= 0x00040000))?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_FIRSTOFFLINE, ( db_get_b(NULL, MODULENAME, SETTING_FIRSTOFFLINE, FALSE)));
+		CheckDlgButton(hwndDlg, IDC_NOLOCKED, ( db_get_b(NULL, MODULENAME, SETTING_NOLOCKED, FALSE)));
+		SetDlgItemInt(hwndDlg, IDC_LOGINERR_DELAY, db_get_dw(NULL, MODULENAME, SETTING_LOGINERR_DELAY, DEFAULT_MAXDELAY), FALSE);
+		SetDlgItemInt(hwndDlg, IDC_PINGCOUNT, db_get_w(NULL, MODULENAME, SETTING_PINGCOUNT, DEFAULT_PINGCOUNT), FALSE);
+		SetDlgItemInt(hwndDlg, IDC_CNTDELAY, db_get_dw(NULL, MODULENAME, SETTING_CNTDELAY, CHECKCONTIN_DELAY), FALSE);
+		switch ( db_get_b(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_CANCEL)) {
 			case LOGINERR_SETDELAY:
 				CheckRadioButton(hwndDlg, IDC_LOGINERR_CANCEL, IDC_LOGINERR_SETDELAY, IDC_LOGINERR_SETDELAY);
 				break;
@@ -198,7 +199,7 @@ static INT_PTR CALLBACK DlgProcKSAdvOpts(HWND hwndDlg,UINT msg,WPARAM wParam,LPA
 		}
 		SendMessage(hwndDlg, KS_ENABLEITEMS, 0, 0);
 		break;
-						}
+	}
 	case WM_COMMAND:
 		if ( ((HIWORD(wParam) == EN_CHANGE) || (HIWORD(wParam) == BN_CLICKED)) && ((HWND)lParam == GetFocus()))
 			SendMessage(GetParent(hwndDlg),PSM_CHANGED,0,0);
@@ -208,7 +209,7 @@ static INT_PTR CALLBACK DlgProcKSAdvOpts(HWND hwndDlg,UINT msg,WPARAM wParam,LPA
 		case IDC_LOGINERR:
 			SendMessage(hwndDlg, KS_ENABLEITEMS, 0, 0);
 			break;
-			
+
 		case IDC_LOGINERR_CANCEL:
 		case IDC_LOGINERR_SETDELAY:
 			CheckRadioButton(hwndDlg, IDC_LOGINERR_CANCEL, IDC_LOGINERR_SETDELAY, LOWORD(wParam));
@@ -216,28 +217,28 @@ static INT_PTR CALLBACK DlgProcKSAdvOpts(HWND hwndDlg,UINT msg,WPARAM wParam,LPA
 			break;
 		}
 		break;
-		
+
 	case WM_NOTIFY:
 		if (((LPNMHDR)lParam)->code == PSN_APPLY) {
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_INCREASEEXPONENTIAL, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_INCREASEEXPONENTIAL));
-			DBWriteContactSettingDword(NULL, MODULENAME, SETTING_MAXDELAY, (DWORD)GetDlgItemInt(hwndDlg,IDC_MAXDELAY, NULL, FALSE));
-			DBWriteContactSettingDword(NULL, MODULENAME, SETTING_MAXCONNECTINGTIME, (DWORD)GetDlgItemInt(hwndDlg,IDC_MAXCONNECTINGTIME, NULL, FALSE));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_FIRSTOFFLINE, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_FIRSTOFFLINE));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_NOLOCKED, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_NOLOCKED));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_CNCOTHERLOC, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CNCOTHERLOC));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_LOGINERR, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_LOGINERR));
+			db_set_b(NULL, MODULENAME, SETTING_INCREASEEXPONENTIAL, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_INCREASEEXPONENTIAL));
+			db_set_dw(NULL, MODULENAME, SETTING_MAXDELAY, (DWORD)GetDlgItemInt(hwndDlg,IDC_MAXDELAY, NULL, FALSE));
+			db_set_dw(NULL, MODULENAME, SETTING_MAXCONNECTINGTIME, (DWORD)GetDlgItemInt(hwndDlg,IDC_MAXCONNECTINGTIME, NULL, FALSE));
+			db_set_b(NULL, MODULENAME, SETTING_FIRSTOFFLINE, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_FIRSTOFFLINE));
+			db_set_b(NULL, MODULENAME, SETTING_NOLOCKED, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_NOLOCKED));
+			db_set_b(NULL, MODULENAME, SETTING_CNCOTHERLOC, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CNCOTHERLOC));
+			db_set_b(NULL, MODULENAME, SETTING_LOGINERR, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_LOGINERR));
 			if (IsDlgButtonChecked(hwndDlg, IDC_LOGINERR)) {
 				if (IsDlgButtonChecked(hwndDlg, IDC_LOGINERR_SETDELAY)) {
-					DBWriteContactSettingByte(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_SETDELAY);
-					DBWriteContactSettingDword(NULL, MODULENAME, SETTING_LOGINERR_DELAY, GetDlgItemInt(hwndDlg, IDC_LOGINERR_DELAY, NULL, FALSE));
+					db_set_b(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_SETDELAY);
+					db_set_dw(NULL, MODULENAME, SETTING_LOGINERR_DELAY, GetDlgItemInt(hwndDlg, IDC_LOGINERR_DELAY, NULL, FALSE));
 				}
-				else DBWriteContactSettingByte(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_CANCEL);
+				else db_set_b(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_CANCEL);
 			}
-			else DBWriteContactSettingByte(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_NOTHING);
+			else db_set_b(NULL, MODULENAME, SETTING_LOGINERR, LOGINERR_NOTHING);
 
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_CHECKAPMRESUME, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CHECKAPMRESUME));
-			DBWriteContactSettingWord(NULL, MODULENAME, SETTING_PINGCOUNT, (WORD)GetDlgItemInt(hwndDlg,IDC_PINGCOUNT, NULL, FALSE));
-			DBWriteContactSettingDword(NULL, MODULENAME, SETTING_CNTDELAY, (DWORD)GetDlgItemInt(hwndDlg,IDC_CNTDELAY, NULL, FALSE)==0?CHECKCONTIN_DELAY:GetDlgItemInt(hwndDlg,IDC_CNTDELAY, NULL, FALSE));
+			db_set_b(NULL, MODULENAME, SETTING_CHECKAPMRESUME, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_CHECKAPMRESUME));
+			db_set_w(NULL, MODULENAME, SETTING_PINGCOUNT, (WORD)GetDlgItemInt(hwndDlg,IDC_PINGCOUNT, NULL, FALSE));
+			db_set_dw(NULL, MODULENAME, SETTING_CNTDELAY, (DWORD)GetDlgItemInt(hwndDlg,IDC_CNTDELAY, NULL, FALSE)==0?CHECKCONTIN_DELAY:GetDlgItemInt(hwndDlg,IDC_CNTDELAY, NULL, FALSE));
 		}
 		break;
 
@@ -263,7 +264,7 @@ static INT_PTR CALLBACK DlgProcKSAdvOpts(HWND hwndDlg,UINT msg,WPARAM wParam,LPA
 
 		break;
 	}
-	
+
 	return 0;
 }
 
@@ -312,7 +313,7 @@ static INT_PTR CALLBACK DlgProcKsTabs(HWND hwndDlg, UINT msg, WPARAM wParam, LPA
 			MoveWindow(hPage, (rcTabs.left - rcOptions.left) + ((rcTabs.right-rcTabs.left)-(rcPage.right-rcPage.left))/2, 10 + (rcTabs.top - rcOptions.top) + ((rcTabs.bottom-rcTabs.top)-(rcPage.bottom-rcPage.top))/2, rcPage.right-rcPage.left, rcPage.bottom-rcPage.top, TRUE);
 			ShowWindow(hPage, SW_HIDE);
 			TabCtrl_InsertItem(hTab, tabCount++, &tci);
-			ShowWindow(hShow, SW_SHOW);			
+			ShowWindow(hShow, SW_SHOW);
 		}
 		break;
 
@@ -343,8 +344,8 @@ static INT_PTR CALLBACK DlgProcKsTabs(HWND hwndDlg, UINT msg, WPARAM wParam, LPA
 		}
 		if (((LPNMHDR)lParam)->code == PSN_APPLY) {
 			TCITEM tci;
-             int i, count;
-             
+			int i, count;
+
 			tci.mask = TCIF_PARAM;
 			count = TabCtrl_GetItemCount(GetDlgItem(hwndDlg, IDC_TABS));
 			for (i=0;i<count;i++) {
@@ -367,48 +368,48 @@ INT_PTR CALLBACK PopupOptDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lPar
 	switch(msg) {
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
-		
+
 		bFreeze = true;
 
 		// left action
-		switch ( DBGetContactSettingByte(NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_NOTHING)) {
+		switch ( db_get_b( NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_NOTHING )) {
 		case POPUP_ACT_CLOSEPOPUP:
 			CheckDlgButton(hwndDlg, IDC_LCLOSE, BST_CHECKED);
 			break;
-			
+
 		case POPUP_ACT_CANCEL:
 			CheckDlgButton(hwndDlg, IDC_LCANCEL, BST_CHECKED);
 			break;
-			
+
 		case POPUP_ACT_NOTHING:
 		default:
 			CheckDlgButton(hwndDlg, IDC_LNOTHING, BST_CHECKED);
 			break;
 		}
 		// right action
-		switch ( DBGetContactSettingByte(NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_CLOSEPOPUP)) {
+		switch ( db_get_b( NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_CLOSEPOPUP )) {
 		case POPUP_ACT_CLOSEPOPUP:
 			CheckDlgButton(hwndDlg, IDC_RCLOSE, BST_CHECKED);
 			break;
-			
+
 		case POPUP_ACT_CANCEL:
 			CheckDlgButton(hwndDlg, IDC_RCANCEL, BST_CHECKED);
 			break;
-			
+
 		case POPUP_ACT_NOTHING:
 		default:
 			CheckDlgButton(hwndDlg, IDC_RNOTHING, BST_CHECKED);
 			break;
 		}
 		// delay
-		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAYCUSTOM), ServiceExists(MS_POPUP_ADDPOPUPEX));
-		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAYFROMPU), ServiceExists(MS_POPUP_ADDPOPUPEX));
-		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAYPERMANENT), ServiceExists(MS_POPUP_ADDPOPUPEX));
-		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAY), ServiceExists(MS_POPUP_ADDPOPUPEX));
-		switch (DBGetContactSettingByte(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYFROMPU)) {
+		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAYCUSTOM), ServiceExists(MS_POPUP_ADDPOPUP));
+		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAYFROMPU), ServiceExists(MS_POPUP_ADDPOPUP));
+		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAYPERMANENT), ServiceExists(MS_POPUP_ADDPOPUP));
+		EnableWindow(GetDlgItem(hwndDlg, IDC_DELAY), ServiceExists(MS_POPUP_ADDPOPUP));
+		switch ( db_get_b(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYFROMPU)) {
 		case POPUP_DELAYCUSTOM:
 			CheckDlgButton(hwndDlg, IDC_DELAYCUSTOM, BST_CHECKED);
-			EnableWindow(GetDlgItem(hwndDlg, IDC_DELAY), ServiceExists(MS_POPUP_ADDPOPUPEX));
+			EnableWindow(GetDlgItem(hwndDlg, IDC_DELAY), ServiceExists(MS_POPUP_ADDPOPUP));
 			break;
 
 		case POPUP_DELAYPERMANENT:
@@ -423,28 +424,28 @@ INT_PTR CALLBACK PopupOptDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lPar
 			break;
 		}
 		// delay
-		SetDlgItemInt(hwndDlg,IDC_DELAY, DBGetContactSettingDword(NULL, MODULENAME, SETTING_POPUP_TIMEOUT, 0), FALSE);
+		SetDlgItemInt(hwndDlg,IDC_DELAY, db_get_dw(NULL, MODULENAME, SETTING_POPUP_TIMEOUT, 0), FALSE);
 		// back color
-		SendDlgItemMessage(hwndDlg,IDC_BGCOLOR,CPM_SETCOLOUR,0,DBGetContactSettingDword(NULL, MODULENAME, SETTING_POPUP_BACKCOLOR, 0xAAAAAA));
+		SendDlgItemMessage(hwndDlg,IDC_BGCOLOR,CPM_SETCOLOUR,0,db_get_dw(NULL, MODULENAME, SETTING_POPUP_BACKCOLOR, 0xAAAAAA));
 		// text
-		SendDlgItemMessage(hwndDlg,IDC_TEXTCOLOR,CPM_SETCOLOUR,0,DBGetContactSettingDword(NULL, MODULENAME, SETTING_POPUP_TEXTCOLOR, 0x0000CC));
+		SendDlgItemMessage(hwndDlg,IDC_TEXTCOLOR,CPM_SETCOLOUR,0,db_get_dw(NULL, MODULENAME, SETTING_POPUP_TEXTCOLOR, 0x0000CC));
 		// wincolors
-		CheckDlgButton(hwndDlg, IDC_WINCOLORS, DBGetContactSettingByte(NULL, MODULENAME, SETTING_POPUP_USEWINCOLORS, 0));
+		CheckDlgButton(hwndDlg, IDC_WINCOLORS, db_get_b(NULL, MODULENAME, SETTING_POPUP_USEWINCOLORS, 0));
 		// defaultcolors
-		CheckDlgButton(hwndDlg, IDC_DEFAULTCOLORS, ( (DBGetContactSettingByte(NULL, MODULENAME, SETTING_POPUP_USEDEFCOLORS, 1)) && (!IsDlgButtonChecked(hwndDlg, IDC_WINCOLORS))));
+		CheckDlgButton(hwndDlg, IDC_DEFAULTCOLORS, ( ( db_get_b(NULL, MODULENAME, SETTING_POPUP_USEDEFCOLORS, 1)) && (!IsDlgButtonChecked(hwndDlg, IDC_WINCOLORS))));
 		EnableWindow(GetDlgItem(hwndDlg, IDC_BGCOLOR), ((!IsDlgButtonChecked(hwndDlg, IDC_WINCOLORS)) && (!IsDlgButtonChecked(hwndDlg, IDC_DEFAULTCOLORS))));
 		EnableWindow(GetDlgItem(hwndDlg, IDC_TEXTCOLOR), ((!IsDlgButtonChecked(hwndDlg, IDC_WINCOLORS)) && (!IsDlgButtonChecked(hwndDlg, IDC_DEFAULTCOLORS))));
 		EnableWindow(GetDlgItem(hwndDlg, IDC_DEFAULTCOLORS), (!IsDlgButtonChecked(hwndDlg, IDC_WINCOLORS)));
 		EnableWindow(GetDlgItem(hwndDlg, IDC_WINCOLORS), (!IsDlgButtonChecked(hwndDlg, IDC_DEFAULTCOLORS)));
 		// popup types
-		CheckDlgButton(hwndDlg, IDC_PUCONNLOST, DBGetContactSettingByte(NULL, MODULENAME, SETTING_PUCONNLOST, TRUE)?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hwndDlg, IDC_PUOTHER, DBGetContactSettingByte(NULL, MODULENAME, SETTING_PUOTHER, TRUE)?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hwndDlg, IDC_PUCONNRETRY, DBGetContactSettingByte(NULL, MODULENAME, SETTING_PUCONNRETRY, TRUE)?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hwndDlg, IDC_PURESULT, DBGetContactSettingByte(NULL, MODULENAME, SETTING_PURESULT, TRUE)?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hwndDlg, IDC_PUSHOWEXTRA, DBGetContactSettingByte(NULL, MODULENAME, SETTING_PUSHOWEXTRA, TRUE)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_PUCONNLOST, db_get_b(NULL, MODULENAME, SETTING_PUCONNLOST, TRUE)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_PUOTHER, db_get_b(NULL, MODULENAME, SETTING_PUOTHER, TRUE)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_PUCONNRETRY, db_get_b(NULL, MODULENAME, SETTING_PUCONNRETRY, TRUE)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_PURESULT, db_get_b(NULL, MODULENAME, SETTING_PURESULT, TRUE)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_PUSHOWEXTRA, db_get_b(NULL, MODULENAME, SETTING_PUSHOWEXTRA, TRUE)?BST_CHECKED:BST_UNCHECKED);
 		bFreeze = false;
 		break;
-		
+
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_WINCOLORS:
@@ -455,7 +456,7 @@ INT_PTR CALLBACK PopupOptDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lPar
 			EnableWindow(GetDlgItem(hwndDlg, IDC_WINCOLORS), (!IsDlgButtonChecked(hwndDlg, IDC_DEFAULTCOLORS)));
 			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 			break;
-			
+
 		case IDC_DELAYFROMPU:
 		case IDC_DELAYPERMANENT:
 			EnableWindow(GetDlgItem(hwndDlg, IDC_DELAY), FALSE);
@@ -484,11 +485,11 @@ INT_PTR CALLBACK PopupOptDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lPar
 			if ( !bFreeze )
 				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 			break;
-			
+
 		case IDC_PREV:
 			{
 				POPUPDATAT ppd = { NULL };
-				
+
 				ppd.lchContact = NULL;
 				ppd.lchIcon = LoadSkinnedIcon(SKINICON_STATUS_OFFLINE);
 				_tcsncpy( ppd.lptzContactName, TranslateT("KeepStatus"), MAX_CONTACTNAME);
@@ -522,60 +523,60 @@ INT_PTR CALLBACK PopupOptDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARAM lPar
 				{
 					ppd.iSeconds = -1;
 				}
-				PUAddPopUpT(&ppd);
+				PUAddPopupT(&ppd);
 			}
 			break;
 		}
 		break;
-		
+
 	case WM_NOTIFY:
 		if (((LPNMHDR)lParam)->code == PSN_APPLY) {
 			// left action
 			if (IsDlgButtonChecked(hwndDlg, IDC_LNOTHING))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_NOTHING);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_NOTHING);
 			else if (IsDlgButtonChecked(hwndDlg, IDC_LCLOSE))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_CLOSEPOPUP);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_CLOSEPOPUP);
 			else if (IsDlgButtonChecked(hwndDlg, IDC_LCANCEL))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_CANCEL);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_LEFTCLICK, POPUP_ACT_CANCEL);
 			// right action
 			if (IsDlgButtonChecked(hwndDlg, IDC_RNOTHING))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_NOTHING);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_NOTHING);
 			else if (IsDlgButtonChecked(hwndDlg, IDC_RCLOSE))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_CLOSEPOPUP);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_CLOSEPOPUP);
 			else if (IsDlgButtonChecked(hwndDlg, IDC_RCANCEL))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_CANCEL);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_RIGHTCLICK, POPUP_ACT_CANCEL);
 			// delay
 			if (IsDlgButtonChecked(hwndDlg, IDC_DELAYFROMPU))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYFROMPU);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYFROMPU);
 			else if (IsDlgButtonChecked(hwndDlg, IDC_DELAYCUSTOM))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYCUSTOM);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYCUSTOM);
 			else if (IsDlgButtonChecked(hwndDlg, IDC_DELAYPERMANENT))
-				DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYPERMANENT);
+				db_set_b(NULL, MODULENAME, SETTING_POPUP_DELAYTYPE, POPUP_DELAYPERMANENT);
 			// delay
-			DBWriteContactSettingDword(NULL, MODULENAME, SETTING_POPUP_TIMEOUT, GetDlgItemInt(hwndDlg,IDC_DELAY, NULL, FALSE));
+			db_set_dw(NULL, MODULENAME, SETTING_POPUP_TIMEOUT, GetDlgItemInt(hwndDlg,IDC_DELAY, NULL, FALSE));
 			// back color
-			DBWriteContactSettingDword(NULL, MODULENAME, SETTING_POPUP_BACKCOLOR, SendDlgItemMessage(hwndDlg,IDC_BGCOLOR,CPM_GETCOLOUR,0,0));
+			db_set_dw(NULL, MODULENAME, SETTING_POPUP_BACKCOLOR, SendDlgItemMessage(hwndDlg,IDC_BGCOLOR,CPM_GETCOLOUR,0,0));
 			// text color
-			DBWriteContactSettingDword(NULL, MODULENAME, SETTING_POPUP_TEXTCOLOR, SendDlgItemMessage(hwndDlg,IDC_TEXTCOLOR,CPM_GETCOLOUR,0,0));
+			db_set_dw(NULL, MODULENAME, SETTING_POPUP_TEXTCOLOR, SendDlgItemMessage(hwndDlg,IDC_TEXTCOLOR,CPM_GETCOLOUR,0,0));
 			// use win
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_USEWINCOLORS, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_WINCOLORS));
+			db_set_b(NULL, MODULENAME, SETTING_POPUP_USEWINCOLORS, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_WINCOLORS));
 			// use def
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_POPUP_USEDEFCOLORS, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_DEFAULTCOLORS));
+			db_set_b(NULL, MODULENAME, SETTING_POPUP_USEDEFCOLORS, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_DEFAULTCOLORS));
 			// store types
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_PUCONNLOST, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUCONNLOST));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_PUOTHER, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUOTHER));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_PUCONNRETRY, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUCONNRETRY));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_PURESULT,  (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PURESULT));
-			DBWriteContactSettingByte(NULL, MODULENAME, SETTING_PUSHOWEXTRA,  (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUSHOWEXTRA));
+			db_set_b(NULL, MODULENAME, SETTING_PUCONNLOST, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUCONNLOST));
+			db_set_b(NULL, MODULENAME, SETTING_PUOTHER, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUOTHER));
+			db_set_b(NULL, MODULENAME, SETTING_PUCONNRETRY, (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUCONNRETRY));
+			db_set_b(NULL, MODULENAME, SETTING_PURESULT,  (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PURESULT));
+			db_set_b(NULL, MODULENAME, SETTING_PUSHOWEXTRA,  (BYTE)IsDlgButtonChecked(hwndDlg, IDC_PUSHOWEXTRA));
 		}
 		break;
 	}
-	
+
 	return 0;
 }
 
 int OptionsInit(WPARAM wparam,LPARAM lparam)
-{	
+{
 	if ( IsWinVerXPPlus()) {
 		HMODULE hUxTheme = GetModuleHandle(_T("uxtheme.dll"));
 		if (hUxTheme)
@@ -597,7 +598,7 @@ int OptionsInit(WPARAM wparam,LPARAM lparam)
 		ZeroMemory(&odp,sizeof(odp));
 		odp.cbSize = sizeof(odp);
 		odp.position = 150000000;
-		odp.ptszGroup = LPGENT("PopUps");
+		odp.ptszGroup = LPGENT("Popups");
 		odp.groupPosition = 910000000;
 		odp.hInstance = hInst;
 		odp.pszTemplate = MAKEINTRESOURCEA(IDD_PUOPT_KEEPSTATUS);

@@ -1,7 +1,7 @@
 /*
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2010 Miranda ICQ/IM project, 
+Copyright 2010-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -10,7 +10,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -26,20 +26,6 @@ simple UTC offsets.
 #include "..\..\core\commonheaders.h"
 
 TIME_API tmi;
-
-#if _MSC_VER < 1500
-	typedef struct _TIME_DYNAMIC_ZONE_INFORMATION_T {
-		LONG Bias;
-		WCHAR StandardName[ 32 ];
-		SYSTEMTIME StandardDate;
-		LONG StandardBias;
-		WCHAR DaylightName[ 32 ];
-		SYSTEMTIME DaylightDate;
-		LONG DaylightBias;
-		WCHAR TimeZoneKeyName[ 128 ];
-		BOOLEAN DynamicDaylightTimeDisabled;
-	} DYNAMIC_TIME_ZONE_INFORMATION;
-#endif
 
 typedef DWORD 	(WINAPI *pfnGetDynamicTimeZoneInformation_t)(DYNAMIC_TIME_ZONE_INFORMATION *pdtzi);
 static pfnGetDynamicTimeZoneInformation_t pfnGetDynamicTimeZoneInformation;
@@ -199,7 +185,7 @@ static HANDLE timeapiGetInfoByContact(HANDLE hContact, DWORD dwFlags)
 		return (dwFlags & (TZF_DIFONLY | TZF_KNOWNONLY)) ? NULL : &myInfo.myTZ;
 
 	DBVARIANT dbv;
-	if ( !DBGetContactSettingTString(hContact, "UserInfo", "TzName", &dbv))
+	if ( !db_get_ts(hContact, "UserInfo", "TzName", &dbv))
 	{
 		HANDLE res = timeapiGetInfoByName(dbv.ptszVal, dwFlags);
 		db_free(&dbv);
@@ -210,7 +196,7 @@ static HANDLE timeapiGetInfoByContact(HANDLE hContact, DWORD dwFlags)
 	if (timezone == -1)
 	{
 		char* szProto = GetContactProto(hContact);
-		if ( !DBGetContactSettingTString(hContact, szProto, "TzName", &dbv))
+		if ( !db_get_ts(hContact, szProto, "TzName", &dbv))
 		{
 			HANDLE res = timeapiGetInfoByName(dbv.ptszVal, dwFlags);
 			db_free(&dbv);
@@ -265,8 +251,8 @@ static void timeapiSetInfoByContact(HANDLE hContact, HANDLE hTZ)
 	}
 	else
 	{
-		DBDeleteContactSetting(hContact, "UserInfo", "TzName");
-		DBDeleteContactSetting(hContact, "UserInfo", "Timezone");
+		db_unset(hContact, "UserInfo", "TzName");
+		db_unset(hContact, "UserInfo", "Timezone");
 	}
 }
 
@@ -353,10 +339,10 @@ typedef struct
 	UINT addStr, getSel, setSel, getData, setData;
 } ListMessages;
 
-static const ListMessages lbMessages = 
+static const ListMessages lbMessages =
 { LB_ADDSTRING, LB_GETCURSEL, LB_SETCURSEL, LB_GETITEMDATA, LB_SETITEMDATA };
 
-static const ListMessages cbMessages = 
+static const ListMessages cbMessages =
 { CB_ADDSTRING, CB_GETCURSEL, CB_SETCURSEL, CB_GETITEMDATA, CB_SETITEMDATA };
 
 static const ListMessages *GetListMessages(HWND hWnd, DWORD dwFlags)
@@ -391,7 +377,7 @@ static int timeapiSelectListItem(HANDLE hContact, HWND hWnd, DWORD dwFlags)
 	if (hContact)
 	{
 		DBVARIANT dbv;
-		if ( !DBGetContactSettingTString(hContact, "UserInfo", "TzName", &dbv))
+		if ( !db_get_ts(hContact, "UserInfo", "TzName", &dbv))
 		{
 			unsigned hash = mir_hashstrT(dbv.ptszVal);
 			for (int i=0; i < g_timezonesBias.getCount(); i++)
@@ -557,7 +543,7 @@ extern "C" __declspec(dllexport) void RecalculateTime(void)
 
 		if ( !found)
 		{
-			if ( !wcscmp(tz.tzi.StandardName, myInfo.myTZ.tzi.StandardName)  || 
+			if ( !wcscmp(tz.tzi.StandardName, myInfo.myTZ.tzi.StandardName)  ||
 				!wcscmp(tz.tzi.DaylightName, myInfo.myTZ.tzi.DaylightName))
 			{
 				_tcscpy(myInfo.myTZ.tszName, tz.tszName);

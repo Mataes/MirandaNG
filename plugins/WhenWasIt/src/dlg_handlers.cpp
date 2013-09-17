@@ -19,7 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "commonheaders.h"
-#include "dlg_handlers.h"
 
 #define COLOR_USERINFO RGB(138, 190, 160)
 #define COLOR_MBIRTHDAY RGB(222, 222, 88)
@@ -29,18 +28,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define UPCOMING_TIMER_ID 1002
 
-static WNDPROC OldBirthdaysListProc = NULL;
-
-const TCHAR *szShowAgeMode[] = {_T("Upcoming age"), _T("Current age")};
+const TCHAR *szShowAgeMode[] = { LPGENT("Upcoming age"), LPGENT("Current age")};
 const int cShowAgeMode = sizeof(szShowAgeMode) / sizeof(szShowAgeMode[0]);
 
-const TCHAR *szSaveModule[] = {_T("UserInfo module"), _T("Protocol module"), _T("mBirthday module")};
+const TCHAR *szSaveModule[] = { LPGENT("UserInfo module"), LPGENT("Protocol module"), LPGENT("mBirthday module")};
 const int cSaveModule = sizeof(szSaveModule) / sizeof(szSaveModule[0]);
 
-const TCHAR *szPopupClick[] = {_T("Nothing"), _T("Dismiss"), _T("Message window")};
+const TCHAR *szPopupClick[] = { LPGENT("Nothing"), LPGENT("Dismiss"), LPGENT("Message window")};
 const int cPopupClick = sizeof(szPopupClick) / sizeof(szPopupClick[0]);
 
-const TCHAR *szNotifyFor[] = {_T("All contacts"), _T("All contacts except hidden ones"), _T("All contacts except ignored ones"), _T("All contacts except hidden and ignored ones")};
+const TCHAR *szNotifyFor[] = { LPGENT("All contacts"), LPGENT("All contacts except hidden ones"), LPGENT("All contacts except ignored ones"), LPGENT("All contacts except hidden and ignored ones")};
 const int cNotifyFor = sizeof(szNotifyFor) / sizeof(szNotifyFor[0]);
 
 #define MIN_BIRTHDAYS_WIDTH 200
@@ -197,7 +194,7 @@ INT_PTR CALLBACK DlgProcOptions(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 			SetWindowText(GetDlgItem(hWnd, IDC_DAYS_IN_ADVANCE), buffer);
 			_itot(commonData.checkInterval, buffer, 10);
 			SetWindowText(GetDlgItem(hWnd, IDC_CHECK_INTERVAL), buffer);
-			_sntprintf(buffer, 1024, _T("%d|%d"), commonData.popupTimeout, commonData.popupTimeoutToday);
+			mir_sntprintf(buffer, 1024, _T("%d|%d"), commonData.popupTimeout, commonData.popupTimeoutToday);
 			SetWindowText(GetDlgItem(hWnd, IDC_POPUP_TIMEOUT), buffer);
 			_itot(commonData.cSoundNearDays, buffer, 10);
 			SetWindowText(GetDlgItem(hWnd, IDC_SOUND_NEAR_DAYS_EDIT), buffer);
@@ -219,7 +216,7 @@ INT_PTR CALLBACK DlgProcOptions(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 			CheckDlgButton(hWnd, IDC_USE_DIALOG, (commonData.bUseDialog) ? BST_CHECKED : BST_UNCHECKED);
 			EnableDialogGroup(hWnd, commonData.bUseDialog);
 
-			if (ServiceExists(MS_POPUP_ADDPOPUPEX)) {
+			if ( ServiceExists(MS_POPUP_ADDPOPUP)) {
 				CheckDlgButton(hWnd, IDC_USE_POPUPS, commonData.bUsePopups ? BST_CHECKED : BST_UNCHECKED);
 				EnablePopupsGroup(hWnd, commonData.bUsePopups);
 			}
@@ -400,7 +397,12 @@ INT_PTR CALLBACK DlgProcAddBirthday(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hWnd);
 		SetWindowLongPtr(hWnd, GWLP_USERDATA, lParam);
-
+		
+		{
+			HANDLE hContact = (HANDLE) lParam;
+			WindowList_Add(hAddBirthdayWndsList, hWnd, hContact);
+			Utils_RestoreWindowPositionNoSize(hWnd,hContact,ModuleName,"BirthdayWnd");
+		}
 		SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)Skin_GetIconByHandle(hAddBirthdayContact, 1));
 		{
 			for (int i = 0; i < cSaveModule; i++)
@@ -419,7 +421,7 @@ INT_PTR CALLBACK DlgProcAddBirthday(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 			TCHAR buffer[maxSize];
 			char *szProto = GetContactProto(hContact);
 			TCHAR *name = GetContactName(hContact, szProto);
-			_stprintf(buffer, TranslateT("Set birthday for %s:"), name);
+			mir_sntprintf(buffer, SIZEOF(buffer), TranslateT("Set birthday for %s:"), name);
 			free(name);
 			SetWindowText(hWnd, buffer);
 			HWND hDate = GetDlgItem(hWnd, IDC_DATE);
@@ -441,7 +443,7 @@ INT_PTR CALLBACK DlgProcAddBirthday(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 
 			case DOB_PROTOCOL:
 				DateTime_SetMonthCalColor(hDate, MCSC_TITLEBK, COLOR_PROTOCOL);
-				_stprintf(buffer, TranslateT("%S protocol"), szProto);
+				mir_sntprintf(buffer, SIZEOF(buffer), TranslateT("%S protocol"), szProto);
 				szCurrentModuleTooltip = buffer;
 				break;
 
@@ -475,6 +477,7 @@ INT_PTR CALLBACK DlgProcAddBirthday(HWND hWnd, UINT msg, WPARAM wParam, LPARAM l
 	case WM_DESTROY:
 		RefreshContactListIcons(hContact); //the birthday might be changed, refresh icon.
 		Skin_ReleaseIcon((HICON)SendMessage(hWnd, WM_GETICON, ICON_BIG, 0));
+		Utils_SaveWindowPosition(hWnd,hContact,ModuleName,"BirthdayWnd");
 		WindowList_Remove(hAddBirthdayWndsList, hWnd);
 		break;
 
@@ -569,10 +572,7 @@ INT_PTR CALLBACK BirthdaysCompare(LPARAM lParam1, LPARAM lParam2, LPARAM myParam
 //only updates the birthday part of the list view entry. Won't update the szProto and the contact name (those shouldn't change anyway :))
 int UpdateBirthdayEntry(HWND hList, HANDLE hContact, int entry, int bShowAll, int bShowCurrentAge, int bAdd)
 {
-	int currentYear;
-	int currentMonth;
-	int currentDay;
-
+	int currentMonth, currentDay;
 	int res = entry;
 
 	if (bShowCurrentAge) {
@@ -580,7 +580,6 @@ int UpdateBirthdayEntry(HWND hList, HANDLE hContact, int entry, int bShowAll, in
 		struct tm *today = gmtime(&now);
 		currentDay = today->tm_mday + 1;
 		currentMonth = today->tm_mon + 1;
-		currentYear = today->tm_year;
 	}
 
 	int year, month, day;
@@ -595,40 +594,40 @@ int UpdateBirthdayEntry(HWND hList, HANDLE hContact, int entry, int bShowAll, in
 
 		char *szProto = GetContactProto(hContact);
 		PROTOACCOUNT *pAcc = ProtoGetAccount(szProto);
+		TCHAR *ptszAccName = (pAcc == NULL) ? TranslateT("Unknown") : pAcc->tszAccountName;
 
 		LVITEM item = {0};
 		item.mask = LVIF_TEXT | LVIF_PARAM;
 		item.iItem = entry;
 		item.lParam = (LPARAM) hContact;
-		item.pszText = pAcc->tszAccountName;
+		item.pszText = ptszAccName;
 
 		if (bAdd)
 			ListView_InsertItem(hList, &item);
 		else
-			ListView_SetItemText(hList, entry, 0, pAcc->tszAccountName);
+			ListView_SetItemText(hList, entry, 0, ptszAccName);
 
-		TCHAR *name = GetContactName(hContact, szProto);
+		ptrT name( GetContactName(hContact, szProto));
 		ListView_SetItemText(hList, entry, 1, name);
-		free(name);
 
 		TCHAR buffer[2048];
 		if ((dtb <= 366) && (dtb >= 0))
-			_stprintf(buffer, _T("%d"), dtb);
+			mir_sntprintf(buffer, SIZEOF(buffer), _T("%d"), dtb);
 		else
-			_stprintf(buffer, NA);
+			mir_sntprintf(buffer, SIZEOF(buffer), NA);
 
 		ListView_SetItemText(hList, entry, 2, buffer);
 		if ((year != 0) && (month != 0) && (day != 0))
-			_stprintf(buffer, _T("%04d-%02d-%02d"), year, month, day);
+			mir_sntprintf(buffer, SIZEOF(buffer), _T("%04d-%02d-%02d"), year, month, day);
 		else
-			_stprintf(buffer, NA);
+			mir_sntprintf(buffer, SIZEOF(buffer), NA);
 
 		ListView_SetItemText(hList, entry, 3, buffer);
 
 		if (age < 400) //hopefully noone lives longer than this :)
-			_stprintf(buffer, _T("%d"), age);
+			mir_sntprintf(buffer, SIZEOF(buffer), _T("%d"), age);
 		else
-			_stprintf(buffer, NA);
+			mir_sntprintf(buffer, SIZEOF(buffer), NA);
 
 		ListView_SetItemText(hList, entry, 4, buffer);
 		ListView_SetItemText(hList, entry, 5, GetBirthdayModule(module, hContact));
@@ -641,7 +640,7 @@ int UpdateBirthdayEntry(HWND hList, HANDLE hContact, int entry, int bShowAll, in
 	return res;	
 }
 
-INT_PTR CALLBACK BirthdaysListSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK BirthdaysListSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg) {
 	case WM_KEYUP:
@@ -671,14 +670,14 @@ INT_PTR CALLBACK BirthdaysListSubclassProc(HWND hWnd, UINT msg, WPARAM wParam, L
 			break;
 		}
 	}
-	return CallWindowProc(OldBirthdaysListProc, hWnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hWnd, BirthdaysListSubclassProc, msg, wParam, lParam);
 }
 
 void SetBirthdaysCount(HWND hWnd)
 {
 	int count = ListView_GetItemCount((GetDlgItem(hWnd, IDC_BIRTHDAYS_LIST)));
 	TCHAR title[512];
-	_stprintf(title, TranslateT("Birthday list (%d)"), count);
+	mir_sntprintf(title, SIZEOF(title), TranslateT("Birthday list (%d)"), count);
 	SetWindowText(hWnd, title);
 }
 
@@ -688,11 +687,9 @@ int LoadBirthdays(HWND hWnd, int bShowAll)
 	ListView_DeleteAllItems(hList);
 
 	int count = 0;
-	HANDLE hContact = db_find_first();
-	while (hContact) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
 		count = UpdateBirthdayEntry(hList, hContact, count, bShowAll, commonData.cShowAgeMode, 1); 
-		hContact = db_find_next(hContact);
-	}
+
 	SetBirthdaysCount(hWnd);
 	return 0;
 }
@@ -708,7 +705,7 @@ INT_PTR CALLBACK DlgProcBirthdays(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 
 			ListView_SetExtendedListViewStyleEx(hList, LVS_EX_FULLROWSELECT, LVS_EX_FULLROWSELECT);
 
-			OldBirthdaysListProc = (WNDPROC) SetWindowLongPtr(hList, GWLP_WNDPROC, (LONG_PTR) BirthdaysListSubclassProc);
+			mir_subclassWindow(hList, BirthdaysListSubclassProc);
 
 			LVCOLUMN col;
 			col.mask = LVCF_TEXT | LVCF_WIDTH;
@@ -889,7 +886,7 @@ INT_PTR CALLBACK DlgProcUpcoming(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPar
 		{
 			const int MAX_SIZE = 512;
 			TCHAR buffer[MAX_SIZE];
-			_stprintf(buffer, (timeout != 2) ? TranslateT("Closing in %d seconds") : TranslateT("Closing in %d second"), --timeout);
+			mir_sntprintf(buffer, SIZEOF(buffer), (timeout != 2) ? TranslateT("Closing in %d seconds") : TranslateT("Closing in %d second"), --timeout);
 			SetWindowText(GetDlgItem(hWnd, IDC_CLOSE), buffer);
 
 			if (timeout <= 0)
@@ -961,7 +958,7 @@ int HandlePopupClick(HWND hWnd, int action)
 		}//fallthrough
 
 	case 1: //DISMISS
-		PUDeletePopUp(hWnd);
+		PUDeletePopup(hWnd);
 		break;
 	}
 

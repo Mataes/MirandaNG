@@ -3,8 +3,7 @@
 Miranda IM: the free IM client for Microsoft* Windows*
 
 Copyright 2007 Artem Shpynov
-Copyright 2000-2007 Miranda ICQ/IM project,
-
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -25,7 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "..\..\core\commonheaders.h"
 #include "m_iconheader.h"
-
 
 extern HINSTANCE hInst;
 
@@ -259,14 +257,9 @@ static void MIcoTab_DrawItem(HWND hwnd, HDC hdc, MIcoTabCtrl *dat, MIcoTab *tab,
 static LRESULT MIcoTab_OnPaint(HWND hwndDlg, MIcoTabCtrl *mit, UINT  msg, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
-	HBITMAP hBmp, hOldBmp;
-	RECT temprc;
-	int i;
 
 	HDC hdc = BeginPaint(hwndDlg, &ps);
 	HDC tempDC = CreateCompatibleDC(hdc);
-
-	HFONT hFont = 0;
 
 	BITMAPINFO bmi;
 	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
@@ -275,11 +268,12 @@ static LRESULT MIcoTab_OnPaint(HWND hwndDlg, MIcoTabCtrl *mit, UINT  msg, WPARAM
 	bmi.bmiHeader.biPlanes = 1;
 	bmi.bmiHeader.biBitCount = 32;
 	bmi.bmiHeader.biCompression = BI_RGB;
-	hBmp = CreateDIBSection(tempDC, &bmi, DIB_RGB_COLORS, NULL, NULL, 0);
+	HBITMAP hBmp = CreateDIBSection(tempDC, &bmi, DIB_RGB_COLORS, NULL, NULL, 0);
 
-	hOldBmp = (HBITMAP)SelectObject(tempDC, hBmp);
+	HBITMAP hOldBmp = (HBITMAP)SelectObject(tempDC, hBmp);
 
 	if (IsAeroMode()) {
+		RECT temprc;
 		temprc.left = 0;
 		temprc.right = mit->width;
 		temprc.top = 0;
@@ -297,14 +291,15 @@ static LRESULT MIcoTab_OnPaint(HWND hwndDlg, MIcoTabCtrl *mit, UINT  msg, WPARAM
 
 			MIcoTab_FillRect(tempDC, 0, mit->height-2, mit->width, 1, GetSysColor(COLOR_BTNSHADOW));
 			MIcoTab_FillRect(tempDC, 0, mit->height-1, mit->width, 1, GetSysColor(COLOR_BTNHIGHLIGHT));
-	}	}
+		}
+	}
 
 	//Draw Items
-	hFont = mit->hFont;
-	SelectObject(tempDC, hFont);
+	HFONT hFont = mit->hFont;
+	HFONT hOldFont = (HFONT)SelectObject(tempDC, hFont);
 	SetBkMode(tempDC, TRANSPARENT);
 
-	for (i=0; i<mit->pList.getCount(); i++) {
+	for (int i=0; i<mit->pList.getCount(); i++) {
 		MIcoTab *tab = (MIcoTab *)mit->pList[i];
 		MIcoTab_DrawItem(hwndDlg, tempDC, mit, tab, i);
 	}
@@ -313,6 +308,7 @@ static LRESULT MIcoTab_OnPaint(HWND hwndDlg, MIcoTabCtrl *mit, UINT  msg, WPARAM
 	BitBlt(hdc, mit->rc.left, mit->rc.top, mit->width, mit->height, tempDC, 0, 0, SRCCOPY);
 	SelectObject(tempDC, hOldBmp);
 	DeleteObject(hBmp);
+	SelectObject(tempDC,hOldFont);
 	DeleteDC(tempDC);
 
 	EndPaint(hwndDlg, &ps);

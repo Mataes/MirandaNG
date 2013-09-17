@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2005 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -84,23 +84,23 @@ typedef enum _WTS_CONNECTSTATE_CLASS {
 } WTS_CONNECTSTATE_CLASS;
 
 typedef enum _WTS_INFO_CLASS {
-	WTSInitialProgram, 
-	WTSApplicationName, 
-	WTSWorkingDirectory, 
-	WTSOEMId, 
-	WTSSessionId, 
-	WTSUserName, 
-	WTSWinStationName, 
-	WTSDomainName, 
-	WTSConnectState, 
-	WTSClientBuildNumber, 
-	WTSClientName, 
-	WTSClientDirectory, 
-	WTSClientProductId, 
-	WTSClientHardwareId, 
-	WTSClientAddress, 
-	WTSClientDisplay, 
-	WTSClientProtocolType, 
+	WTSInitialProgram,
+	WTSApplicationName,
+	WTSWorkingDirectory,
+	WTSOEMId,
+	WTSSessionId,
+	WTSUserName,
+	WTSWinStationName,
+	WTSDomainName,
+	WTSConnectState,
+	WTSClientBuildNumber,
+	WTSClientName,
+	WTSClientDirectory,
+	WTSClientProductId,
+	WTSClientHardwareId,
+	WTSClientAddress,
+	WTSClientDisplay,
+	WTSClientProtocolType,
 } WTS_INFO_CLASS;
 
 #endif
@@ -118,7 +118,7 @@ BOOL InitWTSAPI()
 	if (hDll) {
 		_WTSFreeMemory = (VOID (WINAPI *)(PVOID))GetProcAddress(hDll, "WTSFreeMemory");
 		_WTSQuerySessionInformation = (BOOL (WINAPI *)(HANDLE, DWORD, WTS_INFO_CLASS, PVOID, DWORD*))GetProcAddress(hDll, "WTSQuerySessionInformationW");
-		
+
 		if (_WTSFreeMemory && _WTSQuerySessionInformation) return 1;
 	}
 	return 0;
@@ -169,7 +169,7 @@ static void IdleObject_ReadSettings(IdleObject * obj)
 {
 	obj->useridlecheck = db_get_b(NULL, IDLEMOD, IDL_USERIDLECHECK, 0);
 	obj->minutes = db_get_b(NULL, IDLEMOD, IDL_IDLETIME1ST, 10);
-	obj->aastatus = !db_get_b(NULL, IDLEMOD, IDL_AAENABLE, 1) ? 0 : DBGetContactSettingWord(NULL, IDLEMOD, IDL_AASTATUS, 40075);
+	obj->aastatus = !db_get_b(NULL, IDLEMOD, IDL_AAENABLE, 1) ? 0 : db_get_w(NULL, IDLEMOD, IDL_AASTATUS, 40075);
 	if ( db_get_b(NULL, IDLEMOD, IDL_IDLESOUNDSOFF, 1))
 		obj->aasoundsoff = 1;
 	else
@@ -206,12 +206,12 @@ static int IdleObject_IsUserIdle(IdleObject * obj)
 		CallService(MS_SYSTEM_GETIDLE, 0, (LPARAM)&dwTick);
 		return GetTickCount() - dwTick > (obj->minutes * 60 * 1000);
 	}
-	
+
 	if (MyGetLastInputInfo != NULL) {
 		LASTINPUTINFO ii;
 		ZeroMemory(&ii, sizeof(ii));
 		ii.cbSize = sizeof(ii);
-		if (MyGetLastInputInfo(&ii)) 
+		if (MyGetLastInputInfo(&ii))
 			return GetTickCount() - ii.dwTime > (obj->minutes * 60 * 1000);
 	}
 	else {
@@ -250,7 +250,7 @@ static bool IsScreenSaverRunning(void)
 	return rc != 0;
 }
 
-bool IsFullScreen(void) 
+bool IsFullScreen(void)
 {
 	RECT rcScreen = {0};
 
@@ -270,7 +270,7 @@ bool IsFullScreen(void)
 
 	// check foregroundwindow
 	HWND hWnd = GetForegroundWindow();
-	if (hWnd && hWnd != hWndDesktop && hWnd != hWndShell) 
+	if (hWnd && hWnd != hWndDesktop && hWnd != hWndShell)
 	{
 		TCHAR tszClassName[128] = _T("");
 		GetClassName(hWnd, tszClassName, SIZEOF(tszClassName));
@@ -282,8 +282,8 @@ bool IsFullScreen(void)
 			GetClientRect(hWnd, &rect);
 			ClientToScreen(hWnd, (LPPOINT)&rect);
 			ClientToScreen(hWnd, (LPPOINT)&rect.right);
-			
-			if (EqualRect(&rect, &rectw) && IntersectRect(&recti, &rect, &rcScreen) && 
+
+			if (EqualRect(&rect, &rectw) && IntersectRect(&recti, &rect, &rcScreen) &&
 				EqualRect(&recti, &rcScreen))
 				return true;
 		}
@@ -298,19 +298,19 @@ static void IdleObject_Tick(IdleObject * obj)
 	int  idleType = 0, flags = 0;
 
 	if (obj->useridlecheck && IdleObject_IsUserIdle(obj)) {
-		idleType = 1; idle = true; 
+		idleType = 1; idle = true;
 	}
 	else if (IdleObject_IdleCheckSaver(obj) && IsScreenSaverRunning()) {
-		idleType = 2; idle = true; 
+		idleType = 2; idle = true;
 	}
 	else if (IdleObject_IdleCheckFullScr(obj) && IsFullScreen()) {
-		idleType = 5; idle = true; 
+		idleType = 5; idle = true;
 	}
 	else if (IdleObject_IdleCheckWorkstation(obj) && IsWorkstationLocked()) {
-		idleType = 3; idle = true; 
+		idleType = 3; idle = true;
 	}
 	else if (IdleObject_IdleCheckTerminal(obj) && IsTerminalDisconnected()) {
-		idleType = 4; idle = true; 
+		idleType = 4; idle = true;
 	}
 
 	if (IdleObject_IsPrivacy(obj))
@@ -372,7 +372,7 @@ static INT_PTR CALLBACK IdleOptsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, L
 		for (j = 0; j < SIZEOF(aa_Status); j++)
 			SendDlgItemMessage(hwndDlg, IDC_AASTATUS, CB_ADDSTRING, 0, (LPARAM)pcli->pfnGetStatusModeDescription(aa_Status[j], 0));
 
-		j = IdleGetStatusIndex((WORD)(DBGetContactSettingWord(NULL, IDLEMOD, IDL_AASTATUS, 40075)));
+		j = IdleGetStatusIndex((WORD)(db_get_w(NULL, IDLEMOD, IDL_AASTATUS, 40075)));
 		SendDlgItemMessage(hwndDlg, IDC_AASTATUS, CB_SETCURSEL, j, 0);
 		SendMessage(hwndDlg, WM_USER+2, 0, 0);
 		return TRUE;
@@ -393,23 +393,23 @@ static INT_PTR CALLBACK IdleOptsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, L
 		if (hdr && hdr->code == PSN_APPLY) {
 			int method = IsDlgButtonChecked(hwndDlg, IDC_IDLEONWINDOWS) == BST_CHECKED;
 			int mins = SendDlgItemMessage(hwndDlg, IDC_IDLESPIN, UDM_GETPOS, 0, 0);
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLETIME1ST, (BYTE)(HIWORD(mins) == 0 ? LOWORD(mins) : 10));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_USERIDLECHECK, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLESHORT) == BST_CHECKED));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLEMETHOD, (BYTE)(method ? 0 : 1));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLEONSAVER, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_SCREENSAVER) == BST_CHECKED));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLEONFULLSCR, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_FULLSCREEN) == BST_CHECKED));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLEONLOCK, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_LOCKED) == BST_CHECKED));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLEONTSDC, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLETERMINAL) == BST_CHECKED));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLEPRIVATE, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLEPRIVATE) == BST_CHECKED));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_AAENABLE, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_AASHORTIDLE) == BST_CHECKED?1:0));
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLESTATUSLOCK, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLESTATUSLOCK) == BST_CHECKED?1:0));
+			db_set_b(NULL, IDLEMOD, IDL_IDLETIME1ST, (BYTE)(HIWORD(mins) == 0 ? LOWORD(mins) : 10));
+			db_set_b(NULL, IDLEMOD, IDL_USERIDLECHECK, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLESHORT) == BST_CHECKED));
+			db_set_b(NULL, IDLEMOD, IDL_IDLEMETHOD, (BYTE)(method ? 0 : 1));
+			db_set_b(NULL, IDLEMOD, IDL_IDLEONSAVER, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_SCREENSAVER) == BST_CHECKED));
+			db_set_b(NULL, IDLEMOD, IDL_IDLEONFULLSCR, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_FULLSCREEN) == BST_CHECKED));
+			db_set_b(NULL, IDLEMOD, IDL_IDLEONLOCK, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_LOCKED) == BST_CHECKED));
+			db_set_b(NULL, IDLEMOD, IDL_IDLEONTSDC, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLETERMINAL) == BST_CHECKED));
+			db_set_b(NULL, IDLEMOD, IDL_IDLEPRIVATE, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLEPRIVATE) == BST_CHECKED));
+			db_set_b(NULL, IDLEMOD, IDL_AAENABLE, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_AASHORTIDLE) == BST_CHECKED?1:0));
+			db_set_b(NULL, IDLEMOD, IDL_IDLESTATUSLOCK, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLESTATUSLOCK) == BST_CHECKED?1:0));
 			{
 				int curSel = SendDlgItemMessage(hwndDlg, IDC_AASTATUS, CB_GETCURSEL, 0, 0);
 				if (curSel != CB_ERR) {
-					DBWriteContactSettingWord(NULL, IDLEMOD, IDL_AASTATUS, (WORD)(aa_Status[curSel]));
+					db_set_w(NULL, IDLEMOD, IDL_AASTATUS, (WORD)(aa_Status[curSel]));
 				}
 			}
-			DBWriteContactSettingByte(NULL, IDLEMOD, IDL_IDLESOUNDSOFF, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLESOUNDSOFF) == BST_CHECKED));
+			db_set_b(NULL, IDLEMOD, IDL_IDLESOUNDSOFF, (BYTE)(IsDlgButtonChecked(hwndDlg, IDC_IDLESOUNDSOFF) == BST_CHECKED));
 			// destroy any current idle and reset settings.
 			IdleObject_Destroy(&gIdleObject);
 			IdleObject_Create(&gIdleObject);
@@ -460,7 +460,7 @@ static int IdleOptInit(WPARAM wParam, LPARAM)
 static INT_PTR IdleGetInfo(WPARAM, LPARAM lParam)
 {
 	MIRANDA_IDLE_INFO *mii = (MIRANDA_IDLE_INFO*)lParam;
-	if ( !mii || (mii->cbSize != sizeof(MIRANDA_IDLE_INFO) && mii->cbSize != MIRANDA_IDLE_INFO_SIZE_1))
+	if ( !mii || mii->cbSize != sizeof(MIRANDA_IDLE_INFO))
 		return 1;
 
 	mii->idleTime = gIdleObject.minutes;
@@ -468,17 +468,15 @@ static INT_PTR IdleGetInfo(WPARAM, LPARAM lParam)
 	mii->aaStatus = gIdleObject.aastatus;
 	mii->aaLock = gIdleObject.state&0x20;
 	mii->idlesoundsoff = gIdleObject.aasoundsoff;
-
-	if (mii->cbSize == sizeof(MIRANDA_IDLE_INFO))
-		mii->idleType = gIdleObject.idleType;
+	mii->idleType = gIdleObject.idleType;
 	return 0;
 }
 
 static int IdleModernOptInit(WPARAM wParam, LPARAM)
 {
-	static const int iBoldControls[] = 
+	static const int iBoldControls[] =
 	{
-		IDC_TXT_TITLE1, IDC_TXT_TITLE2, IDC_TXT_TITLE3, 
+		IDC_TXT_TITLE1, IDC_TXT_TITLE2, IDC_TXT_TITLE3,
 		MODERNOPT_CTRL_LAST
 	};
 

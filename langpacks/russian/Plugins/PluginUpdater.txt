@@ -1,0 +1,132 @@
+﻿#muuid {968def4a-bc60-4266-ac08-754ce721db5f}
+;============================================================
+;  File: PluginUpdater.dll
+;  Module: PluginUpdater
+;  Versions: 0.0.1.6
+;============================================================
+[Plugin updater for Miranda NG.]
+Обновление плагинов Miranda NG.
+[Plugin Updater]
+Обновление плагинов
+[Check for plugin updates]
+Проверить обновления плагинов
+[Checking new updates...]
+Проверка обновлений...
+[Downloading plugin updates...]
+Загрузка обновлённых плагинов...
+[No updates found.]
+Обновлений нет.
+[View info]
+Посмотреть инфо
+[An error occured while checking new updates.]
+Во время проверки обновления произошла ошибка.
+[URL for checking updates not found.]
+Ссылка для проверки обновлений не найдена.
+[Downloading version info...]
+Загрузка информации о версиях...
+[No files for update.]
+Нет файлов для обновления.
+[Update checking already started!]
+Обновление уже запущено!
+[Automatically check for plugin updates]
+Автоматически проверять обновления плагинов
+[Plugin updates options]
+Настройки обновления плагинов
+[Remind about not installed plugin updates]
+Напоминать о неустановленных обновлениях
+[Message boxes (*)]
+Диалоги (*)
+[Info messages]
+Инфо сообщения
+[Progress dialogs]
+Диалоги прогресса
+[* Needs popup actions to be enabled]
+* Необходимы включённые действия вспл. окон
+[Not sets for "Message boxes"]
+Не устанавливает для "Диалоги"
+[Update complete. Press Yes to restart Miranda now or No to postpone a restart until the exit.]
+Обновление завершено. Нажмите "Да" для немедленной перезагрузки программы или "Нет", чтобы отложить обновление до выхода.
+[Downloading update...]
+Загрузка обновления...
+[Boxes]
+Окна
+[Message boxes]
+Диалоги
+[Plugin Updater HTTP connection]
+HTTP подключение Plugin Updater
+[Updates found!]
+Найдены обновления!
+[PluginUpdater has detected updated versions of some Miranda components. Click on Details button to view more information.]
+Были найдены обновлённые версии плагинов Miranda NG. Нажмите на кнопку "Детали" для подробной информации.
+['Yes' Button]
+Кнопка 'Да'
+['No' Button]
+Кнопка 'Нет'
+[On startup]
+При запуске
+[(but only once a day)]
+(но только 1 раз в день)
+[Every]
+Каждые
+[days]
+дней
+[Select &all]
+Выбрать всё
+[Select &none]
+Снять выбор
+[Details >>]
+Детали >>
+[<< Details]
+<< Детали
+[Go to Customize -> Hotkeys to change the hotkey]
+Настройка в Тонкая настройка -> Горячие клавиши
+[Update icons]
+Обновлять значки
+[Downloading...]
+Загрузка...
+[Succeeded.]
+Завершено.
+[Failed!]
+Ошибка!
+[Skipped.]
+Пропущено.
+[Will be deleted!]
+Удалено!
+[State]
+Состояние
+[Plugins]
+Плагины
+[Icons]
+Значки
+[Other]
+Другое
+[Files source]
+Источник обновления
+[Stable version]
+Стабильная версия
+[Development version (less stable)]
+Версия в разработке (менее стабильна)
+[Development version with debug symbols]
+Версия в разработке c отладочными символами
+[Custom version]
+Заданная пользователем версия
+[Show full plugin list]
+Список плагинов для установки
+[Component list]
+Список компонентов
+[Here is the complete list of missing Miranda NG components. Check components that you want to download.\n\nClick on info icon to view component info page.]
+Ниже перечислены все отсутствующие компоненты Miranda NG. Выберите компоненты, которые вы хотите установить.\n\nНажмите на значок информации, чтобы перейти на страницу компонента на сайте.
+[Download complete]
+Загрузка завершена
+[Download complete. Do you want go to plugins option page?]
+Загрузка завершена. Перейти на страницу настроек плагинов?
+[List loading already started!]
+Список загружается!
+[List is empty.]
+Список пуст.
+[Plugin info]
+Информация о плагинах
+[Download]
+Загрузка
+[Plugin list]
+Список плагинов

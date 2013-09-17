@@ -17,25 +17,26 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  
 */
 
-
 #include "commons.h"
-
-// Prototypes /////////////////////////////////////////////////////////////////////////////////////
 
 HINSTANCE hInst;
 int hLangpack = 0;
 
+
+// Prototypes ///////////////////////////////////////////////////////////////////////////
+
 PLUGININFOEX pluginInfo={
 	sizeof(PLUGININFOEX),
-	"My Details",
-	PLUGIN_MAKE_VERSION(0,0,1,11),
-	"Shows and allows you to edit your details for all protocols.",
-	"Ricardo Pescuma Domenecci, Drugwash",
-	"",
-	"© 2005-2008 Ricardo Pescuma Domenecci, Drugwash",
-	"http://miranda-ng.org/",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
-	{ 0xa82baeb3, 0xa33c, 0x4036, { 0xb8, 0x37, 0x78, 0x3, 0xa5, 0xb6, 0xc2, 0xab } } // {A82BAEB3-A33C-4036-B837-7803A5B6C2AB}
+	// {A82BAEB3-A33C-4036-B837-7803A5B6C2AB}
+	{0xa82baeb3, 0xa33c, 0x4036, {0xb8, 0x37, 0x78, 0x3, 0xa5, 0xb6, 0xc2, 0xab}}
 };
 
 static IconItem iconList[] = 
@@ -55,25 +56,9 @@ HWND hwndSetNickname;
 long status_msg_dialog_open;
 HWND hwndSetStatusMsg;
 
-// Hook called after init
-static int MainInit(WPARAM wparam,LPARAM lparam);
-static int MainUninit(WPARAM wParam, LPARAM lParam);
-
-// Services
-static INT_PTR PluginCommand_SetMyNicknameUI(WPARAM wParam,LPARAM lParam);
-static INT_PTR PluginCommand_SetMyNickname(WPARAM wParam,LPARAM lParam);
-static INT_PTR PluginCommand_GetMyNickname(WPARAM wParam,LPARAM lParam);
-static INT_PTR PluginCommand_SetMyAvatarUI(WPARAM wParam,LPARAM lParam);
-static INT_PTR PluginCommand_SetMyAvatar(WPARAM wParam,LPARAM lParam);
-static INT_PTR PluginCommand_GetMyAvatar(WPARAM wParam,LPARAM lParam);
-static INT_PTR PluginCommand_SetMyStatusMessageUI(WPARAM wParam,LPARAM lParam);
-static INT_PTR PluginCommand_CycleThroughtProtocols(WPARAM wParam,LPARAM lParam);
-
-
 // Functions //////////////////////////////////////////////////////////////////////////////////////
 
-
-BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	hInst = hinstDLL;
 	return TRUE;
@@ -82,141 +67,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
 extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
 {
 	return &pluginInfo;
-}
-
-extern "C" __declspec(dllexport) const MUUID interfaces[] = { MIID_MDETAILS, MIID_LAST };
-
-extern "C" __declspec(dllexport) int Load()
-{
-	mir_getLP(&pluginInfo);
-
-	// Hook event to load messages and show first one
-	HookEvent(ME_SYSTEM_MODULESLOADED, MainInit);
-	HookEvent(ME_SYSTEM_PRESHUTDOWN, MainUninit);
-
-	nickname_dialog_open = 0;
-	status_msg_dialog_open = 0;
-
-	// Options
-	InitOptions();
-
-	// Register services
-	CreateServiceFunction(MS_MYDETAILS_SETMYNICKNAME, PluginCommand_SetMyNickname);
-	CreateServiceFunction(MS_MYDETAILS_SETMYNICKNAMEUI, PluginCommand_SetMyNicknameUI);
-	CreateServiceFunction(MS_MYDETAILS_SETMYAVATAR, PluginCommand_SetMyAvatar);
-	CreateServiceFunction(MS_MYDETAILS_SETMYAVATARUI, PluginCommand_SetMyAvatarUI);
-	CreateServiceFunction(MS_MYDETAILS_GETMYNICKNAME, PluginCommand_GetMyNickname);
-	CreateServiceFunction(MS_MYDETAILS_GETMYAVATAR, PluginCommand_GetMyAvatar);
-	CreateServiceFunction(MS_MYDETAILS_SETMYSTATUSMESSAGEUI, PluginCommand_SetMyStatusMessageUI);
-	CreateServiceFunction(MS_MYDETAILS_SHOWNEXTPROTOCOL, PluginCommand_ShowNextProtocol);
-	CreateServiceFunction(MS_MYDETAILS_SHOWPREVIOUSPROTOCOL, PluginCommand_ShowPreviousProtocol);
-	CreateServiceFunction(MS_MYDETAILS_SHOWPROTOCOL, PluginCommand_ShowProtocol);
-	CreateServiceFunction(MS_MYDETAILS_CYCLE_THROUGH_PROTOCOLS, PluginCommand_CycleThroughtProtocols);
-
-	return 0;
-}
-
-extern "C" __declspec(dllexport) int Unload(void)
-{
-	DestroyServiceFunction(MS_MYDETAILS_SETMYNICKNAME);
-	DestroyServiceFunction(MS_MYDETAILS_SETMYNICKNAMEUI);
-	DestroyServiceFunction(MS_MYDETAILS_SETMYAVATAR);
-	DestroyServiceFunction(MS_MYDETAILS_SETMYAVATARUI);
-	DestroyServiceFunction(MS_MYDETAILS_GETMYNICKNAME);
-	DestroyServiceFunction(MS_MYDETAILS_GETMYAVATAR);
-	DestroyServiceFunction(MS_MYDETAILS_SETMYSTATUSMESSAGEUI);
-	DestroyServiceFunction(MS_MYDETAILS_SHOWNEXTPROTOCOL);
-	DestroyServiceFunction(MS_MYDETAILS_SHOWPREVIOUSPROTOCOL);
-	DestroyServiceFunction(MS_MYDETAILS_SHOWPROTOCOL);
-	DestroyServiceFunction(MS_MYDETAILS_CYCLE_THROUGH_PROTOCOLS);
-
-	DeInitProtocolData();
-	return 0;
-}
-
-
-static INT_PTR Menu_SetMyAvatarUI(WPARAM wParam,LPARAM lParam)
-{
-	return PluginCommand_SetMyAvatarUI(0, 0);
-}
-
-static INT_PTR Menu_SetMyNicknameUI(WPARAM wParam,LPARAM lParam)
-{
-	return PluginCommand_SetMyNicknameUI(0, 0);
-}
-
-static INT_PTR Menu_SetMyStatusMessageUI(WPARAM wParam,LPARAM lParam)
-{
-	return PluginCommand_SetMyStatusMessageUI(0, 0);
-}
-
-
-// Hook called after init
-static int MainInit(WPARAM wparam,LPARAM lparam) 
-{
-	InitProtocolData();
-
-	// Add options to menu
-   // !!!!!!!! check it later
-	CLISTMENUITEM mi = { sizeof(mi) };
-
-	if (protocols->CanSetAvatars()) {
-		mi.flags = CMIF_TCHAR;
-		mi.popupPosition = 500050000;
-		mi.ptszPopupName = LPGENT("My Details");
-		mi.position = 100001;
-		mi.ptszName = LPGENT("Set My Avatar...");
-		CreateServiceFunction("MENU_" MS_MYDETAILS_SETMYAVATARUI, Menu_SetMyAvatarUI);
-		mi.pszService = "MENU_" MS_MYDETAILS_SETMYAVATARUI;
-		Menu_AddMainMenuItem(&mi);
-	}
-
-	ZeroMemory(&mi,sizeof(mi));
-	mi.cbSize = sizeof(mi);
-	mi.flags = CMIF_TCHAR;
-	mi.popupPosition = 500050000;
-	mi.ptszPopupName = LPGENT("My Details");
-	mi.position = 100002;
-	mi.ptszName = LPGENT("Set My Nickname...");
-	CreateServiceFunction("MENU_" MS_MYDETAILS_SETMYNICKNAMEUI, Menu_SetMyNicknameUI);
-	mi.pszService = "MENU_" MS_MYDETAILS_SETMYNICKNAMEUI;
-	Menu_AddMainMenuItem(&mi);
-
-	ZeroMemory(&mi,sizeof(mi));
-	mi.cbSize = sizeof(mi);
-	mi.flags = CMIF_TCHAR;
-	mi.popupPosition = 500050000;
-	mi.ptszPopupName = LPGENT("My Details");
-	mi.position = 100003;
-	mi.ptszName = LPGENT("Set My Status Message...");
-	CreateServiceFunction("MENU_" MS_MYDETAILS_SETMYSTATUSMESSAGEUI, Menu_SetMyStatusMessageUI);
-	mi.pszService = "MENU_" MS_MYDETAILS_SETMYSTATUSMESSAGEUI;
-	Menu_AddMainMenuItem(&mi);
-
-	// Set protocols to show frame
-	ZeroMemory(&mi,sizeof(mi));
-	mi.cbSize = sizeof(mi);
-	mi.flags = CMIF_TCHAR;
-	mi.popupPosition = 500050000;
-	mi.ptszPopupName = LPGENT("My Details");
-	mi.position = 200001;
-	mi.ptszName = LPGENT("Show next protocol");
-	mi.pszService = MS_MYDETAILS_SHOWNEXTPROTOCOL;
-	Menu_AddMainMenuItem(&mi);
-
-	InitFrames();
-
-	if ( Skin_GetIcon("LISTENING_TO_ICON") == NULL)
-		Icon_Register(hInst, LPGEN("Contact List"), iconList, 1);
-
-	Icon_Register(hInst, LPGEN("My Details"), iconList+1, SIZEOF(iconList)-1);
-	return 0;
-}
-
-static int MainUninit(WPARAM wParam, LPARAM lParam) 
-{
-	DeInitFrames();
-	return 0;
 }
 
 // Set nickname ///////////////////////////////////////////////////////////////////////////////////
@@ -357,10 +207,10 @@ static INT_PTR PluginCommand_SetMyNicknameUI(WPARAM wParam,LPARAM lParam)
 
 static INT_PTR PluginCommand_SetMyNickname(WPARAM wParam,LPARAM lParam)
 {
-	char * proto = (char *)wParam;
+	char *proto = (char*)wParam;
 	if (proto != NULL) {
 		for (int i = 0 ; i < protocols->GetSize() ; i++) {
-			if (_stricmp(protocols->Get(i)->name, proto) == 0) {
+			if ( _stricmp(protocols->Get(i)->name, proto) == 0) {
 				if ( !protocols->Get(i)->CanSetNick())
 					return -2;
 
@@ -378,12 +228,11 @@ static INT_PTR PluginCommand_SetMyNickname(WPARAM wParam,LPARAM lParam)
 
 static INT_PTR PluginCommand_GetMyNickname(WPARAM wParam,LPARAM lParam)
 {
-	TCHAR* ret = (TCHAR*)lParam;
-	char * proto = (char *)wParam;
-
+	TCHAR *ret = (TCHAR*)lParam;
 	if (ret == NULL)
 		return -1;
 
+	char *proto = (char*)wParam;
 	if (proto == NULL) {
 		if (protocols->default_nick != NULL)
 			lstrcpyn(ret, protocols->default_nick, MS_MYDETAILS_GETMYNICKNAME_BUFFER_SIZE);
@@ -529,7 +378,7 @@ static LRESULT CALLBACK StatusMsgEditSubclassProc(HWND hwnd, UINT msg, WPARAM wP
 		break;
 	}
 
-	return CallWindowProc((WNDPROC) GetWindowLong(hwnd, GWLP_USERDATA), hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, StatusMsgEditSubclassProc, msg, wParam, lParam);
 }
 
 struct SetStatusMessageData {
@@ -542,13 +391,8 @@ static INT_PTR CALLBACK DlgProcSetStatusMessage(HWND hwndDlg, UINT msg, WPARAM w
 	switch (msg) {
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
-		SendMessage(GetDlgItem(hwndDlg, IDC_STATUSMESSAGE), EM_LIMITTEXT, 
-			MS_MYDETAILS_GETMYSTATUSMESSAGE_BUFFER_SIZE - 1, 0);
-		{
-			WNDPROC old_proc = (WNDPROC) SetWindowLong(GetDlgItem(hwndDlg, IDC_STATUSMESSAGE), 
-				GWLP_WNDPROC, (LONG) StatusMsgEditSubclassProc);
-			SetWindowLong(GetDlgItem(hwndDlg, IDC_STATUSMESSAGE), GWLP_USERDATA, (long) old_proc);
-		}
+		SendMessage(GetDlgItem(hwndDlg, IDC_STATUSMESSAGE), EM_LIMITTEXT, MS_MYDETAILS_GETMYSTATUSMESSAGE_BUFFER_SIZE - 1, 0);
+		mir_subclassWindow(GetDlgItem(hwndDlg, IDC_STATUSMESSAGE), StatusMsgEditSubclassProc);
 		return TRUE;
 
 	case WMU_SETDATA:
@@ -708,9 +552,138 @@ static INT_PTR PluginCommand_SetMyStatusMessageUI(WPARAM wParam,LPARAM lParam)
 
 static INT_PTR PluginCommand_CycleThroughtProtocols(WPARAM wParam,LPARAM lParam)
 {
-	DBWriteContactSettingByte(NULL,"MyDetails","CicleThroughtProtocols", (BYTE) wParam);
+	db_set_b(NULL,"MyDetails","CicleThroughtProtocols", (BYTE) wParam);
 
 	LoadOptions();
 
+	return 0;
+}
+
+// Services ///////////////////////////////////////////////////////////////////////////////////////
+
+static INT_PTR Menu_SetMyAvatarUI(WPARAM wParam,LPARAM lParam)
+{
+	return PluginCommand_SetMyAvatarUI(0, 0);
+}
+
+static INT_PTR Menu_SetMyNicknameUI(WPARAM wParam,LPARAM lParam)
+{
+	return PluginCommand_SetMyNicknameUI(0, 0);
+}
+
+static INT_PTR Menu_SetMyStatusMessageUI(WPARAM wParam,LPARAM lParam)
+{
+	return PluginCommand_SetMyStatusMessageUI(0, 0);
+}
+
+// Hook called after init
+static int MainInit(WPARAM wparam,LPARAM lparam) 
+{
+	InitProtocolData();
+
+	// Add options to menu
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.popupPosition = 500050000;
+	mi.flags = CMIF_ROOTPOPUP | CMIF_TCHAR;
+	mi.icolibItem = LoadSkinnedIconHandle(SKINICON_OTHER_USERDETAILS);
+	mi.ptszName = LPGENT("My Details");
+	HANDLE hMenuRoot = Menu_AddMainMenuItem(&mi);
+
+	mi.flags = CMIF_CHILDPOPUP | CMIF_TCHAR;
+	mi.ptszPopupName = (TCHAR *)hMenuRoot;
+	mi.popupPosition = 0;
+	mi.icolibItem = NULL;
+
+	if (protocols->CanSetAvatars()) {
+		mi.position = 100001;
+		mi.ptszName = LPGENT("Set My Avatar...");
+		CreateServiceFunction("MENU_" MS_MYDETAILS_SETMYAVATARUI, Menu_SetMyAvatarUI);
+		mi.pszService = "MENU_" MS_MYDETAILS_SETMYAVATARUI;
+		Menu_AddMainMenuItem(&mi);
+	}
+
+	mi.position = 100002;
+	mi.ptszName = LPGENT("Set My Nickname...");
+	CreateServiceFunction("MENU_" MS_MYDETAILS_SETMYNICKNAMEUI, Menu_SetMyNicknameUI);
+	mi.pszService = "MENU_" MS_MYDETAILS_SETMYNICKNAMEUI;
+	Menu_AddMainMenuItem(&mi);
+
+	mi.position = 100003;
+	mi.ptszName = LPGENT("Set My Status Message...");
+	CreateServiceFunction("MENU_" MS_MYDETAILS_SETMYSTATUSMESSAGEUI, Menu_SetMyStatusMessageUI);
+	mi.pszService = "MENU_" MS_MYDETAILS_SETMYSTATUSMESSAGEUI;
+	Menu_AddMainMenuItem(&mi);
+
+	// Set protocols to show frame
+	mi.position = 200001;
+	mi.ptszName = LPGENT("Show next protocol");
+	mi.pszService = MS_MYDETAILS_SHOWNEXTPROTOCOL;
+	Menu_AddMainMenuItem(&mi);
+
+	InitFrames();
+
+	if ( Skin_GetIcon("LISTENING_TO_ICON") == NULL)
+		Icon_Register(hInst, LPGEN("Contact List"), iconList, 1);
+
+	Icon_Register(hInst, LPGEN("My Details"), iconList+1, SIZEOF(iconList)-1);
+	return 0;
+}
+
+static int MainUninit(WPARAM wParam, LPARAM lParam) 
+{
+	DeInitFrames();
+	return 0;
+}
+
+// Load ///////////////////////////////////////////////////////////////////////////////////////////
+
+extern "C" __declspec(dllexport) int Load()
+{
+	mir_getLP(&pluginInfo);
+
+	// Hook event to load messages and show first one
+	HookEvent(ME_SYSTEM_MODULESLOADED, MainInit);
+	HookEvent(ME_SYSTEM_PRESHUTDOWN, MainUninit);
+
+	nickname_dialog_open = 0;
+	status_msg_dialog_open = 0;
+	g_bFramesExist = ServiceExists(MS_CLIST_FRAMES_ADDFRAME) != 0;
+
+	// Options
+	InitOptions();
+
+	// Register services
+	CreateServiceFunction(MS_MYDETAILS_SETMYNICKNAME, PluginCommand_SetMyNickname);
+	CreateServiceFunction(MS_MYDETAILS_SETMYNICKNAMEUI, PluginCommand_SetMyNicknameUI);
+	CreateServiceFunction(MS_MYDETAILS_SETMYAVATAR, PluginCommand_SetMyAvatar);
+	CreateServiceFunction(MS_MYDETAILS_SETMYAVATARUI, PluginCommand_SetMyAvatarUI);
+	CreateServiceFunction(MS_MYDETAILS_GETMYNICKNAME, PluginCommand_GetMyNickname);
+	CreateServiceFunction(MS_MYDETAILS_GETMYAVATAR, PluginCommand_GetMyAvatar);
+	CreateServiceFunction(MS_MYDETAILS_SETMYSTATUSMESSAGEUI, PluginCommand_SetMyStatusMessageUI);
+	CreateServiceFunction(MS_MYDETAILS_SHOWNEXTPROTOCOL, PluginCommand_ShowNextProtocol);
+	CreateServiceFunction(MS_MYDETAILS_SHOWPREVIOUSPROTOCOL, PluginCommand_ShowPreviousProtocol);
+	CreateServiceFunction(MS_MYDETAILS_SHOWPROTOCOL, PluginCommand_ShowProtocol);
+	CreateServiceFunction(MS_MYDETAILS_CYCLE_THROUGH_PROTOCOLS, PluginCommand_CycleThroughtProtocols);
+
+	return 0;
+}
+
+// Unload /////////////////////////////////////////////////////////////////////////////////////////
+
+extern "C" __declspec(dllexport) int Unload(void)
+{
+	DestroyServiceFunction(MS_MYDETAILS_SETMYNICKNAME);
+	DestroyServiceFunction(MS_MYDETAILS_SETMYNICKNAMEUI);
+	DestroyServiceFunction(MS_MYDETAILS_SETMYAVATAR);
+	DestroyServiceFunction(MS_MYDETAILS_SETMYAVATARUI);
+	DestroyServiceFunction(MS_MYDETAILS_GETMYNICKNAME);
+	DestroyServiceFunction(MS_MYDETAILS_GETMYAVATAR);
+	DestroyServiceFunction(MS_MYDETAILS_SETMYSTATUSMESSAGEUI);
+	DestroyServiceFunction(MS_MYDETAILS_SHOWNEXTPROTOCOL);
+	DestroyServiceFunction(MS_MYDETAILS_SHOWPREVIOUSPROTOCOL);
+	DestroyServiceFunction(MS_MYDETAILS_SHOWPROTOCOL);
+	DestroyServiceFunction(MS_MYDETAILS_CYCLE_THROUGH_PROTOCOLS);
+
+	DeInitProtocolData();
 	return 0;
 }

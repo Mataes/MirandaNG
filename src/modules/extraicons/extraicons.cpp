@@ -1,21 +1,23 @@
 /*
- Copyright (C) 2009 Ricardo Pescuma Domenecci
 
- This is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
+Copyright (C) 2009 Ricardo Pescuma Domenecci
+Copyright (C) 2012-13 Miranda NG Project
 
- This is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
+This is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
 
- You should have received a copy of the GNU Library General Public
- License along with this file; see the file license.txt.  If
- not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- Boston, MA 02111-1307, USA.
- */
+This is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Library General Public
+License along with this file; see the file license.txt.  If
+not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+*/
 
 #include "..\..\core\commonheaders.h"
 
@@ -71,12 +73,6 @@ void KillModuleExtraIcons(int hLangpack)
 			delete p;
 		}
 	}
-}
-
-int PreShutdown(WPARAM wParam, LPARAM lParam)
-{
-	DefaultExtraIcons_Unload();
-	return 0;
 }
 
 int GetNumberOfSlots()
@@ -161,7 +157,7 @@ static void LoadGroups(vector<ExtraIconGroup *> &groups)
 			mir_snprintf(setting, SIZEOF(setting), "%d_%d", i, j);
 
 			DBVARIANT dbv;
-			if (!DBGetContactSettingString(NULL, MODULE_NAME "Groups", setting, &dbv)) {
+			if (!db_get_s(NULL, MODULE_NAME "Groups", setting, &dbv)) {
 				if (!IsEmpty(dbv.pszVal)) {
 					BaseExtraIcon *extra = GetExtraIconByName(dbv.pszVal);
 					if (extra != NULL) {
@@ -334,12 +330,8 @@ void fnSetAllExtraIcons(HWND hwndList, HANDLE hContact)
 	if (hContact == NULL)
 		hContact = db_find_first();
 
-	do {
-		HANDLE hItem = hContact;
-		if (hItem == 0)
-			continue;
-
-		ClcCacheEntry* pdnce = (ClcCacheEntry*)cli.pfnGetCacheEntry(hItem);
+	for (; hContact; hContact = db_find_next(hContact)) {
+		ClcCacheEntry* pdnce = (ClcCacheEntry*)cli.pfnGetCacheEntry(hContact);
 		if (pdnce == NULL)
 			continue;
 
@@ -347,7 +339,6 @@ void fnSetAllExtraIcons(HWND hwndList, HANDLE hContact)
 		if (hcontgiven) break;
 		Sleep(0);
 	}
-		while(hContact = db_find_next(hContact));
 
 	g_mutex_bSetAllExtraIconsCycle = 0;
 	cli.pfnInvalidateRect(hwndList, NULL, FALSE);
@@ -372,7 +363,8 @@ INT_PTR ExtraIcon_Register(WPARAM wParam, LPARAM lParam)
 	if (ei->type == EXTRAICON_TYPE_CALLBACK && (ei->ApplyIcon == NULL || ei->RebuildIcons == NULL))
 		return 0;
 
-	TCHAR *desc = Langpack_PcharToTchar(ei->description);
+	ptrT tszDesc( mir_a2t(ei->description));
+	TCHAR *desc = TranslateTH(lParam, tszDesc);
 
 	BaseExtraIcon *extra = GetExtraIconByName(ei->name);
 	if (extra != NULL) {
@@ -536,7 +528,6 @@ void LoadExtraIconsModule()
 
 	// Hooks
 	HookEvent(ME_SYSTEM_MODULESLOADED, &ModulesLoaded);
-	HookEvent(ME_SYSTEM_PRESHUTDOWN, &PreShutdown);
 
 	HookEvent(ME_CLIST_EXTRA_LIST_REBUILD, &ClistExtraListRebuild);
 	HookEvent(ME_CLIST_EXTRA_IMAGE_APPLY, &ClistExtraImageApply);

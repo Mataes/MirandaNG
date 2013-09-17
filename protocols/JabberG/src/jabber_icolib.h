@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007-09  Maxim Mluhov
 Copyright (C) 2007-09  Victor Pavlychko
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -53,7 +54,6 @@ private:
 	};
 
 	OBJLIST<CPoolItem> m_items;
-	HANDLE m_hOnExtraIconsRebuild;
 
 	CPoolItem *FindItemByName(const char *name);
 };

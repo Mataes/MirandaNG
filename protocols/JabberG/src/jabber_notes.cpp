@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007-09  Maxim Mluhov
 Copyright (C) 2007-09  Victor Pavlychko
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -34,7 +35,7 @@ static TCHAR *StrTrimCopy(TCHAR *str)
 	if ( !str) return 0;
 	while (*str && _istspace(*str)) ++str;
 	if ( !*str) return mir_tstrdup(str);
-	
+
 	TCHAR *res = mir_tstrdup(str);
 	for (TCHAR *p = res + lstrlen(res) - 1; p >= res; --p)
 	{
@@ -49,18 +50,18 @@ static TCHAR *StrTrimCopy(TCHAR *str)
 
 CNoteItem::CNoteItem()
 {
-	m_szTitle = 
-	m_szFrom = 
-	m_szText = 
+	m_szTitle =
+	m_szFrom =
+	m_szText =
 	m_szTags =
 	m_szTagsStr = NULL;
 }
 
 CNoteItem::CNoteItem(HXML hXml, TCHAR *szFrom)
 {
-	m_szTitle = 
-	m_szFrom = 
-	m_szText = 
+	m_szTitle =
+	m_szFrom =
+	m_szText =
 	m_szTags =
 	m_szTagsStr = NULL;
 
@@ -103,7 +104,7 @@ void CNoteItem::SetData(TCHAR *title, TCHAR *from, TCHAR *text, TCHAR *tags)
 		if (*szTags == _T(','))
 		{
 			*q++ = _T(',');
-			*p++ = 0; 
+			*p++ = 0;
 			continue;
 		}
 
@@ -148,7 +149,7 @@ void CNoteList::LoadXml(HXML hXml)
 	m_bIsModified = false;
 
 	int count = xmlGetChildCount(hXml);
-	for (int i = 0; i < count; ++i)
+	for (int i = 0; i < count; i++)
 	{
 		CNoteItem *pNote = new CNoteItem(xi.getChild(hXml, i));
 		if (pNote->IsNotEmpty())
@@ -163,7 +164,7 @@ void CNoteList::SaveXml(HXML hXmlParent)
 	m_bIsModified = false;
 	CNoteList &me = *this;
 
-	for (int i = 0; i < getCount(); ++i)
+	for (int i = 0; i < getCount(); i++)
 	{
 		HXML hXmlItem = hXmlParent << XCHILD(_T("note"));
 		hXmlItem << XATTR(_T("from"), me[i].GetFrom()) << XATTR(_T("tags"), me[i].GetTagsStr());
@@ -495,7 +496,7 @@ private:
 	void PopulateTags(HTREEITEM htiRoot, TCHAR *szActiveTag)
 	{
 		LIST<TCHAR> tagSet(5, _tcscmp);
-		for (int i = 0; i < m_proto->m_notes.getCount(); ++i)
+		for (int i = 0; i < m_proto->m_notes.getCount(); i++)
 		{
 			TCHAR *tags = m_proto->m_notes[i].GetTags();
 			for (TCHAR *tag = tags; tag && *tag; tag = tag + lstrlen(tag) + 1)
@@ -531,11 +532,11 @@ private:
 		tvis.hParent = NULL;
 		tvis.hInsertAfter = TVI_LAST;
 		tvis.itemex.mask = TVIF_TEXT|TVIF_PARAM|TVIF_STATE;
-		tvis.itemex.stateMask = 
+		tvis.itemex.stateMask =
 		tvis.itemex.state = TVIS_BOLD|TVIS_EXPANDED;
 		tvis.itemex.pszText = TranslateT("All tags");
 		tvis.itemex.lParam = NULL;
-		
+
 
 		PopulateTags(m_tvFilter.InsertItem(&tvis), szActiveTag);
 		mir_free(szActiveTag);
@@ -550,7 +551,7 @@ private:
 	void ListItems(const TCHAR *tag)
 	{
 		m_lstNotes.ResetContent();
-		for (int i = 0; i < m_proto->m_notes.getCount(); ++i)
+		for (int i = 0; i < m_proto->m_notes.getCount(); i++)
 			if (m_proto->m_notes[i].HasTag(tag))
 				InsertItem(m_proto->m_notes[i]);
 		EnableControls();
@@ -630,8 +631,8 @@ private:
 	void btnSave_OnClick(CCtrlButton *)
 	{
 		XmlNodeIq iq(_T("set"));
-		HXML query = iq << XQUERY(_T(JABBER_FEAT_PRIVATE_STORAGE));
-		HXML storage = query << XCHILDNS(_T("storage"), _T(JABBER_FEAT_MIRANDA_NOTES));
+		HXML query = iq << XQUERY(JABBER_FEAT_PRIVATE_STORAGE);
+		HXML storage = query << XCHILDNS(_T("storage"), JABBER_FEAT_MIRANDA_NOTES);
 		m_proto->m_notes.SaveXml(storage);
 		m_proto->m_ThreadInfo->send(iq);
 		EnableControls();
@@ -743,8 +744,8 @@ void CJabberProto::ProcessIncomingNote(CNoteItem *pNote, bool ok)
 		m_notes.insert(pNote);
 
 		XmlNodeIq iq(_T("set"));
-		HXML query = iq << XQUERY(_T(JABBER_FEAT_PRIVATE_STORAGE));
-		HXML storage = query << XCHILDNS(_T("storage"), _T(JABBER_FEAT_MIRANDA_NOTES));
+		HXML query = iq << XQUERY(JABBER_FEAT_PRIVATE_STORAGE);
+		HXML storage = query << XCHILDNS(_T("storage"), JABBER_FEAT_MIRANDA_NOTES);
 		m_notes.SaveXml(storage);
 		m_ThreadInfo->send(iq);
 	} else
@@ -762,7 +763,7 @@ void CJabberProto::ProcessOutgoingNote(CNoteItem *pNote, bool ok)
 	}
 
 	TCHAR buf[1024];
-	mir_sntprintf(buf, SIZEOF(buf), _T("Incoming note: %s\n\n%s\nTags: %s"), 
+	mir_sntprintf(buf, SIZEOF(buf), _T("Incoming note: %s\n\n%s\nTags: %s"),
 		pNote->GetTitle(), pNote->GetText(), pNote->GetTagsStr());
 
 	JabberCapsBits jcb = GetResourceCapabilites(pNote->GetFrom(), TRUE);
@@ -775,16 +776,16 @@ void CJabberProto::ProcessOutgoingNote(CNoteItem *pNote, bool ok)
 	XmlNode m(_T("message"));
 	m << XATTR(_T("type"), _T("chat")) << XATTR(_T("to"), pNote->GetFrom()) << XATTRID(nMsgId);
 	m << XCHILD(_T("body"), buf);
-	HXML hXmlItem = m << XCHILDNS(_T("x"), _T(JABBER_FEAT_MIRANDA_NOTES)) << XCHILD(_T("note"));
+	HXML hXmlItem = m << XCHILDNS(_T("x"), JABBER_FEAT_MIRANDA_NOTES) << XCHILD(_T("note"));
 	hXmlItem << XATTR(_T("tags"), pNote->GetTagsStr());
 	hXmlItem << XCHILD(_T("title"), pNote->GetTitle());
 	hXmlItem << XCHILD(_T("text"), pNote->GetText());
 
 	// message receipts XEP priority
 	if (jcb & JABBER_CAPS_MESSAGE_RECEIPTS)
-		m << XCHILDNS(_T("request"), _T(JABBER_FEAT_MESSAGE_RECEIPTS));
+		m << XCHILDNS(_T("request"), JABBER_FEAT_MESSAGE_RECEIPTS);
 	else if (jcb & JABBER_CAPS_MESSAGE_EVENTS) {
-		HXML x = m << XCHILDNS(_T("x"), _T(JABBER_FEAT_MESSAGE_EVENTS));
+		HXML x = m << XCHILDNS(_T("x"), JABBER_FEAT_MESSAGE_EVENTS);
 		x << XCHILD(_T("delivered")); x << XCHILD(_T("offline"));
 	}
 	else
@@ -824,7 +825,7 @@ bool CJabberProto::OnIncomingNote(const TCHAR *szFrom, HXML hXml)
 	cle.pszService = szService;
 	cle.ptszTooltip = TranslateT("Incoming note");
 	CallService(MS_CLIST_ADDEVENT, 0, (LPARAM)&cle);
-	
+
 	return true;
 }
 
@@ -852,14 +853,11 @@ INT_PTR __cdecl CJabberProto::OnMenuHandleNotes(WPARAM, LPARAM)
 
 INT_PTR __cdecl CJabberProto::OnMenuSendNote(WPARAM wParam, LPARAM)
 {
-	if ( !wParam) return 0;
-
-	TCHAR szClientJid[ JABBER_MAX_JID_LEN ];
-	GetClientJID(JGetStringT((HANDLE)wParam, "jid"), szClientJid, SIZEOF(szClientJid));
-
-	CNoteItem *pItem = new CNoteItem(NULL, szClientJid);
-	CJabberDlgBase *pDlg = new CJabberDlgNoteItem(this, pItem, &CJabberProto::ProcessOutgoingNote);
-	pDlg->Show();
+	if (wParam) {
+		CNoteItem *pItem = new CNoteItem(NULL, ptrT( getTStringA((HANDLE)wParam, "jid")));
+		CJabberDlgBase *pDlg = new CJabberDlgNoteItem(this, pItem, &CJabberProto::ProcessOutgoingNote);
+		pDlg->Show();
+	}
 
 	return 0;
 }

@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007-09  Maxim Mluhov
 Copyright (C) 2007-09  Victor Pavlychko
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -78,7 +79,7 @@ typedef struct tagLVTILEINFO
 	UINT cColumns;
 	PUINT puColumns;
 } LVTILEINFO, *PLVTILEINFO;
-typedef struct 
+typedef struct
 {
 	UINT cbSize;
 	DWORD dwFlags;
@@ -1210,7 +1211,7 @@ public:
 #define WM_PROTO_ACTIVATE             (WM_USER + 102)
 #define WM_PROTO_LAST                 (WM_USER + 200)
 
-typedef struct tagPROTO_INTERFACE PROTO_INTERFACE;
+struct PROTO_INTERFACE;
 
 class CProtoIntDlgBase : public CDlgBase
 {

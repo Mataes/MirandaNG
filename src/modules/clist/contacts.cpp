@@ -1,12 +1,17 @@
 /*
-Miranda IM
+
+Miranda IM: the free IM client for Microsoft* Windows*
+
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
+listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -19,16 +24,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "..\..\core\commonheaders.h"
 
 #define NAMEORDERCOUNT 8
-static TCHAR* nameOrderDescr[ NAMEORDERCOUNT ] = 
+static TCHAR* nameOrderDescr[ NAMEORDERCOUNT ] =
 {
-	_T("My custom name (not moveable)"), 
-	_T("Nick"), 
-	_T("FirstName"), 
-	_T("E-mail"), 
-	_T("LastName"), 
-	_T("Username"), 
-	_T("FirstName LastName"), 
-	_T("'(Unknown Contact)' (not moveable)")
+	LPGENT("My custom name (not moveable)"),
+	LPGENT("Nick"),
+	LPGENT("FirstName"),
+	LPGENT("E-mail"),
+	LPGENT("LastName"),
+	LPGENT("Username"),
+	LPGENT("FirstName LastName"),
+	LPGENT("'(Unknown Contact)' (not moveable)")
 };
 
 BYTE nameOrder[NAMEORDERCOUNT];
@@ -44,9 +49,9 @@ static int GetDatabaseString(CONTACTINFO *ci, const char* setting, DBVARIANT* db
 	}
 
 	if (ci->dwFlag & CNF_UNICODE)
-		return DBGetContactSettingWString(ci->hContact, ci->szProto, setting, dbv);
+		return db_get_ws(ci->hContact, ci->szProto, setting, dbv);
 
-	return DBGetContactSettingString(ci->hContact, ci->szProto, setting, dbv);
+	return db_get_s(ci->hContact, ci->szProto, setting, dbv);
 }
 
 static int ProcessDatabaseValueDefault(CONTACTINFO *ci, const char* setting)
@@ -65,7 +70,7 @@ static int ProcessDatabaseValueDefault(CONTACTINFO *ci, const char* setting)
 		db_free(&dbv);
 	}
 
-	if (DBGetContactSetting(ci->hContact, ci->szProto, setting, &dbv))
+	if (db_get(ci->hContact, ci->szProto, setting, &dbv))
 		return 1;
 
 	switch (dbv.type) {
@@ -141,7 +146,7 @@ static INT_PTR GetContactInfo(WPARAM, LPARAM lParam) {
 			if ( !GetDatabaseString(ci, (ci->dwFlag & 0x7F) == CNF_COUNTRY ? "CountryName" : "CompanyCountryName", &dbv))
 				return 0;
 
-			if ( !DBGetContactSetting(ci->hContact, ci->szProto, (ci->dwFlag & 0x7F) == CNF_COUNTRY ? "Country" : "CompanyCountry", &dbv)) {
+			if ( !db_get(ci->hContact, ci->szProto, (ci->dwFlag & 0x7F) == CNF_COUNTRY ? "Country" : "CompanyCountry", &dbv)) {
 				if (dbv.type == DBVT_WORD) {
 					int i, countryCount;
 					struct CountryListEntry *countries;
@@ -390,23 +395,16 @@ static INT_PTR CALLBACK ContactOpts(HWND hwndDlg, UINT msg, WPARAM, LPARAM lPara
 				case 0:
 					if (((LPNMHDR)lParam)->code == PSN_APPLY)
 					{
-						DBCONTACTWRITESETTING cws;
 						TVITEM tvi;
-						int i;
-						cws.szModule = "Contact";
-						cws.szSetting = "NameOrder";
-						cws.value.type = DBVT_BLOB;
-						cws.value.cpbVal = SIZEOF(nameOrderDescr);
-						cws.value.pbVal = nameOrder;
 						tvi.hItem = TreeView_GetRoot( GetDlgItem(hwndDlg, IDC_NAMEORDER));
-						i=0;
+						int i=0;
 						while (tvi.hItem != NULL) {
 							tvi.mask = TVIF_PARAM | TVIF_HANDLE;
 							TreeView_GetItem( GetDlgItem(hwndDlg, IDC_NAMEORDER), &tvi);
 							nameOrder[i++] = (BYTE)tvi.lParam;
 							tvi.hItem = TreeView_GetNextSibling( GetDlgItem(hwndDlg, IDC_NAMEORDER), tvi.hItem);
 						}
-						CallService(MS_DB_CONTACT_WRITESETTING, (WPARAM)(HANDLE)NULL, (LPARAM)&cws);
+						db_set_blob(NULL, "Contact", "NameOrder", nameOrder, SIZEOF(nameOrderDescr));
 						CallService(MS_CLIST_INVALIDATEDISPLAYNAME, (WPARAM)INVALID_HANDLE_VALUE, 0);
 					}
 					break;
@@ -508,7 +506,7 @@ int LoadContactsModule(void)
 		nameOrder[i] = i;
 
 	DBVARIANT dbv;
-	if ( !DBGetContactSetting(NULL, "Contact", "NameOrder", &dbv)) {
+	if ( !db_get(NULL, "Contact", "NameOrder", &dbv)) {
 		CopyMemory(nameOrder, dbv.pbVal, dbv.cpbVal);
 		db_free(&dbv);
 	}

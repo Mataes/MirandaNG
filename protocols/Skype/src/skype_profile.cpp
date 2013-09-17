@@ -1,255 +1,272 @@
-#include "skype_proto.h"
+#include "skype.h"
+#include <sstream>
 
-void CSkypeProto::UpdateOwnAvatar()
+void CSkypeProto::UpdateProfileAvatar(SEObject *obj, HANDLE hContact)
 {
-	uint newTS = 0;
-	this->account->GetPropAvatarTimestamp(newTS);
-	DWORD oldTS = this->GetSettingDword("AvatarTS");
-	wchar_t *path = this->GetContactAvatarFilePath(NULL);
-	SEBinary data;
-	this->account->GetPropAvatarImage(data);
-	if ((newTS > oldTS) || (!newTS && data.size() > 0 && _waccess(path, 0) == -1) || (newTS && _waccess(path, 0) == -1)) //hack for avatars without timestamp
+	uint newTS = obj->GetUintProp(/* *::P_AVATAR_TIMESTAMP */ 182);
+	//if (!newTS) return; //uncomment when skypekit will be work correctly
+
+	DWORD oldTS = this->getDword(hContact, "AvatarTS", 0);
+
+	ptrW path( this->GetContactAvatarFilePath(hContact));
+	bool isAvatarFileExists = CSkypeProto::FileExists(path);
+	if (newTS > oldTS || !isAvatarFileExists)
 	{
-		FILE* fp = _wfopen(path, L"wb");
-		if (fp)
+		SEBinary data = obj->GetBinProp(/* *::P_AVATAR_IMAGE */ 37);
+		if (data.size() > 0)
 		{
-			fwrite(data.data(), sizeof(char), data.size(), fp);
-			fclose(fp);
+			FILE *fp = ::_wfopen(path, L"wb");
+			if (fp)
+			{
+				::fwrite(data.data(), sizeof(char), data.size(), fp);
+				::fclose(fp);
 
-			this->SetSettingDword("AvatarTS", newTS);
+				this->setDword(hContact, "AvatarTS", newTS);
 
-			PROTO_AVATAR_INFORMATIONW pai = {0};
-			pai.cbSize = sizeof(pai);
-			pai.format = PA_FORMAT_JPEG;
-			pai.hContact = NULL;
-			wcscpy(pai.filename, path);
-		
-			this->SendBroadcast(ACKTYPE_AVATAR, ACKRESULT_SUCCESS, (HANDLE)&pai, 0);
+				if (hContact)
+				{
+					PROTO_AVATAR_INFORMATIONW pai = { sizeof(pai) };
+					pai.format = PA_FORMAT_JPEG;
+					pai.hContact = hContact;
+					::wcscpy(pai.filename, path);
+						
+					this->SendBroadcast(hContact, ACKTYPE_AVATAR, ACKRESULT_SUCCESS, (HANDLE)&pai, 0);
+				}
+				else
+				{
+					BYTE digest[16];
+					::mir_md5_hash((BYTE*)data.data(), (int)data.size(), digest);
+					::db_set_blob(hContact, this->m_szModuleName, "AvatarHash", digest, 16);
+
+					::CallService(MS_AV_SETMYAVATART, (WPARAM)m_szModuleName, (LPARAM)path);
+				}
+			}
+		}
+		else if (isAvatarFileExists)
+		{
+			::_wremove(path);
+			this->SendBroadcast(hContact, ACKTYPE_AVATAR, ACKRESULT_SUCCESS, NULL, 0);
 		}
 	}
-	delete path;
 }
 
-void CSkypeProto::UpdateOwnBirthday()
+void CSkypeProto::UpdateProfileAboutText(SEObject *obj, HANDLE hContact)
 {
-	uint data;
-	this->account->GetPropBirthday(data);
-	TCHAR date[9];
+	ptrW aboutText(::mir_utf8decodeW(obj->GetStrProp(/* *::P_ABOUT */ 18)));
+	if ( !::wcslen(aboutText))
+		this->delSetting(hContact, "About");
+	else
+		this->setTString(hContact, "About", aboutText);
+}
+
+void CSkypeProto::UpdateProfileBirthday(SEObject *obj, HANDLE hContact)
+{
+	uint data = obj->GetUintProp(/* *::P_BIRTHDAY */ 7);
 	if (data > 0)
 	{
+		TCHAR date[20];
 		_itot_s(data, date, 10);
+
 		INT day, month, year;
 		_stscanf(date, _T("%04d%02d%02d"), &year, &month, &day);
-		this->SetSettingByte("BirthDay", day);
-		this->SetSettingByte("BirthMonth", month);
-		this->SetSettingWord("BirthYear", year);
 
 		SYSTEMTIME sToday = {0};
 		GetLocalTime(&sToday);
+
+		if (sToday.wYear > year) return;
+		else if(sToday.wYear == year && sToday.wMonth > month) return;
+		else if(sToday.wYear == year && sToday.wMonth == month && sToday.wDay >= day) return;
+
+		this->setByte(hContact, "BirthDay", day);
+		this->setByte(hContact, "BirthMonth", month);
+		this->setWord(hContact, "BirthYear", year);
+
 		int nAge = sToday.wYear - year;
 		if (sToday.wMonth < month || (sToday.wMonth == month && sToday.wDay < day))
 			nAge--;
 		if (nAge)
-			this->SetSettingWord("Age", ( WORD )nAge );
+			this->setWord(hContact, "Age", (WORD)nAge );
 	}
 	else
 	{
-		this->DeleteSetting("BirthDay");
-		this->DeleteSetting("BirthMonth");
-		this->DeleteSetting("BirthYear");
-		this->DeleteSetting("Age");
+		this->delSetting(hContact, "BirthDay");
+		this->delSetting(hContact, "BirthMonth");
+		this->delSetting(hContact, "BirthYear");
+		this->delSetting(hContact, "Age");
 	}
 }
 
-void CSkypeProto::UpdateOwnCity()
+void CSkypeProto::UpdateProfileCity(SEObject *obj, HANDLE hContact)
 {
-	SEString data;
-	this->account->GetPropCity(data);
-	wchar_t* city = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(city, L"") == 0)
-		this->DeleteSetting("City");
+	ptrW city(::mir_utf8decodeW(obj->GetStrProp(/* *::P_CITY */ 12)));
+	if ( !::wcslen(city))
+		this->delSetting(hContact, "City");
 	else
-		this->SetSettingString("City", city);
-	::mir_free(city);
+		this->setTString(hContact, "City", city);
 }
 
-void CSkypeProto::UpdateOwnCountry()
+void CSkypeProto::UpdateProfileCountry(SEObject *obj, HANDLE hContact)
 {
-	// country (en, ru, etc)
-	SEString data;
-	char* country;
-	this->account->GetPropCountry(data);
-	char* isocode = ::mir_utf8decodeA((const char*)data);
-	if (strcmp(isocode, "") == 0)
-	{
-		country = (char*)CallService(MS_UTILS_GETCOUNTRYBYNUMBER, 0xFFFF, 0);
-		this->SetSettingString("Country", _A2T(country));
-	}
+	char *country;
+	ptrA isocode(::mir_strdup(obj->GetStrProp(/* *::P_COUNTRY */ 10)));
+	if ( !::strlen(isocode))
+		this->delSetting(hContact, "Country");
 	else
 	{
-		country = (char*)CallService(MS_UTILS_GETCOUNTRYBYISOCODE, (WPARAM)isocode, 0);
-		this->SetSettingString("Country", _A2T(country));
+		country = (char *)CallService(MS_UTILS_GETCOUNTRYBYISOCODE, (WPARAM)isocode, 0);
+		this->setTString(hContact, "Country", _A2T(country));
 	}
-	::mir_free(isocode);
 }
 
-void CSkypeProto::UpdateOwnEmails()
+void CSkypeProto::UpdateProfileEmails(SEObject *obj, HANDLE hContact)
 {
-	SEString data;
-	this->account->GetPropEmails(data);
-	wchar_t* emails = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(emails, L"") == 0)
+	ptrW emails(::mir_utf8decodeW(obj->GetStrProp(/* *::P_EMAILS */ 16)));
+	if (::wcscmp(emails, L"") == 0)
 	{
-		this->DeleteSetting("e-mail0");
-		this->DeleteSetting("e-mail1");
-		this->DeleteSetting("e-mail2");
+		this->delSetting(hContact, "e-mail0");
+		this->delSetting(hContact, "e-mail1");
+		this->delSetting(hContact, "e-mail2");
 	}
 	else
 	{
-		wchar_t* p = wcstok(emails, L" ");
-		if (p == NULL)
+		StringList emls = emails;
+		for (size_t i = 0; i < emls.size(); i++)
 		{
-			this->SetSettingString("e-mail0", emails);
-		}
-		else
-		{
-			this->SetSettingString("e-mail0", p);
-			p = wcstok(NULL, L" ");
-			if (p) this->SetSettingString("e-mail1", p);
-			p = wcstok(NULL, L" ");
-			if (p) this->SetSettingString("e-mail2", p);
+			std::stringstream ss;
+			ss << "e-mail" << i;
+			std::string key = ss.str();
+		
+			this->setTString(hContact, key.c_str(), emls[i]);
 		}
 	}
-	::mir_free(emails);
 }
 
-void CSkypeProto::UpdateOwnGender()
+void CSkypeProto::UpdateProfileFullName(SEObject *obj, HANDLE hContact)
 {
-	uint data;
-	this->account->GetPropGender(data);
+	ptrW fullname(::mir_utf8decodeW(obj->GetStrProp(/* *::P_FULLNAME */ 5)));
+	if ( !::wcslen(fullname))
+	{
+		this->delSetting(hContact, "FirstName");
+		this->delSetting(hContact, "LastName");
+	}
+	else
+	{
+		StringList names = fullname;
+
+		this->setTString(hContact, "FirstName", names[0]);
+		if (names.size() > 1)
+			this->setTString(hContact, "LastName", names[1]);
+	}
+}
+
+void CSkypeProto::UpdateProfileGender(SEObject *obj, HANDLE hContact)
+{
+	uint data = obj->GetUintProp(/* *::P_GENDER */ 8);
 	if (data)
-		this->SetSettingByte("Gender", (BYTE)(data == 1 ? 'M' : 'F'));
+		this->setByte(hContact, "Gender", (BYTE)(data == 1 ? 'M' : 'F'));
 	else
-		this->DeleteSetting("Gender");
+		this->delSetting(hContact, "Gender");
 }
 
-void CSkypeProto::UpdateOwnHomepage()
+void CSkypeProto::UpdateProfileHomepage(SEObject *obj, HANDLE hContact)
 {
-	SEString data;
-	this->account->GetPropHomepage(data);
-	wchar_t* homepage = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(homepage, L"") == 0)
-		this->DeleteSetting("Homepage");
+	ptrW homepage(::mir_utf8decodeW(obj->GetStrProp(/* *::P_HOMEPAGE */ 17)));
+	if (::wcscmp(homepage, L"") == 0)
+		this->delSetting(hContact, "Homepage");
 	else
-		this->SetSettingString("Homepage", homepage);
-	::mir_free(homepage);
+		this->setTString(hContact, "Homepage", homepage);
 }
 
-void CSkypeProto::UpdateOwnLanguages()
+void CSkypeProto::UpdateProfileLanguages(SEObject *obj, HANDLE hContact)
 {
-	// languages (en, ru, etc), space searated
-	SEString data;
-	this->account->GetPropLanguages(data);
-	char* isocode = ::mir_utf8decodeA((const char*)data);
-	if (strcmp(isocode, "") == 0)
+	ptrW isocodes(::mir_utf8decodeW(obj->GetStrProp(/* *::P_LANGUAGES */ 9)));
+
+	this->delSetting(hContact, "Language1");
+	this->delSetting(hContact, "Language2");
+	this->delSetting(hContact, "Language3");
+
+	StringList langs = isocodes;
+	for (size_t i = 0; i < langs.size(); i++)
 	{
-		this->DeleteSetting("Language1");
-	}
-	else
-	{
-		for (int i = 0; i < SIZEOF(CSkypeProto::languages); i++)
-			if ( lstrcmpiA((char*)isocode, CSkypeProto::languages[i].ISOcode) == 0)
-			{
-				this->SetSettingString("Language1", ::mir_a2u(CSkypeProto::languages[i].szName));
-				break;
-			}
-	}
-	::mir_free(isocode);
-}
-
-void CSkypeProto::UpdateOwnMobilePhone()
-{
-	SEString data;
-	this->account->GetPropPhoneMobile(data);
-	wchar_t* phone = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(phone, L"") == 0)
-		this->DeleteSetting("Cellular");
-	else
-		this->SetSettingString("Cellular", phone);
-	::mir_free(phone);
-}
-
-void CSkypeProto::UpdateOwnNickName()
-{
-	SEString data;
-	this->account->GetPropFullname(data);
-	wchar_t* nick = ::mir_utf8decodeW((const char*)data);
-	this->SetSettingString("Nick", nick);
-	::mir_free(nick);
-}
-
-void CSkypeProto::UpdateOwnPhone()
-{
-	SEString data;
-	this->account->GetPropPhoneHome(data);
-	wchar_t* phone = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(phone, L"") == 0)
-		this->DeleteSetting("Phone");
-	else
-		this->SetSettingString("Phone", phone);
-	::mir_free(phone);
-}
-
-void CSkypeProto::UpdateOwnOfficePhone()
-{
-	SEString data;
-	this->account->GetPropPhoneOffice(data);
-	wchar_t* phone = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(phone, L"") == 0)
-		this->DeleteSetting("CompanyPhone");
-	else
-		this->SetSettingString("CompanyPhone", phone);
-	::mir_free(phone);
-}
-
-void CSkypeProto::UpdateOwnState()
-{
-	SEString data;
-	this->account->GetPropProvince(data);
-	wchar_t* state = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(state, L"") == 0)
-		this->DeleteSetting("State");
-	else
-		this->SetSettingString("State", state);
-	::mir_free(state);
-}
-
-void CSkypeProto::UpdateOwnStatusMessage()
-{
-	uint newTS = 0;
-	this->account->GetPropMoodTimestamp(newTS);
-	DWORD oldTS = this->GetSettingDword("XStatusTS");
-	if (newTS > oldTS)
-	{
-		SEString data;
-		this->account->GetPropMoodText(data);
-		wchar_t* status = ::mir_utf8decodeW((const char*)data);
-		if (wcscmp(status, L"") == 0)
-			this->DeleteSetting("XStatusMsg");
-		else
-			this->SetSettingString("XStatusMsg", status);
-		::mir_free(status);
-		this->SetSettingDword("XStatusTS", newTS);
+		if (CSkypeProto::languages.count(langs[i]))
+		{
+			std::stringstream ss;
+			ss << "Language" << i + 1;
+			std::string key = ss.str();
+			std::wstring val = CSkypeProto::languages[langs[i]];
+			this->setTString(hContact, key.c_str(), val.c_str());
+		}
 	}
 }
 
-void CSkypeProto::UpdateOwnTimezone()
+void CSkypeProto::UpdateProfileMobilePhone(SEObject *obj, HANDLE hContact)
 {
-	uint data;
-	this->account->GetPropTimezone(data);
+	ptrW phone(::mir_utf8decodeW(obj->GetStrProp(/* *::P_PHONE_MOBILE */ 15)));
+	if ( !::wcslen(phone))
+		this->delSetting(hContact, "Cellular");
+	else
+		this->setTString(hContact, "Cellular", phone);
+}
+
+void CSkypeProto::UpdateProfileNick(SEObject *obj, HANDLE hContact)
+{
+	ptrW nick;
+	if (hContact)
+	{
+		CContact *contact = (CContact *)obj;
+		nick = ::mir_utf8decodeW(contact->GetNick());
+	}
+	else
+		nick = ::mir_utf8decodeW(obj->GetStrProp(Account::P_FULLNAME));
+
+	if ( !::wcslen(nick))
+		this->delSetting(hContact, "Nick");
+	else
+		this->setTString(hContact, "Nick", nick);
+}
+
+void CSkypeProto::UpdateProfilePhone(SEObject *obj, HANDLE hContact)
+{
+	ptrW phone(::mir_utf8decodeW(obj->GetStrProp(/* *::P_PHONE_MOBILE */ 13)));
+	if ( !::wcslen(phone))
+		this->delSetting(hContact, "Phone");
+	else
+		this->setTString(hContact, "Phone", phone);
+}
+
+void CSkypeProto::UpdateProfileOfficePhone(SEObject *obj, HANDLE hContact)
+{
+	ptrW phone(::mir_utf8decodeW(obj->GetStrProp(/* *::P_PHONE_OFFICE */ 14)));
+	if ( !::wcslen(phone))
+		this->delSetting(hContact, "CompanyPhone");
+	else
+		this->setTString(hContact, "CompanyPhone", phone);		
+}
+
+void CSkypeProto::UpdateProfileState(SEObject *obj, HANDLE hContact)
+{
+	ptrW state(::mir_utf8decodeW(obj->GetStrProp(/* *::P_PROVINCE */ 11)));
+	if ( !::wcslen(state))
+		this->delSetting(hContact, "State");
+	else
+		this->setTString(hContact, "State", state);		
+}
+
+void CSkypeProto::UpdateProfileStatusMessage(SEObject *obj, HANDLE hContact)
+{
+	ptrW statusMessage(::mir_utf8decodeW(obj->GetStrProp(/* *::P_MOOD_TEXT */ 26)));
+	if ( !::wcslen(statusMessage))
+		this->delSetting(hContact, "XStatusMsg");
+	else
+		this->setTString(hContact, "XStatusMsg", statusMessage);
+}
+
+void CSkypeProto::UpdateProfileTimezone(SEObject *obj, HANDLE hContact)
+{
+	LONG data = obj->GetUintProp(/* *::P_TIMEZONE */ 27);
 	if (data > 0)
 	{
-		uint diffmin = (data - 24*3600) / 60;
+		LONG diffmin = (data - 24*3600) / 60;
 		wchar_t sign[2];
 		if (diffmin < 0)
 			::wcscpy(sign, L"-");
@@ -259,121 +276,46 @@ void CSkypeProto::UpdateOwnTimezone()
 		uint mins = ::abs((int)(diffmin % 60));
 		wchar_t timeshift[7];
 		::mir_sntprintf(timeshift, SIZEOF(timeshift), _T("%s%d:%02d"), sign, hours, mins);
-
+			
 		wchar_t *szMin = wcschr(timeshift, ':');
 		int nTz = ::_wtoi(timeshift) * -2;
 		nTz += (nTz < 0 ? -1 : 1) * (szMin ? _ttoi( szMin + 1 ) / 30 : 0);
 
-		TIME_ZONE_INFORMATION tzinfo;
-		if (::GetTimeZoneInformation(&tzinfo) == TIME_ZONE_ID_DAYLIGHT)
-			nTz -= tzinfo.DaylightBias / 30;
-
-		this->SetSettingByte("Timezone", (signed char)nTz);
+		this->setByte(hContact, "Timezone", (signed char)nTz);
 	}
-	else
-		this->DeleteSetting("TimeZone");
+	else this->delSetting(hContact, "Timezone");
 }
 
-void CSkypeProto::UpdateOwnAbout()
+void CSkypeProto::UpdateProfile(SEObject *obj, HANDLE hContact)
 {
-	SEString data;
-	this->account->GetPropAbout(data);
-	wchar_t* about = ::mir_utf8decodeW((const char*)data);
-	if (wcscmp(about, L"") == 0)
-		this->DeleteSetting("About");
-	else
-		this->SetSettingString("About", about);
-	::mir_free(about);
-}
-void CSkypeProto::UpdateOwnProfile()
-{
-	uint newTS = 0;
-	this->account->GetPropProfileTimestamp(newTS);
-	DWORD oldTS = this->GetSettingDword("ProfileTS");
-	if (newTS > oldTS)
+	this->Log(L"Updating profile for %p", hContact);
+	this->UpdateProfileAvatar(obj, hContact);
+
+	uint newTS = hContact ? obj->GetUintProp(Contact::P_PROFILE_TIMESTAMP) : obj->GetUintProp(Account::P_PROFILE_TIMESTAMP);
+	this->UpdateProfileAboutText(obj, hContact);
+	this->UpdateProfileBirthday(obj, hContact);
+	this->UpdateProfileCity(obj, hContact);
+	this->UpdateProfileCountry(obj, hContact);
+	this->UpdateProfileEmails(obj, hContact);
+	this->UpdateProfileFullName(obj, hContact);
+	this->UpdateProfileGender(obj, hContact);
+	this->UpdateProfileHomepage(obj, hContact);
+	this->UpdateProfileLanguages(obj, hContact);
+	this->UpdateProfileMobilePhone(obj, hContact);
+	this->UpdateProfileNick(obj, hContact);
+	this->UpdateProfilePhone(obj, hContact);
+	this->UpdateProfileOfficePhone(obj, hContact);
+	this->UpdateProfileState(obj, hContact);
+	this->UpdateProfileStatusMessage(obj, hContact);
+	this->UpdateProfileTimezone(obj, hContact);
+
+	if (hContact)
 	{
-		this->UpdateOwnAvatar();
-		this->UpdateOwnBirthday();
-		this->UpdateOwnCity();
-		this->UpdateOwnCountry();
-		this->UpdateOwnEmails();
-		this->UpdateOwnGender();
-		this->UpdateOwnHomepage();
-		this->UpdateOwnLanguages();
-		this->UpdateOwnMobilePhone();
-		this->UpdateOwnNickName();
-		this->UpdateOwnPhone();
-		this->UpdateOwnOfficePhone();
-		this->UpdateOwnState();
-		this->UpdateOwnStatusMessage();
-		this->UpdateOwnTimezone();
-		this->UpdateOwnAbout();
-
-		this->SetSettingDword("ProfileTS", newTS);
+		ContactRef ref(obj->getOID());
+		this->UpdateContactClient(hContact, ref);
+		this->UpdateContactLastEventDate(hContact, ref);
+		this->UpdateContactOnlineSinceTime(hContact, ref);
 	}
-}
 
-void CSkypeProto::OnProfileChanged(int prop)
-{
-	switch(prop)
-	{
-	case CAccount::P_AVATAR_IMAGE:
-	case CAccount::P_AVATAR_TIMESTAMP:
-		this->UpdateOwnAvatar();
-		break;
-	case CAccount::P_BIRTHDAY:
-		this->UpdateOwnBirthday();
-		break;
-	case CAccount::P_CITY:
-		this->UpdateOwnCity();
-		break;
-	case CAccount::P_COUNTRY:
-		this->UpdateOwnCountry();
-		break;
-	case CAccount::P_EMAILS:
-		this->UpdateOwnEmails();
-		break;
-	case CAccount::P_GENDER:
-		this->UpdateOwnGender();
-		break;
-	case CAccount::P_HOMEPAGE:
-		this->UpdateOwnHomepage();
-		break;
-	case CAccount::P_LANGUAGES:
-		this->UpdateOwnLanguages();
-		break;
-	case CAccount::P_MOOD_TEXT:
-	case CAccount::P_MOOD_TIMESTAMP:
-		this->UpdateOwnStatusMessage();
-		break;
-	case CAccount::P_PHONE_HOME:
-		this->UpdateOwnPhone();
-		break;
-	case CAccount::P_PHONE_MOBILE:
-		this->UpdateOwnMobilePhone();
-		break;
-	case CAccount::P_PHONE_OFFICE:
-		this->UpdateOwnOfficePhone();
-		break;
-	case CAccount::P_PROFILE_TIMESTAMP:
-		this->UpdateOwnProfile();
-		break;
-	case CAccount::P_PROVINCE:
-		this->UpdateOwnState();
-		break;
-	case CAccount::P_TIMEZONE:
-		this->UpdateOwnTimezone();
-		break;
-	case CAccount::P_FULLNAME:
-		this->UpdateOwnNickName();
-		break;
-	case CAccount::P_ABOUT:
-		this->UpdateOwnAbout();
-		break;
-	}
-}
-
-void __cdecl CSkypeProto::LoadOwnInfo(void*)
-{
-	this->UpdateOwnProfile();
+	this->setDword(hContact, "ProfileTS", newTS);
 }

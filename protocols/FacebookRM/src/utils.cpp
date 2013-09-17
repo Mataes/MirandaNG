@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,11 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 std::string utils::url::encode(const std::string &s)
 {
-	char *encoded = reinterpret_cast<char*>(CallService(MS_NETLIB_URLENCODE, 0, reinterpret_cast<LPARAM>(s.c_str())));
-	std::string ret = encoded;
-	HeapFree(GetProcessHeap(), 0, encoded);
-
-	return ret;
+	return (char*)ptrA(mir_urlEncode(s.c_str()));
 }
 
 std::string utils::url::decode(std::string data)
@@ -38,6 +34,7 @@ std::string utils::url::decode(std::string data)
 	utils::text::replace_all(&data, "%3F", "?");
 	utils::text::replace_all(&data, "%3D", "=");
 	utils::text::replace_all(&data, "%26", "&");
+	utils::text::replace_all(&data, "%3A", ":");
 
 	return data;
 }
@@ -57,7 +54,7 @@ std::string utils::time::mili_timestamp()
 	return timestamp;
 }
 
-DWORD utils::time::fix_timestamp(double mili_timestamp)
+DWORD utils::time::fix_timestamp(unsigned __int64 mili_timestamp)
 {
 	// If it is really mili_timestamp
 	if (mili_timestamp > 100000000000) {
@@ -73,6 +70,11 @@ DWORD utils::conversion::to_timestamp(std::string data)
 		timestamp = static_cast<DWORD>(::time(NULL));
 	}
 	return timestamp;
+}
+
+struct tm *utils::conversion::fbtime_to_timeinfo(unsigned __int64 timestamp) {
+	time_t time = utils::time::fix_timestamp(timestamp);
+	return localtime(&time);
 }
 
 std::string utils::conversion::to_string(void* data, WORD type)
@@ -350,13 +352,13 @@ std::string utils::text::slashu_to_utf8(std::string data)
 	return new_string;
 }
 
-std::string utils::text::trim(std::string data)
+std::string utils::text::trim(std::string data, bool rtrim)
 {
 	std::string spaces = " \t\r\n"; // TODO: include "nbsp"?
-	std::string::size_type begin = data.find_first_not_of(spaces);
+	std::string::size_type begin = rtrim ? 0 : data.find_first_not_of(spaces);
 	std::string::size_type end = data.find_last_not_of(spaces) + 1;
 
-	return (begin != std::string::npos) ? data.substr(begin, end - begin) : "";
+	return (end != std::string::npos) ? data.substr(begin, end - begin) : "";
 }
 
 void utils::text::explode(std::string str, std::string separator, std::vector<std::string>* results)
@@ -404,7 +406,7 @@ std::string utils::text::source_get_value(std::string* data, unsigned int argume
 	return ret;
 }
 
-std::string utils::text::source_get_value2(std::string* data, const char *term, const char *endings)
+std::string utils::text::source_get_value2(std::string* data, const char *term, const char *endings, bool wholeString)
 {
 	std::string::size_type start = 0, end = 0;
 	std::string ret;
@@ -416,10 +418,51 @@ std::string utils::text::source_get_value2(std::string* data, const char *term, 
 		end = data->find_first_of(endings, start);
 		if (end != std::string::npos) {
 			ret = data->substr(start, end - start);
+		} else if (wholeString) {
+			ret = data->substr(start);
 		}
 	}
 
 	return ret;
+}
+
+std::string utils::text::source_get_form_data(std::string* data)
+{
+	std::string values = "";
+
+	std::string::size_type start = 0;
+	start = data->find("<input", start);
+	while (start != std::string::npos) {		
+		start++;
+		std::string attr = "", value = "";
+
+		std::string::size_type pos = data->find("name=\"", start);
+		if (pos != std::string::npos) {
+			pos += 6;
+			std::string::size_type end = data->find("\"", pos);
+			if (end != std::string::npos)
+				attr = data->substr(pos, end - pos);
+
+			
+			end = data->find(">", pos);
+			pos = data->find("value=\"", pos);
+			if (pos != std::string::npos && end != std::string::npos && pos < end) {
+				pos += 7;
+				end = data->find("\"", pos);
+				if (end != std::string::npos)
+					value = data->substr(pos, end - pos);
+			}
+		}
+
+		if (!attr.empty()) {
+			if (!values.empty())
+				values += "&";
+			values += attr + "=" + value;
+		}
+		start = data->find("<input", start);
+	}
+
+	return values;
 }
 
 int utils::number::random()
@@ -445,49 +488,4 @@ int utils::debug::log(std::string file_name, std::string text)
 	out.close();
 
 	return EXIT_SUCCESS;
-}
-
-void __fastcall utils::mem::detract(char** str)
-{
-	utils::mem::detract((void**)str);
-}
-
-void __fastcall utils::mem::detract(void** p)
-{
-	utils::mem::detract((void*)(*p));
-}
-
-void __fastcall utils::mem::detract(void* p)
-{
-	mir_free(p);
-}
-
-void* __fastcall utils::mem::allocate(size_t size)
-{
-	return mir_calloc(size);
-}
-
-struct
-{
-	char *ext;
-	int fmt;
-}
-static formats[] = {
-	{ ".png",  PA_FORMAT_PNG  },
-	{ ".jpg",  PA_FORMAT_JPEG },
-	{ ".jpeg", PA_FORMAT_JPEG },
-	{ ".ico",  PA_FORMAT_ICON },
-	{ ".bmp",  PA_FORMAT_BMP  },
-	{ ".gif",  PA_FORMAT_GIF  },
-};
-
-int ext_to_format(const std::string &ext)
-{
-	for(size_t i=0; i<SIZEOF(formats); i++)
-	{
-		if(ext == formats[i].ext)
-			return formats[i].fmt;
-	}
-	
-	return PA_FORMAT_UNKNOWN;
 }

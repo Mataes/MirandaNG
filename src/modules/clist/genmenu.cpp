@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2010 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "genmenu.h"
 
@@ -315,15 +316,16 @@ int MO_ModifyMenuItem(PMO_IntMenuItem menuHandle, PMO_MenuItem pmi)
 	}
 
 	if (pmi->flags & CMIM_FLAGS) {
-		oldflags = pimi->mi.flags & (CMIF_ROOTHANDLE | CMIF_ICONFROMICOLIB);
+		oldflags = (pimi->mi.flags & CMIF_ROOTHANDLE);
 		pimi->mi.flags = (pmi->flags & ~CMIM_ALL) | oldflags;
 	}
 
 	if ((pmi->flags & CMIM_ICON) && !bIconsDisabled) {
-		if (pimi->mi.flags & CMIF_ICONFROMICOLIB) {
-			HICON hIcon = IcoLib_GetIconByHandle(pmi->hIcolibItem, false);
+		HANDLE hIcolibItem = IcoLib_IsManaged(pmi->hIcon);
+		if (hIcolibItem) {
+			HICON hIcon = IcoLib_GetIconByHandle(hIcolibItem, false);
 			if (hIcon != NULL) {
-				pimi->hIcolibItem = pmi->hIcolibItem;
+				pimi->hIcolibItem = hIcolibItem;
 				pimi->iconId = ImageList_ReplaceIcon(pimi->parent->m_hMenuIcons, pimi->iconId, hIcon);
 				IcoLib_ReleaseIcon(hIcon, 0);
 			}
@@ -349,7 +351,7 @@ int MO_ModifyMenuItem(PMO_IntMenuItem menuHandle, PMO_MenuItem pmi)
 }
 
 //wparam MenuItemHandle
-//return ownerdata useful to free ownerdata before delete menu item, 
+//return ownerdata useful to free ownerdata before delete menu item,
 //NULL on error.
 INT_PTR MO_MenuItemGetOwnerData(WPARAM wParam, LPARAM)
 {
@@ -510,7 +512,7 @@ INT_PTR MO_CreateNewMenuObject(WPARAM, LPARAM lParam)
 	p->Name = mir_strdup(pmp->name);
 	p->CheckService = mir_strdup(pmp->CheckService);
 	p->ExecService = mir_strdup(pmp->ExecService);
-	p->m_hMenuIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 
+	p->m_hMenuIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
 		(IsWinVerXPPlus() ? ILC_COLOR32 : ILC_COLOR16) | ILC_MASK, 15, 100);
 	g_menus.insert(p);
 	return p->id;
@@ -647,20 +649,14 @@ PMO_IntMenuItem MO_AddNewMenuItem(HANDLE menuobjecthandle, PMO_MenuItem pmi)
 		p->mi.ptszName = mir_a2u(pmi->pszName);
 
 	if (pmi->hIcon != NULL && !bIconsDisabled) {
-		if (pmi->flags & CMIF_ICONFROMICOLIB) {
-			HICON hIcon = IcoLib_GetIconByHandle(pmi->hIcolibItem, false);
+		HANDLE hIcolibItem = IcoLib_IsManaged(pmi->hIcon);
+		if (hIcolibItem != NULL) {
+			HICON hIcon = IcoLib_GetIconByHandle(hIcolibItem, false);
 			p->iconId = ImageList_AddIcon(pmo->m_hMenuIcons, hIcon);
-			p->hIcolibItem = pmi->hIcolibItem;
+			p->hIcolibItem = hIcolibItem;
 			IcoLib_ReleaseIcon(hIcon, 0);
 		}
-		else {
-			HANDLE hIcolibItem = IcoLib_IsManaged(pmi->hIcon);
-			if (hIcolibItem) {
-				p->iconId = ImageList_AddIcon(pmo->m_hMenuIcons, pmi->hIcon);
-				p->hIcolibItem = hIcolibItem;
-			}
-			else p->iconId = ImageList_AddIcon(pmo->m_hMenuIcons, pmi->hIcon);
-		}
+		else p->iconId = ImageList_AddIcon(pmo->m_hMenuIcons, pmi->hIcon);
 	}
 
 	if (p->mi.root == HGENMENU_ROOT)
@@ -929,7 +925,7 @@ HMENU BuildRecursiveMenu(HMENU hMenu, PMO_IntMenuItem pRootMenu, ListParam *para
 
 			// mi.pszName
 			mir_snprintf(DBString, SIZEOF(DBString), "%s_name", menuItemName);
-			if ( !DBGetContactSettingTString(NULL, MenuNameItems, DBString, &dbv)) {
+			if ( !db_get_ts(NULL, MenuNameItems, DBString, &dbv)) {
 				if (_tcslen(dbv.ptszVal) > 0)
 					replaceStrT(pmi->CustomName, dbv.ptszVal);
 				db_free(&dbv);
@@ -1054,7 +1050,7 @@ int OnIconLibChanges(WPARAM, LPARAM)
 
 static int MO_RegisterIcon(PMO_IntMenuItem pmi, void*)
 {
-	TCHAR *uname = (pmi->UniqName) ? mir_a2t(pmi->UniqName) : mir_tstrdup(pmi->CustomName), 
+	TCHAR *uname = (pmi->UniqName) ? mir_a2t(pmi->UniqName) : mir_tstrdup(pmi->CustomName),
 		*descr = GetMenuItemText(pmi);
 
 	if ( !uname && !descr)
@@ -1064,7 +1060,7 @@ static int MO_RegisterIcon(PMO_IntMenuItem pmi, void*)
 		HICON hIcon = ImageList_GetIcon(pmi->parent->m_hMenuIcons, pmi->iconId, 0);
 
 		TCHAR sectionName[256];
-		mir_sntprintf(sectionName, SIZEOF(sectionName), _T("Menu Icons/%s"), (TCHAR*)_A2T(pmi->parent->Name));
+		mir_sntprintf(sectionName, SIZEOF(sectionName), LPGENT("Menu Icons") _T("/%s"), (TCHAR*)_A2T(pmi->parent->Name));
 
 		char iconame[256];
 		mir_snprintf(iconame, sizeof(iconame), "genmenu_%s_%s", pmi->parent->Name, uname && *uname ? uname : descr);

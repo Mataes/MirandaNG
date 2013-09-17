@@ -8,23 +8,14 @@
  */
 
 #include "yamn.h"
-#include "debug.h"
-#ifdef YAMN_DEBUG
-#include "version.h"
 
-#if defined (WIN9X)
-	#define YAMN_VER	"YAMN " YAMN_VERSION_C " (Win9x)"
-#elif defined(WIN2IN1)
-	#define YAMN_VER	"YAMN " YAMN_VERSION_C " (2in1)"
-#else
-	#define YAMN_VER	"YAMN " YAMN_VERSION_C " (WinNT)"
-#endif
+#ifdef _DEBUG
 
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
 
 TCHAR DebugUserDirectory[MAX_PATH] = _T(".");
-LPCRITICAL_SECTION FileAccessCS;
+CRITICAL_SECTION FileAccessCS;
 
 #ifdef DEBUG_SYNCHRO
 TCHAR DebugSynchroFileName2[]=_T("%s\\yamn-debug.synchro.log");
@@ -49,28 +40,24 @@ void InitDebug()
 #if defined (DEBUG_SYNCHRO) || defined (DEBUG_COMM) || defined (DEBUG_DECODE)
 	TCHAR DebugFileName[MAX_PATH];
 #endif
-	if (FileAccessCS==NULL)
-	{
-		FileAccessCS=new CRITICAL_SECTION;
-		InitializeCriticalSection(FileAccessCS);
-	}
+	InitializeCriticalSection(&FileAccessCS);
 
 #ifdef DEBUG_SYNCHRO
-	_stprintf(DebugFileName,DebugSynchroFileName2,DebugUserDirectory);
+	mir_sntprintf(DebugFileName, SIZEOF(DebugFileName), DebugSynchroFileName2, DebugUserDirectory);
 	
 	SynchroFile=CreateFile(DebugFileName,GENERIC_WRITE,FILE_SHARE_WRITE|FILE_SHARE_READ,NULL,CREATE_ALWAYS,0,NULL);
 	DebugLog(SynchroFile,"Synchro debug file created by %s\n",YAMN_VER);
 #endif
 
 #ifdef DEBUG_COMM
-	_stprintf(DebugFileName,DebugCommFileName2,DebugUserDirectory);
+	mir_sntprintf(DebugFileName, SIZEOF(DebugFileName), DebugCommFileName2, DebugUserDirectory);
 
 	CommFile=CreateFile(DebugFileName,GENERIC_WRITE,FILE_SHARE_WRITE|FILE_SHARE_READ,NULL,CREATE_ALWAYS,0,NULL);
 	DebugLog(CommFile,"Communication debug file created by %s\n",YAMN_VER);
 #endif
 
 #ifdef DEBUG_DECODE
-	_stprintf(DebugFileName,DebugDecodeFileName2,DebugUserDirectory);
+	mir_sntprintf(DebugFileName, SIZEOF(DebugFileName), DebugDecodeFileName2, DebugUserDirectory);
 
 	DecodeFile=CreateFile(DebugFileName,GENERIC_WRITE,FILE_SHARE_WRITE|FILE_SHARE_READ,NULL,CREATE_ALWAYS,0,NULL);
 	DebugLog(DecodeFile,"Decoding kernel debug file created by %s\n",YAMN_VER);
@@ -79,6 +66,7 @@ void InitDebug()
 
 void UnInitDebug()
 {
+	DeleteCriticalSection(&FileAccessCS);
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"File is being closed normally.");
 	CloseHandle(SynchroFile);
@@ -105,13 +93,13 @@ void DebugLog(HANDLE File,const char *fmt,...)
 	va_start(vararg,fmt);
 	str=(char *)malloc(strsize=65536);
 	mir_snprintf(tids, SIZEOF(tids), "[%x]",GetCurrentThreadId());
-	while(_vsnprintf(str,strsize,fmt,vararg)==-1)
+	while(mir_vsnprintf(str, strsize, fmt, vararg)==-1)
 		str=(char *)realloc(str,strsize+=65536);
 	va_end(vararg);
-	EnterCriticalSection(FileAccessCS);
+	EnterCriticalSection(&FileAccessCS);
 	WriteFile(File,tids,(DWORD)strlen(tids),&Written,NULL);
 	WriteFile(File,str,(DWORD)strlen(str),&Written,NULL);
-	LeaveCriticalSection(FileAccessCS);
+	LeaveCriticalSection(&FileAccessCS);
 	free(str);
 }
 
@@ -126,13 +114,13 @@ void DebugLogW(HANDLE File,const WCHAR *fmt,...)
 	va_start(vararg,fmt);
 	str=(WCHAR *)malloc((strsize=65536)*sizeof(WCHAR));
 	mir_snprintf(tids, SIZEOF(tids), "[%x]",GetCurrentThreadId());
-	while(_vsnwprintf(str,strsize,fmt,vararg)==-1)
+	while(mir_vsnwprintf(str, strsize, fmt, vararg)==-1)
 		str=(WCHAR *)realloc(str,(strsize+=65536)*sizeof(WCHAR));
 	va_end(vararg);
-	EnterCriticalSection(FileAccessCS);
+	EnterCriticalSection(&FileAccessCS);
 	WriteFile(File,tids,(DWORD)strlen(tids),&Written,NULL);
 	WriteFile(File,str,(DWORD)wcslen(str)*sizeof(WCHAR),&Written,NULL);
-	LeaveCriticalSection(FileAccessCS);
+	LeaveCriticalSection(&FileAccessCS);
 	free(str);
 }
 

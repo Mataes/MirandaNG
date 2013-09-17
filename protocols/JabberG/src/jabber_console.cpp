@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
 Copyright (C) 2007     Victor Pavlychko
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,7 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "jabber.h"
-#include <richedit.h>
 
 #define JCPF_IN    0x01UL
 #define JCPF_OUT   0x02UL
@@ -106,13 +106,13 @@ bool CJabberProto::RecursiveCheckFilter(HXML node, DWORD flags)
 {
 	int i;
 
-	for (i = 0; i < xmlGetAttrCount(node); ++i)
+	for (i = 0; i < xmlGetAttrCount(node); i++)
 	{
 		if (JabberStrIStr(xmlGetAttr(node,i), m_filterInfo.pattern))
 			return true;
 	}
 
-	for (i = 0; i < xmlGetChildCount(node); ++i) {
+	for (i = 0; i < xmlGetChildCount(node); i++) {
 		if (RecursiveCheckFilter(xmlGetChild(node, i), flags))
 			return true;
 	}
@@ -232,7 +232,7 @@ static void sttRtfAppendXml(StringBuf *buf, HXML node, DWORD flags, int indent)
 
 	for (i = 0; i < xmlGetAttrCount(node); i++)
 	{
-		TCHAR* attr = (TCHAR*)xmlGetAttrName(node, i);
+		TCHAR *attr = (TCHAR*)xmlGetAttrName(node, i);
 		sttAppendBufRaw(buf, " ");
 		sttAppendBufRaw(buf, RTF_BEGINATTRNAME);
 		sttAppendBufW(buf, attr);
@@ -267,7 +267,7 @@ static void sttRtfAppendXml(StringBuf *buf, HXML node, DWORD flags, int indent)
 			sttAppendBufRaw(buf, RTF_ENDTEXT);
 	}
 
-	for (i = 0; i < xmlGetChildCount(node) ; ++i)
+	for (i = 0; i < xmlGetChildCount(node) ; i++)
 		sttRtfAppendXml(buf, xmlGetChild(node ,i), flags & ~(JCPF_IN|JCPF_OUT), indent+1);
 
 	if (xmlGetChildCount(node) || xmlGetText(node))
@@ -303,7 +303,7 @@ DWORD CALLBACK sttStreamInCallback(DWORD_PTR dwCookie, LPBYTE pbBuff, LONG cb, L
 	return 0;
 }
 
-static void sttJabberConsoleRebuildStrings(CJabberProto* ppro, HWND hwndCombo)
+static void sttJabberConsoleRebuildStrings(CJabberProto *ppro, HWND hwndCombo)
 {
 	int i;
 	JABBER_LIST_ITEM *item = NULL;
@@ -314,9 +314,9 @@ static void sttJabberConsoleRebuildStrings(CJabberProto* ppro, HWND hwndCombo)
 
 	SendMessage(hwndCombo, CB_RESETCONTENT, 0, 0);
 
-	for (i = 0; g_JabberFeatCapPairs[i].szFeature; ++i)
+	for (i = 0; g_JabberFeatCapPairs[i].szFeature; i++)
 		SendMessage(hwndCombo, CB_ADDSTRING, 0, (LPARAM)g_JabberFeatCapPairs[i].szFeature);
-	for (i = 0; g_JabberFeatCapPairsExt[i].szFeature; ++i)
+	for (i = 0; g_JabberFeatCapPairsExt[i].szFeature; i++)
 		SendMessage(hwndCombo, CB_ADDSTRING, 0, (LPARAM)g_JabberFeatCapPairsExt[i].szFeature);
 
 	LISTFOREACH_NODEF(i, ppro, LIST_ROSTER)
@@ -369,20 +369,18 @@ void CJabberDlgConsole::OnInitDialog()
 {
 	CSuper::OnInitDialog();
 
-	int i;
-
 	WindowSetIcon(m_hwnd, m_proto, "xmlconsole");
 	SendDlgItemMessage(m_hwnd, IDC_CONSOLE, EM_SETEDITSTYLE, SES_EXTENDBACKCOLOR, SES_EXTENDBACKCOLOR);
 	SendDlgItemMessage(m_hwnd, IDC_CONSOLE, EM_EXLIMITTEXT, 0, 0x80000000);
 
-	m_proto->m_filterInfo.msg = db_get_b(NULL, m_proto->m_szModuleName, "consoleWnd_msg", TRUE);
-	m_proto->m_filterInfo.presence = db_get_b(NULL, m_proto->m_szModuleName, "consoleWnd_presence", TRUE);
-	m_proto->m_filterInfo.iq = db_get_b(NULL, m_proto->m_szModuleName, "consoleWnd_iq", TRUE);
-	m_proto->m_filterInfo.type = (TFilterInfo::Type)db_get_b(NULL, m_proto->m_szModuleName, "consoleWnd_ftype", TFilterInfo::T_OFF);
+	m_proto->m_filterInfo.msg = m_proto->getByte("consoleWnd_msg", TRUE);
+	m_proto->m_filterInfo.presence = m_proto->getByte("consoleWnd_presence", TRUE);
+	m_proto->m_filterInfo.iq = m_proto->getByte("consoleWnd_iq", TRUE);
+	m_proto->m_filterInfo.type = (TFilterInfo::Type)m_proto->getByte("consoleWnd_ftype", TFilterInfo::T_OFF);
 
 	DBVARIANT dbv;
 	*m_proto->m_filterInfo.pattern = 0;
-	if ( !m_proto->JGetStringT(NULL, "consoleWnd_fpattern", &dbv)) {
+	if ( !m_proto->getTString("consoleWnd_fpattern", &dbv)) {
 		lstrcpyn(m_proto->m_filterInfo.pattern, dbv.ptszVal, SIZEOF(m_proto->m_filterInfo.pattern));
 		db_free(&dbv);
 	}
@@ -399,14 +397,15 @@ void CJabberDlgConsole::OnInitDialog()
 		BOOL pushed;
 	} buttons[] =
 	{
-		{IDC_BTN_MSG,				"Messages",		"pl_msg_allow",		true,	m_proto->m_filterInfo.msg},
-		{IDC_BTN_PRESENCE,			"Presences",	"pl_prin_allow",	true,	m_proto->m_filterInfo.presence},
-		{IDC_BTN_IQ,				"Queries",		"pl_iq_allow",		true,	m_proto->m_filterInfo.iq},
-		{IDC_BTN_FILTER,			"Filter mode",	"sd_filter_apply",	true,	FALSE},
-		{IDC_BTN_FILTER_REFRESH,	"Refresh list",	"sd_nav_refresh",	false,	FALSE},
+		{IDC_BTN_MSG,            "Messages",     "pl_msg_allow",    true,  m_proto->m_filterInfo.msg},
+		{IDC_BTN_PRESENCE,       "Presences",    "pl_prin_allow",   true,  m_proto->m_filterInfo.presence},
+		{IDC_BTN_IQ,             "Queries",      "pl_iq_allow",     true,  m_proto->m_filterInfo.iq},
+		{IDC_BTN_FILTER,         "Filter mode",  "sd_filter_apply", true,  FALSE},
+		{IDC_BTN_FILTER_REFRESH, "Refresh list", "sd_nav_refresh",  false, FALSE},
 	};
-	for (i = 0; i < SIZEOF(buttons); ++i)
-	{
+
+	int i;
+	for (i = 0; i < SIZEOF(buttons); i++) {
 		SendDlgItemMessage(m_hwnd, buttons[i].idc, BM_SETIMAGE, IMAGE_ICON, (LPARAM)m_proto->LoadIconEx(buttons[i].icon));
 		SendDlgItemMessage(m_hwnd, buttons[i].idc, BUTTONSETASFLATBTN, TRUE, 0);
 		SendDlgItemMessage(m_hwnd, buttons[i].idc, BUTTONADDTOOLTIP, (WPARAM)buttons[i].title, 0);
@@ -414,13 +413,13 @@ void CJabberDlgConsole::OnInitDialog()
 		if (buttons[i].pushed) CheckDlgButton(m_hwnd, buttons[i].idc, TRUE);
 	}
 
-	for (i = 0; i < SIZEOF(filter_modes); ++i)
-		if (filter_modes[i].type == m_proto->m_filterInfo.type)
-		{
+	for (i = 0; i < SIZEOF(filter_modes); i++)
+		if (filter_modes[i].type == m_proto->m_filterInfo.type) {
 			g_ReleaseIcon((HICON)SendDlgItemMessage(m_hwnd, IDC_BTN_FILTER, BM_SETIMAGE, IMAGE_ICON, (LPARAM)m_proto->LoadIconEx(filter_modes[i].icon)));
 			SendDlgItemMessage(m_hwnd, IDC_BTN_FILTER, BM_SETIMAGE, IMAGE_ICON, (LPARAM)m_proto->LoadIconEx(filter_modes[i].icon));
 			break;
 		}
+
 	EnableWindow(GetDlgItem(m_hwnd, IDC_CB_FILTER), (m_proto->m_filterInfo.type == TFilterInfo::T_OFF) ? FALSE : TRUE);
 	EnableWindow(GetDlgItem(m_hwnd, IDC_BTN_FILTER_REFRESH), (m_proto->m_filterInfo.type == TFilterInfo::T_OFF) ? FALSE : TRUE);
 
@@ -429,11 +428,11 @@ void CJabberDlgConsole::OnInitDialog()
 
 void CJabberDlgConsole::OnClose()
 {
-	db_set_b(NULL, m_proto->m_szModuleName, "consoleWnd_msg", m_proto->m_filterInfo.msg);
-	db_set_b(NULL, m_proto->m_szModuleName, "consoleWnd_presence", m_proto->m_filterInfo.presence);
-	db_set_b(NULL, m_proto->m_szModuleName, "consoleWnd_iq", m_proto->m_filterInfo.iq);
-	db_set_b(NULL, m_proto->m_szModuleName, "consoleWnd_ftype", m_proto->m_filterInfo.type);
-	m_proto->JSetStringT(NULL, "consoleWnd_fpattern", m_proto->m_filterInfo.pattern);
+	m_proto->setByte("consoleWnd_msg", m_proto->m_filterInfo.msg);
+	m_proto->setByte("consoleWnd_presence", m_proto->m_filterInfo.presence);
+	m_proto->setByte("consoleWnd_iq", m_proto->m_filterInfo.iq);
+	m_proto->setByte("consoleWnd_ftype", m_proto->m_filterInfo.type);
+	m_proto->setTString("consoleWnd_fpattern", m_proto->m_filterInfo.pattern);
 
 	Utils_SaveWindowPosition(m_hwnd, NULL, m_proto->m_szModuleName, "consoleWnd_");
 	DestroyWindow(m_hwnd);
@@ -604,7 +603,7 @@ INT_PTR CJabberDlgConsole::DlgProc(UINT msg, WPARAM wParam, LPARAM lParam)
 				{
 					int i;
 					HMENU hMenu = CreatePopupMenu();
-					for (i = 0; i < SIZEOF(filter_modes); ++i)
+					for (i = 0; i < SIZEOF(filter_modes); i++)
 					{
 						AppendMenu(hMenu,
 							MF_STRING | ((filter_modes[i].type == m_proto->m_filterInfo.type) ? MF_CHECKED : 0),
@@ -619,7 +618,7 @@ INT_PTR CJabberDlgConsole::DlgProc(UINT msg, WPARAM wParam, LPARAM lParam)
 					if (res)
 					{
 						m_proto->m_filterInfo.type = (TFilterInfo::Type)(res - 1);
-						for (i = 0; i < SIZEOF(filter_modes); ++i)
+						for (i = 0; i < SIZEOF(filter_modes); i++)
 							if (filter_modes[i].type == m_proto->m_filterInfo.type)
 							{
 								g_ReleaseIcon((HICON)SendDlgItemMessage(m_hwnd, IDC_BTN_FILTER, BM_SETIMAGE, IMAGE_ICON, (LPARAM)m_proto->LoadIconEx(filter_modes[i].icon)));
@@ -687,7 +686,7 @@ void CJabberProto::ConsoleInit()
 {
 	LoadLibraryA("riched20.dll");
 	InitializeCriticalSection(&m_filterInfo.csPatternLock);
-	m_hThreadConsole = JForkThreadEx(&CJabberProto::ConsoleThread, 0, &m_dwConsoleThreadId);
+	m_hThreadConsole = ForkThreadEx(&CJabberProto::ConsoleThread, 0, &m_dwConsoleThreadId);
 }
 
 void CJabberProto::ConsoleUninit()

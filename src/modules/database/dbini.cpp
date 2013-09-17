@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people 
 listed in contributors.txt.
 
@@ -22,12 +22,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "..\..\core\commonheaders.h"
+#include "profilemanager.h"
 
 static bool bModuleInitialized = false;
 static HANDLE hIniChangeNotification;
 
 extern TCHAR mirandabootini[MAX_PATH];
-extern bool dbCreated;
 
 static INT_PTR CALLBACK InstallIniDlgProc(HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -274,10 +274,7 @@ static void ProcessIniFile(TCHAR* szIniPath, char *szSafeSections, char *szUnsaf
 				while (setting_items) {
 					SettingsList *next = setting_items->next;
 
-					DBCONTACTGETSETTING dbcgs;
-					dbcgs.szModule = szSection;
-					dbcgs.szSetting = setting_items->name;
-					CallService(MS_DB_CONTACT_DELETESETTING, 0, (LPARAM)&dbcgs);
+					db_unset(NULL, szSection, setting_items->name);
 
 					mir_free(setting_items->name);
 					mir_free(setting_items);
@@ -322,7 +319,7 @@ static void ProcessIniFile(TCHAR* szIniPath, char *szSafeSections, char *szUnsaf
 			break;
 		case 'w':
 		case 'W':
-			DBWriteContactSettingWord(NULL, szSection, szName, (WORD)strtol(szValue+1, NULL, 0));
+			db_set_w(NULL, szSection, szName, (WORD)strtol(szValue+1, NULL, 0));
 			break;
 		case 'd':
 		case 'D':
@@ -330,7 +327,8 @@ static void ProcessIniFile(TCHAR* szIniPath, char *szSafeSections, char *szUnsaf
 			break;
 		case 'l':
 		case 'L':
-			DBDeleteContactSetting(NULL, szSection, szName);
+		case '-':
+			db_unset(NULL, szSection, szName);
 			break;
 		case 'e':
 		case 'E':
@@ -357,35 +355,31 @@ static void ProcessIniFile(TCHAR* szIniPath, char *szSafeSections, char *szUnsaf
 			}
 		case 'u':
 		case 'U':
-			DBWriteContactSettingStringUtf(NULL, szSection, szName, szValue+1);
+			db_set_utf(NULL, szSection, szName, szValue+1);
 			break;
 		case 'n':
 		case 'h':
 		case 'N':
 		case 'H':
 			{
-				PBYTE buf;
 				int len;
 				char *pszValue, *pszEnd;
-				DBCONTACTWRITESETTING cws;
 
-				buf = (PBYTE)mir_alloc(lstrlenA(szValue+1));
+				PBYTE buf = (PBYTE)mir_alloc(lstrlenA(szValue+1));
 				for (len = 0, pszValue = szValue+1;;len++) {
 					buf[len] = (BYTE)strtol(pszValue, &pszEnd, 0x10);
-					if (pszValue == pszEnd) break;
+					if (pszValue == pszEnd)
+						break;
 					pszValue = pszEnd;
 				}
-				cws.szModule = szSection;
-				cws.szSetting = szName;
-				cws.value.type = DBVT_BLOB;
-				cws.value.pbVal = buf;
-				cws.value.cpbVal = len;
-				CallService(MS_DB_CONTACT_WRITESETTING, (WPARAM)(HANDLE)NULL, (LPARAM)&cws);
+				db_set_blob(NULL, szSection, szName, buf, len);
 				mir_free(buf);
 			}
 			break;
 		default:
-			MessageBox(NULL, TranslateT("Invalid setting type. The first character of every value must be b, w, d, l, s, e, u, g, h or n."), TranslateT("Install Database Settings"), MB_OK);
+			TCHAR buf[ 250 ];
+			mir_sntprintf(buf, SIZEOF(buf), TranslateT("Invalid setting type for '%s'. The first character of every value must be b, w, d, l, s, e, u, g, h or n."), _A2T(szName));
+			MessageBox(NULL, buf, TranslateT("Install Database Settings"), MB_ICONWARNING | MB_OK);
 			break;
 		}
 	}
@@ -395,16 +389,15 @@ static void ProcessIniFile(TCHAR* szIniPath, char *szSafeSections, char *szUnsaf
 static void DoAutoExec(void)
 {
 	TCHAR szUse[7], szIniPath[MAX_PATH], szFindPath[MAX_PATH];
-	TCHAR *str2;
 	TCHAR buf[2048], szSecurity[11], szOverrideSecurityFilename[MAX_PATH], szOnCreateFilename[MAX_PATH];
 	char *szSafeSections, *szUnsafeSections;
 	int secur;
 
 	GetPrivateProfileString(_T("AutoExec"), _T("Use"), _T("prompt"), szUse, SIZEOF(szUse), mirandabootini);
 	if ( !lstrcmpi(szUse, _T("no"))) return;
-	GetPrivateProfileString(_T("AutoExec"), _T("Safe"), _T("CLC Icons CLUI CList SkinSounds"), buf, SIZEOF(buf), mirandabootini);
+	GetPrivateProfileString(_T("AutoExec"), _T("Safe"), _T("CLC Icons CLUI CList SkinSounds PluginUpdater"), buf, SIZEOF(buf), mirandabootini);
 	szSafeSections = mir_t2a(buf);
-	GetPrivateProfileString(_T("AutoExec"), _T("Unsafe"), _T("ICQ MSN"), buf, SIZEOF(buf), mirandabootini);
+	GetPrivateProfileString(_T("AutoExec"), _T("Unsafe"), _T("AIM Facebook GG ICQ IRC JABBER MRA MSN SKYPE Tlen TWITTER XFire"), buf, SIZEOF(buf), mirandabootini);
 	szUnsafeSections = mir_t2a(buf);
 	GetPrivateProfileString(_T("AutoExec"), _T("Warn"), _T("notsafe"), szSecurity, SIZEOF(szSecurity), mirandabootini);
 	if ( !lstrcmpi(szSecurity, _T("none"))) secur = 0;
@@ -415,17 +408,12 @@ static void DoAutoExec(void)
 	GetPrivateProfileString(_T("AutoExec"), _T("OnCreateFilename"), _T(""), szOnCreateFilename, SIZEOF(szOnCreateFilename), mirandabootini);
 	GetPrivateProfileString(_T("AutoExec"), _T("Glob"), _T("autoexec_*.ini"), szFindPath, SIZEOF(szFindPath), mirandabootini);
 
-	if (dbCreated && szOnCreateFilename[0]) {
-		str2 = Utils_ReplaceVarsT(szOnCreateFilename);
-		PathToAbsoluteT(str2, szIniPath, NULL);
-		mir_free(str2);
-
+	if (g_bDbCreated && szOnCreateFilename[0]) {
+		PathToAbsoluteT( VARST(szOnCreateFilename), szIniPath);
 		ProcessIniFile(szIniPath, szSafeSections, szUnsafeSections, 0, 1);
 	}
 
-	str2 = Utils_ReplaceVarsT(szFindPath);
-	PathToAbsoluteT(str2, szFindPath, NULL);
-	mir_free(str2);
+	PathToAbsoluteT( VARST(szFindPath), szFindPath);
 
 	WIN32_FIND_DATA fd;
 	HANDLE hFind = FindFirstFile(szFindPath, &fd);
@@ -435,7 +423,7 @@ static void DoAutoExec(void)
 		return;
 	}
 
-	str2 = _tcsrchr(szFindPath, '\\');
+	TCHAR *str2 = _tcsrchr(szFindPath, '\\');
 	if (str2 == NULL) szFindPath[0] = 0;
 	else str2[1] = 0;
 
@@ -478,7 +466,9 @@ static void DoAutoExec(void)
 			else if ( !lstrcmpi(szOnCompletion, _T("ask")))
 				DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_INIIMPORTDONE), NULL, IniImportDoneDlgProc, (LPARAM)szIniPath);
 		}
-	} while (FindNextFile(hFind, &fd));
+	}
+		while (FindNextFile(hFind, &fd));
+
 	FindClose(hFind);
 	mir_free(szSafeSections);
 	mir_free(szUnsafeSections);
@@ -498,7 +488,7 @@ int InitIni(void)
 	DoAutoExec();
 
 	TCHAR szMirandaDir[MAX_PATH];
-	PathToAbsoluteT(_T("."), szMirandaDir, NULL);
+	PathToAbsoluteT(_T("."), szMirandaDir);
 	hIniChangeNotification = FindFirstChangeNotification(szMirandaDir, 0, FILE_NOTIFY_CHANGE_FILE_NAME);
 	if (hIniChangeNotification != INVALID_HANDLE_VALUE) {
 		CreateServiceFunction("DB/Ini/CheckImportNow", CheckIniImportNow);

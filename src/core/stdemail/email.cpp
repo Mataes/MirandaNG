@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "commonheaders.h"
 
-static HANDLE hEMailMenuItem;
+static HGENMENU hEMailMenuItem;
 
 void SendEmailThread(void *szUrl)
 {
@@ -35,8 +35,8 @@ static INT_PTR SendEMailCommand(WPARAM wParam, LPARAM lParam)
 {
 	DBVARIANT dbv;
 	char *szProto = GetContactProto((HANDLE)wParam);
-	if (szProto == NULL || DBGetContactSettingString((HANDLE)wParam, szProto, "e-mail", &dbv)) {
-		if (DBGetContactSettingString((HANDLE)wParam, "UserInfo", "Mye-mail0", &dbv)) {
+	if (szProto == NULL || db_get_s((HANDLE)wParam, szProto, "e-mail", &dbv)) {
+		if (db_get_s((HANDLE)wParam, "UserInfo", "Mye-mail0", &dbv)) {
 			MessageBox((HWND)lParam, TranslateT("User has not registered an e-mail address"), TranslateT("Send e-mail"), MB_OK);
 			return 1;
 		}
@@ -51,17 +51,15 @@ static INT_PTR SendEMailCommand(WPARAM wParam, LPARAM lParam)
 
 static int EMailPreBuildMenu(WPARAM wParam, LPARAM)
 {
-	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIM_FLAGS;
-
+	bool bEnabled = true;
 	DBVARIANT dbv = { 0 };
 	char *szProto = GetContactProto((HANDLE)wParam);
-	if (szProto == NULL || DBGetContactSettingString((HANDLE)wParam, szProto, "e-mail", & dbv))
-		if (DBGetContactSettingString((HANDLE)wParam, "UserInfo", "Mye-mail0", &dbv))
-			mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
+	if (szProto == NULL || db_get_s((HANDLE)wParam, szProto, "e-mail", & dbv))
+		if (db_get_s((HANDLE)wParam, "UserInfo", "Mye-mail0", &dbv))
+			bEnabled = false;
 
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hEMailMenuItem, (LPARAM)&mi);
-	if (dbv.pszVal) DBFreeVariant(&dbv);
+	Menu_ShowItem(hEMailMenuItem, bEnabled);
+	if (dbv.pszVal) db_free(&dbv);
 	return 0;
 }
 
@@ -69,7 +67,6 @@ int LoadSendRecvEMailModule(void)
 {
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.position = -2000010000;
-	mi.flags = CMIF_ICONFROMICOLIB;
 	mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_SENDEMAIL);
 	mi.pszName = LPGEN("&E-mail");
 	mi.pszService = MS_EMAIL_SENDEMAIL;

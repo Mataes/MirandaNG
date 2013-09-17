@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people 
 listed in contributors.txt.
 
@@ -59,18 +59,22 @@ MIR_CORE_DLL(int) PathToRelative(const char *pSrc, char *pOut)
 
 MIR_CORE_DLL(int) PathToAbsolute(const char *pSrc, char *pOut, char* base)
 {
-	if ( !pSrc || !strlen(pSrc) || strlen(pSrc) > MAX_PATH)
+	if ( !pSrc || !strlen(pSrc) || strlen(pSrc) > MAX_PATH) {
+		*pOut = 0;
 		return 0;
-
-	if (base == NULL)
-		base = szMirandaPath;
+	}
 
 	char buf[MAX_PATH];
 	if (pSrc[0] < ' ')
 		return mir_snprintf(pOut, MAX_PATH, "%s", pSrc);
-	else if (pathIsAbsolute(pSrc))
+	
+	if (pathIsAbsolute(pSrc))
 		return GetFullPathNameA(pSrc, MAX_PATH, pOut, NULL);
-	else if (pSrc[0] != '\\')
+
+	if (base == NULL)
+		base = szMirandaPath;
+
+	if (pSrc[0] != '\\')
 		mir_snprintf(buf, MAX_PATH, "%s%s", base, pSrc);
 	else
 		mir_snprintf(buf, MAX_PATH, "%s%s", base, pSrc+1);
@@ -141,22 +145,25 @@ MIR_CORE_DLL(int) PathToRelativeW(const WCHAR *pSrc, WCHAR *pOut)
 
 MIR_CORE_DLL(int) PathToAbsoluteW(const TCHAR *pSrc, TCHAR *pOut, TCHAR* base)
 {
-	if ( !pSrc || !wcslen(pSrc) || wcslen(pSrc) > MAX_PATH)
+	if ( !pSrc || !wcslen(pSrc) || wcslen(pSrc) > MAX_PATH) {
+		*pOut = 0;
 		return 0;
-
-	if (base == NULL)
-		base = szMirandaPathW;
+	}
 
 	TCHAR buf[MAX_PATH];
 	if (pSrc[0] < ' ')
 		return mir_sntprintf(pOut, MAX_PATH, _T("%s"), pSrc);
-	else if (pathIsAbsoluteW(pSrc))
+	
+	if (pathIsAbsoluteW(pSrc))
 		return GetFullPathName(pSrc, MAX_PATH, pOut, NULL);
-	else if (pSrc[0] != '\\')
+	
+	if (base == NULL)
+		base = szMirandaPathW;
+
+	if (pSrc[0] != '\\')
 		mir_sntprintf(buf, MAX_PATH, _T("%s%s"), base, pSrc);
 	else
 		mir_sntprintf(buf, MAX_PATH, _T("%s%s"), base, pSrc+1);
-
 	return GetFullPathName(buf, MAX_PATH, pOut, NULL);
 }
 

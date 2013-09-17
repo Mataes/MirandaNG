@@ -22,15 +22,12 @@ Boston, MA 02111-1307, USA.
 HINSTANCE hInst = NULL;
 
 int hLangpack;
-HANDLE hOptHook = NULL,  hLoadHook = NULL, hOnPreShutdown = NULL, hPrebuildMenuHook = NULL, hPackUpdaterFolder = NULL;
-HANDLE hProtoService[8];
+HANDLE hPrebuildMenuHook = NULL;
 HWND hAddFeedDlg;
 HANDLE hChangeFeedDlgList = NULL;
 XML_API xi = {0};
 TCHAR tszRoot[MAX_PATH] = {0};
 HANDLE hUpdateMutex;
-#define NUM_SERVICES 6
-HANDLE hService[NUM_SERVICES];
 
 PLUGININFOEX pluginInfoEx = {
 	sizeof(PLUGININFOEX),
@@ -57,30 +54,15 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 	return &pluginInfoEx;
 }
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {{0x29517be5, 0x779a, 0x48e5, {0x89, 0x50, 0xcb, 0x4d, 0xe1, 0xd4, 0x31, 0x72}}, MIID_LAST};
-
 extern "C" __declspec(dllexport) int Load(void)
 {
-
 	mir_getLP(&pluginInfoEx);
 	mir_getXI(&xi);
 
-	if (ServiceExists(MS_FOLDERS_REGISTER_PATH))
-	{
-		hPackUpdaterFolder = FoldersRegisterCustomPathT("News Aggregator", "Avatars", MIRANDA_USERDATAT _T("\\Avatars\\")_T(DEFAULT_AVATARS_FOLDER));
-		FoldersGetCustomPathT(hPackUpdaterFolder, tszRoot, MAX_PATH, _T(""));
-	}
-	else
-	{
-		TCHAR* tszFolder = Utils_ReplaceVarsT(_T("%miranda_userdata%\\"_T(DEFAULT_AVATARS_FOLDER)));
-		lstrcpyn(tszRoot, tszFolder, SIZEOF(tszRoot));
-		mir_free(tszFolder);
-	}
-
 	// Add options hook
-	hOptHook = HookEvent(ME_OPT_INITIALISE, OptInit);
-	hLoadHook = HookEvent(ME_SYSTEM_MODULESLOADED, NewsAggrInit);
-	hOnPreShutdown = HookEvent(ME_SYSTEM_PRESHUTDOWN, NewsAggrPreShutdown);
+	HookEvent(ME_OPT_INITIALISE, OptInit);
+	HookEvent(ME_SYSTEM_MODULESLOADED, NewsAggrInit);
+	HookEvent(ME_SYSTEM_PRESHUTDOWN, NewsAggrPreShutdown);
 
 	hUpdateMutex = CreateMutex(NULL, FALSE, NULL);
 	hChangeFeedDlgList = (HANDLE) CallService(MS_UTILS_ALLOCWINDOWLIST,0,0);
@@ -91,36 +73,28 @@ extern "C" __declspec(dllexport) int Load(void)
 	pd.type = PROTOTYPE_VIRTUAL;
 	CallService(MS_PROTO_REGISTERMODULE,0,(LPARAM)&pd);
 
-	hProtoService[0] = CreateProtoServiceFunction(MODULE, PS_GETNAME, NewsAggrGetName);
-	hProtoService[1] = CreateProtoServiceFunction(MODULE, PS_GETCAPS, NewsAggrGetCaps);
-	hProtoService[2] = CreateProtoServiceFunction(MODULE, PS_SETSTATUS, NewsAggrSetStatus);
-	hProtoService[3] = CreateProtoServiceFunction(MODULE, PS_GETSTATUS, NewsAggrGetStatus);
-	hProtoService[4] = CreateProtoServiceFunction(MODULE, PS_LOADICON, NewsAggrLoadIcon);
-	hProtoService[5] = CreateProtoServiceFunction(MODULE, PSS_GETINFO, NewsAggrGetInfo);
-	hProtoService[6] = CreateProtoServiceFunction(MODULE, PS_GETAVATARINFOT, NewsAggrGetAvatarInfo);
-	hProtoService[7] = CreateProtoServiceFunction(MODULE, PSR_MESSAGE, NewsAggrRecvMessage);
+	CreateProtoServiceFunction(MODULE, PS_GETNAME, NewsAggrGetName);
+	CreateProtoServiceFunction(MODULE, PS_GETCAPS, NewsAggrGetCaps);
+	CreateProtoServiceFunction(MODULE, PS_SETSTATUS, NewsAggrSetStatus);
+	CreateProtoServiceFunction(MODULE, PS_GETSTATUS, NewsAggrGetStatus);
+	CreateProtoServiceFunction(MODULE, PS_LOADICON, NewsAggrLoadIcon);
+	CreateProtoServiceFunction(MODULE, PSS_GETINFO, NewsAggrGetInfo);
+	CreateProtoServiceFunction(MODULE, PS_GETAVATARINFOT, NewsAggrGetAvatarInfo);
+	CreateProtoServiceFunction(MODULE, PSR_MESSAGE, NewsAggrRecvMessage);
 
-	hService[0] = CreateServiceFunction(MS_NEWSAGGR_CHECKALLFEEDS, CheckAllFeeds);
-	hService[1] = CreateServiceFunction(MS_NEWSAGGR_ADDFEED, AddFeed);
-	hService[2] = CreateServiceFunction(MS_NEWSAGGR_IMPORTFEEDS, ImportFeeds);
-	hService[3] = CreateServiceFunction(MS_NEWSAGGR_EXPORTFEEDS, ExportFeeds);
-	hService[4] = CreateServiceFunction(MS_NEWSAGGR_CHECKFEED, CheckFeed);
-	hService[5] = CreateServiceFunction(MS_NEWSAGGR_CHANGEFEED, ChangeFeed);
-
+	CreateServiceFunction(MS_NEWSAGGREGATOR_CHECKALLFEEDS, CheckAllFeeds);
+	CreateServiceFunction(MS_NEWSAGGREGATOR_ADDFEED, AddFeed);
+	CreateServiceFunction(MS_NEWSAGGREGATOR_IMPORTFEEDS, ImportFeeds);
+	CreateServiceFunction(MS_NEWSAGGREGATOR_EXPORTFEEDS, ExportFeeds);
+	CreateServiceFunction(MS_NEWSAGGREGATOR_CHECKFEED, CheckFeed);
+	CreateServiceFunction(MS_NEWSAGGREGATOR_CHANGEFEED, ChangeFeed);
+	CreateServiceFunction(MS_NEWSAGGREGATOR_ENABLED, EnableDisable);
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	for (int i = 0;i<NUM_SERVICES;i++)
-		DestroyServiceFunction(hService[i]);
-
-	UnhookEvent(hOptHook);
-	UnhookEvent(hLoadHook);
-	UnhookEvent(hOnPreShutdown);
-
 	DestroyUpdateList();
 	CloseHandle(hUpdateMutex);
-
 	return 0;
 }

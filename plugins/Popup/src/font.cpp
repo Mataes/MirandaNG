@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/font.cpp $
-Revision       : $Revision: 1651 $
-Last change on : $Date: 2010-07-15 20:31:06 +0300 (Чт, 15 июл 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #include "headers.h"
@@ -71,7 +62,7 @@ void InitFonts() {
 	fid.deffontsettings.colour = RGB(0,0,255);
 	FontRegisterT(&fid);
 
-	lstrcpy(fid.name, _T("Hovered Action"));
+	lstrcpy(fid.name, LPGENT("Hovered Action"));
 	mir_snprintf(fid.prefix, sizeof(fid.prefix), PU_FNT_PREFIX, "Hovered Action");
 	fid.deffontsettings.style  = DBFONTF_UNDERLINE;
 	//fid.deffontsettings.colour = RGB(0,0,255);
@@ -113,7 +104,7 @@ void ReloadFonts()
 	fonts.clTitle	= (COLORREF)CallService(MS_FONT_GETT, (WPARAM)&fid, (LPARAM)&lf);
 	fonts.title		= CreateFontIndirect(&lf);
 
-	lstrcpy(fid.name, _T(PU_FNT_NAME_CLOCK));
+	lstrcpy(fid.name, LPGENT("Clock"));
 	fonts.clClock	= (COLORREF)CallService(MS_FONT_GETT, (WPARAM)&fid, (LPARAM)&lf);
 	fonts.clock		= CreateFontIndirect(&lf);
 
@@ -125,7 +116,7 @@ void ReloadFonts()
 	fonts.clAction	= (COLORREF)CallService(MS_FONT_GETT, (WPARAM)&fid, (LPARAM)&lf);
 	fonts.action	= CreateFontIndirect(&lf);
 
-	lstrcpy(fid.name, _T("Hovered Action"));
+	lstrcpy(fid.name, LPGENT("Hovered Action"));
 	fonts.clActionHover	= (COLORREF)CallService(MS_FONT_GETT, (WPARAM)&fid, (LPARAM)&lf);
 	fonts.actionHover	= CreateFontIndirect(&lf);
 
@@ -142,13 +133,13 @@ void ReloadFonts()
 	//update class popupps(only temp at this point, must rework)
 	char setting[256];
 	for(int i=0; i < gTreeData.getCount(); i++) {
-		if(gTreeData[i]->typ == 2) {
+		if (gTreeData[i]->typ == 2) {
 			mir_snprintf(setting, 256, "%s/TextCol", gTreeData[i]->pupClass.pszName);
 			gTreeData[i]->colorText = gTreeData[i]->pupClass.colorText = 
-				(COLORREF)DBGetContactSettingDword(0, PU_MODULCLASS, setting, (DWORD)fonts.clText);
+				(COLORREF)db_get_dw(0, PU_MODULCLASS, setting, (DWORD)fonts.clText);
 			mir_snprintf(setting, 256, "%s/BgCol",   gTreeData[i]->pupClass.pszName);
 			gTreeData[i]->colorBack = gTreeData[i]->pupClass.colorBack = 
-				(COLORREF)DBGetContactSettingDword(0, PU_MODULCLASS, setting, (DWORD)fonts.clBack/*pc->colorBack*/);
+				(COLORREF)db_get_dw(0, PU_MODULCLASS, setting, (DWORD)fonts.clBack/*pc->colorBack*/);
 		}
 	}
 }

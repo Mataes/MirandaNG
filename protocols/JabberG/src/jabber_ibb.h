@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -27,9 +28,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 typedef enum { JIBB_INIT, JIBB_CONNECT, JIBB_SENDING, JIBB_RECVING, JIBB_DONE, JIBB_ERROR } JABBER_IBB_STATE;
 
 typedef struct {
-	TCHAR* sid;
-	TCHAR* srcJID;
-	TCHAR* dstJID;
+	TCHAR *sid;
+	TCHAR *srcJID;
+	TCHAR *dstJID;
 	unsigned __int64 dwTransferredSize;
 	JABBER_IBB_STATE state;
 	HANDLE hEvent;

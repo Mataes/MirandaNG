@@ -2,7 +2,7 @@
 
 Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2012 Miranda NG project,
+Copyright 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -53,7 +53,7 @@ struct DBCachedContact
 	DBCachedContactValue* last;
 };
 
-interface MIDatabaseCache
+interface MIDatabaseCache : public MZeroedObject
 {
 	STDMETHOD_(DBCachedContact*,AddContactToCache)(HANDLE hContact) PURE;
 	STDMETHOD_(DBCachedContact*,GetCachedContact)(HANDLE hContact) PURE;

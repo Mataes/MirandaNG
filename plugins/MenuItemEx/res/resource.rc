@@ -7,7 +7,7 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include <windows.h>
+#include <winres.h>
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -30,8 +30,6 @@ IDI_ICON0               ICON                    "hide_from_list.ico"
 IDI_ICON1               ICON                    "Always Visible.ico"
 IDI_ICON2               ICON                    "Never Visible.ico"
 IDI_ICON3               ICON                    "copyid_overlay.ico"
-IDI_ICON4               ICON                    "auth_added.ico"
-IDI_ICON5               ICON                    "auth_ask.ico"
 IDI_ICON6               ICON                    "change_proto.ico"
 IDI_ICON7               ICON                    "ignore_list.ico"
 IDI_ICON8               ICON                    "show_in_list.ico"
@@ -81,9 +79,6 @@ BEGIN
     CONTROL         "Trim too long ID",IDC_TRIMID,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,162,150,105,10
     LTEXT           "* Use Ctrl+click to see popup with the copied text",IDC_HINT1,16,164,251,11
     CONTROL         "Hide contact on 'Ignore all'",IDC_IGNOREHIDE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,162,42,105,10
-    GROUPBOX        "Other options",IDC_STATIC,7,184,266,27
-    CONTROL         "Automatically refresh contact's details after they come online",IDC_REFRESH_DETAILS,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,16,196,251,10
 END
 
 
@@ -133,7 +128,7 @@ END
 
 2 TEXTINCLUDE 
 BEGIN
-    "#include <windows.h>\r\n"
+    "#include <winres.h>\r\n"
     "\0"
 END
 

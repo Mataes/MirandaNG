@@ -17,44 +17,35 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "StdAfx.h"
-#include "Options.h"
-#include "resource.h"
-#include "PasteToWeb.h"
-#include "PasteToWeb1.h"
-
-extern HINSTANCE hInst;
-
-#define MODULE				"PasteIt"
 
 Options *Options::instance;
-extern PasteToWeb* pasteToWebs[PasteToWeb::pages];
 
 struct TCpTable {
 	UINT cpId;
 	TCHAR *cpName;
 }
 cpTable[] = {
-	{ CP_ACP,	_T("Use default codepage")	 },
-	{ CP_UTF8,	_T("UTF-8")	 },
-	{ 874,	_T("Thai")	 },
-	{ 932,	_T("Japanese") },
-	{ 936,	_T("Simplified Chinese") },
-	{ 949,	_T("Korean") },
-	{ 950,	_T("Traditional Chinese") },
-	{ 1250,	_T("Central European") },
-	{ 1251,	_T("Cyrillic") },
-	{ 20866,  _T("Cyrillic KOI8-R") },
-	{ 1252,	_T("Latin I") },
-	{ 1253,	_T("Greek") },
-	{ 1254,	_T("Turkish") },
-	{ 1255,	_T("Hebrew") },
-	{ 1256,	_T("Arabic") },
-	{ 1257,	_T("Baltic") },
-	{ 1258,	_T("Vietnamese") },
-	{ 1361,	_T("Korean (Johab)") },
-	{ CP_UTF7,	_T("UTF-7")	 },
-	{ 1200,	_T("UTF-16") },
-	{ 1201,	_T("UTF-16BE")	 }
+	{ CP_ACP,	LPGENT("Use default codepage")	 },
+	{ CP_UTF8,	LPGENT("UTF-8")	 },
+	{ 874,	LPGENT("Thai")	 },
+	{ 932,	LPGENT("Japanese") },
+	{ 936,	LPGENT("Simplified Chinese") },
+	{ 949,	LPGENT("Korean") },
+	{ 950,	LPGENT("Traditional Chinese") },
+	{ 1250,	LPGENT("Central European") },
+	{ 1251,	LPGENT("Cyrillic") },
+	{ 20866,  LPGENT("Cyrillic KOI8-R") },
+	{ 1252,	LPGENT("Latin I") },
+	{ 1253,	LPGENT("Greek") },
+	{ 1254,	LPGENT("Turkish") },
+	{ 1255,	LPGENT("Hebrew") },
+	{ 1256,	LPGENT("Arabic") },
+	{ 1257,	LPGENT("Baltic") },
+	{ 1258,	LPGENT("Vietnamese") },
+	{ 1361,	LPGENT("Korean (Johab)") },
+	{ CP_UTF7,	LPGENT("UTF-7")	 },
+	{ 1200,	LPGENT("UTF-16") },
+	{ 1201,	LPGENT("UTF-16BE")	 }
 };
 
 Options::Options()
@@ -717,7 +708,7 @@ unsigned int Options::GetCodepageCB(HWND hwndCB, bool errorReport, unsigned int 
 void Options::SetDefWeb(int web)
 {
 	defWeb = web;
-	DBWriteContactSettingWString(0, MODULE, "defWeb", pasteToWebs[web]->GetName());
+	db_set_ws(0, MODULE, "defWeb", pasteToWebs[web]->GetName());
 	DefWebPageChanged();
 }
 
@@ -735,7 +726,7 @@ void Options::InitCodepageCB(HWND hwndCB, unsigned int codepage)
 	if(selCpIdx == -1)
 	{
 		TCHAR buf[10];
-		_stprintf_s(buf, 10, _T("%d"), codepage);
+		mir_sntprintf(buf, 10, _T("%d"), codepage);
 		ComboBox_SetText(hwndCB, buf);	
 	}
 	else
@@ -759,7 +750,7 @@ void Options::SetCodepageCB(HWND hwndCB, unsigned int codepage)
 	if(selCpIdx == -1)
 	{
 		TCHAR buf[10];
-		_stprintf_s(buf, 10, _T("%d"), codepage);
+		mir_sntprintf(buf, 10, _T("%d"), codepage);
 		ComboBox_SetText(hwndCB, buf);	
 	}
 	else
@@ -794,11 +785,11 @@ int Options::InitOptions(WPARAM wParam, LPARAM lParam)
 
 void Options::Save()
 {
-	DBWriteContactSettingWString(0, MODULE, "defWeb", pasteToWebs[defWeb]->GetName());
-	DBWriteContactSettingDword(0, MODULE, "codepage", codepage);
-	DBWriteContactSettingByte(0, MODULE, "autoUTF", autoUTF ? 1 : 0);
-	DBWriteContactSettingByte(0, MODULE, "confDlg", confDlg ? 1 : 0);
-	DBWriteContactSettingByte(0, MODULE, "autoSend", autoSend ? 1 : 0);
+	db_set_ws(0, MODULE, "defWeb", pasteToWebs[defWeb]->GetName());
+	db_set_dw(0, MODULE, "codepage", codepage);
+	db_set_b(0, MODULE, "autoUTF", autoUTF ? 1 : 0);
+	db_set_b(0, MODULE, "confDlg", confDlg ? 1 : 0);
+	db_set_b(0, MODULE, "autoSend", autoSend ? 1 : 0);
 	for(int i = 0 ; i < PasteToWeb::pages; ++i)
 	{
 		char buf[256];
@@ -818,33 +809,33 @@ void Options::Save()
 			forms += it->id + L'=' + it->name + L';';
 		}
 
-		DBWriteContactSettingWString(0, MODULE, buf, forms.c_str());
+		db_set_ws(0, MODULE, buf, forms.c_str());
 
 		strcpy_s(buf + j, 256 - j, "defFormatId");
-		DBWriteContactSettingWString(0, MODULE, buf, webOptions[i]->defFormatId.c_str());
+		db_set_ws(0, MODULE, buf, webOptions[i]->defFormatId.c_str());
 
 		if(webOptions[i]->isSendFileName)
 		{
 			strcpy_s(buf + j, 256 - j, "sendFileName");
-			DBWriteContactSettingByte(0, MODULE, buf, webOptions[i]->sendFileName ? 1 : 0);
+			db_set_b(0, MODULE, buf, webOptions[i]->sendFileName ? 1 : 0);
 		}
 		
 		if(webOptions[i]->isPublicPaste)
 		{
 			strcpy_s(buf + j, 256 - j, "publicPaste");
-			DBWriteContactSettingByte(0, MODULE, buf, webOptions[i]->publicPaste ? 1 : 0);
+			db_set_b(0, MODULE, buf, webOptions[i]->publicPaste ? 1 : 0);
 		}
 
 		if(webOptions[i]->isCombo1)
 		{
 			strcpy_s(buf + j, 256 - j, "combo1");
-			DBWriteContactSettingWString(0, MODULE, buf, webOptions[i]->combo1.c_str());
+			db_set_ws(0, MODULE, buf, webOptions[i]->combo1.c_str());
 		}
 
 		if(webOptions[i]->isPastebin)
 		{
 			strcpy_s(buf + j, 256 - j, "pastebinUserKey");
-			DBWriteContactSettingWString(0, MODULE, buf, webOptions[i]->pastebinUserKey.c_str());
+			db_set_ws(0, MODULE, buf, webOptions[i]->pastebinUserKey.c_str());
 		}
 	}
 }
@@ -852,7 +843,7 @@ void Options::Save()
 void Options::Load()
 {
 	DBVARIANT defWebV;
-	if(!DBGetContactSettingWString(0, MODULE, "defWeb", &defWebV))
+	if(!db_get_ws(0, MODULE, "defWeb", &defWebV))
 	{
 		for(int i = 0; i < PasteToWeb::pages; ++i)
 		{
@@ -862,12 +853,12 @@ void Options::Load()
 				break;
 			}
 		}
-		DBFreeVariant(&defWebV);
+		db_free(&defWebV);
 	}
-	codepage = DBGetContactSettingDword(0, MODULE, "codepage", CP_ACP);
-	autoUTF = DBGetContactSettingByte(0, MODULE, "autoUTF", 1) ? true : false;
-	confDlg = DBGetContactSettingByte(0, MODULE, "confDlg", 1) ? true : false;
-	autoSend = DBGetContactSettingByte(0, MODULE, "autoSend", 0) ? true : false;
+	codepage = db_get_dw(0, MODULE, "codepage", CP_ACP);
+	autoUTF = db_get_b(0, MODULE, "autoUTF", 1) ? true : false;
+	confDlg = db_get_b(0, MODULE, "confDlg", 1) ? true : false;
+	autoSend = db_get_b(0, MODULE, "autoSend", 0) ? true : false;
 	for(int i = 0 ; i < PasteToWeb::pages; ++i)
 	{
 		char buf[256];
@@ -882,7 +873,7 @@ void Options::Load()
 
 		strcpy_s(buf + j, 256 - j, "formats");
 		DBVARIANT forms;
-		if(!DBGetContactSettingWString(0, MODULE, buf, &forms))
+		if(!db_get_ws(0, MODULE, buf, &forms))
 		{
 			webOptions[i]->formats.clear();
 			int k = 0;
@@ -908,37 +899,37 @@ void Options::Load()
 				++k;
 			}
 
-			DBFreeVariant(&forms);
+			db_free(&forms);
 		}
 
 		strcpy_s(buf + j, 256 - j, "defFormatId");
 		DBVARIANT defForm;
-		if(!DBGetContactSettingWString(0, MODULE, buf, &defForm))
+		if(!db_get_ws(0, MODULE, buf, &defForm))
 		{
 			webOptions[i]->defFormatId = defForm.pwszVal;
-			DBFreeVariant(&defForm);
+			db_free(&defForm);
 		}
 
 		if(webOptions[i]->isSendFileName)
 		{
 			strcpy_s(buf + j, 256 - j, "sendFileName");
-			webOptions[i]->sendFileName = DBGetContactSettingByte(0, MODULE, buf, 1) ? true : false;
+			webOptions[i]->sendFileName = db_get_b(0, MODULE, buf, 1) ? true : false;
 		}
 		
 		if(webOptions[i]->isPublicPaste)
 		{
 			strcpy_s(buf + j, 256 - j, "publicPaste");
-			webOptions[i]->publicPaste = DBGetContactSettingByte(0, MODULE, buf, 0) ? true : false;
+			webOptions[i]->publicPaste = db_get_b(0, MODULE, buf, 0) ? true : false;
 		}
 
 		if(webOptions[i]->isCombo1)
 		{
 			strcpy_s(buf + j, 256 - j, "combo1");
 			DBVARIANT combo1;
-			if(!DBGetContactSettingWString(0, MODULE, buf, &combo1))
+			if(!db_get_ws(0, MODULE, buf, &combo1))
 			{
 				webOptions[i]->combo1 = combo1.pwszVal;
-				DBFreeVariant(&combo1);
+				db_free(&combo1);
 			}
 		}
 
@@ -946,10 +937,10 @@ void Options::Load()
 		{
 			strcpy_s(buf + j, 256 - j, "pastebinUserKey");
 			DBVARIANT pastebinUserKey;
-			if(!DBGetContactSettingWString(0, MODULE, buf, &pastebinUserKey))
+			if(!db_get_ws(0, MODULE, buf, &pastebinUserKey))
 			{
 				webOptions[i]->pastebinUserKey = pastebinUserKey.pwszVal;
-				DBFreeVariant(&pastebinUserKey);
+				db_free(&pastebinUserKey);
 			}
 		}
 	}

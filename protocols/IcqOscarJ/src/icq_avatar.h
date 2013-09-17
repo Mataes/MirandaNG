@@ -67,7 +67,7 @@ protected:
 	void   handleAvatarFam(BYTE *pBuffer, WORD wBufferLength, snac_header *pSnacHeader);
 
 	rates *m_rates;
-  icq_critical_section *m_ratesMutex;
+	icq_critical_section *m_ratesMutex;
 
 	int    NetLog_Server(const char *fmt,...);
 
@@ -118,8 +118,6 @@ __inline static void SAFE_DELETE(avatars_request **p) { SAFE_DELETE((MZeroedObje
 #define ART_UPLOAD  2
 #define ART_BLOCK   4
 
-
-int  DetectAvatarFormat(const TCHAR *szFile);
 void AddAvatarExt(int dwFormat, TCHAR *pszDest);
 
 BYTE* calcMD5HashOfFile(const TCHAR *szFile);

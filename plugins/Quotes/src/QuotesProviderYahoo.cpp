@@ -1,10 +1,4 @@
 #include "stdafx.h"
-#include "QuotesProviderYahoo.h"
-#include "QuotesProviderVisitor.h"
-#include "ModuleInfo.h"
-#include "DBUtils.h"
-#include "EconomicRateInfo.h"
-#include "HTTPSession.h"
 
 namespace
 {
@@ -67,7 +61,7 @@ namespace
 			}
 		}
 
-		DBWriteContactSettingTString(hContact,QUOTES_MODULE_NAME,pszDbName,_T(""));
+		db_set_ts(hContact,QUOTES_MODULE_NAME,pszDbName,_T(""));
 		return false;
 	}
 }
@@ -161,7 +155,7 @@ void CQuotesProviderYahoo::RefreshQuotes(TContracts& anContacts)
 								double dRate = 0.0;
 								if(true == t2d(asStrings[indexLastTrade],dRate))
 								{
-									DBWriteContactSettingTString(hContact,QUOTES_MODULE_NAME,DB_STR_QUOTE_DESCRIPTION,asStrings[indexName].c_str());
+									db_set_ts(hContact,QUOTES_MODULE_NAME,DB_STR_QUOTE_DESCRIPTION,asStrings[indexName].c_str());
 
 									get_double_from_parsed_line(hContact,asStrings,indexOpen,DB_STR_YAHOO_OPEN_VALUE);
 									get_double_from_parsed_line(hContact,asStrings,indexDayHigh,DB_STR_YAHOO_DAY_HIGH);

@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007-09  Maxim Mluhov
 Copyright (C) 2007-09  Victor Pavlychko
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -33,7 +34,7 @@ public:
 	CPepService(CJabberProto *proto, char *name, TCHAR *node);
 	virtual ~CPepService();
 
-	HANDLE GetMenu() { return m_hMenuItem; }
+	HGENMENU GetMenu() { return m_hMenuItem; }
 	TCHAR *GetNode() { return m_node; }
 	virtual void ProcessItems(const TCHAR *from, HXML items) = 0;
 
@@ -50,7 +51,7 @@ protected:
 	CJabberProto *m_proto;
 	char *m_name;
 	TCHAR *m_node;
-	HANDLE m_hMenuItem;
+	HGENMENU m_hMenuItem;
 
 	int m_wasPublished;
 
@@ -65,7 +66,7 @@ public:
 
 	void ProcessEvent(const TCHAR *from, HXML eventNode)
 	{
-		for (int i = 0; i < getCount(); ++i)
+		for (int i = 0; i < getCount(); i++)
 		{
 			CPepService &pepSvc = (*this)[i];
 			HXML itemsNode = xmlGetChildByTag(eventNode, _T("items"), _T("node"), pepSvc.GetNode());
@@ -76,43 +77,43 @@ public:
 
 	void InitGui()
 	{
-		for (int i = 0; i < getCount(); ++i)
+		for (int i = 0; i < getCount(); i++)
 			(*this)[i].InitGui();
 	}
 
 	void RebuildMenu()
 	{
-		for (int i = 0; i < getCount(); ++i)
+		for (int i = 0; i < getCount(); i++)
 			(*this)[i].RebuildMenu();
 	}
 
 	void ResetExtraIcon(HANDLE hContact)
 	{
-		for (int i = 0; i < getCount(); ++i)
+		for (int i = 0; i < getCount(); i++)
 			(*this)[i].ResetExtraIcon(hContact);
 	}
 
 	void PublishAll()
 	{
-		for (int i = 0; i < getCount(); ++i)
+		for (int i = 0; i < getCount(); i++)
 			(*this)[i].Publish();
 	}
 
 	void RetractAll()
 	{
-		for (int i = 0; i < getCount(); ++i)
+		for (int i = 0; i < getCount(); i++)
 			(*this)[i].Retract();
 	}
 
 	void ResetPublishAll()
 	{
-		for(int i = 0; i < getCount(); ++i)
+		for(int i = 0; i < getCount(); i++)
 			(*this)[i].ResetPublish();
 	}
 
 	CPepService *Find(TCHAR *node)
 	{
-		for (int i = 0; i < getCount(); ++i)
+		for (int i = 0; i < getCount(); i++)
 			if ( !lstrcmp((*this)[i].GetNode(), node))
 				return &((*this)[i]);
 		return NULL;

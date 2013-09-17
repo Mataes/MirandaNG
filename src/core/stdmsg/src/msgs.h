@@ -1,6 +1,7 @@
 /*
-Copyright 2000-2012 Miranda IM project, 
-all portions of this codebase are copyrighted to the people 
+
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -17,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #ifndef SRMM_MSGS_H
 #define SRMM_MSGS_H
 
@@ -36,7 +38,6 @@ struct SrmmWindowData
 	HANDLE hContact;
 	HANDLE hDbEventFirst, hDbEventLast;
 	HBRUSH hBkgBrush;
-	WNDPROC OldMessageEditProc, OldSplitterProc;
 	int splitterPos, originalSplitterPos;
 	SIZE minEditBoxSize;
 	RECT minEditInit;
@@ -115,7 +116,7 @@ struct CREOleCallback : public IRichEditOleCallback
 INT_PTR CALLBACK DlgProcMessage(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK ErrorDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 int DbEventIsForMsgWindow(DBEVENTINFO *dbei);
-int DbEventIsShown(DBEVENTINFO * dbei, struct SrmmWindowData *dat);
+int DbEventIsShown(DBEVENTINFO * dbei, SrmmWindowData *dat);
 void StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAppend);
 HANDLE SendMessageDirect(const TCHAR *szMsg, HANDLE hContact, char *szProto);
 
@@ -123,7 +124,6 @@ void LoadMsgLogIcons(void);
 void FreeMsgLogIcons(void);
 
 void InitOptions(void);
-void UnloadOptions(void);
 
 #define MSGFONTID_MYMSG		  0
 #define MSGFONTID_YOURMSG	  1
@@ -136,8 +136,7 @@ void UnloadOptions(void);
 #define MSGFONTID_MESSAGEAREA 8
 #define MSGFONTID_NOTICE      9
 
-void LoadMsgDlgFont(int i, LOGFONT* lf, COLORREF* colour);
-extern const int msgDlgFontCount;
+bool LoadMsgDlgFont(int i, LOGFONT* lf, COLORREF* colour);
 
 #define LOADHISTORY_UNREAD    0
 #define LOADHISTORY_COUNT     1

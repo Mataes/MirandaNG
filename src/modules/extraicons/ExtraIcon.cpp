@@ -1,21 +1,23 @@
 /*
- Copyright (C) 2009 Ricardo Pescuma Domenecci
 
- This is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
+Copyright (C) 2009 Ricardo Pescuma Domenecci
+Copyright (C) 2012-13 Miranda NG Project
 
- This is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
+This is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
 
- You should have received a copy of the GNU Library General Public
- License along with this file; see the file license.txt.  If
- not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- Boston, MA 02111-1307, USA.
- */
+This is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Library General Public
+License along with this file; see the file license.txt.  If
+not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+*/
 
 #include "..\..\core\commonheaders.h"
 
@@ -65,15 +67,10 @@ void ExtraIcon::applyIcons()
 	if (!isEnabled())
 		return;
 
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL)
-	{
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		// Clear to assert that it will be cleared
 		Clist_SetExtraIcon(hContact, slot, INVALID_HANDLE_VALUE);
-
 		applyIcon(hContact);
-
-		hContact = db_find_next(hContact);
 	}
 }
 

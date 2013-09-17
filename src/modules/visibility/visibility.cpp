@@ -2,8 +2,8 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 
 static void SetListGroupIcons(HWND hwndList, HANDLE hFirstItem, HANDLE hParentItem, int *groupChildCount)
@@ -105,32 +106,31 @@ static void ResetListOptions(HWND hwndList)
 
 static void SetAllContactIcons(HWND hwndList)
 {
-	HANDLE hContact = db_find_first();
-	do {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_FINDCONTACT, (WPARAM)hContact, 0);
-		if (hItem) {
-			DWORD flags;
-			WORD status;
-			char *szProto = GetContactProto(hContact);
-			if (szProto == NULL) {
-				flags = 0;
-				status = 0;
-			}
-			else {
-				flags = CallProtoServiceInt(NULL,szProto, PS_GETCAPS, PFLAGNUM_1, 0);
-				status = db_get_w(hContact, szProto, "ApparentMode", 0);
-			}
+		if (hItem == NULL)
+			continue;
 
-			if (flags & PF1_INVISLIST)
-				if (SendMessage(hwndList, CLM_GETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(0, 0)) == EMPTY_EXTRA_ICON)
-					SendMessage(hwndList, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(0, status == ID_STATUS_ONLINE ? 1 : 0));
-
-			if (flags & PF1_VISLIST)
-				if (SendMessage(hwndList, CLM_GETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(1, 0)) == EMPTY_EXTRA_ICON)
-					SendMessage(hwndList, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(1, status == ID_STATUS_OFFLINE ? 2 : 0));
+		DWORD flags;
+		WORD status;
+		char *szProto = GetContactProto(hContact);
+		if (szProto == NULL) {
+			flags = 0;
+			status = 0;
 		}
+		else {
+			flags = CallProtoServiceInt(NULL,szProto, PS_GETCAPS, PFLAGNUM_1, 0);
+			status = db_get_w(hContact, szProto, "ApparentMode", 0);
+		}
+
+		if (flags & PF1_INVISLIST)
+			if (SendMessage(hwndList, CLM_GETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(0, 0)) == EMPTY_EXTRA_ICON)
+				SendMessage(hwndList, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(0, status == ID_STATUS_ONLINE ? 1 : 0));
+
+		if (flags & PF1_VISLIST)
+			if (SendMessage(hwndList, CLM_GETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(1, 0)) == EMPTY_EXTRA_ICON)
+				SendMessage(hwndList, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(1, status == ID_STATUS_OFFLINE ? 2 : 0));
 	}
-		while (hContact = db_find_next(hContact));
 }
 
 static INT_PTR CALLBACK DlgProcVisibilityOpts(HWND hwndDlg, UINT msg, WPARAM, LPARAM lParam)
@@ -197,7 +197,7 @@ static INT_PTR CALLBACK DlgProcVisibilityOpts(HWND hwndDlg, UINT msg, WPARAM, LP
 					DWORD hitFlags;
 					HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_HITTEST, (WPARAM)&hitFlags, MAKELPARAM(nm->pt.x, nm->pt.y));
 					if (hItem == NULL)
-						break; 
+						break;
 
 					// It was not a visbility icon
 					if ( !(hitFlags & CLCHT_ONITEMEXTRA))
@@ -243,24 +243,23 @@ static INT_PTR CALLBACK DlgProcVisibilityOpts(HWND hwndDlg, UINT msg, WPARAM, LP
 
 		case 0:
 			if (((LPNMHDR)lParam)->code == PSN_APPLY) {
-				HANDLE hContact = db_find_first();
-				do {
+				for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 					HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_FINDCONTACT, (WPARAM)hContact, 0);
-					if (hItem) {
-						int set = 0;
-						for (int i=0; i < 2; i++) {
-							int iImage = SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_GETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(i, 0));
-							if (iImage == i+1) {
-								CallContactService(hContact, PSS_SETAPPARENTMODE, iImage == 1?ID_STATUS_ONLINE:ID_STATUS_OFFLINE, 0);
-								set = 1;
-								break;
-							}
+					if (hItem == NULL)
+						continue;
+
+					int set = 0;
+					for (int i=0; i < 2; i++) {
+						int iImage = SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_GETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(i, 0));
+						if (iImage == i+1) {
+							CallContactService(hContact, PSS_SETAPPARENTMODE, iImage == 1?ID_STATUS_ONLINE:ID_STATUS_OFFLINE, 0);
+							set = 1;
+							break;
 						}
-						if ( !set)
-							CallContactService(hContact, PSS_SETAPPARENTMODE, 0, 0);
 					}
+					if ( !set)
+						CallContactService(hContact, PSS_SETAPPARENTMODE, 0, 0);
 				}
-					while (hContact = db_find_next(hContact));
 				return TRUE;
 			}
 		}
@@ -285,7 +284,7 @@ static int VisibilityOptInitialise(WPARAM wParam, LPARAM)
 	odp.hInstance = hInst;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_VISIBILITY);
 	odp.pszTitle = LPGEN("Visibility");
-	odp.pszGroup = LPGEN("Status");
+	odp.pszGroup = LPGEN("Contacts");
 	odp.pfnDlgProc = DlgProcVisibilityOpts;
 	odp.flags = ODPF_BOLDGROUPS;
 	Options_AddPage(wParam, &odp);

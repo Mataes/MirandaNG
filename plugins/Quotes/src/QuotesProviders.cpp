@@ -1,12 +1,4 @@
 #include "StdAfx.h"
-#include "QuotesProviders.h"
-
-#include "QuotesProviderDukasCopy.h"
-#include "EconomicRateInfo.h"
-#include "QuotesProviderGoogle.h"
-#include "DBUtils.h"
-#include "QuotesProviderGoogleFinance.h"
-#include "QuotesProviderYahoo.h"
 
 #define LAST_RUN_VERSION "LastRunVersion"
 
@@ -54,10 +46,10 @@ namespace
 {
 	void convert_contact_settings(HANDLE hContact) 
 	{
-		WORD dwLogMode = DBGetContactSettingWord(hContact,QUOTES_PROTOCOL_NAME,DB_STR_QUOTE_LOG,static_cast<WORD>(lmDisabled));
+		WORD dwLogMode = db_get_w(hContact,QUOTES_PROTOCOL_NAME,DB_STR_QUOTE_LOG,static_cast<WORD>(lmDisabled));
 		if ((dwLogMode&lmInternalHistory) || (dwLogMode&lmExternalFile))
 		{
-			DBWriteContactSettingByte(hContact,QUOTES_PROTOCOL_NAME,DB_STR_CONTACT_SPEC_SETTINGS,1);
+			db_set_b(hContact,QUOTES_PROTOCOL_NAME,DB_STR_CONTACT_SPEC_SETTINGS,1);
 		}
 	}
 }
@@ -66,9 +58,9 @@ void CQuotesProviders::InitProviders()
 	CreateProviders();
 
 	const WORD nCurrentVersion = 17;
-	WORD nVersion = DBGetContactSettingWord(NULL,QUOTES_MODULE_NAME,LAST_RUN_VERSION,1);
+	WORD nVersion = db_get_w(NULL,QUOTES_MODULE_NAME,LAST_RUN_VERSION,1);
 
-	for(HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
+	for(HANDLE hContact = db_find_first(QUOTES_MODULE_NAME); hContact; hContact = db_find_next(hContact, QUOTES_MODULE_NAME))
 	{
 		TQuotesProviderPtr pProvider = GetContactProviderPtr(hContact);
 		if(pProvider)
@@ -81,7 +73,7 @@ void CQuotesProviders::InitProviders()
 		}
 	}
 
-	DBWriteContactSettingWord(NULL,QUOTES_MODULE_NAME,LAST_RUN_VERSION,nCurrentVersion);
+	db_set_w(NULL,QUOTES_MODULE_NAME,LAST_RUN_VERSION,nCurrentVersion);
 }
 
 CQuotesProviders::TQuotesProviderPtr CQuotesProviders::GetContactProviderPtr(HANDLE hContact)const

@@ -1,25 +1,26 @@
 /*
 
-  Miranda IM: the free IM client for Microsoft* Windows*
+Miranda IM: the free IM client for Microsoft* Windows*
 
-  Copyright 2000-2010 Miranda ICQ/IM project,
-  all portions of this codebase are copyrighted to the people
-  listed in contributors.txt.
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
+listed in contributors.txt.
 
-  This program is free software; you can redistribute it and/or
-  modify it under the terms of the GNU General Public License
-  as published by the Free Software Foundation; either version 2
-  of the License, or (at your option) any later version.
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
 
-  This program is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "../database/profilemanager.h"
 #include "clc.h"
@@ -84,7 +85,7 @@ static int CluiIconsChanged(WPARAM, LPARAM)
 	return 0;
 }
 
-static HANDLE hRenameMenuItem;
+static HGENMENU hRenameMenuItem;
 
 static int MenuItem_PreBuild(WPARAM, LPARAM)
 {
@@ -92,14 +93,10 @@ static int MenuItem_PreBuild(WPARAM, LPARAM)
 	HANDLE hItem;
 	HWND hwndClist = GetFocus();
 
-	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIM_FLAGS;
 	GetClassName(hwndClist, cls, SIZEOF(cls));
-	hwndClist = ( !lstrcmp(CLISTCONTROL_CLASS, cls)) ? hwndClist : cli.hwndContactList;
+	hwndClist = ( !lstrcmp( _T(CLISTCONTROL_CLASS), cls)) ? hwndClist : cli.hwndContactList;
 	hItem = (HANDLE) SendMessage(hwndClist, CLM_GETSELECTION, 0, 0);
-	if ( !hItem)
-		mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM) hRenameMenuItem, (LPARAM) & mi);
+	Menu_ShowItem(hRenameMenuItem, hItem != 0);
 	return 0;
 }
 
@@ -110,7 +107,7 @@ static INT_PTR MenuItem_RenameContact(WPARAM, LPARAM)
 	HWND hwndClist = GetFocus();
 	GetClassName(hwndClist, cls, SIZEOF(cls));
 	// worst case scenario, the rename is sent to the main contact list
-	hwndClist = ( !lstrcmp(CLISTCONTROL_CLASS, cls)) ? hwndClist : cli.hwndContactList;
+	hwndClist = ( !lstrcmp( _T(CLISTCONTROL_CLASS), cls)) ? hwndClist : cli.hwndContactList;
 	hItem = (HANDLE) SendMessage(hwndClist, CLM_GETSELECTION, 0, 0);
 	if (hItem) {
 		SetFocus(hwndClist);
@@ -204,7 +201,7 @@ static INT_PTR MenuItem_DeleteContact(WPARAM wParam, LPARAM lParam)
 						db_set_b((HANDLE)wParam, "CList", "Delete", 1);
 						MessageBox(NULL,
 							TranslateT("This contact is on an instant messaging system which stores its contact list on a central server. The contact will be removed from the server and from your contact list when you next connect to that network."),
-							TranslateT("Delete Contact"), MB_OK);
+							TranslateT("Delete Contact"), MB_ICONINFORMATION | MB_OK);
 						return 0;
 					}
 				}
@@ -286,7 +283,7 @@ int LoadCLUIModule(void)
 	wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wndclass.hbrBackground = NULL;
 	wndclass.lpszMenuName = NULL;
-	wndclass.lpszClassName = CLISTCONTROL_CLASS;
+	wndclass.lpszClassName = _T(CLISTCONTROL_CLASS);
 	wndclass.hIconSm = NULL;
 	RegisterClassEx(&wndclass);
 
@@ -304,7 +301,7 @@ int LoadCLUIModule(void)
 	wndclass.hIconSm = LoadSkinIcon(SKINICON_OTHER_MIRANDA);
 	RegisterClassEx(&wndclass);
 
-	if (DBGetContactSettingTString(NULL, "CList", "TitleText", &dbv))
+	if (db_get_ts(NULL, "CList", "TitleText", &dbv))
 		lstrcpyn(titleText, _T(MIRANDANAME), SIZEOF(titleText));
 	else {
 		lstrcpyn(titleText, dbv.ptszVal, SIZEOF(titleText));
@@ -339,49 +336,43 @@ int LoadCLUIModule(void)
 
 	PostMessage(cli.hwndContactList, M_RESTORESTATUS, 0, 0);
 
-	{
-		int state = db_get_b(NULL, "CList", "State", SETTING_STATE_NORMAL);
-		cli.hMenuMain = GetMenu(cli.hwndContactList);
-		if ( !db_get_b(NULL, "CLUI", "ShowMainMenu", SETTING_SHOWMAINMENU_DEFAULT))
-			SetMenu(cli.hwndContactList, NULL);
-		if (state == SETTING_STATE_NORMAL)
-			ShowWindow(cli.hwndContactList, SW_SHOW);
-		else if (state == SETTING_STATE_MINIMIZED)
-			ShowWindow(cli.hwndContactList, SW_SHOWMINIMIZED);
-		SetWindowPos(cli.hwndContactList,
-			db_get_b(NULL, "CList", "OnTop", SETTING_ONTOP_DEFAULT) ? HWND_TOPMOST : HWND_NOTOPMOST,
-			0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
-	}
-	{
-		CLISTMENUITEM mi = { sizeof(mi) };
+	int state = db_get_b(NULL, "CList", "State", SETTING_STATE_NORMAL);
+	cli.hMenuMain = GetMenu(cli.hwndContactList);
+	if ( !db_get_b(NULL, "CLUI", "ShowMainMenu", SETTING_SHOWMAINMENU_DEFAULT))
+		SetMenu(cli.hwndContactList, NULL);
+	if (state == SETTING_STATE_NORMAL)
+		ShowWindow(cli.hwndContactList, SW_SHOW);
+	else if (state == SETTING_STATE_MINIMIZED)
+		ShowWindow(cli.hwndContactList, SW_SHOWMINIMIZED);
+	SetWindowPos(cli.hwndContactList,
+		db_get_b(NULL, "CList", "OnTop", SETTING_ONTOP_DEFAULT) ? HWND_TOPMOST : HWND_NOTOPMOST,
+		0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 
-		CreateServiceFunction("CList/DeleteContactCommand", MenuItem_DeleteContact);
-		mi.position = 2000070000;
-		mi.flags = CMIF_ICONFROMICOLIB;
-		mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_DELETE);
-		mi.pszContactOwner = NULL;      //on every contact
-		mi.pszName = LPGEN("De&lete");
-		mi.pszService = "CList/DeleteContactCommand";
-		Menu_AddContactMenuItem(&mi);
+	CLISTMENUITEM mi = { sizeof(mi) };
 
-		CreateServiceFunction("CList/RenameContactCommand", MenuItem_RenameContact);
-		mi.position = 2000050000;
-		mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_RENAME);
-		mi.pszContactOwner = NULL;      //on every contact
-		mi.pszName = LPGEN("&Rename");
-		mi.pszService = "CList/RenameContactCommand";
-		hRenameMenuItem = Menu_AddContactMenuItem(&mi);
+	CreateServiceFunction("CList/DeleteContactCommand", MenuItem_DeleteContact);
+	mi.position = 2000070000;
+	mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_DELETE);
+	mi.pszName = LPGEN("De&lete");
+	mi.pszService = "CList/DeleteContactCommand";
+	Menu_AddContactMenuItem(&mi);
 
-		CreateServiceFunction("CList/AddToListContactCommand", MenuItem_AddContactToList);
-		mi.position = -2050000000;
-		mi.flags |= CMIF_NOTONLIST;
-		mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_ADDCONTACT);
-		mi.pszName = LPGEN("&Add permanently to list");
-		mi.pszService = "CList/AddToListContactCommand";
-		Menu_AddContactMenuItem(&mi);
+	CreateServiceFunction("CList/RenameContactCommand", MenuItem_RenameContact);
+	mi.position = 2000050000;
+	mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_RENAME);
+	mi.pszName = LPGEN("&Rename");
+	mi.pszService = "CList/RenameContactCommand";
+	hRenameMenuItem = Menu_AddContactMenuItem(&mi);
 
-		HookEvent(ME_CLIST_PREBUILDCONTACTMENU, MenuItem_PreBuild);
-	}
+	CreateServiceFunction("CList/AddToListContactCommand", MenuItem_AddContactToList);
+	mi.position = -2050000000;
+	mi.flags |= CMIF_NOTONLIST;
+	mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_ADDCONTACT);
+	mi.pszName = LPGEN("&Add permanently to list");
+	mi.pszService = "CList/AddToListContactCommand";
+	Menu_AddContactMenuItem(&mi);
+
+	HookEvent(ME_CLIST_PREBUILDCONTACTMENU, MenuItem_PreBuild);
 	return 0;
 }
 
@@ -459,9 +450,7 @@ LRESULT CALLBACK fnContactListWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 		int rc;
 		// wParam = (ATOM)hProfileAtom, lParam = 0
 		if (GlobalGetAtomName((ATOM) wParam, profile, SIZEOF(profile))) {
-			TCHAR *pfd = Utils_ReplaceVarsT(_T("%miranda_userdata%\\%miranda_profilename%.dat"));
-			rc = lstrcmpi(profile, pfd) == 0;
-			mir_free(pfd);
+			rc = lstrcmpi(profile, VARST(_T("%miranda_userdata%\\%miranda_profilename%.dat"))) == 0;
 			ReplyMessage(rc);
 			if (rc) {
 				ShowWindow(hwnd, SW_RESTORE);
@@ -509,7 +498,7 @@ LRESULT CALLBACK fnContactListWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 		return FALSE;
 
 	case M_CREATECLC:
-		cli.hwndContactTree = CreateWindow(CLISTCONTROL_CLASS, _T(""),
+		cli.hwndContactTree = CreateWindow( _T(CLISTCONTROL_CLASS), _T(""),
 			WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN
 			| CLS_CONTACTLIST
 			| (db_get_b(NULL, "CList", "UseGroups", SETTING_USEGROUPS_DEFAULT) ? CLS_USEGROUPS : 0)
@@ -627,7 +616,7 @@ LRESULT CALLBACK fnContactListWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 	{
 		LRESULT result;
 		result = DefWindowProc(hwnd, WM_NCHITTEST, wParam, lParam);
-		if (result == HTSIZE || result == HTTOP || result == HTTOPLEFT || result == HTTOPRIGHT  || 
+		if (result == HTSIZE || result == HTTOP || result == HTTOPLEFT || result == HTTOPRIGHT  ||
 			result == HTBOTTOM || result == HTBOTTOMRIGHT || result == HTBOTTOMLEFT)
 			if (db_get_b(NULL, "CLUI", "AutoSize", 0))
 				return HTCLIENT;
@@ -718,7 +707,7 @@ LRESULT CALLBACK fnContactListWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
 		case SC_MINIMIZE:
 		case SC_CLOSE:
-			if ((GetWindowLongPtr(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW) || 
+			if ((GetWindowLongPtr(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW) ||
 				db_get_b(NULL, "CList", "Min2Tray", SETTING_MIN2TRAY_DEFAULT))
 			{
 				ShowWindow(hwnd, SW_HIDE);

@@ -11,15 +11,6 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-#ifdef _WIN32
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
-#endif //_WIN32
-
-/////////////////////////////////////////////////////////////////////////////
 //
 // Icon
 //
@@ -35,6 +26,4 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 7                     ICON         "Silver scheme.ico"
 8                     ICON         "Notepad scheme.ico"
 9                     ICON         "Pack.ico"
-
-#endif    // English (U.S.) resources
-/////////////////////////////////////////////////////////////////////////////
+10                    ICON         "Reload langpack.ico"

@@ -24,7 +24,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "hdr/modern_commonheaders.h"
 
-#include "m_clc.h"
 #include "hdr/modern_clc.h"
 #include "hdr/modern_skinengine.h"
 #include "hdr/modern_commonprototypes.h"
@@ -449,12 +448,12 @@ void  CLCPaint::_DrawTextSmiley( HDC hdcMem, RECT *free_rc, SIZE * text_size, TC
 			i=0;
 
 		// Get real height of the line
-		row_height = ske_DrawText( hdcMem, _T( "A" ), 1, &tmp_rc, DT_CALCRECT | uTextFormat );
+		row_height = ske_DrawText( hdcMem, _T("A"), 1, &tmp_rc, DT_CALCRECT | uTextFormat );
 
 		// Just draw ellipsis
 		if ( free_rc->right <= free_rc->left )
 		{
-			if ( gl_TrimText ) ske_DrawText( hdcMem, _T( "..." ), 3, free_rc, uTextFormat & ~DT_END_ELLIPSIS );
+			if ( gl_TrimText ) ske_DrawText( hdcMem, _T("..."), 3, free_rc, uTextFormat & ~DT_END_ELLIPSIS );
 		}
 		else
 		{
@@ -519,7 +518,7 @@ void  CLCPaint::_DrawTextSmiley( HDC hdcMem, RECT *free_rc, SIZE * text_size, TC
 						}
 						else
 						{
-							ske_DrawText( hdcMem, _T( "..." ), 3, &text_rc, uTextFormat );
+							ske_DrawText( hdcMem, _T("..."), 3, &text_rc, uTextFormat );
 						}
 
 						pos_x += fac_width;
@@ -599,7 +598,7 @@ MODERNMASK *CLCPaint::_GetCLCContactRowBackModernMask( ClcGroup *group, ClcConta
 			_AddParamShort( mpModernMask, hi_RootGroup, ( group && group->parent == NULL )?hi_True:hi_False );
 			switch( GetContactCachedStatus( Drawing->hContact ))
 			{
-				// case ID_STATUS_CONNECTING: AppendChar( buf, BUFSIZE, "CONNECTING" ); break;
+				// case ID_STATUS_CONNECTING: AppendChar( buf, BUFSIZE, "CONNECTING"); break;
 			case ID_STATUS_ONLINE:      _AddParamShort( mpModernMask, hi_Status, hi_ONLINE );    break;
 			case ID_STATUS_AWAY:        _AddParamShort( mpModernMask, hi_Status, hi_AWAY );      break;
 			case ID_STATUS_DND:         _AddParamShort( mpModernMask, hi_Status, hi_DND );       break;
@@ -853,7 +852,7 @@ void CLCPaint::_PaintRowItemsEx( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact
 				{
 					// calc width and height
 					ChangeToFont( hdcMem, dat, Drawing->group->expanded?FONTID_OPENGROUPCOUNTS:FONTID_CLOSEDGROUPCOUNTS, NULL );
-					ske_DrawText( hdcMem, _T( " " ), 1, &count_rc, DT_CALCRECT | DT_NOPREFIX );
+					ske_DrawText( hdcMem, _T(" "), 1, &count_rc, DT_CALCRECT | DT_NOPREFIX );
 					count_size.cx = count_rc.right-count_rc.left;
 					space_width = count_size.cx;
 					count_rc.right = 0;
@@ -951,7 +950,7 @@ void CLCPaint::_PaintRowItemsEx( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact
 					SIZE counts_size = {0};
 					// Get widths
 					counts_rc = fr_rc;
-					DrawText( hdcMem, _T( " " ), 1, &space_rc, DT_CALCRECT | DT_NOPREFIX );
+					DrawText( hdcMem, _T(" "), 1, &space_rc, DT_CALCRECT | DT_NOPREFIX );
 
 					space_size.cx = space_rc.right - space_rc.left;
 					space_size.cy = min( space_rc.bottom - space_rc.top, fr_rc.bottom-fr_rc.top );
@@ -1120,7 +1119,7 @@ void CLCPaint::_PaintRowItemsEx( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact
 
 							// calc width and height
 							ChangeToFont( hdcMem, dat, Drawing->group->expanded?FONTID_OPENGROUPCOUNTS:FONTID_CLOSEDGROUPCOUNTS, NULL );
-							ske_DrawText( hdcMem, _T( " " ), 1, &count_rc, DT_CALCRECT | DT_NOPREFIX );
+							ske_DrawText( hdcMem, _T(" "), 1, &count_rc, DT_CALCRECT | DT_NOPREFIX );
 							count_size.cx = count_rc.right-count_rc.left;
 							space_width = count_size.cx;
 							count_rc.right = 0;
@@ -1422,7 +1421,7 @@ void CLCPaint::_PaintRowItemsEx( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact
 							adr.radius = round_radius;
 							adr.alpha = blendmode;
 
-							CallService( MS_AV_DRAWAVATAR, 0, ( LPARAM ) &adr );
+							CallService(MS_AV_DRAWAVATAR, 0, (LPARAM) &adr );
 							}
 							else
 							*/
@@ -1486,8 +1485,8 @@ void CLCPaint::_PaintRowItemsEx( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact
 
 						//TODO fix overlays
 						// Draw overlay
-						if ( dat->avatars_draw_overlay && dat->avatars_maxheight_size >= ICON_HEIGHT + ( dat->avatars_draw_border ? 2 : 0 )
-							&& GetContactCachedStatus( Drawing->hContact ) - ID_STATUS_OFFLINE < MAX_REGS( g_pAvatarOverlayIcons ))
+						if (dat->avatars_draw_overlay && dat->avatars_maxheight_size >= ICON_HEIGHT + (dat->avatars_draw_border ? 2 : 0)
+							&& GetContactCachedStatus(Drawing->hContact) - ID_STATUS_OFFLINE < SIZEOF(g_pAvatarOverlayIcons))
 						{
 							p_rect.top = p_rect.bottom - ICON_HEIGHT;
 							p_rect.left = p_rect.right - ICON_HEIGHT;
@@ -1516,24 +1515,19 @@ void CLCPaint::_PaintRowItemsEx( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact
 								}
 							case SETTING_AVATAR_OVERLAY_TYPE_PROTOCOL:
 								{
-									int item;
-
-									item = ExtIconFromStatusMode( Drawing->hContact, Drawing->proto, 
-										Drawing->proto == NULL ? ID_STATUS_OFFLINE : GetContactCachedStatus( Drawing->hContact ));
-									if ( item != -1 )
-										_DrawStatusIcon( Drawing, dat, item, hdcMem, 
-										p_rect.left,  p_rect.top, ICON_HEIGHT, ICON_HEIGHT, 
-										CLR_NONE, CLR_NONE, ( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
-									break;
+									int item = pcli->pfnIconFromStatusMode(Drawing->proto, Drawing->proto == NULL ? ID_STATUS_OFFLINE : GetContactCachedStatus(Drawing->hContact), Drawing->hContact);
+									if (item != -1)
+										_DrawStatusIcon(Drawing, dat, item, hdcMem, 
+											p_rect.left,  p_rect.top, ICON_HEIGHT, ICON_HEIGHT, 
+											CLR_NONE, CLR_NONE, ( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
 								}
+								break;
 							case SETTING_AVATAR_OVERLAY_TYPE_CONTACT:
-								{
-									if ( Drawing->iImage != -1 )
-										_DrawStatusIcon( Drawing, dat, Drawing->iImage, hdcMem, 
+								if ( Drawing->iImage != -1 )
+									_DrawStatusIcon( Drawing, dat, Drawing->iImage, hdcMem, 
 										p_rect.left,  p_rect.top, ICON_HEIGHT, ICON_HEIGHT, 
 										CLR_NONE, CLR_NONE, ( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
-									break;
-								}
+								break;
 							}
 						}
 					}
@@ -1658,114 +1652,111 @@ void CLCPaint::_DrawStatusIcon( ClcContact *Drawing, ClcData *dat, int iImage, H
 {
 	if ( Drawing->type != CLCIT_CONTACT )
 	{
-		ske_ImageList_DrawEx( g_himlCListClc, LOWORD( iImage ), hdcMem, 
+		ske_ImageList_DrawEx( g_himlCListClc, LOWORD(iImage), hdcMem, 
 			x, y, cx, cy, colorbg, colorfg, mode );
 	}
 	else if ( Drawing->image_is_special )
 	{
-		ske_ImageList_DrawEx( g_himlCListClc, LOWORD( iImage ), hdcMem, 
+		ske_ImageList_DrawEx( g_himlCListClc, LOWORD(iImage), hdcMem, 
 			x, y, cx, cy, colorbg, colorfg, mode );
 	}
-	else if ( iImage != -1 && HIWORD( iImage ) && dat->drawOverlayedStatus )
+	else if ( iImage != -1 && HIWORD(iImage) && dat->drawOverlayedStatus )
 	{
 		int status = GetContactCachedStatus( Drawing->hContact );
-		if ( status < ID_STATUS_OFFLINE ) status = ID_STATUS_OFFLINE;
-		else if ( status>ID_STATUS_OUTTOLUNCH ) status = ID_STATUS_ONLINE;
-		ske_ImageList_DrawEx(g_himlCListClc, HIWORD( iImage ), hdcMem, 
-			x, y, cx, cy, colorbg, colorfg, mode);
+		if (status < ID_STATUS_OFFLINE) status = ID_STATUS_OFFLINE;
+		else if (status > ID_STATUS_OUTTOLUNCH) status = ID_STATUS_ONLINE;
+		ske_ImageList_DrawEx(g_himlCListClc, HIWORD(iImage), hdcMem, x, y, cx, cy, colorbg, colorfg, mode);
 		if (dat->drawOverlayedStatus & 2) //draw overlay
 			ske_ImageList_DrawEx( hAvatarOverlays, g_pStatusOverlayIcons[status-ID_STATUS_OFFLINE].listID, hdcMem, 
 				x, y, cx, cy, colorbg, colorfg, mode );
 	}
 	else
 	{
-		ske_ImageList_DrawEx( g_himlCListClc, LOWORD( iImage ), hdcMem, 
+		ske_ImageList_DrawEx( g_himlCListClc, LOWORD(iImage), hdcMem, 
 			x, y, cx, cy, colorbg, colorfg, mode );
 	}
 }
 
 BOOL CLCPaint::_DrawNonEnginedBackground( HWND hwnd, HDC hdcMem, RECT *rcPaint, RECT clRect, ClcData *dat )
 {   
-	if ( dat->hBmpBackground ) 
-	{
-		BITMAP bmp;
-		HBITMAP oldbm;
-		HDC hdcBmp;
-		int x, y;
-		int maxx, maxy;
-		int destw, desth;
+	if (!dat->hBmpBackground)
+		return FALSE;
 
-		// XXX: Halftone isnt supported on 9x, however the scretch problems dont happen on 98.
-		SetStretchBltMode( hdcMem, HALFTONE );
+	// XXX: Halftone isnt supported on 9x, however the scretch problems dont happen on 98.
+	SetStretchBltMode( hdcMem, HALFTONE );
 
-
-		GetObject( dat->hBmpBackground, sizeof( bmp ), &bmp );
-		hdcBmp = CreateCompatibleDC( hdcMem );
-		oldbm = ( HBITMAP )SelectObject( hdcBmp, dat->hBmpBackground );
-		y = dat->backgroundBmpUse&CLBF_SCROLL?-dat->yScroll:0;
-		maxx = dat->backgroundBmpUse&CLBF_TILEH?clRect.right:1;
-		maxy = dat->backgroundBmpUse&CLBF_TILEV?maxy = rcPaint->bottom:y+1;
-		switch( dat->backgroundBmpUse&CLBM_TYPE ) {
-		case CLB_STRETCH:
-			if ( dat->backgroundBmpUse&CLBF_PROPORTIONAL ) {
-				if ( clRect.right*bmp.bmHeight < clRect.bottom*bmp.bmWidth ) {
-					desth = clRect.bottom;
-					destw = desth*bmp.bmWidth/bmp.bmHeight;
-				}
-				else {
-					destw = clRect.right;
-					desth = destw*bmp.bmHeight/bmp.bmWidth;
-				}
-			}
-			else {
-				destw = clRect.right;
-				desth = clRect.bottom;
-			}
-			break;
-		case CLB_STRETCHH:
-			if ( dat->backgroundBmpUse&CLBF_PROPORTIONAL ) {
-				destw = clRect.right;
-				desth = destw*bmp.bmHeight/bmp.bmWidth;
-			}
-			else {
-				destw = clRect.right;
-				desth = bmp.bmHeight;
-				if ( dat->backgroundBmpUse&CLBF_TILEVTOROWHEIGHT )
-				{
-					desth = dat->row_min_heigh;
-				}   
-
-			}
-			break;
-		case CLB_STRETCHV:
-			if ( dat->backgroundBmpUse&CLBF_PROPORTIONAL ) {
+	BITMAP bmp;
+	GetObject(dat->hBmpBackground, sizeof(bmp), &bmp);
+	HDC hdcBmp = CreateCompatibleDC( hdcMem );
+	HBITMAP oldbm = ( HBITMAP )SelectObject( hdcBmp, dat->hBmpBackground );
+	int x, y = dat->backgroundBmpUse&CLBF_SCROLL?-dat->yScroll:0;
+	int maxx = dat->backgroundBmpUse&CLBF_TILEH?clRect.right:1;
+	int maxy = dat->backgroundBmpUse&CLBF_TILEV?maxy = rcPaint->bottom:y+1;
+	int destw, desth;
+	
+	switch( dat->backgroundBmpUse&CLBM_TYPE ) {
+	case CLB_STRETCH:
+		if ( dat->backgroundBmpUse&CLBF_PROPORTIONAL ) {
+			if ( clRect.right*bmp.bmHeight < clRect.bottom*bmp.bmWidth ) {
 				desth = clRect.bottom;
 				destw = desth*bmp.bmWidth/bmp.bmHeight;
 			}
 			else {
-				destw = bmp.bmWidth;
-				desth = clRect.bottom;
+				destw = clRect.right;
+				desth = destw*bmp.bmHeight/bmp.bmWidth;
 			}
-			break;
-		default:    //clb_topleft
-			destw = bmp.bmWidth;
+		}
+		else {
+			destw = clRect.right;
+			desth = clRect.bottom;
+		}
+		break;
+
+	case CLB_STRETCHH:
+		if ( dat->backgroundBmpUse&CLBF_PROPORTIONAL ) {
+			destw = clRect.right;
+			desth = destw*bmp.bmHeight/bmp.bmWidth;
+		}
+		else {
+			destw = clRect.right;
 			desth = bmp.bmHeight;
 			if ( dat->backgroundBmpUse&CLBF_TILEVTOROWHEIGHT )
 			{
 				desth = dat->row_min_heigh;
-			}                           
-			break;
+			}   
+
 		}
-		for ( ;y < maxy;y += desth ) {
-			if ( y < rcPaint->top-desth ) continue;
-			for ( x = 0;x < maxx;x += destw )
-				StretchBlt( hdcMem, x, y, destw, desth, hdcBmp, 0, 0, bmp.bmWidth, bmp.bmHeight, SRCCOPY );
+		break;
+
+	case CLB_STRETCHV:
+		if ( dat->backgroundBmpUse&CLBF_PROPORTIONAL ) {
+			desth = clRect.bottom;
+			destw = desth*bmp.bmWidth/bmp.bmHeight;
 		}
-		SelectObject( hdcBmp, oldbm );
-		DeleteDC( hdcBmp );
-		return TRUE;
+		else {
+			destw = bmp.bmWidth;
+			desth = clRect.bottom;
+		}
+		break;
+
+	default:    //clb_topleft
+		destw = bmp.bmWidth;
+		desth = bmp.bmHeight;
+		if ( dat->backgroundBmpUse&CLBF_TILEVTOROWHEIGHT )
+		{
+			desth = dat->row_min_heigh;
+		}                           
+		break;
 	}
-	return FALSE;
+
+	for ( ;y < maxy;y += desth ) {
+		if ( y < rcPaint->top-desth ) continue;
+		for ( x = 0;x < maxx;x += destw )
+			StretchBlt( hdcMem, x, y, destw, desth, hdcBmp, 0, 0, bmp.bmWidth, bmp.bmHeight, SRCCOPY );
+	}
+	SelectObject( hdcBmp, oldbm );
+	DeleteDC( hdcBmp );
+	return TRUE;
 }
 
 int CLCPaint::_DetermineDrawMode( HWND hWnd, ClcData *dat )
@@ -1797,38 +1788,33 @@ int CLCPaint::_DetermineDrawMode( HWND hWnd, ClcData *dat )
 
 void CLCPaint::_PreparePaintContext( HWND hWnd, ClcData *dat, HDC hdc, int paintMode, RECT& clRect, _PaintContext& pc )
 {
-	if ( paintMode&DM_GRAY && !(paintMode&DM_LAYERED))
-	{
-		pc.hdcMem2 = CreateCompatibleDC( hdc );
-		if ( paintMode&DM_CLASSIC )
+	if ((paintMode & DM_GRAY) && !(paintMode & DM_LAYERED)) {
+		pc.hdcMem2 = CreateCompatibleDC(hdc);
+		if (paintMode & DM_CLASSIC)
 			pc.hBmpOsb2 = CreateBitmap( clRect.right, clRect.bottom, 1, GetDeviceCaps( hdc, BITSPIXEL ), NULL );
 		else
 			pc.hBmpOsb2 = ske_CreateDIB32( clRect.right, clRect.bottom );
-		pc.oldbmp2 = (HBITMAP)  SelectObject( pc.hdcMem2, pc.hBmpOsb2 );
+		pc.oldbmp2 = (HBITMAP)SelectObject( pc.hdcMem2, pc.hBmpOsb2 );
 		pc.fRelease |= _PaintContext::release_hdcmem2;
 	}
 
-	if ( paintMode&( DM_DRAW_OFFSCREEN | DM_GRAY )  )
-	{
-		pc.hdcMem = CreateCompatibleDC( hdc );
+	if (paintMode & (DM_DRAW_OFFSCREEN | DM_GRAY)) {
+		pc.hdcMem = CreateCompatibleDC(hdc);
 		pc.fRelease |= _PaintContext::release_hdcmem;
 		pc.hBmpOsb = ske_CreateDIB32( clRect.right, clRect.bottom );
-		pc.oldbmp = ( HBITMAP )  SelectObject( pc.hdcMem, pc.hBmpOsb );
+		pc.oldbmp = (HBITMAP)SelectObject( pc.hdcMem, pc.hBmpOsb );
 	}
 
-	if ( paintMode&DM_CONTROL && !dat->bkChanged ) 
-	{
+	if ((paintMode & DM_CONTROL) && !dat->bkChanged) {
 		pc.tmpbkcolour = GetSysColor( COLOR_3DFACE );
 		pc.tmpforecolour = GetSysColor( COLOR_BTNTEXT );
 	}
-	else
-	{
-		pc.tmpbkcolour = (!(paintMode&DM_CONTROL) && dat->bkChanged ) ? dat->bkColour : ( !dat->useWindowsColours ?  dat->bkColour : GetSysColor( COLOR_3DFACE ));
-		pc.tmpforecolour = /*(paintMode&DM_CONTROL) ? */dat->fontModernInfo[FONTID_CONTACTS].colour;
+	else {
+		pc.tmpbkcolour = (!(paintMode & DM_CONTROL) && dat->bkChanged ) ? dat->bkColour : ( !dat->useWindowsColours ?  dat->bkColour : GetSysColor( COLOR_3DFACE ));
+		pc.tmpforecolour = dat->fontModernInfo[FONTID_CONTACTS].colour;
 	}
 
-	if ( paintMode&DM_GREYALTERNATE )
-	{
+	if ( paintMode & DM_GREYALTERNATE ) {
 		int rDelta = ( GetRValue( pc.tmpbkcolour )  > GetRValue( pc.tmpforecolour )) ? -10 : 10;
 		int gDelta = ( GetGValue( pc.tmpbkcolour )  > GetGValue( pc.tmpforecolour )) ? -10 : 10;
 		int bDelta = ( GetBValue( pc.tmpbkcolour )  > GetBValue( pc.tmpforecolour )) ? -10 : 10;
@@ -1844,8 +1830,8 @@ void CLCPaint::_PreparePaintContext( HWND hWnd, ClcData *dat, HDC hdc, int paint
 	}
 
 	// Set some draw states
-	SetBkMode( pc.hdcMem, TRANSPARENT );
-	SetStretchBltMode( pc.hdcMem, HALFTONE );
+	SetBkMode(pc.hdcMem, TRANSPARENT);
+	SetStretchBltMode(pc.hdcMem, HALFTONE);
 
 	POINT org;
 	GetBrushOrgEx( pc.hdcMem, &org ); 
@@ -1860,7 +1846,7 @@ void CLCPaint::_DrawBackground( HWND hWnd, ClcData *dat, HDC hdc, int paintMode,
 		DeleteObject( hBrush );
 		ske_SetRectOpaque( pc.hdcMem, rcPaint );
 		if ( !( paintMode & DM_GREYALTERNATE))
-			SkinDrawGlyph( pc.hdcMem, &clRect, rcPaint, "CL,ID=Background,Type=Control" );
+			SkinDrawGlyph( pc.hdcMem, &clRect, rcPaint, "CL,ID=Background,Type=Control");
 	}
 	else if ( paintMode&DM_CLASSIC) {
 		if ( !_DrawNonEnginedBackground( hWnd, pc.hdcMem, rcPaint, clRect, dat )) {
@@ -1982,7 +1968,7 @@ void CLCPaint::_DrawLines( HWND hWnd, ClcData *dat, HDC hdc, int paintMode, RECT
 						FillRect( pc.hdcMem, &row_rc, pc.hBrushAlternateGrey );
 					}
 					else
-						SkinDrawGlyph( pc.hdcMem, &row_rc, rcPaint, "CL,ID=GreyAlternate" );
+						SkinDrawGlyph( pc.hdcMem, &row_rc, rcPaint, "CL,ID=GreyAlternate");
 				}
 				if ( ! (paintMode&(DM_CLASSIC|DM_CONTROL)))
 				{
@@ -2015,16 +2001,16 @@ void CLCPaint::_DrawLines( HWND hWnd, ClcData *dat, HDC hdc, int paintMode, RECT
 						if ( dat->HiLightMode == 1 ) // Full  or default
 						{
 							if ( selected )
-								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=Selection" );
+								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=Selection");
 							if ( hottrack )
-								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=HotTracking" );
+								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=HotTracking");
 						}
 						else if ( dat->HiLightMode == 2 ) // Less
 						{
 							if ( selected )
-								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=Selection" );      //instead of free_row_rc
+								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=Selection");      //instead of free_row_rc
 							if ( hottrack )
-								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=HotTracking" );
+								SkinDrawGlyph( pc.hdcMem, &mrc, rcPaint, "CL,ID=HotTracking");
 						}
 					}
 
@@ -2102,8 +2088,8 @@ void CLCPaint::_DrawLines( HWND hWnd, ClcData *dat, HDC hdc, int paintMode, RECT
 				{
 					if ( mpRequest->pl_Params[1].szValue )
 						free( mpRequest->pl_Params[1].szValue );
-					mpRequest->pl_Params[1].szValue = strdupn( "Ovl", 3 );
-					mpRequest->pl_Params[1].dwValueHash = mod_CalcHash( "Ovl" );
+					mpRequest->pl_Params[1].szValue = strdupn("Ovl", 3 );
+					mpRequest->pl_Params[1].dwValueHash = mod_CalcHash("Ovl");
 					{
 						RECT mrc = row_rc;
 						if ( Drawing->type == CLCIT_GROUP  && 
@@ -2432,8 +2418,8 @@ void CLCPaint::_CalcItemsPos( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact *D
 					&& ( !Drawing->image_is_special || !has_avatar  || 
 					( 
 					dat->avatars_draw_overlay
-					&& dat->avatars_maxheight_size >= ICON_HEIGHT + ( dat->avatars_draw_border ? 2 : 0 )
-					&& GetContactCachedStatus( Drawing->hContact ) - ID_STATUS_OFFLINE < MAX_REGS( g_pAvatarOverlayIcons )
+					&& dat->avatars_maxheight_size >= ICON_HEIGHT + (dat->avatars_draw_border ? 2 : 0)
+					&& GetContactCachedStatus(Drawing->hContact) - ID_STATUS_OFFLINE < SIZEOF(g_pAvatarOverlayIcons)
 					&& dat->avatars_overlay_type == SETTING_AVATAR_OVERLAY_TYPE_CONTACT
 					)))
 				{
@@ -2551,7 +2537,7 @@ void CLCPaint::_CalcItemsPos( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact *D
 		SIZE third_line_text_size = {0};
 		SIZE space_size = {0};
 		SIZE counts_size = {0};
-		char *szCounts = NULL;//mir_tstrdup( _T( "" ));
+		char *szCounts = NULL;//mir_tstrdup( _T(""));
 		int free_width;
 		int free_height;
 		int max_bottom_selection_border = SELECTION_BORDER;
@@ -2599,7 +2585,7 @@ void CLCPaint::_CalcItemsPos( HWND hwnd, HDC hdcMem, ClcData *dat, ClcContact *D
 				free_height = free_row_rc.bottom - free_row_rc.top;
 
 				// Get widths
-				ske_DrawText( hdcMem, _T( " " ), 1, &space_rc, DT_CALCRECT | DT_NOPREFIX );
+				ske_DrawText( hdcMem, _T(" "), 1, &space_rc, DT_CALCRECT | DT_NOPREFIX );
 				space_size.cx = space_rc.right - space_rc.left;
 				space_size.cy = min( space_rc.bottom - space_rc.top, free_height );
 
@@ -2962,23 +2948,21 @@ void CLCPaint::_DrawContactAvatar( HDC hdcMem, ClcData *dat, ClcContact *Drawing
 	{
 		int overlayIdx = -1;
 		int blendmode = 255;
-		if ( dat->avatars_draw_overlay && dat->avatars_maxheight_size >= ICON_HEIGHT + ( dat->avatars_draw_border ? 2 : 0 )
-			&&  GetContactCachedStatus( Drawing->hContact ) - ID_STATUS_OFFLINE < MAX_REGS( g_pAvatarOverlayIcons ))
+		if (dat->avatars_draw_overlay && dat->avatars_maxheight_size >= ICON_HEIGHT + (dat->avatars_draw_border ? 2 : 0)
+			&&  GetContactCachedStatus(Drawing->hContact) - ID_STATUS_OFFLINE < SIZEOF(g_pAvatarOverlayIcons))
 		{
-			switch( dat->avatars_overlay_type )
-			{
+			switch(dat->avatars_overlay_type) {
 			case SETTING_AVATAR_OVERLAY_TYPE_NORMAL:
 				overlayIdx = g_pAvatarOverlayIcons[GetContactCachedStatus( Drawing->hContact ) - ID_STATUS_OFFLINE].listID;
 				break;
 			case SETTING_AVATAR_OVERLAY_TYPE_PROTOCOL:
-				overlayIdx = ExtIconFromStatusMode( Drawing->hContact, Drawing->proto, 
-					Drawing->proto == NULL ? ID_STATUS_OFFLINE : GetContactCachedStatus( Drawing->hContact ));
+				overlayIdx = pcli->pfnIconFromStatusMode(Drawing->proto, Drawing->proto == NULL ? ID_STATUS_OFFLINE : GetContactCachedStatus(Drawing->hContact), Drawing->hContact);
 				break;
 			case SETTING_AVATAR_OVERLAY_TYPE_CONTACT:
 				overlayIdx = Drawing->iImage;
 				break;
 			}
-		}                                   
+		}
 		_GetBlendMode( dat, Drawing, selected, hottrack, GIM_AVATAR_AFFECT, NULL, &blendmode );
 		AniAva_SetAvatarPos( Drawing->hContact, prcItem, overlayIdx, blendmode );
 		AniAva_RenderAvatar( Drawing->hContact, hdcMem, prcItem );
@@ -3034,46 +3018,37 @@ void CLCPaint::_DrawContactAvatar( HDC hdcMem, ClcData *dat, ClcContact *Drawing
 		SelectClipRgn( hdcMem, rgn );
 		DeleteObject( rgn );
 		// Draw overlays
-		if ( dat->avatars_draw_overlay && dat->avatars_maxheight_size >= ICON_HEIGHT + ( dat->avatars_draw_border ? 2 : 0 )
-			&&  GetContactCachedStatus( Drawing->hContact ) - ID_STATUS_OFFLINE < MAX_REGS( g_pAvatarOverlayIcons ))
+		if (dat->avatars_draw_overlay && dat->avatars_maxheight_size >= ICON_HEIGHT + (dat->avatars_draw_border ? 2 : 0)
+			&&  GetContactCachedStatus(Drawing->hContact) - ID_STATUS_OFFLINE < SIZEOF(g_pAvatarOverlayIcons))
 		{
 			POINT ptOverlay = { prcItem->right-ICON_HEIGHT, prcItem->bottom-ICON_HEIGHT };
-			if ( dat->avatars_draw_border )
-			{
+			if ( dat->avatars_draw_border ) {
 				ptOverlay.x--;
 				ptOverlay.y--;
 			}
-			switch( dat->avatars_overlay_type )
-			{
+			switch( dat->avatars_overlay_type ) {
 			case SETTING_AVATAR_OVERLAY_TYPE_NORMAL:
-				{
-					ske_ImageList_DrawEx( hAvatarOverlays, g_pAvatarOverlayIcons[GetContactCachedStatus( Drawing->hContact ) - ID_STATUS_OFFLINE].listID, 
-						hdcMem, 
-						ptOverlay.x, ptOverlay.y, ICON_HEIGHT, ICON_HEIGHT, 
-						CLR_NONE, CLR_NONE, 
-						( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
-					break;
-				}
+				ske_ImageList_DrawEx( hAvatarOverlays, g_pAvatarOverlayIcons[GetContactCachedStatus( Drawing->hContact ) - ID_STATUS_OFFLINE].listID, 
+					hdcMem, 
+					ptOverlay.x, ptOverlay.y, ICON_HEIGHT, ICON_HEIGHT, 
+					CLR_NONE, CLR_NONE, 
+					( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
+				break;
 			case SETTING_AVATAR_OVERLAY_TYPE_PROTOCOL:
 				{
-					int item;
-
-					item = ExtIconFromStatusMode( Drawing->hContact, Drawing->proto, 
-						Drawing->proto == NULL ? ID_STATUS_OFFLINE : GetContactCachedStatus( Drawing->hContact ));
+					int item = pcli->pfnIconFromStatusMode(Drawing->proto, Drawing->proto == NULL ? ID_STATUS_OFFLINE : GetContactCachedStatus(Drawing->hContact), Drawing->hContact);
 					if ( item != -1 )
 						_DrawStatusIcon( Drawing, dat, item, hdcMem, 
-						ptOverlay.x, ptOverlay.y, ICON_HEIGHT, ICON_HEIGHT, 
-						CLR_NONE, CLR_NONE, ( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
-					break;
+							ptOverlay.x, ptOverlay.y, ICON_HEIGHT, ICON_HEIGHT, 
+							CLR_NONE, CLR_NONE, ( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
 				}
+				break;
 			case SETTING_AVATAR_OVERLAY_TYPE_CONTACT:
-				{
-					if ( Drawing->iImage != -1 )
-						_DrawStatusIcon( Drawing, dat, Drawing->iImage, hdcMem, 
+				if ( Drawing->iImage != -1 )
+					_DrawStatusIcon( Drawing, dat, Drawing->iImage, hdcMem, 
 						ptOverlay.x, ptOverlay.y, ICON_HEIGHT, ICON_HEIGHT, 
 						CLR_NONE, CLR_NONE, ( blendmode == 255 )?ILD_NORMAL:( blendmode == 128 )?ILD_BLEND50:ILD_BLEND25 );
-					break;
-				}
+				break;
 			}
 		}
 	}
@@ -3208,9 +3183,9 @@ void CLCPaint::_DrawContactSelection( HDC hdcMem, ClcData *dat, ClcContact *Draw
 	// Selection background
 	if (( selected || hottrack ) && dat->HiLightMode == 0) {
 		if ( selected )
-			SkinDrawGlyph( hdcMem, prcItem, rcPaint, "Contact List/Selection" );
+			SkinDrawGlyph( hdcMem, prcItem, rcPaint, "Contact List/Selection");
 		else if ( hottrack )
-			SkinDrawGlyph( hdcMem, prcItem, rcPaint, "Contact List/HotTracking" );
+			SkinDrawGlyph( hdcMem, prcItem, rcPaint, "Contact List/HotTracking");
 	}
 }
 

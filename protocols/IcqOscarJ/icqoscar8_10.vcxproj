@@ -102,7 +102,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\include;..\..\plugins\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN64;_DEBUG;_WINDOWS;_USRDLL;icqoscar8_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;icqoscar8_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -167,7 +167,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..\include;..\..\plugins\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN64;NDEBUG;_WINDOWS;_USRDLL;icqoscar8_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;icqoscar8_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -203,11 +203,9 @@
     <ClInclude Include="src\families.h" />
     <ClInclude Include="src\guids.h" />
     <ClInclude Include="src\i18n.h" />
-    <ClInclude Include="src\iconlib.h" />
     <ClInclude Include="src\icq_advsearch.h" />
     <ClInclude Include="src\icq_avatar.h" />
     <ClInclude Include="src\icq_constants.h" />
-    <ClInclude Include="src\icq_db.h" />
     <ClInclude Include="src\icq_direct.h" />
     <ClInclude Include="src\icq_fieldnames.h" />
     <ClInclude Include="src\icq_http.h" />
@@ -278,7 +276,6 @@
     <ClCompile Include="src\cookies.cpp" />
     <ClCompile Include="src\directpackets.cpp" />
     <ClCompile Include="src\i18n.cpp" />
-    <ClCompile Include="src\iconlib.cpp" />
     <ClCompile Include="src\icq_avatar.cpp" />
     <ClCompile Include="src\icq_clients.cpp" />
     <ClCompile Include="src\icq_fieldnames.cpp" />

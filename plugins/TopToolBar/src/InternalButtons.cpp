@@ -5,8 +5,6 @@
 #define TTBI_SOUNDSONOFF    "TTBInternal/SoundsOnOFF"
 #define TTBI_MAINMENUBUTT   "TTBInternal/MainMenuBUTT"
 
-extern HINSTANCE hInst;
-
 static HWND hwndContactTree;
 
 struct 
@@ -79,7 +77,7 @@ INT_PTR TTBInternalSoundsOnOff(WPARAM wParam, LPARAM lParam)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int InitInternalButtons(WPARAM, LPARAM)
+void InitInternalButtons()
 {
 	hwndContactTree = (HWND)CallService(MS_CLUI_GETHWNDTREE, 0, 0);
 
@@ -119,5 +117,4 @@ int InitInternalButtons(WPARAM, LPARAM)
 		db_get_b(NULL, "Skin", "UseSound", 1) ? TTBST_RELEASED : TTBST_PUSHED);
 
 	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, OnSettingChanging);
- 	return 0;
 }

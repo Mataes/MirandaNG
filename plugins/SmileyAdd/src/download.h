@@ -19,8 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SMILEYADD_DOWNLOAD_H_
 #define SMILEYADD_DOWNLOAD_H_
 
-#include "general.h"
-
 bool GetSmileyFile(bkstring& url, const bkstring& packstr);
 void DownloadInit(void);
 void DownloadClose(void);

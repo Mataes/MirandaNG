@@ -38,7 +38,7 @@ BEGIN
     PUSHBUTTON      "Yes",IDYES,54,38,65,14
     CONTROL         "Hide from list only, in order to keep their history and ignore/visibility settings",IDC_HIDE,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,7,65,270,9
-    LTEXT           "Use Options->Ignore (expert mode) to unhide contacts.",IDC_STATIC,20,78,257,8
+    LTEXT           "Use Options->Contacts->Ignore to unhide contacts.",IDC_STATIC,20,78,257,8
     CONTROL         "Are you sure you want to delete %s?",IDC_TOPLINE,"Static",SS_SIMPLE | SS_NOPREFIX | WS_GROUP,7,7,270,8
     LTEXT           "This will erase all history and settings for this contact!",IDC_STATIC,7,18,239,14
 END
@@ -109,7 +109,7 @@ BEGIN
     CONTROL         "If window is partially covered, bring to front instead of hiding",IDC_BRINGTOFRONT,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,141,102,162,16
     CONTROL         "Enable docking",IDC_DISABLEDOCKING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,141,135,136,10
-    GROUPBOX        "Translucency options (Windows 2000/XP only)",IDC_STATIC,4,161,305,80
+    GROUPBOX        "Translucency options",IDC_STATIC,4,161,305,80
     CONTROL         "Fade contact list in/out",IDC_FADEINOUT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,174,163,10
     CONTROL         "Transparent contact list",IDC_TRANSPARENT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,191,151,9
     LTEXT           "Inactive opacity:",IDC_STATIC11,23,206,89,8
@@ -271,7 +271,7 @@ BEGIN
     CONTROL         "Show menu bar",IDC_SHOWMAINMENU,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,49,128,10
     CONTROL         "Easy move",IDC_CLIENTDRAG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,61,128,10
     CONTROL         "Show title bar",IDC_SHOWCAPTION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,10,73,128,10
-    CONTROL         "If window is partially covered, bring iy to front",IDC_BRINGTOFRONT,
+    CONTROL         "If window is partially covered, bring it to front",IDC_BRINGTOFRONT,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,194,85,175,10
     EDITTEXT        IDC_TITLETEXT,91,156,72,12,ES_AUTOHSCROLL | NOT WS_VISIBLE
     CONTROL         "Show drop shadow (restart required)",IDC_DROPSHADOW,

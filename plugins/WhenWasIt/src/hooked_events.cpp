@@ -19,7 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "commonheaders.h"
-#include "hooked_events.h"
 
 #define DATE_CHANGE_CHECK_INTERVAL 20
 
@@ -38,6 +37,109 @@ UINT_PTR hDateChangeTimer = NULL;
 
 int currentDay;
 
+static int OnTopToolBarModuleLoaded(WPARAM wParam, LPARAM lParam)
+{
+	TTBButton ttb = { sizeof(ttb) };
+	ttb.dwFlags = TTBBF_VISIBLE | TTBBF_SHOWTOOLTIP;
+	ttb.pszService = MS_WWI_CHECK_BIRTHDAYS;
+	ttb.hIconHandleUp = hCheckMenu;
+	ttb.name = ttb.pszTooltipUp = LPGEN("Check for birthdays");
+	TopToolbar_AddButton(&ttb);
+	return 0;
+}
+
+static int OnOptionsInitialise(WPARAM wParam, LPARAM lParam)
+{
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
+	odp.position = 100000000;
+	odp.hInstance = hInstance;
+	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_WWI);
+	odp.ptszTitle = LPGENT("Birthdays");
+	odp.ptszGroup = LPGENT("Contacts");
+	odp.groupPosition = 910000000;
+	odp.flags = ODPF_BOLDGROUPS|ODPF_TCHAR;
+	odp.pfnDlgProc = DlgProcOptions;
+	Options_AddPage(wParam, &odp);
+	
+	return 0;
+}
+
+static int OnContactSettingChanged(WPARAM wParam, LPARAM lParam)
+{
+	DBCONTACTWRITESETTING *dw = (DBCONTACTWRITESETTING *) lParam;
+	DBVARIANT dv = dw->value;
+	if ((strcmp(dw->szModule, DUMMY_MODULE) == 0) && (strcmp(dw->szSetting, DUMMY_SETTING) == 0))
+		RefreshContactListIcons((HANDLE)wParam);
+	
+	return 0;
+}
+
+int OnModulesLoaded(WPARAM wParam, LPARAM lParam)
+{
+	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, OnContactSettingChanged);
+	HookEvent(ME_TTB_MODULELOADED, OnTopToolBarModuleLoaded);
+	
+	SkinAddNewSoundExT(BIRTHDAY_NEAR_SOUND, LPGENT("WhenWasIt"), LPGENT("Birthday near"));
+	SkinAddNewSoundExT(BIRTHDAY_TODAY_SOUND, LPGENT("WhenWasIt"), LPGENT("Birthday today"));
+	
+	UpdateTimers();
+
+	CLISTMENUITEM cl = { sizeof(cl) };
+	cl.position = 10000000;
+	cl.flags = CMIF_TCHAR;
+	cl.ptszPopupName = LPGENT("Birthdays (When Was It)");
+
+	cl.pszService = MS_WWI_CHECK_BIRTHDAYS;
+	cl.icolibItem = hCheckMenu;
+	cl.ptszName = LPGENT("Check for birthdays");
+	hmCheckBirthdays = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_LIST_SHOW;
+	cl.ptszName = LPGENT("Birthday list");
+	cl.icolibItem = hListMenu;
+	hmBirthdayList = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_REFRESH_USERDETAILS;
+	cl.position = 10100000;
+	cl.ptszName = LPGENT("Refresh user details");
+	cl.icolibItem = hRefreshUserDetails;
+	hmRefreshDetails = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_IMPORT_BIRTHDAYS;
+	cl.position = 10200000;
+	cl.ptszName = LPGENT("Import birthdays");
+	cl.icolibItem = hImportBirthdays;
+	hmImportBirthdays = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_EXPORT_BIRTHDAYS;
+	cl.ptszName = LPGENT("Export birthdays");
+	cl.icolibItem = hExportBirthdays;
+	hmExportBirthdays = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_ADD_BIRTHDAY;
+	cl.position = 10000000;
+	cl.icolibItem = hAddBirthdayContact;
+	cl.ptszName = LPGENT("Add/change user &birthday");
+	hmAddChangeBirthday = Menu_AddContactMenuItem(&cl);
+
+	// Register hotkeys
+	HOTKEYDESC hotkey = { sizeof(hotkey) };
+	hotkey.ptszSection = LPGENT("Birthdays");
+	hotkey.dwFlags = HKD_TCHAR;
+
+	hotkey.pszName = "wwi_birthday_list";
+	hotkey.ptszDescription = LPGENT("Birthday list");
+	hotkey.pszService = MS_WWI_LIST_SHOW;
+	Hotkey_Register(&hotkey);
+		
+	hotkey.pszName = "wwi_check_birthdays";
+	hotkey.ptszDescription = LPGENT("Check for birthdays");
+	hotkey.pszService = MS_WWI_CHECK_BIRTHDAYS;
+	Hotkey_Register(&hotkey);
+	
+	return 0;
+}
+
 int HookEvents()
 {
 	HookEvent(ME_SYSTEM_MODULESLOADED, OnModulesLoaded);
@@ -51,111 +153,7 @@ int UnhookEvents()
 	return 0;
 }
 
-int OnModulesLoaded(WPARAM wParam, LPARAM lParam)
-{
-	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, OnContactSettingChanged);
-	HookEvent(ME_TTB_MODULELOADED, OnTopToolBarModuleLoaded);
-	
-	SkinAddNewSoundEx(BIRTHDAY_NEAR_SOUND, LPGEN("WhenWasIt"), LPGEN("Birthday near"));
-	SkinAddNewSoundEx(BIRTHDAY_TODAY_SOUND, LPGEN("WhenWasIt"), LPGEN("Birthday today"));
-	
-	UpdateTimers();
-
-	CLISTMENUITEM cl = { sizeof(cl) };
-	cl.position = 10000000;
-	cl.flags = CMIF_ICONFROMICOLIB;
-	cl.pszPopupName = "Birthdays (When Was It)";
-
-	cl.pszService = MS_WWI_CHECK_BIRTHDAYS;
-	cl.icolibItem = hCheckMenu;
-	cl.pszName = "Check for birthdays";
-	hmCheckBirthdays = Menu_AddMainMenuItem(&cl);
-	
-	cl.pszService = MS_WWI_LIST_SHOW;
-	cl.pszName = "Birthday list";
-	cl.icolibItem = hListMenu;
-	hmBirthdayList = Menu_AddMainMenuItem(&cl);
-	
-	cl.pszService = MS_WWI_REFRESH_USERDETAILS;
-	cl.position = 10100000;
-	cl.pszName = "Refresh user details";
-	cl.icolibItem = hRefreshUserDetails;
-	hmRefreshDetails = Menu_AddMainMenuItem(&cl);
-	
-	cl.pszService = MS_WWI_IMPORT_BIRTHDAYS;
-	cl.position = 10200000;
-	cl.pszName = "Import birthdays";
-	cl.icolibItem = hImportBirthdays;
-	hmImportBirthdays = Menu_AddMainMenuItem(&cl);
-	
-	cl.pszService = MS_WWI_EXPORT_BIRTHDAYS;
-	cl.pszName = "Export birthdays";
-	cl.icolibItem = hExportBirthdays;
-	hmExportBirthdays = Menu_AddMainMenuItem(&cl);
-	
-	cl.pszService = MS_WWI_ADD_BIRTHDAY;
-	cl.position = 10000000;
-	cl.icolibItem = hAddBirthdayContact;
-	cl.pszName = "Add/change user &birthday";
-	hmAddChangeBirthday = Menu_AddContactMenuItem(&cl);
-
-	// Register hotkeys
-	HOTKEYDESC hotkey = {0};
-	hotkey.cbSize = sizeof(hotkey);
-	hotkey.pszSection = LPGEN("Birthdays");
-
-	hotkey.pszName = "wwi_birthday_list";
-	hotkey.pszDescription = LPGEN("Birthday list");
-	hotkey.pszService = MS_WWI_LIST_SHOW;
-	Hotkey_Register(&hotkey);
-		
-	hotkey.pszName = "wwi_check_birthdays";
-	hotkey.pszDescription = LPGEN("Check for birthdays");
-	hotkey.pszService = MS_WWI_CHECK_BIRTHDAYS;
-	Hotkey_Register(&hotkey);
-	
-	return 0;
-}
-
-int OnTopToolBarModuleLoaded(WPARAM wParam, LPARAM lParam)
-{
-	TTBButton ttb = {0};
-	ttb.cbSize = sizeof(ttb);
-	ttb.dwFlags = TTBBF_VISIBLE | TTBBF_SHOWTOOLTIP;
-	ttb.pszService = MS_WWI_CHECK_BIRTHDAYS;
-	ttb.hIconHandleUp = hCheckMenu;
-	ttb.name = ttb.pszTooltipUp = LPGEN("Check for birthdays");
-	TopToolbar_AddButton(&ttb);
-	return 0;
-}
-
-int OnOptionsInitialise(WPARAM wParam, LPARAM lParam)
-{
-	OPTIONSDIALOGPAGE odp = {0};
-	
-	odp.cbSize = sizeof(odp);
-	odp.position = 100000000;
-	odp.hInstance = hInstance;
-	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_WWI);
-	odp.pszTitle = LPGEN("Birthdays");
-	odp.pszGroup = LPGEN("Contacts");
-	odp.groupPosition = 910000000;
-	odp.flags = ODPF_BOLDGROUPS;
-	odp.pfnDlgProc = DlgProcOptions;
-	Options_AddPage(wParam, &odp);
-	
-	return 0;
-}
-
-int OnContactSettingChanged(WPARAM wParam, LPARAM lParam)
-{
-	DBCONTACTWRITESETTING *dw = (DBCONTACTWRITESETTING *) lParam;
-	DBVARIANT dv = dw->value;
-	if ((strcmp(dw->szModule, DUMMY_MODULE) == 0) && (strcmp(dw->szSetting, DUMMY_SETTING) == 0))
-		RefreshContactListIcons((HANDLE)wParam);
-	
-	return 0;
-}
+/////////////////////////////////////////////////////////////////////////////////////////
 
 int RefreshContactListIcons(HANDLE hContact)
 {

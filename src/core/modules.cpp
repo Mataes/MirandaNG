@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -24,12 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../modules/plugins/plugins.h"
 
-// other static variables
-static DWORD  mainThreadId;
-static HANDLE hMainThread;
-static HANDLE hMissingService;
-
-void CheckRestart();		// core: IDD_WAITRESTART
+int CheckRestart();		// core: IDD_WAITRESTART
 
 int LoadSystemModule(void);		// core: m_system.h services
 int LoadNewPluginsModuleInfos(void); // core: preloading plugins
@@ -43,6 +38,7 @@ int LoadAccountsModule(void);    // core: account manager
 int LoadIgnoreModule(void);		// protocol filter: ignore
 int LoadDbintfModule(void);
 int LoadEventsModule(void);
+int LoadSrmmModule(void);
 
 int LoadContactsModule(void);
 int LoadContactListModule(void);// ui: clist
@@ -66,21 +62,24 @@ int LoadDefaultServiceModePlugin(void);
 int LoadErrorsModule(void);
 int LoadStdPlugins(void);
 
-void UnloadUtilsModule(void);
+void UnloadAccountsModule(void);
 void UnloadButtonModule(void);
 void UnloadClcModule(void);
 void UnloadContactListModule(void);
 void UnloadDatabase(void);
+void UnloadDbintfModule(void);
+void UnloadErrorsModule(void);
 void UnloadEventsModule(void);
-void UnloadSslModule(void);
+void UnloadExtraIconsModule(void);
+void UnloadIcoLibModule(void);
 void UnloadNetlibModule(void);
 void UnloadNewPlugins(void);
-void UnloadIcoLibModule(void);
+void UnloadProtocolsModule(void);
 void UnloadSkinSounds(void);
 void UnloadSkinHotkeys(void);
-void UnloadProtocolsModule(void);
-void UnloadAccountsModule(void);
-void UnloadErrorsModule(void);
+void UnloadSrmmModule(void);
+void UnloadSslModule(void);
+void UnloadUtilsModule(void);
 
 int LoadIcoTabsModule();
 int LoadHeaderbarModule();
@@ -91,7 +90,7 @@ int LoadDefaultModules(void)
 	//load order is very important for these
 	if ( LoadSystemModule()) return 1;
 	if ( LoadLangpackModule()) return 1;		// langpack will be a system module in the new order so this is moved here
-	CheckRestart();
+	if ( CheckRestart()) return 1;
 	if ( LoadUtilsModule()) return 1;		//order not important for this, but no dependencies and no point in pluginising
 	if ( LoadIcoTabsModule()) return 1;
 	if ( LoadHeaderbarModule()) return 1;
@@ -103,6 +102,7 @@ int LoadDefaultModules(void)
 
 	switch ( LoadDefaultServiceModePlugin()) {
 	case SERVICE_CONTINUE:  // continue loading Miranda normally
+	case SERVICE_ONLYDB:    // load database and go to the message cycle
 		break;
 	case SERVICE_MONOPOLY:  // unload database and go to the message cycle
 		return 0;
@@ -135,6 +135,7 @@ int LoadDefaultModules(void)
 	if ( LoadSkinSounds()) return 1;
 	if ( LoadSkinHotkeys()) return 1;
 	if ( LoadFontserviceModule()) return 1;
+	if ( LoadSrmmModule()) return 1;
 
 	if ( LoadDescButtonModule()) return 1;
 	if ( LoadOptionsModule()) return 1;
@@ -167,13 +168,16 @@ void UnloadDefaultModules(void)
 	UnloadProtocolsModule();
 	UnloadSkinSounds();
 	UnloadSkinHotkeys();
+	UnloadSrmmModule();
 //	UnloadErrorsModule();
 	UnloadIcoLibModule();
 	UnloadUtilsModule();
+	UnloadExtraIconsModule();
 	UnloadButtonModule();
 	UnloadClcModule();
 	UnloadContactListModule();
 	UnloadEventsModule();
 	UnloadNetlibModule();
+	UnloadDbintfModule();
 	UnloadSslModule();
 }

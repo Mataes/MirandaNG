@@ -1,9 +1,7 @@
-#include "skype_proto.h"
+#include "skype.h"
 
-HANDLE CSkypeProto::hChooserMenu;
-HANDLE CSkypeProto::hPrebuildMenuHook;
-HANDLE CSkypeProto::g_hContactMenuSvc[CMITEMS_COUNT];
-HANDLE CSkypeProto::g_hContactMenuItems[CMITEMS_COUNT];
+HGENMENU CSkypeProto::hChooserMenu;
+HGENMENU CSkypeProto::contactMenuItems[CMI_MAX];
 
 INT_PTR CSkypeProto::MenuChooseService(WPARAM wParam, LPARAM lParam)
 {
@@ -13,62 +11,67 @@ INT_PTR CSkypeProto::MenuChooseService(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-static void sttEnableMenuItem(HANDLE hMenuItem, BOOL bEnable)
-{
-	CLISTMENUITEM clmi = {0};
-	clmi.cbSize = sizeof(CLISTMENUITEM);
-	clmi.flags = CMIM_FLAGS;
-	if (!bEnable)
-		clmi.flags |= CMIF_HIDDEN;
-
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hMenuItem, (LPARAM)&clmi);
-}
-
 int CSkypeProto::OnPrebuildContactMenu(WPARAM wParam, LPARAM)
 {
 	HANDLE hContact = (HANDLE)wParam;
-	
-	if (hContact == NULL)
+	if ( !hContact)
 		return 0;
 
-	if (this->IsOnline() && !this->GetSettingByte(hContact, "ChatRoom"))
+	if ( !this->IsOnline() || ::lstrcmpA(::GetContactProto(hContact), m_szModuleName))
+		return 0;
+
+	if ( !this->isChatRoom(hContact))
 	{
-		bool ctrlPressed = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+		bool ctrlPressed = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
+		
+		bool authNeed = this->getByte(hContact, "Auth", 0) > 0;
+		bool grantNeed = this->getByte(hContact, "Grant", 0) > 0;
+		
+		::Menu_ShowItem(CSkypeProto::contactMenuItems[CMI_AUTH_REQUEST], ctrlPressed || authNeed);
+		::Menu_ShowItem(CSkypeProto::contactMenuItems[CMI_AUTH_GRANT], ctrlPressed || grantNeed);
+		::Menu_ShowItem(CSkypeProto::contactMenuItems[CMI_AUTH_REVOKE], ctrlPressed || (!grantNeed && !authNeed));
+		::Menu_ShowItem(CSkypeProto::contactMenuItems[CMI_HISTORY], TRUE);
 
-		bool authNeed = this->GetSettingByte(hContact, "Auth") > 0;
-		bool grantNeed = this->GetSettingByte(hContact, "Grant") > 0;
+		{
+			SEString sid(_T2A(::db_get_wsa(hContact, this->m_szModuleName, SKYPE_SETTINGS_SID)));
+			
+			ContactRef contact;
+			this->GetContact(sid, contact);
 
-		sttEnableMenuItem( g_hContactMenuItems[CMI_AUTH_REQUEST], ctrlPressed || authNeed);
-		sttEnableMenuItem( g_hContactMenuItems[CMI_AUTH_GRANT], ctrlPressed || grantNeed);
-		sttEnableMenuItem( g_hContactMenuItems[CMI_AUTH_REVOKE], ctrlPressed || (!grantNeed && !authNeed));
+			bool isBlocked = false;
+			contact->IsMemberOfHardwiredGroup(ContactGroup::CONTACTS_BLOCKED_BY_ME, isBlocked);
+		
+			CLISTMENUITEM clmi = { sizeof(clmi) };
+			clmi.cbSize = sizeof(CLISTMENUITEM);
+			clmi.flags = CMIM_FLAGS;
+			if (isBlocked)
+			{
+				clmi.flags |= CMIM_NAME | CMIM_ICON | CMIF_TCHAR;
+				clmi.icolibItem = CSkypeProto::GetSkinIconHandle("contact");
+				clmi.ptszName = LPGENT("Unblock this person...");
+			}
+			else
+			{
+				clmi.flags |= CMIM_NAME | CMIM_ICON | CMIF_TCHAR;
+				clmi.icolibItem = CSkypeProto::GetSkinIconHandle("block");
+				clmi.ptszName = LPGENT("Block this person...");
+			}
+			::CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)CSkypeProto::contactMenuItems[CMI_BLOCK], (LPARAM)&clmi);
+		}
 	}
 
 	return 0;
 }
 
-CSkypeProto* CSkypeProto::GetInstanceByHContact(HANDLE hContact)
-{
-	char* proto = (char*)::CallService(MS_PROTO_GETCONTACTBASEPROTO, (WPARAM) hContact, 0);
-	if (proto == NULL)
-		return NULL;
-
-	for (int i = 0; i < CSkypeProto::instanceList.getCount(); i++)
-		if (!strcmp(proto, CSkypeProto::instanceList[i]->m_szModuleName))
-			return CSkypeProto::instanceList[i];
-
-	return NULL;
-}
-
-template<int (__cdecl CSkypeProto::*Scn)(WPARAM, LPARAM)>
+template<int (__cdecl CSkypeProto::*Service)(WPARAM, LPARAM)>
 INT_PTR GlobalService(WPARAM wParam, LPARAM lParam)
 {
-	CSkypeProto *ppro = CSkypeProto::GetInstanceByHContact((HANDLE)wParam);
-	return ppro ? (ppro->*Scn)(wParam, lParam) : 0;
+	CSkypeProto *ppro = CSkypeProto::GetContactInstance((HANDLE)wParam);
+	return ppro ? (ppro->*Service)(wParam, lParam) : 0;
 }
 
 int CSkypeProto::RequestAuth(WPARAM wParam, LPARAM lParam)
 {
-	// todo: set default auth request
 	return this->AuthRequest((HANDLE)wParam, LPGENT("Hi! I\'d like to add you to my contact list"));
 }
 
@@ -76,13 +79,13 @@ int CSkypeProto::GrantAuth(WPARAM wParam, LPARAM lParam)
 {
 	CContact::Ref contact;
 	HANDLE hContact = (HANDLE)wParam;
-	SEString sid(::mir_u2a(this->GetSettingString(hContact, "sid")));
-	if (g_skype->GetContact(sid, contact))
+	SEString sid(_T2A(::db_get_wsa(hContact, this->m_szModuleName, SKYPE_SETTINGS_SID)));
+	if (this->GetContact(sid, contact))
 	{
 		if (contact->SetBuddyStatus(true))
 		{
-			this->DeleteSetting(hContact, "Auth");
-			this->DeleteSetting(hContact, "Grant");
+			this->delSetting(hContact, "Auth");
+			this->delSetting(hContact, "Grant");
 		}
 	}
 
@@ -93,88 +96,133 @@ int CSkypeProto::RevokeAuth(WPARAM wParam, LPARAM lParam)
 {
 	CContact::Ref contact;
 	HANDLE hContact = (HANDLE)wParam;
-	SEString sid(::mir_u2a(this->GetSettingString(hContact, "sid")));
-	if (g_skype->GetContact(sid, contact))
+	SEString sid(_T2A(::db_get_wsa(hContact, this->m_szModuleName, SKYPE_SETTINGS_SID)));
+	if (this->GetContact(sid, contact))
 	{
 		if (contact->SetBuddyStatus(false))
-		{
-			this->SetSettingByte(hContact, "Grant", 1);
-		}
+			this->setByte(hContact, "Grant", 1);
 		this->contactList.remove_val(contact);
 	}
 
 	return 0;
 }
 
-INT_PTR CSkypeProto::InviteCommand(WPARAM, LPARAM)
-{
-	::DialogBoxParam(
-		g_hInstance, 
-		MAKEINTRESOURCE(IDD_CHATROOM_INVITE), 
-		NULL, 
-		CSkypeProto::InviteToChatProc, 
-		LPARAM(new InviteChatParam(NULL, NULL, this)));
-	return 0;
-}
-
 int CSkypeProto::PrebuildContactMenu(WPARAM wParam, LPARAM lParam)
 {
-	for (size_t i=0; i<SIZEOF(g_hContactMenuItems); i++)
-	{
-		sttEnableMenuItem(g_hContactMenuItems[i], false);
-	}
+	for (int i = 0; i < SIZEOF(CSkypeProto::contactMenuItems); i++)
+		::Menu_ShowItem(CSkypeProto::contactMenuItems[i], false);
 
-	CSkypeProto* ppro = CSkypeProto::GetInstanceByHContact((HANDLE)wParam);
+	CSkypeProto* ppro = CSkypeProto::GetContactInstance((HANDLE)wParam);
 	return (ppro) ? ppro->OnPrebuildContactMenu(wParam, lParam) : 0;
 }
 
 void  CSkypeProto::InitMenus()
 {
-	CSkypeProto::hPrebuildMenuHook = ::HookEvent(
-		ME_CLIST_PREBUILDCONTACTMENU, 
-		CSkypeProto::PrebuildContactMenu);
-
 	TMenuParam mnu = {0};
 	mnu.cbSize = sizeof(mnu);
 	mnu.name = "SkypeAccountChooser";
 	mnu.ExecService = "Skype/MenuChoose";
-	hChooserMenu = (HANDLE)::CallService(MO_CREATENEWMENUOBJECT, 0, (LPARAM)&mnu);
+	hChooserMenu = (HGENMENU)::CallService(MO_CREATENEWMENUOBJECT, 0, (LPARAM)&mnu);
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// Contact menu initialization
 
 	CLISTMENUITEM mi = { 0 };
 	mi.cbSize = sizeof(CLISTMENUITEM);
+	mi.flags = CMIF_TCHAR | CMIF_NOTOFFLINE;
 
 	// "Request authorization"
+	mi.pszService = MODULE"/RequestAuth";
 	mi.ptszName = LPGENT("Request authorization");
-	mi.flags = CMIF_ICONFROMICOLIB | CMIF_TCHAR;
-	mi.position = -2000001000;
-	mi.icolibItem = CSkypeProto::GetIconHandle("authRequest");
-	mi.pszService = "Skype/ReqAuth";
-	g_hContactMenuItems[CMI_AUTH_REQUEST] = ::Menu_AddContactMenuItem(&mi);
-	g_hContactMenuSvc[CMI_AUTH_REQUEST] = ::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::RequestAuth>);
+	mi.position = -201001000 + CMI_AUTH_REQUEST;
+	mi.icolibItem = ::LoadSkinnedIconHandle(SKINICON_AUTH_REQUEST);
+	CSkypeProto::contactMenuItems[CMI_AUTH_REQUEST] = ::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::RequestAuth>);
 
 	// "Grant authorization"
-	mi.pszService = "Skype/GrantAuth";
+	mi.pszService = MODULE"/GrantAuth";
 	mi.ptszName = LPGENT("Grant authorization");
-	mi.position = -2000001001;
-	mi.icolibItem = CSkypeProto::GetIconHandle("authGrant");
-	g_hContactMenuItems[CMI_AUTH_GRANT] = ::Menu_AddContactMenuItem(&mi);
-	g_hContactMenuSvc[CMI_AUTH_GRANT] = ::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::GrantAuth>);
+	mi.position = -201001000 + CMI_AUTH_GRANT;
+	mi.icolibItem = ::LoadSkinnedIconHandle(SKINICON_AUTH_GRANT);
+	CSkypeProto::contactMenuItems[CMI_AUTH_GRANT] = ::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::GrantAuth>);
 
-	// Revoke auth
-	mi.pszService = "Skype/RevokeAuth";
+	// "Revoke authorization"
+	mi.pszService = MODULE"/RevokeAuth";
 	mi.ptszName = LPGENT("Revoke authorization");
-	mi.position = -2000001002;
-	mi.icolibItem = CSkypeProto::GetIconHandle("authRevoke");
-	g_hContactMenuItems[CMI_AUTH_REVOKE] = ::Menu_AddContactMenuItem(&mi);
-	g_hContactMenuSvc[CMI_AUTH_REVOKE] = ::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::RevokeAuth>);
+	mi.position = -201001000 + CMI_AUTH_REVOKE;
+	mi.icolibItem = ::LoadSkinnedIconHandle(SKINICON_AUTH_REVOKE);
+	CSkypeProto::contactMenuItems[CMI_AUTH_REVOKE] = ::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::RevokeAuth>);
+
+	// "Block"
+	mi.pszService = MODULE"/Block";
+	mi.ptszName = LPGENT("Block this person...");
+	mi.position = -200001000 + CMI_BLOCK;
+	mi.icolibItem = CSkypeProto::GetSkinIconHandle("block");
+	CSkypeProto::contactMenuItems[CMI_BLOCK] = ::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::BlockCommand>);
+
+	mi.pszService = MODULE"/SyncHistory";
+	mi.ptszName = LPGENT("View old messages...");
+	mi.flags = CMIF_TCHAR | CMIF_ROOTPOPUP;
+	mi.position = -200001000 + CMI_HISTORY;
+	mi.icolibItem = ::LoadSkinnedIconHandle(SKINICON_OTHER_HISTORY);
+	CSkypeProto::contactMenuItems[CMI_HISTORY] = ::Menu_AddContactMenuItem(&mi);
+	
+	mi.flags &= ~CMIF_ROOTPOPUP;
+
+	mi.pszService = MODULE"/SyncHistoryDay";
+	mi.ptszName = LPGENT("for last day");
+	mi.flags |= CMIF_CHILDPOPUP;
+	mi.position = -200001000 + CMI_HISTORY + 100;
+	mi.hParentMenu = CSkypeProto::contactMenuItems[CMI_HISTORY];
+	::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::SyncLastDayHistoryCommand>);
+
+	mi.pszService = MODULE"/SyncHistoryWeek";
+	mi.ptszName = LPGENT("for last week");
+	mi.flags |= CMIF_CHILDPOPUP;
+	mi.position = -200001000 + CMI_HISTORY + 1001;
+	mi.hParentMenu = CSkypeProto::contactMenuItems[CMI_HISTORY];
+	::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::SyncLastWeekHistoryCommand>);
+
+	mi.pszService = MODULE"/SyncHistoryMonth";
+	mi.ptszName = LPGENT("for last month");
+	mi.flags |= CMIF_CHILDPOPUP;
+	mi.position = -200001000 + CMI_HISTORY + 102;
+	mi.hParentMenu = CSkypeProto::contactMenuItems[CMI_HISTORY];
+	::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::SyncLastMonthHistoryCommand>);
+
+	mi.pszService = MODULE"/SyncHistory3Month";
+	mi.ptszName = LPGENT("for last 3 month");
+	mi.flags |= CMIF_CHILDPOPUP;
+	mi.position = -200001000 + CMI_HISTORY + 103;
+	mi.hParentMenu = CSkypeProto::contactMenuItems[CMI_HISTORY];
+	::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::SyncLast3MonthHistoryCommand>);
+
+	mi.pszService = MODULE"/SyncHistoryYear";
+	mi.ptszName = LPGENT("for last year");
+	mi.flags |= CMIF_CHILDPOPUP;
+	mi.position = -200001000 + CMI_HISTORY + 104;
+	mi.hParentMenu = CSkypeProto::contactMenuItems[CMI_HISTORY];
+	::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::SyncLastYearHistoryCommand>);
+
+	mi.pszService = MODULE"/SyncHistoryAllTime";
+	mi.ptszName = LPGENT("for all time");
+	mi.flags |= CMIF_CHILDPOPUP;
+	mi.position = -200001000 + CMI_HISTORY + 105;
+	mi.hParentMenu = CSkypeProto::contactMenuItems[CMI_HISTORY];
+	::Menu_AddContactMenuItem(&mi);
+	::CreateServiceFunction(mi.pszService, GlobalService<&CSkypeProto::SyncAllTimeHistoryCommand>);
 }
 
 void  CSkypeProto::UninitMenus()
 {
-	::UnhookEvent(CSkypeProto::hPrebuildMenuHook);
 }
 
 void CSkypeProto::OnInitStatusMenu()
@@ -186,29 +234,39 @@ void CSkypeProto::OnInitStatusMenu()
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.pszService = text;
 
-	HGENMENU hJabberRoot = ::MO_GetProtoRootMenu(m_szModuleName);
-	if (hJabberRoot == NULL) {
+	HGENMENU hSkypeRoot = ::MO_GetProtoRootMenu(m_szModuleName);
+	if (!hSkypeRoot)
+	{
 		mi.ptszName = m_tszUserName;
 		mi.position = -1999901006;
 		mi.hParentMenu = HGENMENU_ROOT;
-		mi.flags = CMIF_ICONFROMICOLIB | CMIF_ROOTPOPUP | CMIF_TCHAR | CMIF_KEEPUNTRANSLATED;
-		mi.icolibItem = CSkypeProto::GetIconHandle("main");
-		hJabberRoot = m_hMenuRoot = ::Menu_AddProtoMenuItem(&mi);
+		mi.flags = CMIF_ROOTPOPUP | CMIF_TCHAR | CMIF_KEEPUNTRANSLATED;
+		mi.icolibItem = CSkypeProto::GetSkinIconHandle("main");
+		hSkypeRoot = m_hMenuRoot = ::Menu_AddProtoMenuItem(&mi);
 	}
-	else {
+	else 
+	{
 		if (m_hMenuRoot)
 			::CallService(MS_CLIST_REMOVEMAINMENUITEM, (WPARAM)m_hMenuRoot, 0);
 		m_hMenuRoot = NULL;
 	}
 
-	mi.hParentMenu = hJabberRoot;
-	mi.flags = CMIF_ICONFROMICOLIB | CMIF_CHILDPOPUP | CMIF_TCHAR;	
+	mi.hParentMenu = hSkypeRoot;
+	mi.flags = CMIF_CHILDPOPUP | CMIF_TCHAR;	
 
 	// Invite Command
-	strcpy(tDest, "/InviteCommand");
-	this->CreateService(tDest, &CSkypeProto::InviteCommand);
-	mi.ptszName = LPGENT("Invite to conference");
-	mi.position = 200001;
-	mi.icolibItem = CSkypeProto::GetIconHandle("confInvite");
+	::strcpy(tDest, "/CreateChatRoom");
+	this->CreateProtoService(tDest, &CSkypeProto::CreateChatRoomCommand);
+	mi.ptszName = LPGENT("Create conference");
+	mi.position = 200000 + SMI_CHAT_CREATE;
+	mi.icolibItem = CSkypeProto::GetSkinIconHandle("conference");
+	::Menu_AddProtoMenuItem(&mi);
+
+	// Invite Command
+	::strcpy(tDest, "/BlockedeList");
+	this->CreateProtoService(tDest, &CSkypeProto::OpenBlockedListCommand);
+	mi.ptszName = LPGENT("Blocked contacts");
+	mi.position = 200000 + SMI_IGNORE_LIST;
+	mi.icolibItem = CSkypeProto::GetSkinIconHandle("block");
 	::Menu_AddProtoMenuItem(&mi);
 }

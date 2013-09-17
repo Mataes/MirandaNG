@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -229,7 +229,7 @@ static INT_PTR DbDeleteModule(WPARAM, LPARAM lParam)
 	CallService(MS_DB_CONTACT_ENUMSETTINGS, NULL, (LPARAM)&dbces);
 
 	for (int i = vars.getCount()-1; i >= 0; i--) {
-		DBDeleteContactSetting(NULL, (char*)lParam, vars[i]);
+		db_unset(NULL, (char*)lParam, vars[i]);
 		mir_free(vars[i]);
 	}
 	vars.destroy();

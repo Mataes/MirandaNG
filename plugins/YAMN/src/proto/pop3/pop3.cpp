@@ -23,16 +23,7 @@
  *
  */
 
-#pragma warning( disable : 4290 )
-
 #include "..\..\yamn.h"
-#include "pop3.h"
-
-extern "C" {
-#include "../md5.h"
-}
-
-extern void __stdcall	SSL_DebugLog( const char *fmt, ... );
 
 //--------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------
@@ -47,7 +38,7 @@ char *CPop3Client::Connect(const char* servername,const int port,BOOL UseSSL, BO
 	if (Stopped)			//check if we can work with this POP3 client session
 		throw POP3Error=(DWORD)EPOP3_STOPPED;
 
-	if (NetClient!=NULL)
+	if (NetClient != NULL)
 		delete NetClient;
 	SSL=UseSSL;
 	NetClient=new CNLClient;
@@ -77,7 +68,7 @@ char *CPop3Client::Connect(const char* servername,const int port,BOOL UseSSL, BO
 		NetClient->Send("STLS\r\n");
 		free(temp);
 		temp=RecvRest(NetClient->Recv(),POP3_SEARCHACK);
-		if (AckFlag==POP3_FOK){ // Ok, we are going to tls
+		if (AckFlag==POP3_FOK) { // Ok, we are going to tls
 			try {
 				NetClient->SSLify();
 			} catch (...) {
@@ -114,7 +105,7 @@ char* CPop3Client::RecvRest(char* prev,int mode,int size)
 	{		//if not found
 		if (NetClient->Stopped)			//check if we can work with this POP3 client session
 		{
-			if (PrevString!=NULL)
+			if (PrevString != NULL)
 				free(PrevString);
 			throw POP3Error=(DWORD)EPOP3_STOPPED;
 		}
@@ -133,7 +124,6 @@ char* CPop3Client::RecvRest(char* prev,int mode,int size)
 			NetClient->Recv(PrevString+RcvAll,SizeLeft);			//to Rcv stores received bytes
 		SizeLeft=SizeLeft-NetClient->Rcv;
 		RcvAll+=NetClient->Rcv;
-//		printf("[Read: %s]\n",PrevString);
 	}
 	NetClient->Rcv=RcvAll;			//at the end, store the number of all bytes, no the number of last received bytes
 	return PrevString;
@@ -211,7 +201,7 @@ char* CPop3Client::User(char* name)
 	char query[128];
 	char *Result;
 
-	sprintf(query,"USER %s\r\n",name);
+	mir_snprintf(query, SIZEOF(query), "USER %s\r\n", name);
 	NetClient->Send(query);
 	Result=RecvRest(NetClient->Recv(),POP3_SEARCHACK);
 	if (AckFlag==POP3_FERR)
@@ -230,7 +220,7 @@ char* CPop3Client::Pass(char* pw)
 	char query[128];
 	char *Result;
 
-	sprintf(query,"PASS %s\r\n",pw);
+	mir_snprintf(query, SIZEOF(query), "PASS %s\r\n", pw);
 	NetClient->Send(query);
 	Result=RecvRest(NetClient->Recv(),POP3_SEARCHACK);
 	if (AckFlag==POP3_FERR)
@@ -248,22 +238,18 @@ char* CPop3Client::APOP(char* name, char* pw, char* timestamp)
 	char query[512];
 	char *Result;
 	unsigned char digest[16];
-	char hexdigest[40];
 
 	if (timestamp==NULL)
 		throw POP3Error=(DWORD)EPOP3_APOP;
-	MD5Context ctx;
-	MD5Init(&ctx);
-	MD5Update(&ctx,(const unsigned char *)timestamp,(unsigned int)strlen(timestamp));
-	MD5Update(&ctx,(const unsigned char *)pw,(unsigned int)strlen(pw));
-	MD5Final(digest,&ctx);
-	hexdigest[0]='\0';
-	for (int i=0; i<16; i++) {
-		char tmp[4];
-		sprintf(tmp, "%02x", digest[i]);
-		strcat(hexdigest, tmp);
-	}
-	sprintf(query,"APOP %s %s\r\n",name, hexdigest);
+	mir_md5_state_s ctx;
+	mir_md5_init(&ctx);
+	mir_md5_append(&ctx,(const unsigned char *)timestamp,(unsigned int)strlen(timestamp));
+	mir_md5_append(&ctx,(const unsigned char *)pw,(unsigned int)strlen(pw));
+	mir_md5_finish(&ctx, digest);
+
+	char hexdigest[40];
+	mir_snprintf(query, SIZEOF(query), "APOP %s %s\r\n", name, bin2hex(digest, sizeof(digest), hexdigest));
+
 	NetClient->Send(query);
 	Result=RecvRest(NetClient->Recv(),POP3_SEARCHACK);
 	if (AckFlag==POP3_FERR)
@@ -316,7 +302,7 @@ char* CPop3Client::Top(int nr, int lines)
 
 	char query[128];
 
-	sprintf(query,"TOP %d %d\r\n",nr,lines);
+	mir_snprintf(query, SIZEOF(query), "TOP %d %d\r\n", nr, lines);
 	NetClient->Send(query);
 	return RecvRest(NetClient->Recv(),POP3_SEARCHDOT);
 }
@@ -332,11 +318,11 @@ char* CPop3Client::Uidl(int nr)
 
 	if (nr)
 	{
-		sprintf(query,"UIDL %d\r\n",nr);
+		mir_snprintf(query, SIZEOF(query), "UIDL %d\r\n", nr);
 		NetClient->Send(query);
 		return RecvRest(NetClient->Recv(),POP3_SEARCHACK);
 	}
-	sprintf(query,"UIDL\r\n");
+	mir_snprintf(query, SIZEOF(query), "UIDL\r\n");
 	NetClient->Send(query);
 	return RecvRest(NetClient->Recv(),POP3_SEARCHDOT);
 }
@@ -350,7 +336,7 @@ char* CPop3Client::Dele(int nr)
 
 	char query[128];
 
-	sprintf(query,"DELE %d\r\n",nr);
+	mir_snprintf(query, SIZEOF(query), "DELE %d\r\n", nr);
 	NetClient->Send(query);
 	return RecvRest(NetClient->Recv(),POP3_SEARCHACK);
 }
@@ -363,7 +349,7 @@ char* CPop3Client::Retr(int nr)
 
 	char query[128];
 
-	sprintf(query,"RETR %d\r\n",nr);
+	mir_snprintf(query, SIZEOF(query), "RETR %d\r\n", nr);
 	NetClient->Send(query);
 	RecvRest(NetClient->Recv(),POP3_SEARCHACK);
 	return NetClient->Recv();

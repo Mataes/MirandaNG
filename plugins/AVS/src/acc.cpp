@@ -23,15 +23,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "commonheaders.h"
 
-extern FI_INTERFACE *fei;
-
-int GetImageFormat(TCHAR *filename);
-INT_PTR DrawAvatarPicture(WPARAM wParam, LPARAM lParam);
-INT_PTR GetAvatarBitmap(WPARAM wParam, LPARAM lParam);
-INT_PTR GetMyAvatar(WPARAM wParam, LPARAM lParam);
-void InternalDrawAvatar(AVATARDRAWREQUEST *r, HBITMAP hbm, LONG bmWidth, LONG bmHeight, DWORD dwFlags);
-
-
 #define DM_AVATARCHANGED (WM_USER + 20)
 #define DM_MYAVATARCHANGED (WM_USER + 21)
 
@@ -86,8 +77,7 @@ typedef struct
 
 void ResizeFlash(HWND hwnd, ACCData* data)
 {
-	if ((data->hContact != NULL || data->proto[0] != '\0')
-		&& ServiceExists(MS_FAVATAR_RESIZE))
+	if ((data->hContact != NULL || data->proto[0] != '\0') && ServiceExists(MS_FAVATAR_RESIZE))
 	{
 		RECT rc;
 		GetClientRect(hwnd, &rc);
@@ -133,8 +123,7 @@ void DestroyFlash(HWND hwnd, ACCData* data)
 	if (!data->showingFlash)
 		return;
 
-	if ((data->hContact != NULL || data->proto[0] != '\0')
-		&& ServiceExists(MS_FAVATAR_DESTROY))
+	if ((data->hContact != NULL || data->proto[0] != '\0') && ServiceExists(MS_FAVATAR_DESTROY))
 	{
 		FLASHAVATAR fa = {0}; 
 		fa.hContact = data->hContact;
@@ -155,12 +144,12 @@ void StartFlash(HWND hwnd, ACCData* data)
 	int format;
 	if (data->hContact != NULL)
 	{
-		format = DBGetContactSettingWord(data->hContact, "ContactPhoto", "Format", 0);
+		format = db_get_w(data->hContact, "ContactPhoto", "Format", 0);
 	}
 	else if (data->proto[0] != '\0')
 	{
 		protoPicCacheEntry *ace = NULL;
-		for(int i = 0; i < g_MyAvatars.getCount(); i++) 
+		for (int i = 0; i < g_MyAvatars.getCount(); i++) 
 		{
 			if (!lstrcmpA(data->proto, g_MyAvatars[i].szProtoname))
 			{
@@ -170,7 +159,7 @@ void StartFlash(HWND hwnd, ACCData* data)
 		}
 
 		if (ace != NULL && ace->szFilename != NULL)
-			format = GetImageFormat(ace->szFilename);
+			format = ProtoGetAvatarFormat(ace->szFilename);
 		else 
 			format = 0;
 	}
@@ -376,12 +365,12 @@ void StartAnimatedGif(HWND hwnd, ACCData* data)
 	if (ace == NULL)
 		return;
 
-	int format = GetImageFormat(ace->szFilename);
+	int format = ProtoGetAvatarFormat(ace->szFilename);
 	if (format != PA_FORMAT_GIF)
 		return;
 
 	FREE_IMAGE_FORMAT fif = fei->FI_GetFileTypeT(ace->szFilename, 0);
-	if(fif == FIF_UNKNOWN)
+	if (fif == FIF_UNKNOWN)
 		fif = fei->FI_GetFIFFromFilenameT(ace->szFilename);
 
 	data->ag.multi = fei->FI_OpenMultiBitmapT(fif, ace->szFilename, FALSE, TRUE, FALSE, GIF_LOAD256);
@@ -763,7 +752,7 @@ static LRESULT CALLBACK ACCWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPARAM l
 			}
 
 			if (data->hContact == NULL && data->proto[0] == '\0'
-				&& DBGetContactSettingByte(NULL, AVS_MODULE, "GlobalUserAvatarNotConsistent", 1))
+				&& db_get_b(NULL, AVS_MODULE, "GlobalUserAvatarNotConsistent", 1))
 			{
 				DrawText(hdc, data->hFont, rc, TranslateT("Protocols have different avatars"));
 			}

@@ -7,16 +7,16 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include <windows.h>
+#include <winres.h>
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Neutral resources
+// Немецкий (Германия) resources
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
-LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_DEU)
+LANGUAGE LANG_GERMAN, SUBLANG_GERMAN
 #pragma code_page(1252)
 
 /////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@ EXSTYLE WS_EX_WINDOWEDGE | WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     CONTROL         "",IDC_HEADERBAR,"MHeaderbarCtrl",0x0,0,0,245,25
-    CONTROL         "",IDC_MTEXT,"RichEdit20W",ES_MULTILINE | ES_READONLY | NOT WS_VISIBLE | WS_VSCROLL | WS_TABSTOP,0,25,244,180,WS_EX_STATICEDGE
+    CONTROL         "",IDC_MTEXT,"RichEdit20W",NOT WS_VISIBLE | WS_VSCROLL | WS_TABSTOP | 0x804,0,25,244,180,WS_EX_STATICEDGE
     CONTROL         "List1",IDC_DATALIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SORTASCENDING | WS_TABSTOP,0,25,244,180,WS_EX_STATICEDGE
     PUSHBUTTON      "Update",IDC_MUPDATE,10,213,48,13
     PUSHBUTTON      "Brief Info",IDC_MTOGGLE,79,213,48,13
@@ -44,15 +44,16 @@ EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     GROUPBOX        "Options",IDC_STATIC,3,0,299,70,WS_GROUP
-    CONTROL         "Update weather information on startup",IDC_STARTUPUPD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,12,219,8
+    CONTROL         "Update weather information on startup",IDC_STARTUPUPD,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,12,286,8
     CONTROL         "Update weather information every",IDC_UPDATE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,23,206,8
-    EDITTEXT        IDC_UPDATETIME,231,21,25,12,ES_AUTOHSCROLL | ES_NUMBER | NOT WS_BORDER,WS_EX_CLIENTEDGE | WS_EX_STATICEDGE
+    EDITTEXT        IDC_UPDATETIME,223,21,33,12,ES_AUTOHSCROLL | ES_NUMBER | NOT WS_BORDER,WS_EX_CLIENTEDGE | WS_EX_STATICEDGE
     LTEXT           "minutes",IDC_STATIC,260,23,39,8
     CONTROL         "Consider weather info updated only when condition and temperature are changed",IDC_UPDCONDCHG,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,34,282,8
-    CONTROL         "Remove old data when updating",IDC_REMOVEOLD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,45,282,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,34,286,8
+    CONTROL         "Remove old data when updating",IDC_REMOVEOLD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,45,286,8
     CONTROL         "Make the contact italic when weather alert is issued",IDC_MAKEI,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,56,282,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,56,286,8
     GROUPBOX        "Modes",IDC_STATIC,3,70,300,37
     CONTROL         "Use weather condition as protocol status",IDC_PROTOCOND,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,81,278,8
@@ -84,11 +85,11 @@ BEGIN
     CONTROL         "ft",IDC_E1,"Button",BS_AUTORADIOBUTTON,65,163,34,8
     CONTROL         "m",IDC_E2,"Button",BS_AUTORADIOBUTTON,120,163,34,8
     CONTROL         "Do not append units to values",IDC_DONOTAPPUNITS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,174,144,8
-    CONTROL         "Do not display fractional values",IDC_NOFRAC,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,155,174,146,8
+    CONTROL         "Do not display fractional values",IDC_NOFRAC,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,155,174,139,8
     GROUPBOX        "Frame",IDC_STATIC,3,187,300,29
-    EDITTEXT        IDC_AVATARSIZE,11,197,29,14,ES_AUTOHSCROLL | ES_NUMBER | NOT WS_BORDER,WS_EX_CLIENTEDGE | WS_EX_STATICEDGE
-    CONTROL         "",IDC_AVATARSPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS,28,197,11,14
-    LTEXT           "Avatar size",IDC_STATIC,42,200,85,9
+    EDITTEXT        IDC_AVATARSIZE,8,195,36,14,ES_AUTOHSCROLL | ES_NUMBER | NOT WS_BORDER,WS_EX_CLIENTEDGE | WS_EX_STATICEDGE
+    CONTROL         "",IDC_AVATARSPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS,43,195,11,14
+    LTEXT           "Avatar size",IDC_STATIC,60,200,95,9
 END
 
 IDD_EDIT DIALOGEX 0, 0, 241, 226
@@ -122,19 +123,19 @@ BEGIN
     CONTROL         "Set as default station",IDC_DEFA,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,168,218,8
     CONTROL         "Disable automatic update for this station",IDC_DAutoUpdate,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,179,218,8
-    CONTROL         "Disable PopUp for this station",IDC_DPop,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,190,218,8
+    CONTROL         "Disable Popup for this station",IDC_DPop,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,190,218,8
     PUSHBUTTON      "Change",IDC_CHANGE,57,207,46,14
     DEFPUSHBUTTON   "Cancel",IDCANCEL,136,207,46,14
     CONTROL         "",IDC_SVCINFO,"MButtonClass",WS_TABSTOP,217,35,13,12,WS_EX_NOACTIVATE | 0x10000000L
     CONTROL         "",IDC_GETNAME,"MButtonClass",WS_TABSTOP,217,19,13,12,WS_EX_NOACTIVATE | 0x10000000L
 END
 
-IDD_POPUP DIALOGEX 0, 0, 312, 182
+IDD_POPUP DIALOGEX 0, 0, 312, 236
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_CHILD
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    GROUPBOX        "PopUp Options",IDC_STATIC,6,5,156,54
+    GROUPBOX        "Popup Options",IDC_STATIC,4,5,158,54
     CONTROL         "Enable popups",IDC_E,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,15,15,143,9
     CONTROL         "Popup only when condition changes",IDC_CH,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,15,44,140,10
     GROUPBOX        "Colours",IDC_STATIC,168,5,139,54
@@ -143,25 +144,25 @@ BEGIN
     CONTROL         "",IDC_TEXTCOLOUR,"ColourPicker",WS_TABSTOP,177,30,39,11
     LTEXT           "Text colour",IDC_STATIC,223,31,80,8,SS_CENTERIMAGE
     CONTROL         "Use Windows colours",IDC_USEWINCOLORS,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,177,43,125,13
-    GROUPBOX        "Popup Actions",IDC_STATIC,6,63,155,46
-    LTEXT           "Left Click",IDC_STATIC,15,77,40,8
+    GROUPBOX        "Popup Actions",IDC_STATIC,4,63,157,46
+    LTEXT           "Left Click",IDC_STATIC,13,77,42,8
     CONTROL         "",IDC_LeftClick,"MButtonClass",WS_TABSTOP,59,76,95,9,WS_EX_NOACTIVATE | 0x10000000L
-    LTEXT           "Right Click",IDC_STATIC,15,93,42,8
+    LTEXT           "Right Click",IDC_STATIC,13,93,42,8
     CONTROL         "",IDC_RightClick,"MButtonClass",WS_TABSTOP,59,92,95,9,WS_EX_NOACTIVATE | 0x10000000L
     GROUPBOX        "Popup Delay",IDC_STATIC,167,63,141,46
     CONTROL         "Delay",IDC_PD3,"Button",BS_AUTORADIOBUTTON,177,74,53,8
     EDITTEXT        IDC_DELAY,233,73,36,12,ES_RIGHT | ES_AUTOHSCROLL | ES_NUMBER | NOT WS_BORDER,WS_EX_STATICEDGE
     LTEXT           "seconds",IDC_STATIC,272,73,34,10
-    CONTROL         "From PopUp plugin",IDC_PD1,"Button",BS_AUTORADIOBUTTON,177,85,110,8
+    CONTROL         "From Popup plugin",IDC_PD1,"Button",BS_AUTORADIOBUTTON,177,85,110,8
     CONTROL         "Permanent",IDC_PD2,"Button",BS_AUTORADIOBUTTON,177,96,110,8
-    GROUPBOX        "Popup Text",IDC_STATIC,6,112,302,66
-    LTEXT           "Popup Title",IDC_STATIC,15,127,56,9
-    EDITTEXT        IDC_PTitle,74,124,163,12,ES_AUTOHSCROLL
-    LTEXT           "Popup Text",IDC_STATIC,15,142,55,9
-    EDITTEXT        IDC_PText,73,140,164,31,ES_MULTILINE | ES_AUTOHSCROLL | ES_WANTRETURN | WS_VSCROLL
-    CONTROL         "Variables",IDC_VAR3,"MButtonClass",WS_TABSTOP,244,124,47,12,WS_EX_NOACTIVATE | 0x10000000L
-    CONTROL         "Default",IDC_PDEF,"MButtonClass",WS_TABSTOP,244,141,47,12,WS_EX_NOACTIVATE | 0x10000000L
-    CONTROL         "Preview",IDC_PREVIEW,"MButtonClass",WS_TABSTOP,244,158,47,12,WS_EX_NOACTIVATE | 0x10000000L
+    GROUPBOX        "Popup Text",IDC_STATIC,3,112,305,121
+    LTEXT           "Popup Title",IDC_STATIC,15,124,56,9
+    EDITTEXT        IDC_PTitle,72,121,231,12,ES_AUTOHSCROLL
+    LTEXT           "Popup Text",IDC_STATIC,15,138,55,9
+    EDITTEXT        IDC_PText,72,136,231,92,ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL
+    CONTROL         "Variables",IDC_VAR3,"MButtonClass",WS_TABSTOP,7,153,62,12,WS_EX_NOACTIVATE | 0x10000000L
+    CONTROL         "Default",IDC_PDEF,"MButtonClass",WS_TABSTOP,7,175,62,12,WS_EX_NOACTIVATE | 0x10000000L
+    CONTROL         "Preview",IDC_PREVIEW,"MButtonClass",WS_TABSTOP,7,197,61,12,WS_EX_NOACTIVATE | 0x10000000L
     CONTROL         "Updates",IDC_POP1,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,29,24,64,9
     CONTROL         "Alerts",IDC_POP2,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,29,34,64,9
     CONTROL         "Errors",IDC_W,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,97,24,54,9
@@ -228,25 +229,25 @@ BEGIN
     CONTROL         "More...",IDC_MOREDETAIL,"MButtonClass",WS_TABSTOP,129,104,61,12,WS_EX_WINDOWEDGE | WS_EX_NOACTIVATE | 0x10000000L
 END
 
-IDD_SETUP DIALOGEX 0, 0, 244, 146
+IDD_SETUP DIALOGEX 0, 0, 259, 142
 STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_CONTROLPARENT
 CAPTION "Weather Protocol INI Setup"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     CONTROL         "Weather Protocol INI Setup\nInstall and load your weather ini file here",IDC_HEADERBAR,
-                    "MHeaderbarCtrl",0x0,0,0,243,28
-    CTEXT           "Weather Protocol cannot find any weather INI file stored in your computer.  To setup weather INI and add weather stations, please follow the steps:",IDC_STATIC,11,32,222,26
+                    "MHeaderbarCtrl",0x0,0,0,259,28
+    CTEXT           "Weather Protocol cannot find any weather INI file stored in your computer. To setup weather INI and add weather stations, please follow the steps:",IDC_STATIC,11,32,222,26
     CONTROL         "Click here to download a weather ini file from Miranda file listing",IDC_STEP1,
-                    "MButtonClass",WS_TABSTOP,5,62,234,12,WS_EX_WINDOWEDGE | 0x800000L
+                    "MButtonClass",WS_TABSTOP,5,62,249,12,WS_EX_WINDOWEDGE | 0x800000L
     CONTROL         "Extract the weather ini file from archive to this directory",IDC_STEP2,
-                    "MButtonClass",WS_TABSTOP,5,74,234,12,WS_EX_WINDOWEDGE | 0x800000L
+                    "MButtonClass",WS_TABSTOP,5,74,249,12,WS_EX_WINDOWEDGE | 0x800000L
     CONTROL         "Click here to load the data from the new ini file into memory",IDC_STEP3,
-                    "MButtonClass",WS_TABSTOP,5,86,234,13,WS_EX_WINDOWEDGE | 0x800000L
+                    "MButtonClass",WS_TABSTOP,5,86,249,13,WS_EX_WINDOWEDGE | 0x800000L
     CONTROL         "Add new weather station and close this dialog",IDC_STEP4,
-                    "MButtonClass",WS_TABSTOP,5,99,234,12,WS_EX_WINDOWEDGE | 0x800000L
-    PUSHBUTTON      "Close",IDCANCEL,95,122,48,13
-    CONTROL         "",IDC_MFRAME,"Static",SS_ETCHEDHORZ,0,117,244,1
+                    "MButtonClass",WS_TABSTOP,5,99,249,12,WS_EX_WINDOWEDGE | 0x800000L
+    PUSHBUTTON      "Close",IDCANCEL,107,122,48,13
+    CONTROL         "",IDC_MFRAME,"Static",SS_ETCHEDHORZ,0,117,259,1
 END
 
 IDD_INFO DIALOGEX 0, 0, 225, 155
@@ -288,13 +289,15 @@ BEGIN
 
     IDD_OPTIONS, DIALOG
     BEGIN
-        VERTGUIDE, 12
+        VERTGUIDE, 8
+        VERTGUIDE, 294
         BOTTOMMARGIN, 209
     END
 
     IDD_POPUP, DIALOG
     BEGIN
         RIGHTMARGIN, 306
+        BOTTOMMARGIN, 233
     END
 
     IDD_TEXTOPT, DIALOG
@@ -304,7 +307,7 @@ BEGIN
 
     IDD_SETUP, DIALOG
     BEGIN
-        BOTTOMMARGIN, 140
+        BOTTOMMARGIN, 136
     END
 
     IDD_INFO, DIALOG
@@ -333,7 +336,7 @@ IDR_PMENU MENU
 BEGIN
     POPUP "Menu"
     BEGIN
-        MENUITEM "Dismiss PopUp",               IDM_M1
+        MENUITEM "Dismiss Popup",               IDM_M1
         MENUITEM "Open brief information",      IDM_M2
         MENUITEM "Open complete forecast",      IDM_M3
         MENUITEM "Open weather map",            IDM_M4
@@ -395,7 +398,7 @@ END
 
 2 TEXTINCLUDE 
 BEGIN
-    "#include <windows.h>\r\n"
+    "#include <winres.h>\r\n"
     "\0"
 END
 
@@ -407,5 +410,18 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-#endif    // Neutral resources
+#endif    // Немецкий (Германия) resources
 /////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -13,20 +13,13 @@
 #ifndef _YAHOO_YAHOO_H_
 #define _YAHOO_YAHOO_H_
 
-#define MIRANDA_VER 0x0A00
+#include <windows.h>
+#include <shlwapi.h>
 
-#ifdef _MSC_VER
-	#define snprintf  _snprintf
-#endif
-
-#include <m_stdhdr.h>
-
+#include <malloc.h>
 #include <sys/stat.h>
 #include <io.h>
 #include <time.h>
-
-#include <windows.h>
-#include <shlwapi.h>
 
 /*
  * Yahoo Services
@@ -47,6 +40,7 @@ extern "C"
 #include <m_database.h>
 #include <m_protomod.h>
 #include <m_netlib.h>
+#include <m_idle.h>
 #include <m_clist.h>
 #include <m_clistint.h>
 #include <m_protosvc.h>
@@ -78,7 +72,7 @@ extern "C"
 
 extern int do_yahoo_debug;
 
-#define LOG(x) if(do_yahoo_debug) { YAHOO_DEBUGLOG("%s:%d: ", __FILE__, __LINE__); \
+#define LOG(x) if (do_yahoo_debug) { YAHOO_DEBUGLOG("%s:%d: ", __FILE__, __LINE__); \
 	YAHOO_DEBUGLOG x; \
 	YAHOO_DEBUGLOG(" ");}
 
@@ -90,12 +84,9 @@ extern int do_yahoo_debug;
 #define YAHOO_REFRESH				"/YahooRefreshCommand"
 #define YAHOO_AB					"/YahooAddressBook"
 #define YAHOO_CALENDAR				"/YahooCalendar"
-#define YAHOO_SEND_NUDGE			"/SendNudge"
 #define YAHOO_GETUNREAD_EMAILCOUNT	"/GetUnreadEmailCount"
 
 #define STYLE_DEFAULTBGCOLOUR     RGB(173,206,247)
-
-#define LocalEventUnhook(hook)	if(hook) UnhookEvent(hook)
 
 struct _conn {
 	unsigned int tag;
@@ -128,7 +119,6 @@ int GetStatus(WPARAM wParam,LPARAM lParam);
 yahoo_status miranda_to_yahoo(int myyahooStatus);
 
 void register_callbacks();
-char* YAHOO_GetContactName(HANDLE hContact);
 
 #ifdef __GNUC__
 	int DebugLog( const char *fmt, ... ) __attribute__ ((format (printf, 1, 2)));

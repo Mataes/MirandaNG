@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -51,7 +52,7 @@ typedef void (CJabberProto::*JABBER_IQ_PFUNC)(HXML iqNode);
 typedef void (*IQ_USER_DATA_FREE_FUNC)(void *pUserData);
 
 typedef struct {
-	TCHAR* xmlns;
+	TCHAR *xmlns;
 	JABBER_IQ_PFUNC func;
 	BOOL allowSubNs;		// e.g. #info in disco#info
 } JABBER_IQ_XMLNS_FUNC;
@@ -103,8 +104,7 @@ public:
 	}
 	~CJabberIqInfo()
 	{
-		if (m_szReceiver)
-			mir_free(m_szReceiver);
+		mir_free(m_szReceiver);
 	}
 	void SetReceiver(const TCHAR *szReceiver)
 	{
@@ -184,8 +184,8 @@ class CJabberIqPermanentInfo
 	JABBER_PERMANENT_IQ_HANDLER m_pHandler;
 	DWORD m_dwParamsToParse;
 	int m_nIqTypes;
-	TCHAR* m_szXmlns;
-	TCHAR* m_szTag;
+	TCHAR *m_szXmlns;
+	TCHAR *m_szTag;
 	BOOL m_bAllowPartialNs;
 	void *m_pUserData;
 	IQ_USER_DATA_FREE_FUNC m_pUserDataFree;
@@ -207,7 +207,7 @@ public:
 class CJabberIqManager
 {
 protected:
-	CJabberProto* ppro;
+	CJabberProto *ppro;
 	CRITICAL_SECTION m_cs;
 	DWORD m_dwLastUsedHandle;
 	CJabberIqInfo* m_pIqs; // list of iqs ordered by priority

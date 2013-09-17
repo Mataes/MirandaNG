@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/bitmap_funcs.cpp $
-Revision       : $Revision: 1627 $
-Last change on : $Date: 2010-06-29 10:34:46 +0300 (Вт, 29 июн 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #include "headers.h"
@@ -361,7 +352,7 @@ void MyBitmap::BlendColorized(MyBitmap *bmp, int x, int y, int w, int h, COLOR32
 					PU_DIV255(koef2g * cl * alpha),
 					PU_DIV255(koef2b * cl * alpha),
 					alpha);
-#pragma warning(pop) 
+#pragma warning(pop)
 //			COLOR32 cl = getr(bmp->bits[int(i*ky)*bmp->width + int(j*kx)]);
 //			COLOR32 src = (cl > 128) ?
 //				rgba(koef1r * cl + br, koef1g * cl + bg, koef1b * cl + bb, alpha):
@@ -428,10 +419,7 @@ void MyBitmap::DrawColorized(MyBitmap *bmp, int x, int y, int w, int h, COLOR32 
 					PU_DIV255(koef2g * cl * alpha),
 					PU_DIV255(koef2b * cl * alpha),
 					alpha);
-#pragma warning(pop) 
-//			bits[(i+y)*width + (j+x)] = (cl > 128) ?
-//				rgba(koef1r * cl + br, koef1g * cl + bg, koef1b * cl + bb, geta(bmp->bits[int(i*ky)*bmp->width + int(j*kx)])):
-//				rgba(koef2r * cl, koef2g * cl, koef2b * cl, geta(bmp->bits[int(i*ky)*bmp->width + int(j*kx)]));
+#pragma warning(pop)
 		}
 	}
 }
@@ -470,7 +458,6 @@ void MyBitmap::BlendPart(MyBitmap *bmp, int xin, int yin, int win, int hin, int 
 					getb(src)+PU_DIV255((255-alpha)*getb(dst)),
 					geta(src)+PU_DIV255((255-alpha)*geta(dst))
 				);
-//			bits[(i+y)*width + (j+x)] = bmp->bits[int(yin+i*ky)*bmp->width + int(xin+j*kx)];
 		}
 	}
 }
@@ -530,7 +517,7 @@ void MyBitmap::BlendPartColorized(MyBitmap *bmp, int xin, int yin, int win, int 
 					PU_DIV255(koef2g * cl * alpha),
 					PU_DIV255(koef2b * cl * alpha),
 					alpha);
-#pragma warning(pop) 
+#pragma warning(pop)
 //			COLOR32 cl = getr(bmp->bits[int(i*ky)*bmp->width + int(j*kx)]);
 //			COLOR32 src = (cl > 128) ?
 //				rgba(koef1r * cl + br, koef1g * cl + bg, koef1b * cl + bb, alpha):
@@ -752,7 +739,7 @@ HRGN MyBitmap::buildOpaqueRgn(int level, bool opaque)
 				rectsCount += addRectsCount;
 				LPRGNDATA pRgnDataNew = (LPRGNDATA)(new BYTE[sizeof(RGNDATAHEADER) + (rectsCount)*sizeof(RECT)]);
 				memcpy(pRgnDataNew, pRgnData, sizeof(RGNDATAHEADER) + pRgnData->rdh.nCount * sizeof(RECT));
-				delete pRgnData;
+				delete[] pRgnData;
 				pRgnData = pRgnDataNew;
 				pRects = (LPRECT)(&pRgnData->Buffer);
 			}
@@ -762,7 +749,7 @@ HRGN MyBitmap::buildOpaqueRgn(int level, bool opaque)
 	}
 
 	HRGN hRgn = ExtCreateRegion(NULL, sizeof(RGNDATAHEADER) + pRgnData->rdh.nCount*sizeof(RECT), (LPRGNDATA)pRgnData);
-	delete pRgnData;
+	delete[] pRgnData;
 	return hRgn;
 }
 
@@ -947,7 +934,7 @@ bool MyBitmap::loadFromFile(const char *fn, const char *fnAlpha)
 	} else
 	{
 		char ext[5];
-		memcpy(ext,fn+(strlen(fn)-4),5);   
+		memcpy(ext,fn+(strlen(fn)-4),5);
 		if (!lstrcmpiA(ext,".png"))
 		{
 			return loadFromFile_png(fn, fnAlpha);

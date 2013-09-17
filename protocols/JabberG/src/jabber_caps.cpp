@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -27,54 +28,60 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "version.h"
 
 const JabberFeatCapPair g_JabberFeatCapPairs[] = {
-	{	_T(JABBER_FEAT_DISCO_INFO),           JABBER_CAPS_DISCO_INFO,           _T("Supports Service Discovery info"), },
-	{	_T(JABBER_FEAT_DISCO_ITEMS),          JABBER_CAPS_DISCO_ITEMS,          _T("Supports Service Discovery items list"), },
-	{	_T(JABBER_FEAT_ENTITY_CAPS),          JABBER_CAPS_ENTITY_CAPS,          _T("Can inform about its Jabber capabilities"), },
-	{	_T(JABBER_FEAT_SI),                   JABBER_CAPS_SI,                   _T("Supports stream initiation (for filetransfers for ex.)"), },
-	{	_T(JABBER_FEAT_SI_FT),                JABBER_CAPS_SI_FT,                _T("Supports stream initiation for file transfers"), },
-	{	_T(JABBER_FEAT_BYTESTREAMS),          JABBER_CAPS_BYTESTREAMS,          _T("Supports file transfers via SOCKS5 Bytestreams"), },
-	{	_T(JABBER_FEAT_IBB),                  JABBER_CAPS_IBB,                  _T("Supports file transfers via In-Band Bytestreams"), },
-	{	_T(JABBER_FEAT_OOB),                  JABBER_CAPS_OOB,                  _T("Supports file transfers via Out-of-Band Bytestreams"), },
-	{	_T(JABBER_FEAT_OOB2),                 JABBER_CAPS_OOB,                  _T("Supports file transfers via Out-of-Band Bytestreams"), },
-	{	_T(JABBER_FEAT_COMMANDS),             JABBER_CAPS_COMMANDS,             _T("Supports execution of Ad-Hoc commands"), },
-	{	_T(JABBER_FEAT_REGISTER),             JABBER_CAPS_REGISTER,             _T("Supports in-band registration"), },
-	{	_T(JABBER_FEAT_MUC),                  JABBER_CAPS_MUC,                  _T("Supports multi-user chat"), },
-	{	_T(JABBER_FEAT_CHATSTATES),           JABBER_CAPS_CHATSTATES,           _T("Can report chat state in a chat session"), },
-	{	_T(JABBER_FEAT_LAST_ACTIVITY),        JABBER_CAPS_LAST_ACTIVITY,        _T("Can report information about the last activity of the user"), },
-	{	_T(JABBER_FEAT_VERSION),              JABBER_CAPS_VERSION,              _T("Can report own version information"), },
-	{	_T(JABBER_FEAT_ENTITY_TIME),          JABBER_CAPS_ENTITY_TIME,          _T("Can report local time of the user"), },
-	{	_T(JABBER_FEAT_PING),                 JABBER_CAPS_PING,                 _T("Can send and receive ping requests"), },
-	{	_T(JABBER_FEAT_DATA_FORMS),           JABBER_CAPS_DATA_FORMS,           _T("Supports data forms"), },
-	{	_T(JABBER_FEAT_MESSAGE_EVENTS),       JABBER_CAPS_MESSAGE_EVENTS,       _T("Can request and respond to events relating to the delivery, display, and composition of messages"), },
-	{	_T(JABBER_FEAT_VCARD_TEMP),           JABBER_CAPS_VCARD_TEMP,           _T("Supports vCard"), },
-	{	_T(JABBER_FEAT_AVATAR),               JABBER_CAPS_AVATAR,               _T("Supports iq-based avatars"), },
-	{	_T(JABBER_FEAT_XHTML),                JABBER_CAPS_XHTML,                _T("Supports XHTML formatting of chat messages"), },
-	{	_T(JABBER_FEAT_AGENTS),               JABBER_CAPS_AGENTS,               _T("Supports Jabber Browsing"), },
-	{	_T(JABBER_FEAT_BROWSE),               JABBER_CAPS_BROWSE,               _T("Supports Jabber Browsing"), },
-	{	_T(JABBER_FEAT_FEATURE_NEG),          JABBER_CAPS_FEATURE_NEG,          _T("Can negotiate options for specific features"), },
-	{	_T(JABBER_FEAT_AMP),                  JABBER_CAPS_AMP,                  _T("Can request advanced processing of message stanzas"), },
-	{	_T(JABBER_FEAT_USER_MOOD),            JABBER_CAPS_USER_MOOD,            _T("Can report information about user moods"), },
-	{	_T(JABBER_FEAT_USER_MOOD_NOTIFY),     JABBER_CAPS_USER_MOOD_NOTIFY,     _T("Receives information about user moods"), },
-	{	_T(JABBER_FEAT_PUBSUB),			      JABBER_CAPS_PUBSUB,               _T("Supports generic publish-subscribe functionality"), },
-	{	_T(JABBER_FEAT_SECUREIM),             JABBER_CAPS_SECUREIM,             _T("Supports SecureIM plugin for Miranda NG"), },
-	{	_T(JABBER_FEAT_PRIVACY_LISTS),	      JABBER_CAPS_PRIVACY_LISTS,        _T("Can block communications from particular other users using Privacy lists"), },
-	{	_T(JABBER_FEAT_MESSAGE_RECEIPTS),     JABBER_CAPS_MESSAGE_RECEIPTS,     _T("Supports Message Receipts"), },
-	{	_T(JABBER_FEAT_USER_TUNE),            JABBER_CAPS_USER_TUNE,            _T("Can report information about the music to which a user is listening"), },
-	{	_T(JABBER_FEAT_USER_TUNE_NOTIFY),     JABBER_CAPS_USER_TUNE_NOTIFY,     _T("Receives information about the music to which a user is listening"), },
-	{	_T(JABBER_FEAT_PRIVATE_STORAGE),      JABBER_CAPS_PRIVATE_STORAGE,      _T("Supports private XML Storage (for bookmakrs and other)"), },
-	{	_T(JABBER_FEAT_ATTENTION),            JABBER_CAPS_ATTENTION,            _T("Supports attention requests ('nudge')"), },
-	{	_T(JABBER_FEAT_ATTENTION_0),          JABBER_CAPS_ATTENTION_0,          _T("Supports attention requests ('nudge')"), },
-	{	_T(JABBER_FEAT_USER_ACTIVITY),        JABBER_CAPS_USER_ACTIVITY,        _T("Can report information about user activity"), },
-	{	_T(JABBER_FEAT_USER_ACTIVITY_NOTIFY), JABBER_CAPS_USER_ACTIVITY_NOTIFY, _T("Receives information about user activity"), },
-	{	_T(JABBER_FEAT_MIRANDA_NOTES),        JABBER_CAPS_MIRANDA_NOTES,        _T("Supports Miranda NG notes extension"), },
-	{	_T(JABBER_FEAT_JINGLE),               JABBER_CAPS_JINGLE,               _T("Supports Jingle"), },
-	{	_T(JABBER_FEAT_ROSTER_EXCHANGE),      JABBER_CAPS_ROSTER_EXCHANGE,      _T("Supports Roster Exchange"), },
-	{	_T(JABBER_FEAT_GTALK_PMUC),           JABBER_CAPS_GTALK_PMUC,           _T("Supports GTalk private multi-user chat"), },
+	{	JABBER_FEAT_DISCO_INFO,           JABBER_CAPS_DISCO_INFO,           LPGENT("Supports Service Discovery info") },
+	{	JABBER_FEAT_DISCO_ITEMS,          JABBER_CAPS_DISCO_ITEMS,          LPGENT("Supports Service Discovery items list") },
+	{	JABBER_FEAT_ENTITY_CAPS,          JABBER_CAPS_ENTITY_CAPS,          LPGENT("Can inform about its Jabber capabilities") },
+	{	JABBER_FEAT_SI,                   JABBER_CAPS_SI,                   LPGENT("Supports stream initiation (for filetransfers for ex.)") },
+	{	JABBER_FEAT_SI_FT,                JABBER_CAPS_SI_FT,                LPGENT("Supports stream initiation for file transfers") },
+	{	JABBER_FEAT_BYTESTREAMS,          JABBER_CAPS_BYTESTREAMS,          LPGENT("Supports file transfers via SOCKS5 Bytestreams") },
+	{	JABBER_FEAT_IBB,                  JABBER_CAPS_IBB,                  LPGENT("Supports file transfers via In-Band Bytestreams") },
+	{	JABBER_FEAT_OOB,                  JABBER_CAPS_OOB,                  LPGENT("Supports file transfers via Out-of-Band Bytestreams") },
+	{	JABBER_FEAT_OOB2,                 JABBER_CAPS_OOB,                  LPGENT("Supports file transfers via Out-of-Band Bytestreams") },
+	{	JABBER_FEAT_COMMANDS,             JABBER_CAPS_COMMANDS,             LPGENT("Supports execution of Ad-Hoc commands") },
+	{	JABBER_FEAT_REGISTER,             JABBER_CAPS_REGISTER,             LPGENT("Supports in-band registration") },
+	{	JABBER_FEAT_MUC,                  JABBER_CAPS_MUC,                  LPGENT("Supports multi-user chat") },
+	{	JABBER_FEAT_CHATSTATES,           JABBER_CAPS_CHATSTATES,           LPGENT("Can report chat state in a chat session") },
+	{	JABBER_FEAT_LAST_ACTIVITY,        JABBER_CAPS_LAST_ACTIVITY,        LPGENT("Can report information about the last activity of the user") },
+	{	JABBER_FEAT_VERSION,              JABBER_CAPS_VERSION,              LPGENT("Can report own version information") },
+	{	JABBER_FEAT_ENTITY_TIME,          JABBER_CAPS_ENTITY_TIME,          LPGENT("Can report local time of the user") },
+	{	JABBER_FEAT_PING,                 JABBER_CAPS_PING,                 LPGENT("Can send and receive ping requests") },
+	{	JABBER_FEAT_DATA_FORMS,           JABBER_CAPS_DATA_FORMS,           LPGENT("Supports data forms") },
+	{	JABBER_FEAT_MESSAGE_EVENTS,       JABBER_CAPS_MESSAGE_EVENTS,       LPGENT("Can request and respond to events relating to the delivery, display, and composition of messages") },
+	{	JABBER_FEAT_VCARD_TEMP,           JABBER_CAPS_VCARD_TEMP,           LPGENT("Supports vCard") },
+	{	JABBER_FEAT_AVATAR,               JABBER_CAPS_AVATAR,               LPGENT("Supports iq-based avatars") },
+	{	JABBER_FEAT_XHTML,                JABBER_CAPS_XHTML,                LPGENT("Supports XHTML formatting of chat messages") },
+	{	JABBER_FEAT_AGENTS,               JABBER_CAPS_AGENTS,               LPGENT("Supports Jabber Browsing") },
+	{	JABBER_FEAT_BROWSE,               JABBER_CAPS_BROWSE,               LPGENT("Supports Jabber Browsing") },
+	{	JABBER_FEAT_FEATURE_NEG,          JABBER_CAPS_FEATURE_NEG,          LPGENT("Can negotiate options for specific features") },
+	{	JABBER_FEAT_AMP,                  JABBER_CAPS_AMP,                  LPGENT("Can request advanced processing of message stanzas") },
+	{	JABBER_FEAT_USER_MOOD,            JABBER_CAPS_USER_MOOD,            LPGENT("Can report information about user moods") },
+	{	JABBER_FEAT_USER_MOOD_NOTIFY,     JABBER_CAPS_USER_MOOD_NOTIFY,     LPGENT("Receives information about user moods") },
+	{	JABBER_FEAT_PUBSUB,               JABBER_CAPS_PUBSUB,               LPGENT("Supports generic publish-subscribe functionality") },
+	{	JABBER_FEAT_SECUREIM,             JABBER_CAPS_SECUREIM,             LPGENT("Supports SecureIM plugin for Miranda NG") },
+	{	JABBER_FEAT_MIROTR,               JABBER_CAPS_MIROTR,               LPGENT("Supports MirOTR plugin for Miranda NG") },
+	{	JABBER_FEAT_NEWGPG,               JABBER_CAPS_NEWGPG,               LPGENT("Supports New_GPG plugin for Miranda NG") },
+	{	JABBER_FEAT_PRIVACY_LISTS,        JABBER_CAPS_PRIVACY_LISTS,        LPGENT("Can block communications from particular other users using Privacy lists") },
+	{	JABBER_FEAT_MESSAGE_RECEIPTS,     JABBER_CAPS_MESSAGE_RECEIPTS,     LPGENT("Supports Message Receipts") },
+	{	JABBER_FEAT_USER_TUNE,            JABBER_CAPS_USER_TUNE,            LPGENT("Can report information about the music to which a user is listening") },
+	{	JABBER_FEAT_USER_TUNE_NOTIFY,     JABBER_CAPS_USER_TUNE_NOTIFY,     LPGENT("Receives information about the music to which a user is listening") },
+	{	JABBER_FEAT_PRIVATE_STORAGE,      JABBER_CAPS_PRIVATE_STORAGE,      LPGENT("Supports private XML Storage (for bookmakrs and other)") },
+	{	JABBER_FEAT_ATTENTION,            JABBER_CAPS_ATTENTION,            LPGENT("Supports attention requests ('nudge')") },
+	{	JABBER_FEAT_ATTENTION_0,          JABBER_CAPS_ATTENTION_0,          LPGENT("Supports attention requests ('nudge')") },
+	{	JABBER_FEAT_ARCHIVE_AUTO,         JABBER_CAPS_ARCHIVE_AUTO,         LPGENT("Supports chat history retrieving") },
+	{	JABBER_FEAT_ARCHIVE_MANAGE,       JABBER_CAPS_ARCHIVE_MANAGE,       LPGENT("Supports chat history management") },
+	{	JABBER_FEAT_USER_ACTIVITY,        JABBER_CAPS_USER_ACTIVITY,        LPGENT("Can report information about user activity") },
+	{	JABBER_FEAT_USER_ACTIVITY_NOTIFY, JABBER_CAPS_USER_ACTIVITY_NOTIFY, LPGENT("Receives information about user activity") },
+	{	JABBER_FEAT_MIRANDA_NOTES,        JABBER_CAPS_MIRANDA_NOTES,        LPGENT("Supports Miranda NG notes extension") },
+	{	JABBER_FEAT_JINGLE,               JABBER_CAPS_JINGLE,               LPGENT("Supports Jingle") },
+	{	JABBER_FEAT_ROSTER_EXCHANGE,      JABBER_CAPS_ROSTER_EXCHANGE,      LPGENT("Supports Roster Exchange") },
+	{	JABBER_FEAT_GTALK_PMUC,           JABBER_CAPS_GTALK_PMUC,           LPGENT("Supports GTalk private multi-user chat") },
 	{	NULL,                                 0,                                NULL}
 };
 
 const JabberFeatCapPair g_JabberFeatCapPairsExt[] = {
 	{	_T(JABBER_EXT_SECUREIM),          JABBER_CAPS_SECUREIM             },
+	{	_T(JABBER_EXT_MIROTR),            JABBER_CAPS_MIROTR               },
+	{	_T(JABBER_EXT_NEWGPG),            JABBER_CAPS_NEWGPG               },
 	{	_T(JABBER_EXT_COMMANDS),          JABBER_CAPS_COMMANDS             },
 	{	_T(JABBER_EXT_USER_MOOD),         JABBER_CAPS_USER_MOOD_NOTIFY     },
 	{	_T(JABBER_EXT_USER_TUNE),         JABBER_CAPS_USER_TUNE_NOTIFY     },
@@ -82,13 +89,15 @@ const JabberFeatCapPair g_JabberFeatCapPairsExt[] = {
 	{	_T(JABBER_EXT_GTALK_PMUC),        JABBER_CAPS_GTALK_PMUC           },
 	{	_T(JABBER_EXT_MIR_NOTES),         JABBER_CAPS_MIRANDA_NOTES,       },
 	{	szCoreVersion,                    JABBER_CAPS_MIRANDA_PARTIAL      },
+	{	_T(JABBER_EXT_PLATFORMX86),       JABBER_CAPS_PLATFORMX86          },
+	{	_T(JABBER_EXT_PLATFORMX64),       JABBER_CAPS_PLATFORMX64          },
 	{	NULL,                             0                                }
 };
 
 void CJabberProto::OnIqResultCapsDiscoInfoSI(HXML, CJabberIqInfo* pInfo)
 {
 	JABBER_RESOURCE_STATUS *r = ResourceInfoFromJID(pInfo->GetFrom());
-	if ( !r)
+	if (r == NULL)
 		return;
 
 	if (r->szCapsNode == NULL)
@@ -107,32 +116,19 @@ void CJabberProto::OnIqResultCapsDiscoInfoSI(HXML, CJabberIqInfo* pInfo)
 				if (r->pSoftwareInfo) {
 					TCHAR *szTmp = XPath(xform, _T("field[@var='os']/value"));
 					if (szTmp)
-						r->pSoftwareInfo->szOs = mir_tstrdup(szTmp);
+						r->pSoftwareInfo->tszOs = mir_tstrdup(szTmp);
 					szTmp = XPath(xform, _T("field[@var='os_version']/value"));
 					if (szTmp)
-						r->pSoftwareInfo->szOsVersion = mir_tstrdup(szTmp);
+						r->pSoftwareInfo->tszOsVersion = mir_tstrdup(szTmp);
 					szTmp = XPath(xform, _T("field[@var='software']/value"));
 					if (szTmp)
-						r->pSoftwareInfo->szSoftware = mir_tstrdup(szTmp);
+						r->pSoftwareInfo->tszSoftware = mir_tstrdup(szTmp);
 					szTmp = XPath(xform, _T("field[@var='software_version']/value"));
 					if (szTmp)
-						r->pSoftwareInfo->szSoftwareVersion = mir_tstrdup(szTmp);
+						r->pSoftwareInfo->tszSoftwareVersion = mir_tstrdup(szTmp);
 					szTmp = XPath(xform, _T("field[@var='x-miranda-core-version']/value"));
 					if (szTmp)
-						r->pSoftwareInfo->szXMirandaCoreVersion = mir_tstrdup(szTmp);
-					szTmp = XPath(xform, _T("field[@var='x-miranda-core-is-unicode']/value"));
-					if ( !szTmp) // old deprecated format
-						szTmp = XPath(xform, _T("field[@var='x-miranda-is-unicode']/value"));
-					if (szTmp && _ttoi(szTmp))
-						r->pSoftwareInfo->bXMirandaIsUnicode = TRUE;
-					szTmp = XPath(xform, _T("field[@var='x-miranda-core-is-alpha']/value"));
-					if ( !szTmp) // old deprecated format
-						szTmp = XPath(xform, _T("field[@var='x-miranda-is-alpha']/value"));
-					if (szTmp && _ttoi(szTmp))
-						r->pSoftwareInfo->bXMirandaIsAlpha = TRUE;
-					szTmp = XPath(xform, _T("field[@var='x-miranda-jabber-is-debug']/value"));
-					if (szTmp && _ttoi(szTmp))
-						r->pSoftwareInfo->bXMirandaIsDebug = TRUE;
+						r->pSoftwareInfo->tszXMirandaCoreVersion = mir_tstrdup(szTmp);
 				}
 				JabberUserInfoUpdate(pInfo->GetHContact());
 			}
@@ -150,12 +146,16 @@ void CJabberProto::OnIqResultCapsDiscoInfo(HXML, CJabberIqInfo* pInfo)
 		HXML feature;
 		for (int i = 1; (feature = xmlGetNthChild(query, _T("feature"), i)) != NULL; i++) {
 			const TCHAR *featureName = xmlGetAttrValue(feature, _T("var"));
-			if (featureName) {
-				for (int j = 0; g_JabberFeatCapPairs[j].szFeature; j++) {
-					if ( !_tcscmp(g_JabberFeatCapPairs[j].szFeature, featureName)) {
-						jcbCaps |= g_JabberFeatCapPairs[j].jcbCap;
-						break;
-		}	}	}	}
+			if (!featureName)
+				continue;
+
+			for (int j = 0; g_JabberFeatCapPairs[j].szFeature; j++) {
+				if ( !_tcscmp(g_JabberFeatCapPairs[j].szFeature, featureName)) {
+					jcbCaps |= g_JabberFeatCapPairs[j].jcbCap;
+					break;
+				}
+			}
+		}
 
 		// no version info support and no XEP-0115 support?
 		if (r && r->dwVersionRequestTime == -1 && !r->version && !r->software && !r->szCapsNode) {
@@ -167,6 +167,7 @@ void CJabberProto::OnIqResultCapsDiscoInfo(HXML, CJabberIqInfo* pInfo)
 		if ( !m_clientCapsManager.SetClientCaps(pInfo->GetIqId(), jcbCaps))
 			if (r)
 				r->jcbCachedCaps = jcbCaps;
+
 		JabberUserInfoUpdate(pInfo->GetHContact());
 	}
 	else {
@@ -185,7 +186,7 @@ JabberCapsBits CJabberProto::GetTotalJidCapabilites(const TCHAR *jid)
 	if ( !jid)
 		return JABBER_RESOURCE_CAPS_NONE;
 
-	TCHAR szBareJid[ JABBER_MAX_JID_LEN ];
+	TCHAR szBareJid[JABBER_MAX_JID_LEN];
 	JabberStripJid(jid, szBareJid, SIZEOF(szBareJid));
 
 	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_ROSTER, szBareJid);
@@ -195,16 +196,16 @@ JabberCapsBits CJabberProto::GetTotalJidCapabilites(const TCHAR *jid)
 	JabberCapsBits jcbToReturn = JABBER_RESOURCE_CAPS_NONE;
 
 	// get bare jid info only if where is no resources
-	if ( !item || (item && !item->resourceCount)) {
+	if ( !item || (item && !item->arResources.getCount())) {
 		jcbToReturn = GetResourceCapabilites(szBareJid, FALSE);
 		if (jcbToReturn & JABBER_RESOURCE_CAPS_ERROR)
 			jcbToReturn = JABBER_RESOURCE_CAPS_NONE;
 	}
 
 	if (item) {
-		for (int i = 0; i < item->resourceCount; i++) {
-			TCHAR szFullJid[ JABBER_MAX_JID_LEN ];
-			mir_sntprintf(szFullJid, JABBER_MAX_JID_LEN, _T("%s/%s"), szBareJid, item->resource[i].resourceName);
+		for (int i = 0; i < item->arResources.getCount(); i++) {
+			TCHAR szFullJid[JABBER_MAX_JID_LEN];
+			mir_sntprintf(szFullJid, JABBER_MAX_JID_LEN, _T("%s/%s"), szBareJid, item->arResources[i]->resourceName);
 			JabberCapsBits jcb = GetResourceCapabilites(szFullJid, FALSE);
 			if ( !(jcb & JABBER_RESOURCE_CAPS_ERROR))
 				jcbToReturn |= jcb;
@@ -215,7 +216,7 @@ JabberCapsBits CJabberProto::GetTotalJidCapabilites(const TCHAR *jid)
 
 JabberCapsBits CJabberProto::GetResourceCapabilites(const TCHAR *jid, BOOL appendBestResource)
 {
-	TCHAR fullJid[ JABBER_MAX_JID_LEN ];
+	TCHAR fullJid[JABBER_MAX_JID_LEN];
 	if (appendBestResource)
 		GetClientJID(jid, fullJid, SIZEOF(fullJid));
 	else
@@ -244,7 +245,7 @@ JabberCapsBits CJabberProto::GetResourceCapabilites(const TCHAR *jid, BOOL appen
 
 			TCHAR queryNode[512];
 			mir_sntprintf(queryNode, SIZEOF(queryNode), _T("%s#%s"), r->szCapsNode, r->szCapsVer);
-			m_ThreadInfo->send(XmlNodeIq(pInfo) << XQUERY(_T(JABBER_FEAT_DISCO_INFO)) << XATTR(_T("node"), queryNode));
+			m_ThreadInfo->send( XmlNodeIq(pInfo) << XQUERY(JABBER_FEAT_DISCO_INFO) << XATTR(_T("node"), queryNode));
 
 			bRequestSent = TRUE;
 		}
@@ -273,7 +274,7 @@ JabberCapsBits CJabberProto::GetResourceCapabilites(const TCHAR *jid, BOOL appen
 					TCHAR queryNode[512];
 					mir_sntprintf(queryNode, SIZEOF(queryNode), _T("%s#%s"), r->szCapsNode, token);
 					m_ThreadInfo->send(
-						XmlNodeIq(pInfo) << XQUERY(_T(JABBER_FEAT_DISCO_INFO)) << XATTR(_T("node"), queryNode));
+						XmlNodeIq(pInfo) << XQUERY(JABBER_FEAT_DISCO_INFO) << XATTR(_T("node"), queryNode));
 
 					bRequestSent = TRUE;
 					break;
@@ -311,7 +312,7 @@ JabberCapsBits CJabberProto::GetResourceCapabilites(const TCHAR *jid, BOOL appen
 			r->dwVersionRequestTime = pInfo->GetRequestTime();
 
 			XmlNodeIq iq(pInfo);
-			iq << XQUERY(_T(JABBER_FEAT_VERSION));
+			iq << XQUERY(JABBER_FEAT_VERSION);
 			m_ThreadInfo->send(iq);
 			return JABBER_RESOURCE_CAPS_IN_PROGRESS;
 		}
@@ -333,7 +334,7 @@ JabberCapsBits CJabberProto::GetResourceCapabilites(const TCHAR *jid, BOOL appen
 			r->dwDiscoInfoRequestTime = pInfo->GetRequestTime();
 
 			XmlNodeIq iq(pInfo);
-			iq << XQUERY(_T(JABBER_FEAT_DISCO_INFO));
+			iq << XQUERY(JABBER_FEAT_DISCO_INFO);
 			m_ThreadInfo->send(iq);
 
 			return JABBER_RESOURCE_CAPS_IN_PROGRESS;
@@ -377,7 +378,7 @@ JabberCapsBits CJabberProto::GetResourceCapabilites(const TCHAR *jid, BOOL appen
 			r->dwDiscoInfoRequestTime = pInfo->GetRequestTime();
 
 			XmlNodeIq iq(pInfo);
-			iq << XQUERY(_T(JABBER_FEAT_DISCO_INFO));
+			iq << XQUERY(JABBER_FEAT_DISCO_INFO);
 			m_ThreadInfo->send(iq);
 
 			jcbMainCaps = JABBER_RESOURCE_CAPS_IN_PROGRESS;
@@ -389,7 +390,7 @@ JabberCapsBits CJabberProto::GetResourceCapabilites(const TCHAR *jid, BOOL appen
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
-//  CJabberClientPartialCaps class members
+//  CJabberClientPartialCaps class
 
 CJabberClientPartialCaps::CJabberClientPartialCaps(const TCHAR *szVer)
 {
@@ -461,6 +462,9 @@ CJabberClientPartialCaps* CJabberClientCaps::FindById(int nIqId)
 	return pCaps;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////
+// CJabberClientCaps class
+
 CJabberClientCaps::CJabberClientCaps(const TCHAR *szNode)
 {
 	m_szNode = mir_tstrdup(szNode);
@@ -483,14 +487,14 @@ CJabberClientCaps* CJabberClientCaps::SetNext(CJabberClientCaps *pClient)
 	return pRetVal;
 }
 
-JabberCapsBits CJabberClientCaps::GetPartialCaps(TCHAR *szVer) {
+JabberCapsBits CJabberClientCaps::GetPartialCaps(TCHAR *szVer)
+{
 	CJabberClientPartialCaps *pCaps = FindByVersion(szVer);
-	if ( !pCaps)
-		return JABBER_RESOURCE_CAPS_UNINIT;
-	return pCaps->GetCaps();
+	return (pCaps) ? pCaps->GetCaps() : JABBER_RESOURCE_CAPS_UNINIT;
 }
 
-BOOL CJabberClientCaps::SetPartialCaps(const TCHAR *szVer, JabberCapsBits jcbCaps, int nIqId /*= -1*/) {
+BOOL CJabberClientCaps::SetPartialCaps(const TCHAR *szVer, JabberCapsBits jcbCaps, int nIqId /*= -1*/)
+{
 	CJabberClientPartialCaps *pCaps = FindByVersion(szVer);
 	if ( !pCaps) {
 		pCaps = new CJabberClientPartialCaps(szVer);
@@ -499,25 +503,23 @@ BOOL CJabberClientCaps::SetPartialCaps(const TCHAR *szVer, JabberCapsBits jcbCap
 		pCaps->SetNext(m_pCaps);
 		m_pCaps = pCaps;
 	}
-	if ( !(jcbCaps & JABBER_RESOURCE_CAPS_ERROR) && m_szNode && szVer) {
-		if ( !_tcscmp(m_szNode, _T("http://miranda-im.org/caps")) && !_tcscmp(szVer, _T("0.7.0.13")))
-			jcbCaps = jcbCaps & (~JABBER_CAPS_MESSAGE_RECEIPTS);
-	}
+
 	pCaps->SetCaps(jcbCaps, nIqId);
 	return TRUE;
 }
 
-BOOL CJabberClientCaps::SetPartialCaps(int nIqId, JabberCapsBits jcbCaps) {
+BOOL CJabberClientCaps::SetPartialCaps(int nIqId, JabberCapsBits jcbCaps)
+{
 	CJabberClientPartialCaps *pCaps = FindById(nIqId);
 	if ( !pCaps)
 		return FALSE;
-	if ( !(jcbCaps & JABBER_RESOURCE_CAPS_ERROR) && m_szNode && pCaps->GetVersion()) {
-		if ( !_tcscmp(m_szNode, _T("http://miranda-im.org/caps")) && !_tcscmp(pCaps->GetVersion(), _T("0.7.0.13")))
-			jcbCaps = jcbCaps & (~JABBER_CAPS_MESSAGE_RECEIPTS);
-	}
+
 	pCaps->SetCaps(jcbCaps, -1);
 	return TRUE;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// CJabberClientCapsManager class
 
 CJabberClientCapsManager::CJabberClientCapsManager(CJabberProto* proto)
 {
@@ -547,11 +549,12 @@ CJabberClientCaps * CJabberClientCapsManager::FindClient(const TCHAR *szNode)
 	return pClient;
 }
 
-void CJabberClientCapsManager::AddDefaultCaps() {
-	SetClientCaps(_T(JABBER_CAPS_MIRANDA_NODE), szCoreVersion, JABBER_CAPS_MIRANDA_ALL);
+void CJabberClientCapsManager::AddDefaultCaps()
+{
+	SetClientCaps(JABBER_CAPS_MIRANDA_NODE, szCoreVersion, JABBER_CAPS_MIRANDA_ALL);
 
 	for (int i = 0; g_JabberFeatCapPairsExt[i].szFeature; i++)
-		SetClientCaps(_T(JABBER_CAPS_MIRANDA_NODE), g_JabberFeatCapPairsExt[i].szFeature, g_JabberFeatCapPairsExt[i].jcbCap);
+		SetClientCaps(JABBER_CAPS_MIRANDA_NODE, g_JabberFeatCapPairsExt[i].szFeature, g_JabberFeatCapPairsExt[i].jcbCap);
 }
 
 JabberCapsBits CJabberClientCapsManager::GetClientCaps(TCHAR *szNode, TCHAR *szVer)
@@ -560,12 +563,12 @@ JabberCapsBits CJabberClientCapsManager::GetClientCaps(TCHAR *szNode, TCHAR *szV
 	CJabberClientCaps *pClient = FindClient(szNode);
 	if ( !pClient) {
 		Unlock();
-		ppro->Log("CAPS: get no caps for: " TCHAR_STR_PARAM ", " TCHAR_STR_PARAM, szNode, szVer);
+		ppro->Log("CAPS: get no caps for: %S, %S", szNode, szVer);
 		return JABBER_RESOURCE_CAPS_UNINIT;
 	}
 	JabberCapsBits jcbCaps = pClient->GetPartialCaps(szVer);
 	Unlock();
-	ppro->Log("CAPS: get caps %I64x for: " TCHAR_STR_PARAM ", " TCHAR_STR_PARAM, jcbCaps, szNode, szVer);
+	ppro->Log("CAPS: get caps %I64x for: %S, %S", jcbCaps, szNode, szVer);
 	return jcbCaps;
 }
 
@@ -584,7 +587,7 @@ BOOL CJabberClientCapsManager::SetClientCaps(const TCHAR *szNode, const TCHAR *s
 	}
 	BOOL bOk = pClient->SetPartialCaps(szVer, jcbCaps, nIqId);
 	Unlock();
-	ppro->Log("CAPS: set caps %I64x for: " TCHAR_STR_PARAM ", " TCHAR_STR_PARAM, jcbCaps, szNode, szVer);
+	ppro->Log("CAPS: set caps %I64x for: %S, %S", jcbCaps, szNode, szVer);
 	return bOk;
 }
 
@@ -617,7 +620,7 @@ BOOL CJabberClientCapsManager::HandleInfoRequest(HXML, CJabberIqInfo* pInfo, con
 	if (szNode) {
 		for (i = 0; g_JabberFeatCapPairsExt[i].szFeature; i++) {
 			TCHAR szExtCap[ 512 ];
-			mir_sntprintf(szExtCap, SIZEOF(szExtCap), _T("%s#%s"), _T(JABBER_CAPS_MIRANDA_NODE), g_JabberFeatCapPairsExt[i].szFeature);
+			mir_sntprintf(szExtCap, SIZEOF(szExtCap), _T("%s#%s"), JABBER_CAPS_MIRANDA_NODE, g_JabberFeatCapPairsExt[i].szFeature);
 			if ( !_tcscmp(szNode, szExtCap)) {
 				jcb = g_JabberFeatCapPairsExt[i].jcbCap;
 				break;
@@ -627,7 +630,7 @@ BOOL CJabberClientCapsManager::HandleInfoRequest(HXML, CJabberIqInfo* pInfo, con
 		// check features registered through IJabberNetInterface::RegisterFeature() and IJabberNetInterface::AddFeatures()
 		for (i = 0; i < ppro->m_lstJabberFeatCapPairsDynamic.getCount(); i++) {
 			TCHAR szExtCap[ 512 ];
-			mir_sntprintf(szExtCap, SIZEOF(szExtCap), _T("%s#%s"), _T(JABBER_CAPS_MIRANDA_NODE), ppro->m_lstJabberFeatCapPairsDynamic[i]->szExt);
+			mir_sntprintf(szExtCap, SIZEOF(szExtCap), _T("%s#%s"), JABBER_CAPS_MIRANDA_NODE, ppro->m_lstJabberFeatCapPairsDynamic[i]->szExt);
 			if ( !_tcscmp(szNode, szExtCap)) {
 				jcb = ppro->m_lstJabberFeatCapPairsDynamic[i]->jcbCap;
 				break;
@@ -649,7 +652,7 @@ BOOL CJabberClientCapsManager::HandleInfoRequest(HXML, CJabberIqInfo* pInfo, con
 
 	XmlNodeIq iq(_T("result"), pInfo);
 
-	HXML query = iq << XQUERY(_T(JABBER_FEAT_DISCO_INFO));
+	HXML query = iq << XQUERY(JABBER_FEAT_DISCO_INFO);
 	if (szNode)
 		query << XATTR(_T("node"), szNode);
 
@@ -679,7 +682,7 @@ BOOL CJabberClientCapsManager::HandleInfoRequest(HXML, CJabberIqInfo* pInfo, con
 			}
 		}
 
-		HXML form = query << XCHILDNS(_T("x"), _T(JABBER_FEAT_DATA_FORMS)) << XATTR(_T("type"), _T("result"));
+		HXML form = query << XCHILDNS(_T("x"), JABBER_FEAT_DATA_FORMS) << XATTR(_T("type"), _T("result"));
 		form << XCHILD(_T("field")) << XATTR(_T("var"), _T("FORM_TYPE")) << XATTR(_T("type"), _T("hidden"))
 			<< XCHILD(_T("value"), _T("urn:xmpp:dataforms:softwareinfo"));
 
@@ -688,7 +691,8 @@ BOOL CJabberClientCapsManager::HandleInfoRequest(HXML, CJabberIqInfo* pInfo, con
 			form << XCHILD(_T("field")) << XATTR(_T("var"), _T("os_version")) << XCHILD(_T("value"), os);
 		}
 		form << XCHILD(_T("field")) << XATTR(_T("var"), _T("software")) << XCHILD(_T("value"), _T("Miranda NG Jabber Protocol"));
-		form << XCHILD(_T("field")) << XATTR(_T("var"), _T("software_version")) << XCHILD(_T("value"), szCoreVersion);
+		form << XCHILD(_T("field")) << XATTR(_T("var"), _T("software_version")) << XCHILD(_T("value"), _T(__VERSION_STRING));
+		form << XCHILD(_T("field")) << XATTR(_T("var"), _T("x-miranda-core-version")) << XCHILD(_T("value"), szCoreVersion);
 	}
 
 	ppro->m_ThreadInfo->send(iq);

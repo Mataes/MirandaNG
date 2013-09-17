@@ -2,8 +2,8 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 #include "../database/profilemanager.h"
 
@@ -32,9 +33,9 @@ static INT_PTR pathToRelative(WPARAM wParam, LPARAM lParam)
 	return PathToRelative((char*)wParam, (char*)lParam);
 }
 
-static INT_PTR pathToAbsolute(WPARAM wParam, LPARAM lParam) 
+static INT_PTR pathToAbsolute(WPARAM wParam, LPARAM lParam)
 {
-	return PathToAbsolute((char*)wParam, (char*)lParam, NULL);
+	return PathToAbsolute((char*)wParam, (char*)lParam);
 }
 
 static INT_PTR createDirTree(WPARAM, LPARAM lParam)
@@ -69,7 +70,7 @@ TCHAR *GetContactID(HANDLE hContact)
 	char *szProto = GetContactProto(hContact);
 	if (db_get_b(hContact, szProto, "ChatRoom", 0) == 1) {
 		DBVARIANT dbv;
-		if ( !DBGetContactSettingTString(hContact, szProto, "ChatRoomID", &dbv)) {
+		if ( !db_get_ts(hContact, szProto, "ChatRoomID", &dbv)) {
 			theValue = (TCHAR *)mir_tstrdup(dbv.ptszVal);
 			db_free(&dbv);
 			return theValue;
@@ -170,11 +171,11 @@ static __forceinline char *GetPathVarX(char *, int code)
 
 	switch(code) {
 	case 1:
-		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s\\AvatarCache"), g_profileDir, szProfileName);
-		break; 
+		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s\\Avatars"), g_profileDir, szProfileName);
+		break;
 	case 2:
 		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s\\Logs"), g_profileDir, szProfileName);
-		break; 
+		break;
 	case 3:
 		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s"), g_profileDir, szProfileName);
 		break;
@@ -251,11 +252,11 @@ static __forceinline TCHAR *GetPathVarX(TCHAR *, int code)
 
 	switch(code) {
 	case 1:
-		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s\\AvatarCache"), g_profileDir, szProfileName);
-		break; 
+		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s\\Avatars"), g_profileDir, szProfileName);
+		break;
 	case 2:
 		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s\\Logs"), g_profileDir, szProfileName);
-		break; 
+		break;
 	case 3:
 		mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\%s"), g_profileDir, szProfileName);
 		break;
@@ -276,7 +277,7 @@ XCHAR *GetInternalVariable(XCHAR *key, size_t keyLength, HANDLE hContact)
 			theValue = GetContactNickX(key, hContact);
 		else if ( !_xcscmp(theKey, XSTR(key, "proto")))
 			theValue = mir_a2x(key, GetContactProto(hContact));
-		else if ( !_xcscmp(theKey, XSTR(key, "userid"))) 
+		else if ( !_xcscmp(theKey, XSTR(key, "userid")))
 			theValue = GetContactIDX(key, hContact);
 	}
 
@@ -387,11 +388,10 @@ XCHAR *ReplaceVariables(XCHAR *str, REPLACEVARSDATA *data)
 static INT_PTR replaceVars(WPARAM wParam, LPARAM lParam)
 {
 	REPLACEVARSDATA *data = (REPLACEVARSDATA *)lParam;
-	if ( !(data->dwFlags & RVF_UNICODE))
-		return (INT_PTR)ReplaceVariables<char>((char *)wParam, data);
+	if (data->dwFlags & RVF_UNICODE)
+		return (INT_PTR)ReplaceVariables<WCHAR>((WCHAR *)wParam, data);
 
-
-	return (INT_PTR)ReplaceVariables<WCHAR>((WCHAR *)wParam, data);
+	return (INT_PTR)ReplaceVariables<char>((char *)wParam, data);
 }
 
 int InitPathUtils(void)

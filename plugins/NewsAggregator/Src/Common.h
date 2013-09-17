@@ -17,51 +17,40 @@ not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  
 */
 
-#define MIRANDA_VER    0x0A00
-
 // Windows Header Files:
 #include <windows.h>
 #include <commctrl.h>
 #include <time.h>
 #include <fcntl.h>
 #include <io.h>
-#include <errno.h>
-#include <string.h>
-#include <stdlib.h>
 #include <sys\stat.h>
 #include <mshtml.h>
 
 // Miranda header files
 #include <newpluginapi.h>
 #include <m_clist.h>
-#include <m_skin.h>
 #include <m_langpack.h>
 #include <m_options.h>
 #include <m_database.h>
-#include <m_utils.h>
-#include <m_system.h>
-#include <m_popup.h>
-#include <m_hotkeys.h>
 #include <m_netlib.h>
 #include <m_icolib.h>
 #include <m_message.h>
 #include <win2k.h>
-#include <m_protocols.h>
 #include <m_protomod.h>
-#include <m_protosvc.h>
 #include <m_xml.h>
 #include <m_avatars.h>
 
 #include <m_folders.h>
-#include <m_popup.h>
+#include <m_toptoolbar.h>
 
 #include "version.h"
 #include "resource.h"
 
-#define MODULE	"NewsAggr"
-#define TAGSHELP "#<title># - The title of the item.\r\n#<description># - The item synopsis.\r\n#<link># - The URL of the item.\r\n#<author># - Email address of the author of the item.\r\n#<comments># - URL of a page for comments relating to the item.\r\n#<guid># - A string that uniquely identifies the item.\r\n#<category># - Specify one or more categories that the item belongs to."
+#define MODULE	"NewsAggregator"
 #define TAGSDEFAULT "#<title>#\r\n#<link>#\r\n#<description>#"
 #define DEFAULT_AVATARS_FOLDER "NewsAggregator"
+#define DEFAULT_UPDATE_TIME 60
+
 extern HINSTANCE hInst;
 extern HWND hAddFeedDlg;
 extern HANDLE hChangeFeedDlgList;
@@ -92,10 +81,11 @@ extern UPDATELIST *UpdateListHead;
 extern UPDATELIST *UpdateListTail;
 
 void UpdateListAdd(HANDLE hContact);
-void UpdateThreadProc(LPVOID hWnd);
+void UpdateThreadProc(LPVOID AvatarCheck);
 void DestroyUpdateList(void);
 
 extern HANDLE hUpdateMutex;
+extern HGENMENU hService2[7];
 
 int NewsAggrInit(WPARAM wParam,LPARAM lParam);
 INT OptInit(WPARAM wParam, LPARAM lParam);
@@ -113,14 +103,16 @@ INT_PTR NewsAggrGetStatus(WPARAM/* wp*/, LPARAM/* lp*/);
 INT_PTR NewsAggrLoadIcon(WPARAM wParam, LPARAM lParam);
 INT_PTR NewsAggrGetInfo(WPARAM wParam, LPARAM lParam);
 INT_PTR NewsAggrGetAvatarInfo(WPARAM wParam, LPARAM lParam);
-INT_PTR NewsAggrRecvMessage(WPARAM wParam,LPARAM lParam);
+INT_PTR NewsAggrRecvMessage(WPARAM wParam, LPARAM lParam);
 
-INT_PTR CheckAllFeeds(WPARAM wParam,LPARAM lParam);
-INT_PTR AddFeed(WPARAM wParam,LPARAM lParam);
-INT_PTR ChangeFeed(WPARAM wParam,LPARAM lParam);
-INT_PTR ImportFeeds(WPARAM wParam,LPARAM lParam);
-INT_PTR ExportFeeds(WPARAM wParam,LPARAM lParam);
-INT_PTR CheckFeed(WPARAM wParam,LPARAM lParam);
+INT_PTR CheckAllFeeds(WPARAM wParam, LPARAM lParam);
+INT_PTR AddFeed(WPARAM wParam, LPARAM lParam);
+INT_PTR ChangeFeed(WPARAM wParam, LPARAM lParam);
+INT_PTR ImportFeeds(WPARAM wParam, LPARAM lParam);
+INT_PTR ExportFeeds(WPARAM wParam, LPARAM lParam);
+INT_PTR CheckFeed(WPARAM wParam, LPARAM lParam);
+INT_PTR EnableDisable(WPARAM wParam, LPARAM lParam);
+int OnToolbarLoaded(WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK DlgProcAddFeedOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK DlgProcChangeFeedOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK DlgProcChangeFeedMenu(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -129,34 +121,50 @@ VOID CALLBACK timerProc2(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 
 BOOL IsMyContact(HANDLE hContact);
 VOID GetNewsData(TCHAR *szUrl, char** szData, HANDLE hContact, HWND hwndDlg);
-VOID CreateList (HWND hwndList);
-VOID UpdateList (HWND hwndList);
+VOID CreateList(HWND hwndList);
+VOID UpdateList(HWND hwndList);
 VOID DeleteAllItems(HWND hwndList);
 time_t __stdcall DateToUnixTime(TCHAR *stamp, BOOL FeedType);
-VOID CheckCurrentFeed (HANDLE hContact);
+VOID CheckCurrentFeed(HANDLE hContact);
+VOID CheckCurrentFeedAvatar(HANDLE hContact);
 TCHAR* CheckFeed(TCHAR* tszURL, HWND hwndDlg);
+void UpdateMenu(BOOL State);
+int ImportFeedsDialog();
+VOID ClearText(TCHAR *&message);
+BOOL DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal);
+int StrReplace(TCHAR *lpszOld, TCHAR *lpszNew, TCHAR *&lpszStr);
+void CreateAuthString(char *auth, HANDLE hContact, HWND hwndDlg);
+INT_PTR CALLBACK AuthenticationProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+HANDLE GetContactByNick(const TCHAR *nick);
+HANDLE GetContactByURL(const TCHAR *url);
 
-// ===============  NewsAggr SERVICES  ================
+// ===============  NewsAggregator SERVICES  ================
 // Check all Feeds info
 // WPARAM = LPARAM = NULL
-#define MS_NEWSAGGR_CHECKALLFEEDS	"NEWSAGGR/CheckAllFeeds"
+#define MS_NEWSAGGREGATOR_CHECKALLFEEDS	"NewsAggregator/CheckAllFeeds"
 
 // Add new Feed channel
 // WPARAM = LPARAM = NULL
-#define MS_NEWSAGGR_ADDFEED	"NEWSAGGR/AddNewsFeed"
+#define MS_NEWSAGGREGATOR_ADDFEED	"NewsAggregator/AddNewsFeed"
 
 // Add new Feed channel
 // WPARAM = LPARAM = NULL
-#define MS_NEWSAGGR_CHANGEFEED	"NEWSAGGR/ChangeNewsFeed"
+#define MS_NEWSAGGREGATOR_CHANGEFEED	"NewsAggregator/ChangeNewsFeed"
 
 // Import Feed chanels from file
 // WPARAM = LPARAM = NULL
-#define MS_NEWSAGGR_IMPORTFEEDS	"NEWSAGGR/ImportFeeds"
+#define MS_NEWSAGGREGATOR_IMPORTFEEDS	"NewsAggregator/ImportFeeds"
 
 // Export Feed chanels to file
 // WPARAM = LPARAM = NULL
-#define MS_NEWSAGGR_EXPORTFEEDS	"NEWSAGGR/ExportFeeds"
+#define MS_NEWSAGGREGATOR_EXPORTFEEDS	"NewsAggregator/ExportFeeds"
 
 // Check Feed info
 // WPARAM = LPARAM = NULL
-#define MS_NEWSAGGR_CHECKFEED	"NEWSAGGR/CheckFeed"
+#define MS_NEWSAGGREGATOR_CHECKFEED	"NewsAggregator/CheckFeed"
+
+// Check Feed info
+// WPARAM = LPARAM = NULL
+#define MS_NEWSAGGREGATOR_ENABLED	"NewsAggregator/Enabled"

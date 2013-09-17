@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,11 +18,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-File name      : $HeadURL: http://eternityplugins.googlecode.com/svn/trunk/facebook/connection.cpp $
-Revision       : $Revision: 91 $
-Last change by : $Author: n3weRm0re.ewer $
-Last change on : $Date: 2011-01-08 11:10:34 +0100 (so, 08 1 2011) $
-
 */
 
 #include "common.h"
@@ -35,7 +30,7 @@ void FacebookProto::ChangeStatus(void*)
 	int new_status = m_iDesiredStatus;
 	int old_status = m_iStatus;
 
-	if ( new_status == ID_STATUS_OFFLINE )
+	if (new_status == ID_STATUS_OFFLINE)
 	{ // Logout	
 		LOG("##### Beginning SignOff process");
 
@@ -43,23 +38,22 @@ void FacebookProto::ChangeStatus(void*)
 		SetEvent(update_loop_lock_);
 		Netlib_Shutdown(facy.hMsgCon);
 
-		if ( getByte(FACEBOOK_KEY_DISCONNECT_CHAT, DEFAULT_DISCONNECT_CHAT))
-			facy.chat_state( false );
-
-		facy.logout( );
-
-		deleteSetting( "LogonTS" );
-
-		facy.clear_cookies( );
-		facy.buddies.clear( );
-
-		ProtoBroadcastAck(m_szModuleName, 0, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
-
 		OnLeaveChat(NULL, NULL);
-
-		SetAllContactStatuses( ID_STATUS_OFFLINE, true );
-
+		SetAllContactStatuses(ID_STATUS_OFFLINE, true);
 		ToggleStatusMenuItems(false);
+		delSetting("LogonTS");
+
+		ProtoBroadcastAck(0, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
+
+		if (getByte(FACEBOOK_KEY_DISCONNECT_CHAT, DEFAULT_DISCONNECT_CHAT))
+			facy.chat_state(false);
+
+		facy.logout();
+
+		facy.clear_cookies();
+		facy.buddies.clear();
+		facy.messages_ignore.clear();
+		facy.pages.clear();
 
 		if (facy.hMsgCon)
 			Netlib_CloseHandle(facy.hMsgCon);
@@ -69,16 +63,16 @@ void FacebookProto::ChangeStatus(void*)
 
 		return;
 	}
-	else if ( old_status == ID_STATUS_OFFLINE )
+	else if (old_status == ID_STATUS_OFFLINE)
 	{ // Login
 		SYSTEMTIME t;
-		GetLocalTime( &t );
+		GetLocalTime(&t);
 		Log("[%d.%d.%d] Using Facebook Protocol RM %s", t.wDay, t.wMonth, t.wYear, __VERSION_STRING);
 		
 		LOG("***** Beginning SignOn process");
 
 		m_iStatus = facy.self_.status_id = ID_STATUS_CONNECTING;
-		ProtoBroadcastAck(m_szModuleName,0,ACKTYPE_STATUS,ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
+		ProtoBroadcastAck(0, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
 
 		ResetEvent(update_loop_lock_);
 
@@ -86,31 +80,36 @@ void FacebookProto::ChangeStatus(void*)
 		{		
 			facy.reconnect();
 			facy.load_friends();
+			facy.load_pages();
 
 			// Process Friends requests
-			ForkThread( &FacebookProto::ProcessFriendRequests, this, NULL );
+			ForkThread(&FacebookProto::ProcessFriendRequests, NULL);
 
 			// Get unread messages
-			ForkThread( &FacebookProto::ProcessUnreadMessages, this );
+			ForkThread(&FacebookProto::ProcessUnreadMessages, NULL);
 
 			// Get notifications
-			ForkThread( &FacebookProto::ProcessNotifications, this );
+			ForkThread(&FacebookProto::ProcessNotifications, NULL);
 
-			setDword( "LogonTS", (DWORD)time(NULL));
-			ForkThread( &FacebookProto::UpdateLoop,  this );
-			ForkThread( &FacebookProto::MessageLoop, this );
+			setDword("LogonTS", (DWORD)time(NULL));
+			ForkThread(&FacebookProto::UpdateLoop,  NULL);
+			ForkThread(&FacebookProto::MessageLoop, NULL);
 
 			if (getByte(FACEBOOK_KEY_SET_MIRANDA_STATUS, DEFAULT_SET_MIRANDA_STATUS))
-			{
-				ForkThread(&FacebookProto::SetAwayMsgWorker, this, NULL);
-			}
-		} else {
-			ProtoBroadcastAck(m_szModuleName,0,ACKTYPE_STATUS,ACKRESULT_FAILED,
-				(HANDLE)old_status,m_iStatus);
+				ForkThread(&FacebookProto::SetAwayMsgWorker, NULL);
+		}
+		else {
+			ProtoBroadcastAck(0, ACKTYPE_STATUS, ACKRESULT_FAILED, (HANDLE)old_status, m_iStatus);
+
+			if (facy.hFcbCon)
+				Netlib_CloseHandle(facy.hFcbCon);
+			facy.hFcbCon = NULL;
+
+			facy.clear_cookies();
 
 			// Set to offline
 			m_iStatus = m_iDesiredStatus = facy.self_.status_id = ID_STATUS_OFFLINE;
-			ProtoBroadcastAck(m_szModuleName, 0, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
+			ProtoBroadcastAck(0, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
 
 			LOG("***** SignOn failed");
 
@@ -120,23 +119,23 @@ void FacebookProto::ChangeStatus(void*)
 		ToggleStatusMenuItems(true);
 		LOG("***** SignOn complete");
 	}
-	else if ( new_status == ID_STATUS_INVISIBLE )
+	else if (new_status == ID_STATUS_INVISIBLE)
 	{
-		facy.buddies.clear( );
-		this->SetAllContactStatuses( ID_STATUS_OFFLINE, true );
+		facy.buddies.clear();
+		this->SetAllContactStatuses(ID_STATUS_OFFLINE, true);
 	}
 
-	facy.chat_state( m_iDesiredStatus != ID_STATUS_INVISIBLE );	
-	facy.buddy_list( );
+	facy.chat_state(m_iDesiredStatus != ID_STATUS_INVISIBLE);	
+	facy.buddy_list();
 
 	m_iStatus = facy.self_.status_id = m_iDesiredStatus;
-	ProtoBroadcastAck(m_szModuleName, 0, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
+	ProtoBroadcastAck(0, ACKTYPE_STATUS, ACKRESULT_SUCCESS, (HANDLE)old_status, m_iStatus);
 
 	LOG("***** ChangeStatus complete");
 }
 
 /** Return true on success, false on error. */
-bool FacebookProto::NegotiateConnection( )
+bool FacebookProto::NegotiateConnection()
 {
 	LOG("***** Negotiating connection with Facebook");
 
@@ -145,10 +144,10 @@ bool FacebookProto::NegotiateConnection( )
 	DBVARIANT dbv = {0};
 
 	error = true;
-	if ( !DBGetContactSettingString(NULL,m_szModuleName,FACEBOOK_KEY_LOGIN,&dbv))
+	if (!getString(FACEBOOK_KEY_LOGIN, &dbv))
 	{
 		user = dbv.pszVal;
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		error = user.empty();
 	}
 	if (error)
@@ -158,12 +157,12 @@ bool FacebookProto::NegotiateConnection( )
 	}
 
 	error = true;
-	if ( !DBGetContactSettingString(NULL,m_szModuleName,FACEBOOK_KEY_PASS,&dbv))
+	if (!getString(FACEBOOK_KEY_PASS, &dbv))
 	{
 		CallService(MS_DB_CRYPT_DECODESTRING,strlen(dbv.pszVal)+1,
 			reinterpret_cast<LPARAM>(dbv.pszVal));
 		pass = dbv.pszVal;
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		error = pass.empty();
 	}
 	if (error)
@@ -173,77 +172,76 @@ bool FacebookProto::NegotiateConnection( )
 	}
 
 	// Load machine name
-	if ( !DBGetContactSettingString(NULL,m_szModuleName,FACEBOOK_KEY_DEVICE_ID,&dbv))
+	if (!getString(FACEBOOK_KEY_DEVICE_ID, &dbv))
 	{
 		facy.cookies["datr"] = dbv.pszVal;
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 	}
 
 	// Refresh last time of feeds update
 	facy.last_feeds_update_ = ::time(NULL);
 
 	// Get info about secured connection
-	facy.https_ = DBGetContactSettingByte(NULL, m_szModuleName, FACEBOOK_KEY_FORCE_HTTPS, DEFAULT_FORCE_HTTPS ) != 0;
+	facy.https_ = getByte(FACEBOOK_KEY_FORCE_HTTPS, DEFAULT_FORCE_HTTPS) != 0;
 
 	// Create default group for new contacts
-	if (!DBGetContactSettingTString(NULL, m_szModuleName, FACEBOOK_KEY_DEF_GROUP, &dbv) && lstrlen(dbv.ptszVal) > 0)
-	{
-		CallService(MS_CLIST_GROUPCREATE, 0, (LPARAM)dbv.ptszVal);
-	}
-
-	return facy.login( user, pass );
+	ptrT groupName( getTStringA(FACEBOOK_KEY_DEF_GROUP));
+	if (groupName != NULL)
+		Clist_CreateGroup(0, groupName);
+	
+	return facy.login(user, pass);
 }
 
 void FacebookProto::UpdateLoop(void *)
 {
 	time_t tim = ::time(NULL);
-	LOG( ">>>>> Entering Facebook::UpdateLoop[%d]", tim );
+	LOG(">>>>> Entering Facebook::UpdateLoop[%d]", tim);
 
-	for ( int i = -1; !isOffline(); i = ++i % 50 )
+	for (int i = -1; !isOffline(); i = ++i % 50)
 	{
-		if ( i != -1 ) {
-			if ( !facy.invisible_ )
-				if ( !facy.buddy_list( ))
+		if (i != -1) {
+			if (!facy.invisible_)
+				if (!facy.buddy_list())
     				break;
 		}
-		if ( i == 2 && getByte( FACEBOOK_KEY_EVENT_FEEDS_ENABLE, DEFAULT_EVENT_FEEDS_ENABLE ))
-			if ( !facy.feeds( ))
+		if (i == 2 && getByte(FACEBOOK_KEY_EVENT_FEEDS_ENABLE, DEFAULT_EVENT_FEEDS_ENABLE))
+			if (!facy.feeds())
 				break;
 
-		if ( i == 49 )
-			ForkThread( &FacebookProto::ProcessFriendRequests, this, NULL );
+		if (i == 49)
+			ForkThread(&FacebookProto::ProcessFriendRequests, NULL);
 
-		LOG( "***** FacebookProto::UpdateLoop[%d] going to sleep...", tim );
-		if ( WaitForSingleObjectEx( update_loop_lock_, GetPollRate( ) * 1000, true ) != WAIT_TIMEOUT )
+		LOG("***** FacebookProto::UpdateLoop[%d] going to sleep...", tim);
+		if (WaitForSingleObjectEx(update_loop_lock_, GetPollRate() * 1000, true) != WAIT_TIMEOUT)
 			break;
-		LOG( "***** FacebookProto::UpdateLoop[%d] waking up...", tim );
+		LOG("***** FacebookProto::UpdateLoop[%d] waking up...", tim);
 	}
 
 	ResetEvent(update_loop_lock_);
-	LOG( "<<<<< Exiting FacebookProto::UpdateLoop[%d]", tim );
+	LOG("<<<<< Exiting FacebookProto::UpdateLoop[%d]", tim);
 }
 
 void FacebookProto::MessageLoop(void *)
 {
 	time_t tim = ::time(NULL);
-	LOG( ">>>>> Entering Facebook::MessageLoop[%d]", tim );
+	LOG(">>>>> Entering Facebook::MessageLoop[%d]", tim);
 
-	while ( facy.channel( ))
+	while (facy.channel())
 	{
-		if ( isOffline())
+		if (isOffline())
 			break;
-		LOG( "***** FacebookProto::MessageLoop[%d] refreshing...", tim );
+		LOG("***** FacebookProto::MessageLoop[%d] refreshing...", tim);
 	}
 
-	LOG( "<<<<< Exiting FacebookProto::MessageLoop[%d]", tim );
+	LOG("<<<<< Exiting FacebookProto::MessageLoop[%d]", tim);
 }
 
-BYTE FacebookProto::GetPollRate( )
+BYTE FacebookProto::GetPollRate()
 {
-	BYTE poll_rate = getByte( FACEBOOK_KEY_POLL_RATE, FACEBOOK_DEFAULT_POLL_RATE );
+	BYTE poll_rate = getByte(FACEBOOK_KEY_POLL_RATE, FACEBOOK_DEFAULT_POLL_RATE);
 
 	return (
-	    ( poll_rate >= FACEBOOK_MINIMAL_POLL_RATE &&
-	      poll_rate <= FACEBOOK_MAXIMAL_POLL_RATE )
-	    ? poll_rate : FACEBOOK_DEFAULT_POLL_RATE );
+	    (poll_rate >= FACEBOOK_MINIMAL_POLL_RATE &&
+	      poll_rate <= FACEBOOK_MAXIMAL_POLL_RATE)
+	    ? poll_rate : FACEBOOK_DEFAULT_POLL_RATE);
 }

@@ -19,18 +19,15 @@ void CustomizeToolbar(HWND);
 struct TBBUTTONDATA : public MButtonCtrl
 {
 	char  *szButtonID;      // button id
-	BOOL   fSendOnDown;     // send event on button pushed
-	BOOL   fHotMark;        // button is hot marked (e.g. current state)
-	BOOL   fFocused;
+	bool   bHotMark;        // button is hot marked (e.g. current state)
+	bool   bFocused;
 	int    nFontID;         // internal font ID
-	HANDLE ttbID;           // control ID
 	TCHAR  szText[128];     // text on the button
 	RECT   rcMargins;       // margins of inner content
 
-	HANDLE  hIcolibHandle; // handle of icon in iconlib
+	HANDLE hIcolibHandle;   // handle of icon in iconlib
 
-	XPTHANDLE	hThemeButton;
-	XPTHANDLE	hThemeToolbar;
+	XPTHANDLE hThemeButton, hThemeToolbar;
 };
 
 static CRITICAL_SECTION csTips;
@@ -42,7 +39,7 @@ static HANDLE hBkgChangedHook = NULL;
 
 static int OnIconLibIconChanged(WPARAM wParam, LPARAM lParam)
 {
-	WindowList_BroadcastAsync(hButtonWindowList, MBM_REFRESHICOLIBICON,0,0);
+	WindowList_BroadcastAsync(hButtonWindowList, MBM_REFRESHICOLIBICON, 0, 0);
 	return 0;
 }
 
@@ -78,12 +75,14 @@ static int TBStateConvert2Flat(int state)
 
 static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 {
-	POINT offset = {0};
-	if (pOffset)
-		offset = *pOffset;
-
 	if ( !hdcPaint)
 		return;  //early exit
+
+	POINT offset;
+	if (pOffset)
+		offset = *pOffset;
+	else
+		offset.x = offset.y = 0;
 
 	RECT rcClient;
 	GetClientRect(bct->hwnd, &rcClient);
@@ -107,7 +106,7 @@ static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 			bct->szButtonID,				// ID		
 			b2str(bct->stateId == PBS_HOT),	// Hovered
 			b2str(bct->stateId == PBS_PRESSED || bct->bIsPushed == TRUE),	// Pressed
-			b2str(bct->fFocused));		// Focused
+			b2str(bct->bFocused));		// Focused
 
 		SkinDrawGlyph(hdcMem,&rcClient,&rcClient,szRequest);
 	}
@@ -136,7 +135,7 @@ static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 			ClientToScreen(hwndParent,&pt);
 			OffsetRect(&btnRect,-pt.x,-pt.y);
 			if (ret)
-				BitBlt(hdcMem,0,0,btnRect.right-btnRect.left,btnRect.bottom-btnRect.top,dc,btnRect.left,btnRect.top,SRCCOPY);					
+				BitBlt(hdcMem, 0, 0, btnRect.right-btnRect.left,btnRect.bottom-btnRect.top,dc,btnRect.left,btnRect.top,SRCCOPY);					
 			oldBM = (HBITMAP)SelectObject ( dc, oldBM );
 			DeleteObject(memBM);
 			DeleteDC(dc);
@@ -152,7 +151,7 @@ static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 			FillRect(hdcMem, &rcClient, hbr);
 			DeleteObject(hbr);
 		}
-		if (bct->stateId == PBS_HOT || bct->fFocused) {
+		if (bct->stateId == PBS_HOT || bct->bFocused) {
 			if (bct->bIsPushed)
 				DrawEdge(hdcMem,&rcClient, EDGE_ETCHED,BF_RECT|BF_SOFT);
 			else
@@ -162,15 +161,11 @@ static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 			DrawEdge(hdcMem, &rcClient, BDR_SUNKENOUTER,BF_RECT|BF_SOFT);
 	}
 
-	RECT rcTemp	 = rcClient;  //content rect
-	BYTE bPressed = (bct->stateId == PBS_PRESSED || bct->bIsPushed == TRUE)?1:0;
-	HICON hHasIcon = bct->hIcon ? bct->hIcon : NULL;
-	BOOL fHasText  = (bct->szText[0] != '\0');
+	RECT  rcTemp	= rcClient;  //content rect
+	bool  bPressed = (bct->stateId == PBS_PRESSED || bct->bIsPushed == TRUE);
+	bool  bHasText = (bct->szText[0] != '\0');
 
 	/* formatter */
-	RECT rcIcon;
-	RECT rcText;
-	
 	if ( !g_CluiData.fDisableSkinEngine) {
 		/* correct rect according to rcMargins */
 
@@ -180,38 +175,37 @@ static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 		rcTemp.right -= bct->rcMargins.right;
 	}
 
-	rcIcon = rcTemp;
-	rcText = rcTemp;
-
 	/* reposition button items */
-	if (hHasIcon && fHasText ) {
-		rcIcon.right = rcIcon.left+16; /* CXSM_ICON */
-		rcText.left = rcIcon.right+2;
-	}
-	else if (hHasIcon) {
-		rcIcon.left += (rcIcon.right-rcIcon.left)/2-8;
-		rcIcon.right = rcIcon.left+16;
+	RECT rcIcon = rcTemp, rcText = rcTemp;
+	if (bct->hIcon) {
+		if (bHasText) {
+			rcIcon.right = rcIcon.left+16; /* CXSM_ICON */
+			rcText.left = rcIcon.right+2;
+		}
+		else {
+			rcIcon.left += (rcIcon.right-rcIcon.left)/2-8;
+			rcIcon.right = rcIcon.left+16;
+		}
 	}
 
 	/*	Check sizes*/
-	if (hHasIcon && (rcIcon.right>rcTemp.right || rcIcon.bottom>rcTemp.bottom || rcIcon.left < rcTemp.left || rcIcon.top < rcTemp.top))
-		hHasIcon = NULL;
+	if (bct->hIcon && (rcIcon.right>rcTemp.right || rcIcon.bottom>rcTemp.bottom || rcIcon.left < rcTemp.left || rcIcon.top < rcTemp.top))
+		bct->hIcon = NULL;
 
-	if (fHasText && (rcText.right>rcTemp.right || rcText.bottom>rcTemp.bottom || rcText.left < rcTemp.left || rcText.top < rcTemp.top))
-		fHasText = FALSE;			
+	if (bHasText && (rcText.right>rcTemp.right || rcText.bottom>rcTemp.bottom || rcText.left < rcTemp.left || rcText.top < rcTemp.top))
+		bHasText = FALSE;			
 
-	if (hHasIcon) {
+	if (bct->hIcon) {
 		/* center icon vertically */
 		rcIcon.top += (rcClient.bottom-rcClient.top)/2 - 8; /* CYSM_ICON/2 */
 		rcIcon.bottom = rcIcon.top + 16; /* CYSM_ICON */
 		/* draw it */
-		ske_DrawIconEx(hdcMem, rcIcon.left+bPressed, rcIcon.top+bPressed, hHasIcon,
-			16, 16, 0, NULL, DI_NORMAL);
+		ske_DrawIconEx(hdcMem, rcIcon.left+bPressed, rcIcon.top+bPressed, bct->hIcon, 16, 16, 0, NULL, DI_NORMAL);
 	}
 
-	if (fHasText) {
+	if (bHasText) {
 		BOOL bCentered = TRUE;
-		SetBkMode(hdcMem,TRANSPARENT);
+		SetBkMode(hdcMem, TRANSPARENT);
 		if (bct->nFontID >= 0)
 			g_clcPainter.ChangeToFont(hdcMem,NULL,bct->nFontID,NULL);
 		
@@ -224,12 +218,12 @@ static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 		ske_ResetTextEffect(hdcMem);
 	}
 	if ( !pOffset)
-		BitBlt(hdcPaint,0,0,width,height,hdcMem,0,0,SRCCOPY);
+		BitBlt(hdcPaint, 0, 0, width,height,hdcMem, 0, 0, SRCCOPY);
 
 	// better to use try/finally but looks like last one is Microsoft specific
-	SelectObject(hdcMem,hOldFont);
-	if ( !pOffset) {	
-		SelectObject(hdcMem,hbmOld);
+	SelectObject(hdcMem, hOldFont);
+	if ( !pOffset) {
+		SelectObject(hdcMem, hbmOld);
 		DeleteObject(hbmMem);
 		DeleteDC(hdcMem);
 	}
@@ -237,28 +231,24 @@ static void PaintWorker(TBBUTTONDATA *bct, HDC hdcPaint , POINT *pOffset)
 
 static LRESULT CALLBACK ToolbarButtonProc(HWND hwndDlg, UINT  msg, WPARAM wParam, LPARAM lParam)
 {
-	TBBUTTONDATA *bct = (TBBUTTONDATA *) GetWindowLongPtr(hwndDlg, 0);
+	TBBUTTONDATA *bct = (TBBUTTONDATA*)GetWindowLongPtr(hwndDlg, 0);
+
 	switch (msg) {
 	case WM_DESTROY:
 		xpt_FreeThemeForWindow(hwndDlg);
 		WindowList_Remove(hButtonWindowList, hwndDlg);
-		break;  // DONT! fall thru
+		break;
 
 	case WM_SETTEXT:
-		lstrcpyn(bct->szText, (TCHAR *)lParam, SIZEOF(bct->szText)-1);
-		bct->szText[SIZEOF(bct->szText)-1] = '\0';
+		_tcsncpy_s(bct->szText, SIZEOF(bct->szText), (TCHAR*)lParam, _TRUNCATE);
 		break;
 
 	case WM_SETFONT:			
 		// remember the font so we can use it later
 		bct->hFont = (HFONT) wParam; // maybe we should redraw?
-		bct->nFontID = (int) lParam - 1;
+		bct->nFontID = (int)lParam - 1;
 		break;
 	
-	case BUTTONSETSENDONDOWN:
-		bct->fSendOnDown = (BOOL) lParam;
-		break;
-
 	case BUTTONSETMARGINS:
 		if (lParam)	bct->rcMargins = *(RECT*)lParam;
 		else {
@@ -273,7 +263,7 @@ static LRESULT CALLBACK ToolbarButtonProc(HWND hwndDlg, UINT  msg, WPARAM wParam
 
 	case BUTTONDRAWINPARENT:
 		if (IsWindowVisible(hwndDlg))
-			PaintWorker(bct, (HDC) wParam, (POINT*) lParam);
+			PaintWorker(bct, (HDC)wParam, (POINT*)lParam);
 		break;
 
 	case WM_NCPAINT:
@@ -286,9 +276,8 @@ static LRESULT CALLBACK ToolbarButtonProc(HWND hwndDlg, UINT  msg, WPARAM wParam
 				EndPaint(hwndDlg, &ps);
 			}
 		}
-		ValidateRect(hwndDlg,NULL);
-		bct->lResult = 0;
-		return 1;
+		ValidateRect(hwndDlg, NULL);
+		return 0;
 
 	case WM_CAPTURECHANGED:
 		if ((HWND)lParam != bct->hwnd && bct->stateId != PBS_DISABLED) {
@@ -300,42 +289,39 @@ static LRESULT CALLBACK ToolbarButtonProc(HWND hwndDlg, UINT  msg, WPARAM wParam
 
 	case WM_LBUTTONDOWN:
 		{
-			int xPos = (( int )( short ) LOWORD( lParam ));
-			int yPos = (( int )( short ) HIWORD( lParam ));
-			POINT ptMouse = { xPos, yPos };
+			POINT ptMouse = UNPACK_POINT(lParam);
 
 			RECT rcClient;
-			GetClientRect( bct->hwnd, &rcClient );
-			if ( !PtInRect( &rcClient, ptMouse )) {
-				bct->fHotMark = FALSE;
+			GetClientRect(bct->hwnd, &rcClient);
+			if ( !PtInRect(&rcClient, ptMouse)) {
+				bct->bHotMark = false;
 				ReleaseCapture();
 			}
 			else {
 				if (bct->stateId != PBS_DISABLED && bct->stateId != PBS_PRESSED) {
 					bct->stateId = PBS_PRESSED;
-					bct->fHotMark = TRUE;
+					bct->bHotMark = true;
 					InvalidateParentRect(bct->hwnd, NULL, TRUE);
-					if (bct->fSendOnDown) {
+					if (bct->bSendOnDown) {
 						SendMessage(GetParent(hwndDlg), WM_COMMAND, MAKELONG(GetDlgCtrlID(hwndDlg), BN_CLICKED), (LPARAM) hwndDlg);
 						bct->stateId = PBS_NORMAL;
 						InvalidateParentRect(bct->hwnd, NULL, TRUE);
 					}
 				}
-				SetCapture( bct->hwnd );
+				SetCapture(bct->hwnd);
 			}
 		}
-		bct->lResult = 0;
-		return 1;
+		return 0;
 
 	case WM_LBUTTONUP:
-		if ( GetCapture() == bct->hwnd ) {
-			POINT ptMouse = { LOWORD(lParam), HIWORD(lParam) };
+		if (GetCapture() == bct->hwnd) {
+			POINT ptMouse = UNPACK_POINT(lParam);
 
 			RECT rcClient;
-			GetClientRect( bct->hwnd, &rcClient );
+			GetClientRect(bct->hwnd, &rcClient);
 			
-			if ( !PtInRect( &rcClient, ptMouse )) {
-				bct->fHotMark = FALSE;
+			if ( !PtInRect(&rcClient, ptMouse)) {
+				bct->bHotMark = false;
 				ReleaseCapture();
 				break;
 			}
@@ -348,57 +334,55 @@ static LRESULT CALLBACK ToolbarButtonProc(HWND hwndDlg, UINT  msg, WPARAM wParam
 				bct->stateId = PBS_HOT;
 				InvalidateParentRect(bct->hwnd, NULL, TRUE);
 			}
-			if ( !bct->fSendOnDown)
-				SendMessage(GetParent(hwndDlg), WM_COMMAND, MAKELONG(GetDlgCtrlID(hwndDlg), BN_CLICKED), (LPARAM) hwndDlg);
+			if ( !bct->bSendOnDown) {
+				bct->bHotMark = false;
+				SendMessage(GetParent(hwndDlg), WM_COMMAND, MAKELONG(GetDlgCtrlID(hwndDlg), BN_CLICKED), (LPARAM)hwndDlg);
+			}
 		}
-		bct->fHotMark = FALSE;
-		bct->lResult = 0;
-		return 1;
+		else bct->bHotMark = false;
+		return 0;
 		
 	case WM_MOUSEMOVE:
 		{
+			BOOL bPressed = (wParam & MK_LBUTTON) != 0;
+			if (bPressed && !bct->bHotMark)
+				break;
+
 			RECT rc;
 			POINT pt;
-			BOOL bPressed = (wParam & MK_LBUTTON) != 0;
-			if ( bPressed && !bct->fHotMark )
-				break;
 			GetWindowRect(hwndDlg, &rc);
 			GetCursorPos(&pt);
 			BOOL inClient = PtInRect(&rc, pt);
-			if ( inClient ) {
-				SetCapture( bct->hwnd );
-				if ( bct->stateId == PBS_NORMAL ) {
+			if (inClient) {
+				SetCapture(bct->hwnd);
+				if (bct->stateId == PBS_NORMAL) {
 					bct->stateId = PBS_HOT;
 					InvalidateParentRect(bct->hwnd, NULL, TRUE);
 				}
 			}
 
-			if ( !inClient && bct->stateId == PBS_PRESSED ) {
+			if (!inClient && bct->stateId == PBS_PRESSED) {
 				bct->stateId = PBS_HOT; 
 				InvalidateParentRect(bct->hwnd, NULL, TRUE);
 			}
-			else if ( inClient && bct->stateId == PBS_HOT && bPressed ) {
-				if ( bct->fHotMark ) {
+			else if (inClient && bct->stateId == PBS_HOT && bPressed) {
+				if (bct->bHotMark) {
 					bct->stateId = PBS_PRESSED;
 					InvalidateParentRect(bct->hwnd, NULL, TRUE);
 				}
 			}
 			else if ( !inClient && !bPressed) {
-				bct->fHotMark = FALSE;
+				bct->bHotMark = false;
 				ReleaseCapture();
 			}
 		}
-		bct->lResult = 0;
-		return 1;
+		return 0;
 
 	case WM_NCHITTEST:
 		{
 			LRESULT lr = SendMessage(GetParent(hwndDlg), WM_NCHITTEST, wParam, lParam);
-			if (lr == HTLEFT || lr == HTRIGHT || lr == HTBOTTOM || lr == HTTOP || lr == HTTOPLEFT || lr == HTTOPRIGHT
-				 ||  lr == HTBOTTOMLEFT || lr == HTBOTTOMRIGHT) {
-				bct->lResult = HTTRANSPARENT;
-				return 1;
-			}
+			if (lr == HTLEFT || lr == HTRIGHT || lr == HTBOTTOM || lr == HTTOP || lr == HTTOPLEFT || lr == HTTOPRIGHT ||  lr == HTBOTTOMLEFT || lr == HTBOTTOMRIGHT)
+				return HTTRANSPARENT;
 		}
 		break;
 
@@ -409,11 +393,19 @@ static LRESULT CALLBACK ToolbarButtonProc(HWND hwndDlg, UINT  msg, WPARAM wParam
 		else if (wParam == BST_UNCHECKED)
 			bct->bIsPushed = 0;
 		InvalidateRect(bct->hwnd, NULL, TRUE);
-		bct->lResult = 0;
-		return 1;
+		return 0;
+
+	case WM_SETFOCUS: // set keyboard focus and redraw
+		bct->bFocused = true;
+		InvalidateParentRect(bct->hwnd, NULL, TRUE);
+		break;
+
+	case WM_KILLFOCUS: // kill focus and redraw
+		bct->bFocused = false;
+		InvalidateParentRect(bct->hwnd, NULL, TRUE);
+		break;
 
 	case WM_ERASEBKGND:
-		bct->lResult = 1;
 		return 1;
 
 	case MBM_SETICOLIBHANDLE:
@@ -445,16 +437,13 @@ static LRESULT CALLBACK ToolbarButtonProc(HWND hwndDlg, UINT  msg, WPARAM wParam
 		}
 		return 1;
 	}
-	return 0;
+	return mir_callNextSubclass(hwndDlg, ToolbarButtonProc, msg, wParam, lParam);
 }
 
 void MakeButtonSkinned(HWND hWnd)
 {
-	MButtonCustomize Custom;
-	Custom.cbLen = sizeof(TBBUTTONDATA);
-	Custom.fnPainter = (pfnPainterFunc)PaintWorker;
-	Custom.fnWindowProc = ToolbarButtonProc;
-	SendMessage(hWnd, BUTTONSETCUSTOM, 0, (LPARAM)&Custom);
+	SendMessage(hWnd, BUTTONSETCUSTOMPAINT, sizeof(TBBUTTONDATA), (LPARAM)PaintWorker);
+	mir_subclassWindow(hWnd, ToolbarButtonProc);
 
 	TBBUTTONDATA* p = (TBBUTTONDATA*)GetWindowLongPtr(hWnd, 0);
 	p->nFontID = -1;
@@ -463,7 +452,9 @@ void MakeButtonSkinned(HWND hWnd)
 	WindowList_Add(hButtonWindowList, hWnd, NULL);
 }
 
-static void CustomizeButton(HANDLE ttbid, HWND hWnd, LPARAM lParam)
+/////////////////////////////////////////////////////////////////////////////////////////
+
+void CustomizeButton(HANDLE ttbid, HWND hWnd, LPARAM lParam)
 {
 	if (ttbid == TTB_WINDOW_HANDLE) {
 		CustomizeToolbar(hWnd);
@@ -472,30 +463,21 @@ static void CustomizeButton(HANDLE ttbid, HWND hWnd, LPARAM lParam)
 
 	MakeButtonSkinned(hWnd);
 
-	TBBUTTONDATA* p = (TBBUTTONDATA*)GetWindowLongPtr(hWnd, 0);
-	p->szButtonID, "Toolbar.MissingID";
-	p->ttbID = ttbid;
+	TBBUTTONDATA *p = (TBBUTTONDATA*)GetWindowLongPtr(hWnd, 0);
+	p->szButtonID = "Toolbar.MissingID";
 	SendMessage(hWnd, MBM_UPDATETRANSPARENTFLAG, 0, 2);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-int Buttons_ModuleLoaded(WPARAM wParam, LPARAM lParam)
-{
-	TopToolbar_SetCustomProc(CustomizeButton, 0);
-	return 0;
-}
-
 int Buttons_OnSkinModeSettingsChanged(WPARAM wParam, LPARAM lParam)
 {	
-	WindowList_BroadcastAsync(hButtonWindowList, MBM_UPDATETRANSPARENTFLAG,0,2);
+	WindowList_BroadcastAsync(hButtonWindowList, MBM_UPDATETRANSPARENTFLAG, 0, 2);
 	return 0;
 }
 
 HRESULT ToolbarButtonLoadModule()
 {
-	HookEvent(ME_SYSTEM_MODULESLOADED, Buttons_ModuleLoaded);
-
 	hButtonWindowList = (HANDLE) CallService(MS_UTILS_ALLOCWINDOWLIST, 0, 0);
 	hIconChangedHook = HookEvent(ME_SKIN2_ICONSCHANGED,OnIconLibIconChanged);
 	hBkgChangedHook = HookEvent(ME_BACKGROUNDCONFIG_CHANGED,Buttons_OnSkinModeSettingsChanged);

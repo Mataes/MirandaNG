@@ -19,15 +19,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-
-===============================================================================
-
-File name      : $HeadURL: http://svn.miranda.im/mainrepo/popup/trunk/src/popup_wnd2.h $
-Revision       : $Revision: 1620 $
-Last change on : $Date: 2010-06-23 21:31:05 +0300 (Ср, 23 июн 2010) $
-Last change by : $Author: Merlin_de $
-
-===============================================================================
 */
 
 #ifndef __popup_wnd2_h__
@@ -139,8 +130,6 @@ public:
 
 	void  setIcon(HICON);
 
-	void	updateData(POPUPDATA *ppd);
-	void	updateData(POPUPDATAEX_V2 *ppd);
 	void	updateData(POPUPDATAW_V2 *ppd);
 	void	updateData(POPUPDATA2 *ppd);
 	void	buildMText();
@@ -225,8 +214,6 @@ public:
 		SendMessage(m_hwnd, UM_CALLMETHOD, (WPARAM)method_copy, (LPARAM)lParam);
 	}
 
-	LRESULT m_updateData_POPUPDATA(LPARAM arg)		{ updateData((POPUPDATA *)arg); update(); return 0; }
-	LRESULT m_updateData_POPUPDATAEX_V2(LPARAM arg)	{ updateData((POPUPDATAEX_V2 *)arg); update(); return 0; }
 	LRESULT m_updateData_POPUPDATAW_V2(LPARAM arg)	{ updateData((POPUPDATAW_V2 *)arg); update(); return 0; }
 	LRESULT m_updateData_POPUPDATA2(LPARAM arg)		{ updateData((POPUPDATA2 *)arg); update(); return 0; }
 	LRESULT m_updateText(LPARAM arg)				{ updateText((char *)arg); update(); return 0; }

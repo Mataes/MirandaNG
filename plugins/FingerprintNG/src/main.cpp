@@ -26,16 +26,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 HINSTANCE g_hInst;
 int hLangpack;
 
-HANDLE hHeap					= NULL;
-
-HANDLE compClientServA			= NULL;
-HANDLE getClientIconA			= NULL;
-
-HANDLE compClientServW			= NULL;
-HANDLE getClientIconW			= NULL;
-LPSTR g_szClientDescription		= NULL;
-
-HANDLE hStaticHooks[1]			= { NULL };
+HANDLE hHeap = NULL;
 
 //End of header
 
@@ -50,8 +41,8 @@ PLUGININFOEX pluginInfoEx = {
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,
-	//{687364AF-58B0-4AF2-A4EE-20F40A8D9AFB}
-	{0x687364af, 0x58b0, 0x4af2, { 0xa4, 0xee, 0x20, 0xf4, 0xa, 0x8d, 0x9a, 0xfb}}
+	// {687364AF-58B0-4AF2-A4EE-20F40A8D9AFB}
+	{0x687364af, 0x58b0, 0x4af2, {0xa4, 0xee, 0x20, 0xf4, 0xa, 0x8d, 0x9a, 0xfb}}
 };
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
@@ -65,31 +56,11 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 	return &pluginInfoEx;
 }
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_FINGERPRINT, MIID_LAST };
-
-///////////////////////////////////////////////////////////////////////////////
-
-static int OnPreShutdown(WPARAM wParam, LPARAM lParam)
-{
-	DestroyServiceFunction(compClientServA);
-	DestroyServiceFunction(getClientIconA);
-	DestroyServiceFunction(compClientServW);
-	DestroyServiceFunction(getClientIconW);
-
-	return 0;
-}
-
 extern "C" int	__declspec(dllexport) Load(void)
 {
 	mir_getLP(&pluginInfoEx);
 
-	hStaticHooks[0] = HookEvent(ME_SYSTEM_MODULESLOADED, OnModulesLoaded);
-	HookEvent(ME_SYSTEM_PRESHUTDOWN, OnPreShutdown);
-	compClientServA = CreateServiceFunction(MS_FP_SAMECLIENTS, ServiceSameClientsA);
-	getClientIconA = CreateServiceFunction(MS_FP_GETCLIENTICON, ServiceGetClientIconA);
-
-	compClientServW = CreateServiceFunction(MS_FP_SAMECLIENTSW, ServiceSameClientsW);
-	getClientIconW = CreateServiceFunction(MS_FP_GETCLIENTICONW, ServiceGetClientIconW);
+	InitFingerModule();
 	return 0;
 }
 
@@ -97,16 +68,8 @@ extern "C" int	__declspec(dllexport) Load(void)
 
 extern "C" int	__declspec(dllexport) Unload()
 {
-	if (g_szClientDescription != NULL)
-		mir_free(g_szClientDescription);
-
 	HeapDestroy(hHeap);
 	ClearFI();
-
-	for (size_t i = 0; i < SIZEOF(hStaticHooks); i++)
-	{
-		UnhookEvent(hStaticHooks[i]);
-		hStaticHooks[i] = NULL;
-	}
+	UninitFingerModule();
 	return 0;
 }

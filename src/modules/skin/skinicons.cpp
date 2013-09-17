@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -35,55 +35,60 @@ struct StandardIconDescription
 
 static struct StandardIconDescription mainIcons[] = 
 {
-	{ SKINICON_OTHER_MIRANDA,         LPGEN("Miranda NG"),          -IDI_MIRANDA        }, 
-	{ SKINICON_EVENT_MESSAGE,         LPGEN("Message"),             -IDI_RECVMSG        }, 
-	{ SKINICON_EVENT_URL,             LPGEN("URL"),                 -IDI_URL            }, 
-	{ SKINICON_EVENT_FILE,            LPGEN("File"),                -IDI_FILE           }, 
-	{ SKINICON_OTHER_USERONLINE,      LPGEN("User Online"),         -IDI_USERONLINE     }, 
-	{ SKINICON_OTHER_GROUPOPEN,       LPGEN("Group (Open)"),        -IDI_GROUPOPEN      }, 
-	{ SKINICON_OTHER_GROUPSHUT,       LPGEN("Group (Closed)"),      -IDI_GROUPSHUT      }, 
-	{ SKINICON_OTHER_CONNECTING,      LPGEN("Connecting"),          -IDI_LOAD           }, 
-	{ SKINICON_OTHER_ADDCONTACT,      LPGEN("Add Contact"),         -IDI_ADDCONTACT     }, 
-	{ SKINICON_OTHER_USERDETAILS,     LPGEN("User Details"),        -IDI_USERDETAILS    }, 
-	{ SKINICON_OTHER_HISTORY,         LPGEN("History"),             -IDI_HISTORY        }, 
-	{ SKINICON_OTHER_DOWNARROW,       LPGEN("Down Arrow"),          -IDI_DOWNARROW      }, 
-	{ SKINICON_OTHER_FINDUSER,        LPGEN("Find User"),           -IDI_FINDUSER       }, 
-	{ SKINICON_OTHER_OPTIONS,         LPGEN("Options"),             -IDI_OPTIONS        }, 
-	{ SKINICON_OTHER_SENDEMAIL,       LPGEN("Send E-mail"),         -IDI_SENDEMAIL      }, 
-	{ SKINICON_OTHER_DELETE,          LPGEN("Delete"),              -IDI_DELETE         }, 
-	{ SKINICON_OTHER_RENAME,          LPGEN("Rename"),              -IDI_RENAME         }, 
-	{ SKINICON_OTHER_SMS,             LPGEN("SMS"),                 -IDI_SMS            }, 
-	{ SKINICON_OTHER_SEARCHALL,       LPGEN("Search All"),          -IDI_SEARCHALL      }, 
-	{ SKINICON_OTHER_TICK,            LPGEN("Tick"),                -IDI_TICK           }, 
-	{ SKINICON_OTHER_NOTICK,          LPGEN("No Tick"),             -IDI_NOTICK         }, 
-	{ SKINICON_OTHER_HELP,            LPGEN("Help"),                -IDI_HELP           }, 
-	{ SKINICON_OTHER_MIRANDAWEB,      LPGEN("Miranda Website"),     -IDI_MIRANDAWEBSITE }, 
-	{ SKINICON_OTHER_TYPING,          LPGEN("Typing"),              -IDI_TYPING         }, 
-	{ SKINICON_OTHER_SMALLDOT,        LPGEN("Small Dot"),           -IDI_SMALLDOT       }, 
-	{ SKINICON_OTHER_FILLEDBLOB,      LPGEN("Filled Blob"),         -IDI_FILLEDBLOB     }, 
-	{ SKINICON_OTHER_EMPTYBLOB,       LPGEN("Empty Blob"),          -IDI_EMPTYBLOB      }, 
-	{ SKINICON_OTHER_UNICODE,         LPGEN("Unicode plugin"),      -IDI_UNICODE        }, 
-	{ SKINICON_OTHER_ANSI,            LPGEN("ANSI plugin"),         -IDI_ANSI           }, 
-	{ SKINICON_OTHER_LOADED,          LPGEN("Running plugin"),      -IDI_LOADED         }, 
-	{ SKINICON_OTHER_NOTLOADED,       LPGEN("Unloaded plugin"),     -IDI_NOTLOADED      }, 
-	{ SKINICON_OTHER_UNDO, 	          LPGEN("Undo"),                -IDI_UNDO           }, 
-	{ SKINICON_OTHER_WINDOW,          LPGEN("Window"),              -IDI_WINDOW         }, 
-	{ SKINICON_OTHER_WINDOWS,         LPGEN("System"),              -IDI_WINDOWS        }, 
-	{ SKINICON_OTHER_ACCMGR,          LPGEN("Accounts"),            -IDI_ACCMGR         }, 
-	{ SKINICON_OTHER_SHOWHIDE,        LPGEN("ShowHide"),            -IDI_SHOWHIDE       }, 
-	{ SKINICON_OTHER_EXIT,            LPGEN("Exit"),                -IDI_EXIT           }, 
-	{ SKINICON_OTHER_MAINMENU,        LPGEN("Main Menu"),           -IDI_MIRANDA        }, 
-	{ SKINICON_OTHER_STATUS,          LPGEN("Status"),              -IDI_ONLINE         }, 
-	{ SKINICON_CHAT_JOIN,             LPGEN("Join chat"),           -IDI_JOINCHAT       }, 
-	{ SKINICON_CHAT_LEAVE,            LPGEN("Leave chat"),          -IDI_LEAVECHAT      }, 
-	{ SKINICON_OTHER_GROUP,           LPGEN("Move to Group"),       -IDI_MOVETOGROUP    },
-	{ SKINICON_OTHER_ON,              LPGEN("On"),                  -IDI_ON             }, 
-	{ SKINICON_OTHER_OFF,             LPGEN("Off"),                 -IDI_OFF            },
-	{ SKINICON_OTHER_LOADEDGRAY,      LPGEN("Running core plugin"), -IDI_LOADED_GRAY    }, 
-	{ SKINICON_OTHER_NOTLOADEDGRAY,   LPGEN("Non-loadable plugin"), -IDI_NOTLOADED_GRAY },
-	{ SKINICON_OTHER_VISIBLE_ALL,     LPGEN("Always visible"),      -IDI_ALWAYSVIS,     0, "Contact List" },
-	{ SKINICON_OTHER_INVISIBLE_ALL,   LPGEN("Always invisible"),    -IDI_NEVERVIS,      0, "Contact List" },
-	{ SKINICON_OTHER_STATUS_LOCKED,   LPGEN("Locked status"),       -IDI_STATUS_LOCKED, 0, "Status Icons" }, 
+	{ SKINICON_OTHER_MIRANDA,         LPGEN("Miranda NG"),            -IDI_MIRANDA        }, //  0
+	{ SKINICON_EVENT_MESSAGE,         LPGEN("Message"),               -IDI_RECVMSG        }, //  1
+	{ SKINICON_EVENT_URL,             LPGEN("URL"),                   -IDI_URL            }, //  2
+	{ SKINICON_EVENT_FILE,            LPGEN("File"),                  -IDI_FILE           }, //  3
+	{ SKINICON_OTHER_USERONLINE,      LPGEN("User Online"),           -IDI_USERONLINE     }, //  4
+	{ SKINICON_OTHER_GROUPOPEN,       LPGEN("Group (Open)"),          -IDI_GROUPOPEN      }, //  5
+	{ SKINICON_OTHER_GROUPSHUT,       LPGEN("Group (Closed)"),        -IDI_GROUPSHUT      }, //  6
+	{ SKINICON_OTHER_CONNECTING,      LPGEN("Connecting"),            -IDI_LOAD           }, //  7
+	{ SKINICON_OTHER_ADDCONTACT,      LPGEN("Add Contact"),           -IDI_ADDCONTACT     }, //  8
+	{ SKINICON_OTHER_USERDETAILS,     LPGEN("User Details"),          -IDI_USERDETAILS    }, //  9
+	{ SKINICON_OTHER_HISTORY,         LPGEN("History"),               -IDI_HISTORY        }, // 10
+	{ SKINICON_OTHER_DOWNARROW,       LPGEN("Down Arrow"),            -IDI_DOWNARROW      }, // 11
+	{ SKINICON_OTHER_FINDUSER,        LPGEN("Find User"),             -IDI_FINDUSER       }, // 12
+	{ SKINICON_OTHER_OPTIONS,         LPGEN("Options"),               -IDI_OPTIONS        }, // 13
+	{ SKINICON_OTHER_SENDEMAIL,       LPGEN("Send E-mail"),           -IDI_SENDEMAIL      }, // 14
+	{ SKINICON_OTHER_DELETE,          LPGEN("Delete"),                -IDI_DELETE         }, // 15
+	{ SKINICON_OTHER_RENAME,          LPGEN("Rename"),                -IDI_RENAME         }, // 16
+	{ SKINICON_OTHER_SMS,             LPGEN("SMS"),                   -IDI_SMS            }, // 17
+	{ SKINICON_OTHER_SEARCHALL,       LPGEN("Search All"),            -IDI_SEARCHALL      }, // 18
+	{ SKINICON_OTHER_TICK,            LPGEN("Tick"),                  -IDI_TICK           }, // 19
+	{ SKINICON_OTHER_NOTICK,          LPGEN("No Tick"),               -IDI_NOTICK         }, // 20
+	{ SKINICON_OTHER_HELP,            LPGEN("Help"),                  -IDI_HELP           }, // 21
+	{ SKINICON_OTHER_MIRANDAWEB,      LPGEN("Miranda Website"),       -IDI_MIRANDAWEBSITE }, // 22
+	{ SKINICON_OTHER_TYPING,          LPGEN("Typing"),                -IDI_TYPING         }, // 23
+	{ SKINICON_OTHER_SMALLDOT,        LPGEN("Small Dot"),             -IDI_SMALLDOT       }, // 24
+	{ SKINICON_OTHER_FILLEDBLOB,      LPGEN("Filled Blob"),           -IDI_FILLEDBLOB     }, // 25
+	{ SKINICON_OTHER_EMPTYBLOB,       LPGEN("Empty Blob"),            -IDI_EMPTYBLOB      }, // 26
+	{ SKINICON_OTHER_UNICODE,         LPGEN("Unicode plugin"),        -IDI_UNICODE        }, // 27
+	{ SKINICON_OTHER_ANSI,            LPGEN("ANSI plugin"),           -IDI_ANSI           }, // 28
+	{ SKINICON_OTHER_LOADED,          LPGEN("Running plugin"),        -IDI_LOADED         }, // 29
+	{ SKINICON_OTHER_NOTLOADED,       LPGEN("Unloaded plugin"),       -IDI_NOTLOADED      }, // 30
+	{ SKINICON_OTHER_UNDO, 	          LPGEN("Undo"),                  -IDI_UNDO           }, // 31
+	{ SKINICON_OTHER_WINDOW,          LPGEN("Window"),                -IDI_WINDOW         }, // 32
+	{ SKINICON_OTHER_WINDOWS,         LPGEN("System"),                -IDI_WINDOWS        }, // 33
+	{ SKINICON_OTHER_ACCMGR,          LPGEN("Accounts"),              -IDI_ACCMGR         }, // 34
+	{ SKINICON_OTHER_SHOWHIDE,        LPGEN("ShowHide"),              -IDI_SHOWHIDE       }, // 35
+	{ SKINICON_OTHER_EXIT,            LPGEN("Exit"),                  -IDI_EXIT           }, // 36
+	{ SKINICON_OTHER_MAINMENU,        LPGEN("Main Menu"),             -IDI_MAINMENU       }, // 37
+	{ SKINICON_OTHER_STATUS,          LPGEN("Status"),                -IDI_ONLINE         }, // 38
+	{ SKINICON_CHAT_JOIN,             LPGEN("Join chat"),             -IDI_JOINCHAT       }, // 39
+	{ SKINICON_CHAT_LEAVE,            LPGEN("Leave chat"),            -IDI_LEAVECHAT      }, // 40
+	{ SKINICON_OTHER_GROUP,           LPGEN("Move to Group"),         -IDI_MOVETOGROUP    }, // 41
+	{ SKINICON_OTHER_ON,              LPGEN("On"),                    -IDI_ON             }, // 42
+	{ SKINICON_OTHER_OFF,             LPGEN("Off"),                   -IDI_OFF            }, // 43
+	{ SKINICON_OTHER_LOADEDGRAY,      LPGEN("Running core plugin"),   -IDI_LOADED_GRAY    }, // 44
+	{ SKINICON_OTHER_NOTLOADEDGRAY,   LPGEN("Non-loadable plugin"),   -IDI_NOTLOADED_GRAY }, // 45
+	{ SKINICON_OTHER_FRAME,           LPGEN("Frames"),                -IDI_FRAME          }, // 46
+	{ SKINICON_AUTH_ADD,              LPGEN("Add to list"),           -IDI_AUTH_ADD       }, // 47
+	{ SKINICON_AUTH_REQUEST,          LPGEN("Request authorization"), -IDI_AUTH_REQUEST   }, // 48
+	{ SKINICON_AUTH_GRANT,            LPGEN("Grant authorization"),   -IDI_AUTH_GRANT     }, // 49
+	{ SKINICON_AUTH_REVOKE,           LPGEN("Revoke authorization"),  -IDI_AUTH_REVOKE    }, // 50
+	{ SKINICON_OTHER_VISIBLE_ALL,     LPGEN("Always visible"),        -IDI_ALWAYSVIS,     0, LPGEN("Contact List") },
+	{ SKINICON_OTHER_INVISIBLE_ALL,   LPGEN("Always invisible"),      -IDI_NEVERVIS,      0, LPGEN("Contact List") },
+	{ SKINICON_OTHER_STATUS_LOCKED,   LPGEN("Locked status"),         -IDI_STATUS_LOCKED, 0, LPGEN("Status Icons") }, 
 };
 
 static struct StandardIconDescription statusIcons[] = 
@@ -100,11 +105,11 @@ static struct StandardIconDescription statusIcons[] =
 	{ ID_STATUS_OUTTOLUNCH,      LPGEN("Out to lunch"),     -IDI_OUTTOLUNCH,    PF2_OUTTOLUNCH }
 };
 
-const char *mainIconsFmt = "core_main_";
-const char *statusIconsFmt = "core_status_";
-const char *protoIconsFmt = LPGEN("%s Icons");
+const char mainIconsFmt[] = "core_main_";
+const char statusIconsFmt[] = "core_status_";
+const char protoIconsFmt[] = LPGEN("%s Icons");
 
-#define PROTOCOLS_PREFIX "Status Icons/"
+#define PROTOCOLS_PREFIX LPGEN("Status Icons/")
 #define GLOBAL_PROTO_NAME "*"
 
 // load small icon (shared) it's not need to be destroyed
@@ -215,15 +220,19 @@ void Button_FreeIcon_IcoLib(HWND hwndDlg, int itemId)
 //
 HICON LoadSkinProtoIcon(const char* szProto, int status, bool big)
 {
-	int statusIndx = -1;
 	char iconName[MAX_PATH];
-	DWORD caps2 = (szProto == NULL) ? (DWORD)-1 : CallProtoServiceInt(NULL,szProto, PS_GETCAPS, PFLAGNUM_2, 0);
+	INT_PTR caps2;
+	if (szProto == NULL)
+		caps2 = -1;
+	else if ((caps2 = CallProtoServiceInt(NULL,szProto, PS_GETCAPS, PFLAGNUM_2, 0)) == CALLSERVICE_NOTFOUND)
+		caps2 = 0;
 
 	if (status >= ID_STATUS_CONNECTING && status < ID_STATUS_CONNECTING+MAX_CONNECT_RETRIES) {
 		mir_snprintf(iconName, SIZEOF(iconName), "%s%d", mainIconsFmt, 7);
 		return IcoLib_GetIcon(iconName, big);
 	}
 
+	int statusIndx = -1;
 	for (int i=0; i < SIZEOF(statusIcons); i++) {
 		if (statusIcons[i].id == status) {
 			statusIndx = i;
@@ -272,11 +281,11 @@ HICON LoadSkinProtoIcon(const char* szProto, int status, bool big)
 			str = _tcsrchr(szPath, '\\');
 			if (str != NULL)
 				*str = 0;
-			mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\Icons\\proto_") _T(TCHAR_STR_PARAM) _T(".dll"), szPath, pa->szProtoName);
+			mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\Icons\\proto_%S.dll"), szPath, pa->szProtoName);
 			if (GetFileAttributes(szFullPath) != INVALID_FILE_ATTRIBUTES)
 				sid.ptszDefaultFile = szFullPath;
 			else {
-				mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\Plugins\\") _T(TCHAR_STR_PARAM) _T(".dll"), szPath, szProto);
+				mir_sntprintf(szFullPath, SIZEOF(szFullPath), _T("%s\\Plugins\\%S.dll"), szPath, szProto);
 				if ((int)ExtractIconEx(szFullPath, statusIcons[statusIndx].resource_id, NULL, &hIcon, 1) > 0) {
 					DestroyIcon(hIcon);
 					sid.ptszDefaultFile = szFullPath;
@@ -334,6 +343,20 @@ HANDLE GetSkinIconHandle(int idx)
 	return NULL;
 }
 
+char* GetSkinIconName(int idx)
+{
+	static char szIconName[100];
+
+	for (int i=0; i < SIZEOF(mainIcons); i++) {
+		if (idx != mainIcons[i].id)
+			continue;
+
+		mir_snprintf(szIconName, SIZEOF(szIconName), "%s%d", mainIconsFmt, i);
+		return szIconName;
+	}
+	return NULL;
+}
+
 HICON LoadSkinIcon(int idx, bool big)
 {
 	//
@@ -361,13 +384,13 @@ static void convertOneProtocol(char *moduleName, char *iconName)
 		_itoa(statusIcons[i].id, pm, 10);
 
 		DBVARIANT dbv;
-		if ( !DBGetContactSettingTString(NULL, "Icons", moduleName, &dbv)) {
+		if ( !db_get_ts(NULL, "Icons", moduleName, &dbv)) {
 			_itoa(i, pi, 10);
 
 			db_set_ts(NULL, "SkinIcons", iconName, dbv.ptszVal);
 			db_free(&dbv);
 
-			DBDeleteContactSetting(NULL, "Icons", moduleName);
+			db_unset(NULL, "Icons", moduleName);
 }	}	}
 
 static INT_PTR sttLoadSkinIcon(WPARAM wParam, LPARAM lParam)
@@ -376,6 +399,7 @@ static INT_PTR sttLoadSkinIcon(WPARAM wParam, LPARAM lParam)
 		case 0: return (INT_PTR)LoadSkinIcon(wParam);
 		case 1: return (INT_PTR)GetSkinIconHandle(wParam);
 		case 2: return (INT_PTR)LoadSkinIcon(wParam, true);
+		case 3: return (INT_PTR)GetSkinIconName(wParam);
 	}
 
 	return 0;
@@ -402,7 +426,7 @@ int LoadSkinIcons(void)
 
 	for (i=0; i < SIZEOF(mainIcons); i++) {
 		_itoa(mainIcons[i].id, moduleName, 10);
-		if (DBGetContactSettingTString(NULL, "Icons", moduleName, &dbv))
+		if (db_get_ts(NULL, "Icons", moduleName, &dbv))
 			break;
 
 		mir_snprintf(iconName, SIZEOF(iconName), "%s%d", mainIconsFmt, i);
@@ -410,7 +434,7 @@ int LoadSkinIcons(void)
 		db_set_ts(NULL, "SkinIcons", iconName, dbv.ptszVal);
 		db_free(&dbv);
 
-		DBDeleteContactSetting(NULL, "Icons", moduleName);
+		db_unset(NULL, "Icons", moduleName);
 	}
 
 	for (;;) {
@@ -418,15 +442,15 @@ int LoadSkinIcons(void)
 		moduleName[0] = 'p';
 		moduleName[1] = 0;
 		_itoa(j++, moduleName+1, 100);
-		if (DBGetContactSettingTString(NULL, "Icons", moduleName, &dbv))
+		if (db_get_ts(NULL, "Icons", moduleName, &dbv))
 			break;
 
-		DBDeleteContactSetting(NULL, "Icons", moduleName);
+		db_unset(NULL, "Icons", moduleName);
 
 		// make old skinicons' prefix
-		mir_snprintf(moduleName, SIZEOF(moduleName), TCHAR_STR_PARAM, dbv.ptszVal);
+		mir_snprintf(moduleName, SIZEOF(moduleName), "%S", dbv.ptszVal);
 		// make IcoLib's prefix
-		mir_snprintf(iconName, SIZEOF(iconName), "%s" TCHAR_STR_PARAM, statusIconsFmt, dbv.ptszVal);
+		mir_snprintf(iconName, SIZEOF(iconName), "%s%S", statusIconsFmt, dbv.ptszVal);
 
 		convertOneProtocol(moduleName, iconName);
 		db_free(&dbv);
@@ -452,7 +476,7 @@ int LoadSkinIcons(void)
 	//
 	for (i=0; i < SIZEOF(mainIcons); i++) {
 		mir_snprintf(iconName, SIZEOF(iconName), "%s%d", mainIconsFmt, i);
-		sid.pszSection = mainIcons[i].section == NULL ? "Main Icons" : (char*)mainIcons[i].section;
+		sid.pszSection = mainIcons[i].section == NULL ? LPGEN("Main Icons") : (char*)mainIcons[i].section;
 		sid.pszDescription = (char*)mainIcons[i].description;
 		sid.iDefaultIndex = mainIcons[i].resource_id;
 		mainIcons[i].hIcolib = IcoLib_AddNewIcon(0, &sid);
@@ -460,7 +484,7 @@ int LoadSkinIcons(void)
 	//
 	// Add global icons to list
 	//
-	sid.pszSection = PROTOCOLS_PREFIX "Global";
+	sid.pszSection = PROTOCOLS_PREFIX LPGEN("Global");
 	//
 	// Asterisk is used, to avoid conflict with proto-plugins
 	// 'coz users can't rename it to name with '*'

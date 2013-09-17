@@ -26,9 +26,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <CommCtrl.h>
 
-#include "m_clc.h"
 #include "m_genmenu.h"
 #include "m_protocols.h"
+#include "m_clc.h"
 
 #define HCONTACT_ISGROUP    0x80000000
 #define HCONTACT_ISINFO     0xFFFF0000
@@ -222,19 +222,14 @@ typedef struct _menuProto
 #define CLCDEFAULT_HOTTEXTCOLOUR (IsWinVer98Plus()?RGB(0, 0, 255):GetSysColor(COLOR_HOTLIGHT))
 #define CLCDEFAULT_QUICKSEARCHCOLOUR RGB(255, 255, 0)
 #define CLCDEFAULT_LEFTMARGIN    2
+#define CLCDEFAULT_RIGHTMARGIN   2
 #define CLCDEFAULT_GAMMACORRECT  1
-#define CLCDEFAULT_SHOWIDLE      1
+#define CLCDEFAULT_SHOWIDLE      0
 #define CLCDEFAULT_USEWINDOWSCOLOURS 0
 
 #define TRAYICON_ID_BASE    100
 #define TIM_CALLBACK   (WM_USER+1857)
 #define TIM_CREATE     (WM_USER+1858)
-
-// Miranda 0.4.3.0+
-// retrieves the pointer to a CLIST_INTERFACE structure
-// NOTE: valid only for the clist clone building, not for the regular use
-
-#define MS_CLIST_RETRIEVE_INTERFACE "CList/RetrieveInterface"
 
 /***************************************************************************
  * CLIST_INTERFACE structure definition
@@ -476,9 +471,24 @@ typedef struct
 	 *************************************************************************************/
 	void   (*pfnReloadExtraIcons)(void);
 	void   (*pfnSetAllExtraIcons)(HWND hwndList,HANDLE hContact);
+
+	/*************************************************************************************
+	 * Miranda NG additions
+	 *************************************************************************************/
+	int    (*pfnGetContactIcon)(HANDLE hContact);
+	int    (*pfnTrayCalcChanged)(const char *szChangedProto, int averageMode, int iProtoCount);
 }
 	CLIST_INTERFACE;
 
 extern CLIST_INTERFACE cli, *pcli;
 
+// Miranda 0.4.3.0+
+// retrieves the pointer to a CLIST_INTERFACE structure
+// NOTE: valid only for the clist clone building, not for the regular use
+
+#define MS_CLIST_RETRIEVE_INTERFACE "CList/RetrieveInterface"
+
+__forceinline void mir_getCLI()
+{	pcli = (CLIST_INTERFACE*)CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, 0);
+}
 #endif // M_CLISTINT_H__

@@ -1,5 +1,7 @@
 /*
 Plugin of Miranda IM for communicating with users of the MSN Messenger protocol.
+
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2006-2012 Boris Krasnovskiy.
 Copyright (c) 2003-2005 George Hazan.
 Copyright (c) 2002-2003 Richard Hughes (original version).
@@ -56,7 +58,7 @@ INT_PTR CMsnProto::GetAvatar(WPARAM wParam, LPARAM lParam)
 void CMsnProto::sttFakeAvatarAck(void* arg)
 {
 	Sleep(100);
-	SendBroadcast(((PROTO_AVATAR_INFORMATIONT*)arg)->hContact, ACKTYPE_AVATAR, ACKRESULT_FAILED, arg, 0);
+	ProtoBroadcastAck(((PROTO_AVATAR_INFORMATIONT*)arg)->hContact, ACKTYPE_AVATAR, ACKRESULT_FAILED, arg, 0);
 }
 
 INT_PTR CMsnProto::GetAvatarInfo(WPARAM wParam,LPARAM lParam)
@@ -65,8 +67,7 @@ INT_PTR CMsnProto::GetAvatarInfo(WPARAM wParam,LPARAM lParam)
 	TCHAR filename[MAX_PATH];
 	MsnContact *cont = NULL;
 
-	if (AI->hContact)
-	{
+	if (AI->hContact) {
 		cont = Lists_Get(AI->hContact);
 		if (cont == NULL) return GAIR_NOAVATAR;
 
@@ -74,43 +75,38 @@ INT_PTR CMsnProto::GetAvatarInfo(WPARAM wParam,LPARAM lParam)
 			return GAIR_NOAVATAR;
 	}
 
-	if (AI->hContact == NULL || _stricmp(cont->email, MyOptions.szEmail) == 0)
-	{
+	if (AI->hContact == NULL || _stricmp(cont->email, MyOptions.szEmail) == 0) {
 		MSN_GetAvatarFileName(NULL, filename, SIZEOF(filename), NULL);
-		AI->format = MSN_GetImageFormat(filename);
-		if (AI->format != PA_FORMAT_UNKNOWN) _tcscpy(AI->filename, filename);
+		AI->format = ProtoGetAvatarFormat(filename);
+		if (AI->format != PA_FORMAT_UNKNOWN)
+			_tcscpy(AI->filename, filename);
 		return AI->format == PA_FORMAT_UNKNOWN ? GAIR_NOAVATAR : GAIR_SUCCESS;
 	}
 
 	char *szContext;
 	DBVARIANT dbv;
-	if (getString(AI->hContact, AI->hContact ? "PictContext" : "PictObject", &dbv) == 0)
-	{
+	if ( getString(AI->hContact, AI->hContact ? "PictContext" : "PictObject", &dbv) == 0) {
 		szContext = (char*)NEWSTR_ALLOCA(dbv.pszVal);
-		MSN_FreeVariant(&dbv);
+		db_free(&dbv);
 	}
-	else
-		return GAIR_NOAVATAR;
+	else return GAIR_NOAVATAR;
 
 	MSN_GetAvatarFileName(AI->hContact, filename, SIZEOF(filename), NULL);
-	AI->format = MSN_GetImageFormat(filename);
+	AI->format = ProtoGetAvatarFormat(filename);
 
-	if (AI->format != PA_FORMAT_UNKNOWN) 
-	{
+	if (AI->format != PA_FORMAT_UNKNOWN) {
 		bool needupdate = true;
-		if (getString(AI->hContact, "PictSavedContext", &dbv) == 0)
-		{
+		if (getString(AI->hContact, "PictSavedContext", &dbv) == 0) {
 			needupdate = strcmp(dbv.pszVal, szContext) != 0;
-			MSN_FreeVariant(&dbv);
+			db_free(&dbv);
 		}
-		if (needupdate)
-		{
+
+		if (needupdate) {
 			setString(AI->hContact, "PictSavedContext", szContext);
 
 			// Store also avatar hash
 			char* szAvatarHash = MSN_GetAvatarHash(szContext);
-			if (szAvatarHash != NULL)
-			{
+			if (szAvatarHash != NULL) {
 				setString(AI->hContact, "AvatarSavedHash", szAvatarHash);
 				mir_free(szAvatarHash);
 			}
@@ -119,33 +115,33 @@ INT_PTR CMsnProto::GetAvatarInfo(WPARAM wParam,LPARAM lParam)
 		return GAIR_SUCCESS;
 	}
 
-	if ((wParam & GAIF_FORCE) != 0 && AI->hContact != NULL)
-	{
+	if ((wParam & GAIF_FORCE) != 0 && AI->hContact != NULL) {
 		if (avsPresent < 0) avsPresent = ServiceExists(MS_AV_SETMYAVATAR) != 0;
-		if (!avsPresent) return GAIR_NOAVATAR;
+		if (!avsPresent)
+			return GAIR_NOAVATAR;
 
 		WORD wStatus = getWord(AI->hContact, "Status", ID_STATUS_OFFLINE);
-		if (wStatus == ID_STATUS_OFFLINE) 
-		{
-			deleteSetting(AI->hContact, "AvatarHash");
+		if (wStatus == ID_STATUS_OFFLINE) {
+			delSetting(AI->hContact, "AvatarHash");
 			PROTO_AVATAR_INFORMATIONT* fakeAI = new PROTO_AVATAR_INFORMATIONT;
 			*fakeAI = *AI;
 			ForkThread(&CMsnProto::sttFakeAvatarAck, fakeAI);
 		}
-		else 
-		{
-			if (p2p_getAvatarSession(AI->hContact) == NULL)
-			{
-				filetransfer* ft = new filetransfer(this);
-				ft->std.hContact = AI->hContact;
-				ft->p2p_object = mir_strdup(szContext);
-
-				MSN_GetAvatarFileName(AI->hContact, filename, SIZEOF(filename), _T("unk"));
-				ft->std.tszCurrentFile = mir_tstrdup(filename);
-
-				p2p_invite(MSN_APPID_AVATAR, ft, NULL);
-			}
+		else if ( !getString(AI->hContact, "AvatarUrl", &dbv)) {
+			pushAvatarRequest(AI->hContact, dbv.pszVal);
+			db_free(&dbv);
 		}
+		else if (p2p_getAvatarSession(AI->hContact) == NULL) {
+			filetransfer* ft = new filetransfer(this);
+			ft->std.hContact = AI->hContact;
+			ft->p2p_object = mir_strdup(szContext);
+
+			MSN_GetAvatarFileName(AI->hContact, filename, SIZEOF(filename), _T("unk"));
+			ft->std.tszCurrentFile = mir_tstrdup(filename);
+
+			p2p_invite(MSN_APPID_AVATAR, ft, NULL);
+		}
+
 		return GAIR_WAITFOR;
 	}
 	return GAIR_NOAVATAR;
@@ -194,8 +190,8 @@ INT_PTR CMsnProto::SetAvatar(WPARAM wParam, LPARAM lParam)
 
 	if (szFileName == NULL)
 	{
-		deleteSetting(NULL, "PictObject");
-		deleteSetting(NULL, "AvatarHash");
+		delSetting("PictObject");
+		delSetting("AvatarHash");
 		ForkThread(&CMsnProto::msn_storeAvatarThread, NULL);
 	}
 	else
@@ -255,7 +251,7 @@ INT_PTR CMsnProto::SendNudge(WPARAM wParam, LPARAM lParam)
 	char tEmail[MSN_MAX_EMAIL_LEN];
 	if (MSN_IsMeByContact(hContact, tEmail)) return 0;
 
-	static const char nudgemsg[] = 
+	static const char nudgemsg[] =
 		"Content-Type: text/x-msnmsgr-datacast\r\n\r\n"
 		"ID: 1\r\n\r\n";
 
@@ -273,7 +269,7 @@ INT_PTR CMsnProto::SendNudge(WPARAM wParam, LPARAM lParam)
 			ThreadData* thread = MSN_StartSB(tEmail, isOffline);
 			if (thread == NULL)
 			{
-				if (isOffline) return 0; 
+				if (isOffline) return 0;
 				MsgQueue_Add(tEmail, 'N', nudgemsg, -1);
 			}
 			else
@@ -357,7 +353,7 @@ INT_PTR CMsnProto::SetCurrentMedia(WPARAM wParam, LPARAM lParam)
 
 	// Set user text
 	if (msnCurrentMedia.cbSize == 0)
-		deleteSetting(NULL, "ListeningTo");
+		delSetting("ListeningTo");
 	else
 	{
 		TCHAR *text;
@@ -390,22 +386,19 @@ int CMsnProto::OnContactDeleted(WPARAM wParam, LPARAM lParam)
 	if (!msnLoggedIn)  //should never happen for MSN contacts
 		return 0;
 
-	int type = getByte(hContact, "ChatRoom", 0);
-	if (type != 0) 
-	{
+	if ( isChatRoom(hContact)) {
 		DBVARIANT dbv;
 		if (!getTString(hContact, "ChatRoomID", &dbv)) {
 			MSN_KillChatSession(dbv.ptszVal);
-			MSN_FreeVariant(&dbv);
-		}	
+			db_free(&dbv);
+		}
 	}
-	else
-	{
+	else {
 		char szEmail[MSN_MAX_EMAIL_LEN];
 		if (MSN_IsMeByContact(hContact, szEmail))
 			CallService(MS_CLIST_REMOVEEVENT, (WPARAM)hContact, (LPARAM) 1);
-		
-		if (szEmail[0]) 
+
+		if (szEmail[0])
 		{
 			MSN_DebugLog("Deleted Handler Email");
 
@@ -415,7 +408,7 @@ int CMsnProto::OnContactDeleted(WPARAM wParam, LPARAM lParam)
 				DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_DELETECONTACT), NULL, DlgDeleteContactUI, (LPARAM)&param);
 
 				MsnContact* msc = Lists_Get(szEmail);
-				if (msc) msc->hContact = NULL; 
+				if (msc) msc->hContact = NULL;
 			}
 			if (Lists_IsInList(LIST_LL, szEmail))
 			{
@@ -440,7 +433,7 @@ int CMsnProto::OnGroupChange(WPARAM wParam,LPARAM lParam)
 		if (grpchg->pszNewName == NULL && grpchg->pszOldName != NULL)
 		{
 			LPCSTR szId = MSN_GetGroupByName(UTF8(grpchg->pszOldName));
-			if (szId != NULL) MSN_DeleteServerGroup(szId);	
+			if (szId != NULL) MSN_DeleteServerGroup(szId);
 		}
 		else if (grpchg->pszNewName != NULL && grpchg->pszOldName != NULL)
 		{
@@ -472,47 +465,47 @@ int CMsnProto::OnDbSettingChanged(WPARAM wParam,LPARAM lParam)
 	if (!msnLoggedIn)
 		return 0;
 
-	if (hContact == NULL) 
+	if (hContact == NULL)
 	{
 		if (MyOptions.SlowSend && strcmp(cws->szSetting, "MessageTimeout") == 0 &&
 		   (strcmp(cws->szModule, "SRMM") == 0 || strcmp(cws->szModule, "SRMsg") == 0))
-		{ 
+		{
 			if (cws->value.dVal < 60000)
-				MessageBox(NULL, TranslateT("MSN requires message send timeout in your Message window plugin to be not less then 60 sec. Please correct the timeout value."), 
+				MessageBox(NULL, TranslateT("MSN requires message send timeout in your Message window plugin to be not less then 60 sec. Please correct the timeout value."),
 					TranslateT("MSN Protocol"), MB_OK|MB_ICONINFORMATION);
 		}
 		return 0;
 	}
 
-	if (!strcmp(cws->szSetting, "ApparentMode")) 
+	if (!strcmp(cws->szSetting, "ApparentMode"))
 	{
 		char tEmail[MSN_MAX_EMAIL_LEN];
-		if (!getStaticString(hContact, "e-mail", tEmail, sizeof(tEmail))) 
+		if (!getStaticString(hContact, "e-mail", tEmail, sizeof(tEmail)))
 		{
 			bool isBlocked = Lists_IsInList(LIST_BL, tEmail);
 
-			if (isBlocked && (cws->value.type == DBVT_DELETED || cws->value.wVal == 0)) 
+			if (isBlocked && (cws->value.type == DBVT_DELETED || cws->value.wVal == 0))
 			{
 				MSN_AddUser(hContact, tEmail, 0, LIST_BL + LIST_REMOVE);
 				MSN_AddUser(hContact, tEmail, 0, LIST_AL);
-			}	
-			else if (!isBlocked && cws->value.wVal == ID_STATUS_OFFLINE) 
+			}
+			else if (!isBlocked && cws->value.wVal == ID_STATUS_OFFLINE)
 			{
 				MSN_AddUser(hContact, tEmail, 0, LIST_AL + LIST_REMOVE);
 				MSN_AddUser(hContact, tEmail, 0, LIST_BL);
 			}
-		}	
+		}
 	}
 
-	if (!strcmp(cws->szSetting, "MyHandle") && !strcmp(cws->szModule, "CList")) 
+	if (!strcmp(cws->szSetting, "MyHandle") && !strcmp(cws->szModule, "CList"))
 	{
 		bool isMe = MSN_IsMeByContact(hContact);
 		if (!isMe || !nickChg)
 		{
 			char szContactID[100];
-			if (!getStaticString(hContact, "ID", szContactID, sizeof(szContactID))) 
+			if (!getStaticString(hContact, "ID", szContactID, sizeof(szContactID)))
 			{
-				if (cws->value.type != DBVT_DELETED) 
+				if (cws->value.type != DBVT_DELETED)
 				{
 					if (cws->value.type == DBVT_UTF8)
 						MSN_ABUpdateNick(cws->value.pszVal, szContactID);
@@ -560,13 +553,13 @@ int CMsnProto::OnWindowEvent(WPARAM wParam, LPARAM lParam)
 {
 	MessageWindowEventData* msgEvData  = (MessageWindowEventData*)lParam;
 
-	if (msgEvData->uType == MSG_WINDOW_EVT_OPENING) 
+	if (msgEvData->uType == MSG_WINDOW_EVT_OPENING)
 	{
 		if (m_iStatus == ID_STATUS_OFFLINE || m_iStatus == ID_STATUS_INVISIBLE)
 			return 0;
 
 		if (!MSN_IsMyContact(msgEvData->hContact)) return 0;
-		
+
 		char tEmail[MSN_MAX_EMAIL_LEN];
 		if (MSN_IsMeByContact(msgEvData->hContact, tEmail)) return 0;
 
@@ -577,7 +570,7 @@ int CMsnProto::OnWindowEvent(WPARAM wParam, LPARAM lParam)
 
 		bool isOffline;
 		ThreadData* thread = MSN_StartSB(tEmail, isOffline);
-		
+
 		if (thread == NULL && !isOffline)
 			MsgQueue_Add(tEmail, 'X', NULL, 0);
 	}
@@ -591,7 +584,7 @@ int CMsnProto::OnWindowPopup(WPARAM wParam, LPARAM lParam)
 {
 	MessageWindowPopupData *mwpd = (MessageWindowPopupData *)lParam;
 
-	if (!MSN_IsMyContact(mwpd->hContact) || getByte(mwpd->hContact, "ChatRoom", 0))
+	if (!MSN_IsMyContact(mwpd->hContact) || isChatRoom(mwpd->hContact))
 		return 0;
 
 	switch (mwpd->uType)
@@ -603,7 +596,7 @@ int CMsnProto::OnWindowPopup(WPARAM wParam, LPARAM lParam)
 	case MSG_WINDOWPOPUP_SELECTED:
 		if (mwpd->selection == 13465)
 		{
-			DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_CHATROOM_INVITE), NULL, DlgInviteToChat, 
+			DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_CHATROOM_INVITE), NULL, DlgInviteToChat,
 				LPARAM(new InviteChatParam(NULL, mwpd->hContact, this)));
 		}
 		break;
@@ -628,13 +621,11 @@ INT_PTR CMsnProto::GetUnreadEmailCount(WPARAM wParam, LPARAM lParam)
 INT_PTR CMsnProto::OnLeaveChat(WPARAM wParam,LPARAM lParam)
 {
 	HANDLE hContact = (HANDLE)wParam;
-	if (getByte(hContact, "ChatRoom", 0) != 0) 
-	{
+	if (isChatRoom(hContact) != 0) {
 		DBVARIANT dbv;
-		if (getTString(hContact, "ChatRoomID", &dbv) == 0)
-		{
+		if (getTString(hContact, "ChatRoomID", &dbv) == 0) {
 			MSN_KillChatSession(dbv.ptszVal);
-			MSN_FreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 	return 0;

@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people 
 listed in contributors.txt.
 
@@ -38,11 +38,10 @@ INT_PTR CALLBACK DlgProcAdded(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 			SetWindowLongPtr(hwndDlg, GWLP_USERDATA, lParam);
 
 			//blob is: uin(DWORD), hcontact(HANDLE), nick(ASCIIZ), first(ASCIIZ), last(ASCIIZ), email(ASCIIZ)
-			DBEVENTINFO dbei = {0};
-			dbei.cbSize = sizeof(dbei);
-			dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, (WPARAM)hDbEvent, 0);
+			DBEVENTINFO dbei = { sizeof(dbei) };
+			dbei.cbBlob = db_event_getBlobSize(hDbEvent);
 			dbei.pBlob = (PBYTE)alloca(dbei.cbBlob);
-			CallService(MS_DB_EVENT_GET, (WPARAM)hDbEvent, (LPARAM)&dbei);
+			db_event_get(hDbEvent, &dbei);
 
 			DWORD uin = *(PDWORD)dbei.pBlob;
 			HANDLE hContact = DbGetAuthEventContact(&dbei);
@@ -96,7 +95,7 @@ INT_PTR CALLBACK DlgProcAdded(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 
 			SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_DETAILS), GWLP_USERDATA, (LONG_PTR)hContact);
 
-			if (hContact == INVALID_HANDLE_VALUE || !DBGetContactSettingByte(hContact, "CList", "NotOnList", 0))
+			if (hContact == INVALID_HANDLE_VALUE || !db_get_b(hContact, "CList", "NotOnList", 0))
 				ShowWindow(GetDlgItem(hwndDlg, IDC_ADD), FALSE);
 		}
 		return TRUE;
@@ -112,7 +111,7 @@ INT_PTR CALLBACK DlgProcAdded(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 			CallService(MS_ADDCONTACT_SHOW, (WPARAM)hwndDlg, (LPARAM)&acs);
 
 			HANDLE hContact = (HANDLE)GetWindowLongPtr(GetDlgItem(hwndDlg, IDC_DETAILS), GWLP_USERDATA);
-               if ((hContact == INVALID_HANDLE_VALUE) || !DBGetContactSettingByte(hContact, "CList", "NotOnList", 0))
+               if ((hContact == INVALID_HANDLE_VALUE) || !db_get_b(hContact, "CList", "NotOnList", 0))
                   ShowWindow(GetDlgItem(hwndDlg, IDC_ADD), FALSE);
 			break;
 		}
@@ -162,11 +161,10 @@ INT_PTR CALLBACK DlgProcAuthReq(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 			SetWindowLongPtr(hwndDlg, GWLP_USERDATA, lParam);
 
 			//blob is: uin(DWORD), hcontact(HANDLE), nick(ASCIIZ), first(ASCIIZ), last(ASCIIZ), email(ASCIIZ), reason(ASCIIZ)
-			DBEVENTINFO dbei = {0};
-			dbei.cbSize = sizeof(dbei);
-			dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, (WPARAM)hDbEvent, 0);
+			DBEVENTINFO dbei = { sizeof(dbei) };
+			dbei.cbBlob = db_event_getBlobSize(hDbEvent);
 			dbei.pBlob = (PBYTE)alloca(dbei.cbBlob);
-			CallService(MS_DB_EVENT_GET, (WPARAM)hDbEvent, (LPARAM)&dbei);
+			db_event_get(hDbEvent, &dbei);
 
 			DWORD uin = *(PDWORD)dbei.pBlob;
 			HANDLE hContact = DbGetAuthEventContact(&dbei);
@@ -181,41 +179,41 @@ INT_PTR CALLBACK DlgProcAuthReq(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 			PROTOACCOUNT* acc = ProtoGetAccount(dbei.szModule);
 
-			mir_ptr<TCHAR> lastT(dbei.flags & DBEF_UTF ? Utf8DecodeT(last) : mir_a2t(last));
-			mir_ptr<TCHAR> firstT(dbei.flags & DBEF_UTF ? Utf8DecodeT(first) : mir_a2t(first));
-			mir_ptr<TCHAR> nickT(dbei.flags & DBEF_UTF ? Utf8DecodeT(nick) : mir_a2t(nick));
-			mir_ptr<TCHAR> emailT(dbei.flags & DBEF_UTF ? Utf8DecodeT(email) : mir_a2t(email));
-			mir_ptr<TCHAR> reasonT(dbei.flags & DBEF_UTF ? Utf8DecodeT(reason) : mir_a2t(reason));
+			ptrT lastT(dbei.flags & DBEF_UTF ? Utf8DecodeT(last) : mir_a2t(last));
+			ptrT firstT(dbei.flags & DBEF_UTF ? Utf8DecodeT(first) : mir_a2t(first));
+			ptrT nickT(dbei.flags & DBEF_UTF ? Utf8DecodeT(nick) : mir_a2t(nick));
+			ptrT emailT(dbei.flags & DBEF_UTF ? Utf8DecodeT(email) : mir_a2t(email));
+			ptrT reasonT(dbei.flags & DBEF_UTF ? Utf8DecodeT(reason) : mir_a2t(reason));
 
 			TCHAR name[128] = _T("");
 			int off = 0;
 			if (firstT[0] && lastT[0])
-				off = mir_sntprintf(name, SIZEOF(name), _T("%s %s"), firstT, lastT);
+				off = mir_sntprintf(name, SIZEOF(name), _T("%s %s"), (TCHAR*)firstT, (TCHAR*)lastT);
 			else if (firstT[0])
-				off = mir_sntprintf(name, SIZEOF(name), _T("%s"), firstT);
+				off = mir_sntprintf(name, SIZEOF(name), _T("%s"), (TCHAR*)firstT);
 			else if (lastT[0])
-				off = mir_sntprintf(name, SIZEOF(name), _T("%s"), lastT);
+				off = mir_sntprintf(name, SIZEOF(name), _T("%s"), (TCHAR*)lastT);
 			if (nickT[0]) {
 				if (off)
-					mir_sntprintf(name + off, SIZEOF(name) - off, _T(" (%s)"), nickT);
+					mir_sntprintf(name + off, SIZEOF(name) - off, _T(" (%s)"), (TCHAR*)nickT);
 				else
-					mir_sntprintf(name, SIZEOF(name), _T("%s"), nickT);
+					mir_sntprintf(name, SIZEOF(name), _T("%s"), (TCHAR*)nickT);
 			}
 			if ( !name[0])
 				_tcscpy(name, TranslateT("<Unknown>"));
 
 			TCHAR hdr[256];
 			if (uin && emailT[0])
-				mir_sntprintf(hdr, SIZEOF(hdr), TranslateT("%s requested authorization\n%u (%s) on %s"), name, uin, emailT, acc->tszAccountName);
+				mir_sntprintf(hdr, SIZEOF(hdr), TranslateT("%s requested authorization\n%u (%s) on %s"), name, uin, (TCHAR*)emailT, acc->tszAccountName);
 			else if (uin)
 				mir_sntprintf(hdr, SIZEOF(hdr), TranslateT("%s requested authorization\n%u on %s"), name, uin, acc->tszAccountName);
 			else
-				mir_sntprintf(hdr, SIZEOF(hdr), TranslateT("%s requested authorization\n%s on %s"), name, emailT[0] ? emailT : TranslateT("(Unknown)"), acc->tszAccountName);
+				mir_sntprintf(hdr, SIZEOF(hdr), TranslateT("%s requested authorization\n%s on %s"), name, emailT[0] ? (TCHAR*)emailT : TranslateT("(Unknown)"), acc->tszAccountName);
 
 			SetDlgItemText(hwndDlg, IDC_HEADERBAR, hdr);
 			SetDlgItemText(hwndDlg, IDC_REASON, reasonT);
 
-			if (hContact == INVALID_HANDLE_VALUE || !DBGetContactSettingByte(hContact, "CList", "NotOnList", 0))
+			if (hContact == INVALID_HANDLE_VALUE || !db_get_b(hContact, "CList", "NotOnList", 0))
 				ShowWindow(GetDlgItem(hwndDlg, IDC_ADD), FALSE);
 
 			SendDlgItemMessage(hwndDlg, IDC_DENYREASON, EM_LIMITTEXT, 255, 0);
@@ -223,7 +221,7 @@ INT_PTR CALLBACK DlgProcAuthReq(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 				EnableWindow(GetDlgItem(hwndDlg, IDC_DENYREASON), FALSE);
 				SetDlgItemText(hwndDlg, IDC_DENYREASON, TranslateT("Feature is not supported by protocol"));
 			}
-			if ( !DBGetContactSettingByte(hContact, "CList", "NotOnList", 0)) {
+			if ( !db_get_b(hContact, "CList", "NotOnList", 0)) {
 				EnableWindow(GetDlgItem(hwndDlg, IDC_ADDCHECK), FALSE);
 				CheckDlgButton(hwndDlg, IDC_ADDCHECK, BST_UNCHECKED);
 			}
@@ -245,13 +243,11 @@ INT_PTR CALLBACK DlgProcAuthReq(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 		case IDOK:
 			{	
-				DBEVENTINFO dbei = {0};
-				dbei.cbSize = sizeof(dbei);
-				CallService(MS_DB_EVENT_GET, (WPARAM)hDbEvent, (LPARAM)&dbei);
+				DBEVENTINFO dbei = { sizeof(dbei) };
+				db_event_get(hDbEvent, &dbei);
 				CallProtoService(dbei.szModule, PS_AUTHALLOW, (WPARAM)hDbEvent, 0);
 
-				if (IsDlgButtonChecked(hwndDlg, IDC_ADDCHECK))
-				{
+				if (IsDlgButtonChecked(hwndDlg, IDC_ADDCHECK)) {
 					ADDCONTACTSTRUCT acs = {0};
 					acs.handle = hDbEvent;
 					acs.handleType = HANDLE_EVENT;
@@ -264,9 +260,8 @@ INT_PTR CALLBACK DlgProcAuthReq(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 		case IDCANCEL:
 			{
-				DBEVENTINFO dbei = {0};
-				dbei.cbSize = sizeof(dbei);
-				CallService(MS_DB_EVENT_GET, (WPARAM)hDbEvent, (LPARAM)&dbei);
+				DBEVENTINFO dbei = { sizeof(dbei) };
+				db_event_get(hDbEvent, &dbei);
 
 				if (IsWindowEnabled(GetDlgItem(hwndDlg, IDC_DENYREASON)))
 				{

@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
 Copyright (C) 2007     Victor Pavlychko
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -35,7 +36,7 @@ CCtrlTreeOpts::CCtrlTreeOpts(CDlgBase* dlg, int ctrlId):
 
 CCtrlTreeOpts::~CCtrlTreeOpts()
 {
-	for (int i = 0; i < m_options.getCount(); ++i)
+	for (int i = 0; i < m_options.getCount(); i++)
 		delete m_options[i];
 	m_options.destroy();
 }
@@ -69,7 +70,7 @@ BOOL CCtrlTreeOpts::OnNotify(int idCtrl, NMHDR *pnmh)
 					ProcessItemClick(hti.hItem);
 			break;
 		}
-		
+
 		case TVN_ITEMEXPANDEDW:
 		{
 			LPNMTREEVIEWW lpnmtv = (LPNMTREEVIEWW)pnmh;
@@ -81,7 +82,7 @@ BOOL CCtrlTreeOpts::OnNotify(int idCtrl, NMHDR *pnmh)
 			SendMessageW(pnmh->hwndFrom, TVM_SETITEMW, 0, (LPARAM)&tvi);
 			break;
 		}
-		
+
 		case TVN_ITEMEXPANDEDA:
 		{
 			LPNMTREEVIEWA lpnmtv = (LPNMTREEVIEWA)pnmh;
@@ -121,7 +122,7 @@ void CCtrlTreeOpts::OnInit()
 	/* build options tree. based on code from IcoLib */
 	for (int i = 0; i < m_options.getCount(); i++)
 	{
-		TCHAR* sectionName;
+		TCHAR *sectionName;
 		int sectionLevel = 0;
 
 		HTREEITEM hSection = NULL;
@@ -131,7 +132,7 @@ void CCtrlTreeOpts::OnInit()
 		while (sectionName)
 		{
 			// allow multi-level tree
-			TCHAR* pItemName = sectionName;
+			TCHAR *pItemName = sectionName;
 			HTREEITEM hItem;
 
 			if (sectionName = _tcschr(sectionName, '/'))
@@ -197,7 +198,7 @@ void CCtrlTreeOpts::OnApply()
 {
 	CCtrlTreeView::OnApply();
 
-	for (int i = 0; i < m_options.getCount(); ++i)
+	for (int i = 0; i < m_options.getCount(); i++)
 	{
 		TVITEMEX tvi;
 		GetItem(m_options[i]->m_hItem, &tvi);
@@ -231,7 +232,7 @@ void CCtrlTreeOpts::ProcessItemClick(HTREEITEM hti)
 		case IMG_NORCHECK:
 		{
 			int i;
-			for (i = 0; i < m_options.getCount(); ++i)
+			for (i = 0; i < m_options.getCount(); i++)
 			{
 				if (m_options[i]->m_groupId == m_options[tvi.lParam]->m_groupId)
 				{

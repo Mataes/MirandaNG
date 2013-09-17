@@ -17,20 +17,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "stdafx.h"
-#include "PasteToWeb1.h"
-#include "PasteToWeb2.h"
-#include "version.h"
-#include "resource.h"
-#include "Options.h"
-
-// {1AAC15E8-DCEC-4050-B66F-2AA0E6120C22}
-#define	MIID_PASTEIT { 0x1aac15e8, 0xdcec, 0x4050, { 0xb6, 0x6f, 0x2a, 0xa0, 0xe6, 0x12, 0xc, 0x22 } }
 
 PasteToWeb* pasteToWebs[PasteToWeb::pages];
 std::map<HANDLE, HWND>* contactWindows;
 DWORD gMirandaVersion;
 
-extern HINSTANCE hInst;
 HANDLE hModulesLoaded, hTabsrmmButtonPressed;
 HANDLE g_hNetlibUser;
 HANDLE hPrebuildContactMenu;
@@ -41,7 +32,6 @@ HANDLE hOptionsInit;
 HANDLE hWindowEvent = NULL;
 HINSTANCE hInst;
 
-#define MODULE				"PasteIt"
 #define FROM_CLIPBOARD 10
 #define FROM_FILE 11
 #define DEF_PAGES_START 20
@@ -57,7 +47,8 @@ PLUGININFOEX pluginInfo={
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE, 
-	MIID_PASTEIT
+	// {1AAC15E8-DCEC-4050-B66F-2AA0E6120C22}
+	{0x1aac15e8, 0xdcec, 0x4050, {0xb6, 0x6f, 0x2a, 0xa0, 0xe6, 0x12, 0xc, 0x22}}
 };
 
 static IconItem icon = { LPGEN("Paste It"), "PasteIt_main", IDI_MENU };
@@ -80,7 +71,6 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 	return &pluginInfo;
 }
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_PASTEIT, MIID_LAST};
 
 std::wstring GetFile()
 {
@@ -134,7 +124,7 @@ void PasteIt(HANDLE hContact, int mode)
 		char *szProto = GetContactProto(hContact);
 		if (szProto && (INT_PTR)szProto != CALLSERVICE_NOTFOUND)
 		{
-			BOOL isChat = DBGetContactSettingByte(hContact, szProto, "ChatRoom", 0); 
+			BOOL isChat = db_get_b(hContact, szProto, "ChatRoom", 0); 
 			if(Options::instance->autoSend)
 			{
 				if(!isChat)
@@ -147,7 +137,7 @@ void PasteIt(HANDLE hContact, int mode)
 					dbei.timestamp = (DWORD)time(NULL);
 					dbei.cbBlob = (DWORD)strlen(pasteToWeb->szFileLink) + 1;
 					dbei.pBlob = (PBYTE)pasteToWeb->szFileLink;
-					CallService(MS_DB_EVENT_ADD, (WPARAM)hContact, (LPARAM)&dbei);
+					db_event_add(hContact, &dbei);
 					CallContactService(hContact, PSS_MESSAGE, 0, (LPARAM)pasteToWeb->szFileLink);
 				}
 				else
@@ -338,26 +328,17 @@ int PrebuildContactMenu(WPARAM wParam, LPARAM lParam)
 	
 	char *szProto = GetContactProto((HANDLE)wParam);
 	if (szProto && (INT_PTR)szProto != CALLSERVICE_NOTFOUND)
-		bIsContact = (CallProtoService(szProto, PS_GETCAPS, PFLAGNUM_1, 0) & PF1_IM) ? true : false;
-	
-	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIM_FLAGS;
+		bIsContact = (CallProtoService(szProto, PS_GETCAPS, PFLAGNUM_1, 0) & PF1_IM) != 0;
 
-	if (!bIsContact) mi.flags |= CMIF_HIDDEN;
-	else mi.flags &= ~CMIF_HIDDEN;
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hContactMenu, (LPARAM)&mi);
-
+	Menu_ShowItem(hContactMenu, bIsContact);
 	return 0;
 }
 
 INT_PTR ContactMenuService(WPARAM wParam, LPARAM lParam) 
 {
 	if(lParam >= DEF_PAGES_START)
-	{
 		Options::instance->SetDefWeb(lParam - DEF_PAGES_START);
-	}
-	else
-	{
+	else {
 		HANDLE hContact = (HANDLE)wParam;
 		PasteIt(hContact, lParam);
 	}
@@ -367,10 +348,10 @@ INT_PTR ContactMenuService(WPARAM wParam, LPARAM lParam)
 void InitMenuItems()
 {
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_ROOTPOPUP | CMIF_ICONFROMICOLIB | CMIF_TCHAR;
+	mi.flags = CMIF_ROOTPOPUP | CMIF_TCHAR;
 	mi.icolibItem = icon.hIcolib;
 	mi.position = 3000090005;
-	mi.ptszName = _T("Paste It");
+	mi.ptszName = LPGENT("Paste It");
 
 	hContactMenu = Menu_AddContactMenuItem(&mi);
 
@@ -380,15 +361,15 @@ void InitMenuItems()
 	mi.pszService = MS_PASTEIT_CONTACTMENU;
 	mi.hParentMenu = hContactMenu;
 	mi.popupPosition = FROM_CLIPBOARD;	
-	mi.ptszName = _T("Paste from clipboard");
+	mi.ptszName = LPGENT("Paste from clipboard");
 	Menu_AddContactMenuItem(&mi);
 
 	mi.popupPosition = FROM_FILE;
-	mi.ptszName = _T("Paste from file");
+	mi.ptszName = LPGENT("Paste from file");
 	Menu_AddContactMenuItem(&mi);
 
 	mi.popupPosition = DEF_PAGES_START - 1;
-	mi.ptszName = _T("Default web page");
+	mi.ptszName = LPGENT("Default web page");
 	HGENMENU hDefWebMenu = Menu_AddContactMenuItem(&mi);
 	
 	CLISTMENUITEM mi2 = { sizeof(mi2) };
@@ -415,7 +396,7 @@ void DefWebPageChanged()
 		if (Options::instance->defWeb == i) 
 			mi.flags |= CMIF_CHECKED;
 
-		CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hWebPageMenus[i], (LPARAM)&mi);
+		Menu_ModifyItem(hWebPageMenus[i], &mi);
 	}
 }
 
@@ -447,7 +428,7 @@ int WindowEvent(WPARAM wParam, MessageWindowEventData* lParam)
 		char *szProto = GetContactProto(lParam->hContact);
 		if (szProto && (INT_PTR)szProto != CALLSERVICE_NOTFOUND)
 		{
-			if(DBGetContactSettingByte(lParam->hContact, szProto, "ChatRoom", 0))
+			if(db_get_b(lParam->hContact, szProto, "ChatRoom", 0))
 			{
 				(*contactWindows)[lParam->hContact] = lParam->hwndInput;
 			}
@@ -486,7 +467,7 @@ extern "C" int __declspec(dllexport) Load(void)
   	nlu.flags = NUF_TCHAR | NUF_OUTGOING | NUF_HTTPCONNS;
 	nlu.szSettingsModule = MODULE;
 	nlu.ptszDescriptiveName = TranslateT("Paste It HTTP connections");
-	g_hNetlibUser = ( HANDLE )CallService( MS_NETLIB_REGISTERUSER, 0, ( LPARAM )&nlu );
+	g_hNetlibUser = ( HANDLE )CallService(MS_NETLIB_REGISTERUSER, 0, ( LPARAM )&nlu );
 	
 	pasteToWebs[0] = new PasteToWeb1();
 	pasteToWebs[0]->pageIndex = 0;

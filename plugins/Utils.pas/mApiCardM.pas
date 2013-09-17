@@ -13,9 +13,11 @@ type
     procedure SetCurrentService(item:pAnsiChar);
   public
     constructor Create(fname:pAnsiChar; lparent:HWND=0);
-    destructor Free;
+    destructor Destroy; override;
     procedure FillList(combo:HWND; mode:integer=0);
 
+    function NameFromList(cb:HWND):pAnsiChar;
+    function HashToName(ahash:longword):pAnsiChar;
     function FillParams(wnd:HWND{;item:pAnsiChar};wparam:boolean):pAnsiChar;
     procedure Show;//(item:pAnsiChar);
 
@@ -39,7 +41,7 @@ function CreateEventCard  (parent:HWND=0):tmApiCard;
 
 implementation
 
-uses common,io,m_api,mirutils,memini;
+uses common,io,m_api,mirutils,memini,wrapper;
 
 {$r mApiCard.res}
 
@@ -147,10 +149,54 @@ begin
   SendMessage(wnd,CB_SETCURSEL,0,0);
 end;
 
+function tmApiCard.HashToName(ahash:longword):pAnsiChar;
+var
+  p,pp:PAnsiChar;
+begin
+  result:=nil;
+  if storage<>nil then
+  begin
+    p:=GetSectionList(storage,namespace);
+    pp:=p;
+    while p^<>#0 do
+    begin
+      if ahash=Hash(p,StrLen(p)) then
+      begin
+        StrDup(result,p);
+      end;
+      while p^<>#0 do inc(p); inc(p);
+    end;
+    FreeSectionList(pp);
+  end;
+end;
+
+function tmApiCard.NameFromList(cb:HWND):pAnsiChar;
+var
+  buf:array [0..255] of AnsiChar;
+  pc:pAnsiChar;
+  idx:integer;
+begin
+  pc:=GetDlgText(cb,true);
+  idx:=SendMessage(cb,CB_GETCURSEL,0,0);
+  if idx<>CB_ERR then
+  begin
+    SendMessageA(cb,CB_GETLBTEXT,idx,lparam(@buf));
+    // edit field is text from list
+    if StrCmp(pc,@buf)=0 then
+    begin
+      result:=HashToName(CB_GetData(cb,idx));
+      exit;
+    end;
+  end;
+  // no select or changed text
+  result:=pc;
+end;
+
 procedure tmApiCard.FillList(combo:hwnd; mode:integer=0);
 var
   tmpbuf:array [0..127] of AnsiChar;
   p,pp,pc:PAnsiChar;
+  idx:integer;
 begin
   if storage<>nil then
   begin
@@ -187,7 +233,8 @@ begin
       else // just constant value
         pc:=p;
       end;
-      SendMessageA(combo,CB_ADDSTRING,0,lparam(pc));
+      idx:=SendMessageA(combo,CB_ADDSTRING,0,lparam(pc));
+      SendMessageA(combo,CB_SETITEMDATA,idx,Hash(p,StrLen(p)));
       while p^<>#0 do inc(p); inc(p);
     end;
     FreeSectionList(pp);
@@ -337,7 +384,7 @@ begin
         title:='Miranda event help';
         note :='';
       end;
-      SendMessageW(HelpWindow,WM_SETTEXT,0,LPARAM(title));
+      SendMessageW(HelpWindow,WM_SETTEXT,0,LPARAM(TranslateW(title)));
 
       SendMessageW(GetDlgItem(HelpWindow,IDC_HLP_NOTE),WM_SETTEXT,0,LPARAM(TranslateW(Note)));
     end;
@@ -368,20 +415,21 @@ begin
   begin
     ConvertFileName(fname,@INIFile);
   //  CallService(MS_UTILS_PATHTOABSOLUTE,
-  //    dword(PAnsiChar(ServiceHlpFile)),dword(INIFile));
+  //    WPARAM(PAnsiChar(ServiceHlpFile)),LPARAM(INIFile));
     if GetFSize(pAnsiChar(@INIFile))=0 then
     begin
       INIFile[0]:=#0;
     end;
     parent:=lparent;
   end;
-  storage:=OpenStorage(@IniFile);
+  storage:=OpenStorage(pAnsiChar(@IniFile));
 end;
 
-destructor tmApiCard.Free;
+destructor tmApiCard.Destroy;
 begin
   CloseStorage(storage);
-//  inherited;
+
+  inherited;
 end;
 
 function CreateServiceCard(parent:HWND=0):tmApiCard;

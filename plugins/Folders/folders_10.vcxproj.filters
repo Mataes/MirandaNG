@@ -27,9 +27,6 @@
     <ClCompile Include="src\folders.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\foldersList.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\hooked_events.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -39,24 +36,18 @@
     <ClCompile Include="src\utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\commonheaders.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\dlg_handlers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\events.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\folderItem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\foldersList.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\hooked_events.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\resource.h">
@@ -71,6 +62,9 @@
     <ClInclude Include="src\version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\ExternalAPI\m_folders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\folders.rc">
@@ -79,8 +73,5 @@
     <ResourceCompile Include="res\version.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="docs\folders_readme.txt" />
   </ItemGroup>
 </Project>

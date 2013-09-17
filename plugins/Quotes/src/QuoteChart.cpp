@@ -1,19 +1,6 @@
 #include "StdAfx.h"
-#include "QuoteChart.h"
 
 #ifdef CHART_IMPLEMENT
-
-// #include "QuotesProviderDukasCopy.h"
-// #include "QuotesProviders.h"
-#include "ModuleInfo.h"
-#include "EconomicRateInfo.h"
-// #include "WinCtrlHelper.h"
-#include "resource.h"
-#include "DBUtils.h"
-#include "Locale.h"
-#include "SettingsDlg.h"
-#include "Chart.h"
-#include "WinCtrlHelper.h"
 
 #define WINDOW_PREFIX "Quotes Chart_"
 #define CHART_CTRL_CLASS _T("DioksinChart")
@@ -230,8 +217,8 @@ namespace
 
 				::SetWindowLongPtr(hDlg,GWLP_USERDATA,reinterpret_cast<LONG_PTR>(hContact));
 
-				static LPCTSTR szSources[] = {_T("Log File"),_T("Miranda's History")};
-				static LPCTSTR szFilters[] = {_T("All"),_T("Last Day"),_T("Last Week"),_T("Last Month"),_T("Last Year"),_T("User-Defined")};
+				static LPCTSTR szSources[] = {LPGENT("Log File"), LPGENT("Miranda's History")};
+				static LPCTSTR szFilters[] = {LPGENT("All"), LPGENT("Last Day"), LPGENT("Last Week"), LPGENT("Last Month"), LPGENT("Last Year"), LPGENT("User-Defined")};
 
 				for(int i = 0;i < sizeof(szSources)/sizeof(szSources[0]);++i)
 				{
@@ -239,7 +226,7 @@ namespace
 					::SendDlgItemMessage(hDlg,IDC_COMBO_DATA_SOURCE,CB_INSERTSTRING,-1,reinterpret_cast<LPARAM>(p));
 				}
 
-				int nSel = DBGetContactSettingByte(hContact,QUOTES_PROTOCOL_NAME,"Chart_Source",srcLogFile);
+				int nSel = db_get_b(hContact,QUOTES_PROTOCOL_NAME,"Chart_Source",srcLogFile);
 				::SendDlgItemMessage(hDlg,IDC_COMBO_DATA_SOURCE,CB_SETCURSEL,nSel,0);
 
 				for(int i = 0;i < sizeof(szFilters)/sizeof(szFilters[0]);++i)
@@ -248,7 +235,7 @@ namespace
 					::SendDlgItemMessage(hDlg,IDC_COMBO_FILTER,CB_INSERTSTRING,-1,reinterpret_cast<LPARAM>(szFilters[i]));
 				}
 
-				nSel = DBGetContactSettingByte(hContact,QUOTES_PROTOCOL_NAME,"Chart_Filter",filterAll);
+				nSel = db_get_b(hContact,QUOTES_PROTOCOL_NAME,"Chart_Filter",filterAll);
 				::SendDlgItemMessage(hDlg,IDC_COMBO_FILTER,CB_SETCURSEL,nSel,0);
 
 				update_filter_controls(hDlg);

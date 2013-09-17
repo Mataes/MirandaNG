@@ -29,7 +29,6 @@ menu items).
 UPDATELIST *UpdateListHead;
 UPDATELIST *UpdateListTail;
 
-extern HANDLE hUpdateMutex;
 
 //============  RETRIEVE NEW WEATHER  ============
 
@@ -59,7 +58,7 @@ int UpdateWeather(HANDLE hContact)
 		// error occurs if the return value is not equals to 0
 		if (opt.ShowWarnings) 
 		{	// show warnings by popup
-			mir_sntprintf(str, SIZEOF(str)-105, 
+			mir_sntprintf(str, SIZEOF(str) - 105, 
 				TranslateT("Unable to retrieve weather information for %s"), dbv.ptszVal);
 			_tcscat(str, _T("\n"));
 			_tcscat(str, GetError(code));
@@ -105,7 +104,7 @@ int UpdateWeather(HANDLE hContact)
 	if ( !dbres && dbv.ptszVal[0] != 0) {
 		if (opt.AlertPopup && !db_get_b(hContact, WEATHERPROTONAME, "DPopUp", 0) && Ch) {
 			// display alert popup
-			wsprintf(str, _T("Alert for %s%c%s"), winfo.city, 255, dbv.ptszVal);
+			mir_sntprintf(str, SIZEOF(str), _T("Alert for %s%c%s"), winfo.city, 255, dbv.ptszVal);
 			WPShowMessage(str, SM_WEATHERALERT);
 		}
 		// alert issued, set display to italic
@@ -182,19 +181,17 @@ int UpdateWeather(HANDLE hContact)
 		}	}	}
 
 		if (db_get_b(hContact, WEATHERPROTONAME, "History", 0)) {
-			DBEVENTINFO dbei = {0};
 			// internal log using history
 			GetDisplay(&winfo, opt.hText, str2);
-			dbei.cbSize = sizeof(dbei);
+
+			DBEVENTINFO dbei = { sizeof(dbei) };
 			dbei.szModule = WEATHERPROTONAME;
 			dbei.timestamp = (DWORD)time(NULL);
 			dbei.flags = DBEF_READ|DBEF_UTF;
 			dbei.eventType = EVENTTYPE_MESSAGE;
 			dbei.pBlob = (PBYTE)mir_utf8encodeT(str2);
 			dbei.cbBlob = (DWORD)strlen((char*)dbei.pBlob)+1;
-
-			// add the history event
-			CallService(MS_DB_EVENT_ADD, (WPARAM)hContact, (LPARAM)&dbei);
+			db_event_add(hContact, &dbei);
 		}
 
 		// show the popup
@@ -285,18 +282,11 @@ void DestroyUpdateList(void)
 void UpdateAll(BOOL AutoUpdate, BOOL RemoveData) 
 {
 	// add all weather contact to the update queue list
-	HANDLE hContact = db_find_first();
-	while (hContact != NULL) 
-	{
-		if (IsMyContact(hContact)) 
-		{
-			if ( !db_get_b(hContact,WEATHERPROTONAME, "AutoUpdate",FALSE) || !AutoUpdate) 
-			{
-				if (RemoveData)	DBDataManage((HANDLE)hContact, WDBM_REMOVE, 0, 0);
-				UpdateListAdd(hContact);
-			}
+	for (HANDLE hContact = db_find_first(WEATHERPROTONAME); hContact; hContact = db_find_next(hContact, WEATHERPROTONAME)) {
+		if ( !db_get_b(hContact,WEATHERPROTONAME, "AutoUpdate",FALSE) || !AutoUpdate) {
+			if (RemoveData)	DBDataManage((HANDLE)hContact, WDBM_REMOVE, 0, 0);
+			UpdateListAdd(hContact);
 		}
-		hContact = db_find_next(hContact);
 	}
 
 	// if it is not updating, then start the update thread process
@@ -401,7 +391,7 @@ int GetWeatherData(HANDLE hContact)
 	GetSvc(Svc);
 
 	// check for invalid station
-	if (id[0] == 0)	 return INVALID_ID;
+	if (id[0] == 0)  return INVALID_ID;
 	if (Svc[0] == 0) return INVALID_SVC;
 
 	// get the update strings (loaded to memory from ini files)
@@ -412,25 +402,27 @@ int GetWeatherData(HANDLE hContact)
 	WIDATAITEMLIST* Item;
 	WORD cond = NA;
 	char loc[256];
-	char* szId = mir_t2a( id );
-	for ( int i=0; i<4; ++i) {
+	for (int i=0; i<4; ++i) {
 		// generate update URL
 		switch(i) {
 		case 0:
-			_snprintf(loc, SIZEOF(loc), Data->UpdateURL, szId);
+			mir_snprintf(loc, SIZEOF(loc), Data->UpdateURL, _T2A(id));
 			break;
 
 		case 1:
-			_snprintf(loc, SIZEOF(loc), Data->UpdateURL2, szId);
+			mir_snprintf(loc, SIZEOF(loc), Data->UpdateURL2, _T2A(id));
 			break;
 
 		case 2:
-			_snprintf(loc, SIZEOF(loc), Data->UpdateURL3, szId);
+			mir_snprintf(loc, SIZEOF(loc), Data->UpdateURL3, _T2A(id));
 			break;
 
 		case 3:
-			_snprintf(loc, SIZEOF(loc), Data->UpdateURL4, szId);
+			mir_snprintf(loc, SIZEOF(loc), Data->UpdateURL4, _T2A(id));
 			break;
+
+		default:
+			continue;
 		}
 
 		if ( loc[0] == 0 )

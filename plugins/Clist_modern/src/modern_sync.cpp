@@ -1,22 +1,6 @@
 #include "hdr/modern_commonheaders.h"
 #include "hdr/modern_sync.h"
 
-struct SYNCCALLITEM
-{
-	WPARAM  wParam;
-	LPARAM  lParam;
-	int     nResult;
-	HANDLE  hDoneEvent;
-	PSYNCCALLBACKPROC pfnProc;    
-};
-
-static void CALLBACK _SyncCallerUserAPCProc(void* param)
-{
-	SYNCCALLITEM* item = (SYNCCALLITEM*)param;
-	item->nResult = item->pfnProc(item->wParam, item->lParam);
-	SetEvent(item->hDoneEvent);
-}
-
 static INT_PTR SyncCaller(WPARAM proc, LPARAM lParam)
 {
 	typedef int (*P0PARAMFUNC)();
@@ -46,6 +30,53 @@ static INT_PTR SyncCaller(WPARAM proc, LPARAM lParam)
 	return 0;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////
+
+struct SYNCCALLITEM
+{
+	WPARAM  wParam;
+	LPARAM  lParam;
+	int     nResult;
+	HANDLE  hDoneEvent;
+	PSYNCCALLBACKPROC pfnProc;    
+};
+
+static void CALLBACK _SyncCallerUserAPCProc(void* param)
+{
+	SYNCCALLITEM* item = (SYNCCALLITEM*)param;
+	item->nResult = item->pfnProc(item->wParam, item->lParam);
+	SetEvent(item->hDoneEvent);
+}
+
+static int SyncCallAPCProxy(PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam)
+{
+	if (pfnProc == NULL) 
+		return 0;
+
+	if (GetCurrentThreadId() == g_dwMainThreadID)
+		return pfnProc(wParam, lParam);
+
+	SYNCCALLITEM item;
+	item.wParam = wParam;
+	item.lParam = lParam;
+	item.pfnProc = pfnProc;
+	item.nResult = 0;
+	item.hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+	CallFunctionAsync(_SyncCallerUserAPCProc, &item);	
+		
+	WaitForSingleObject(item.hDoneEvent, INFINITE);
+	CloseHandle(item.hDoneEvent);
+	return item.nResult;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+int DoCall( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam)
+{
+	return SyncCallAPCProxy(pfnProc, 0, lParam);
+}
+
 int SyncCall(void * vproc, int count, ... )
 {
 	LPARAM params[5];
@@ -57,91 +88,5 @@ int SyncCall(void * vproc, int count, ... )
 		params[i+1] = va_arg(va,LPARAM);
 
 	va_end(va);
-	return SyncCallProxy(SyncCaller, (WPARAM)vproc, (LPARAM) params);
-}
-
-int SyncCallProxy(PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam, CRITICAL_SECTION * cs /*= NULL */)
-{  
-	SYNCCALLITEM item = {0};
-	
-	int nReturn = 0;
-
-	if ( cs != NULL ) {
-		if ( !fnTryEnterCriticalSection ) { // for poor OSes like Win98
-			EnterCriticalSection( cs );
-			int result = pfnProc( wParam, lParam );
-			LeaveCriticalSection( cs );
-			return result;
-		}
-
-		if ( fnTryEnterCriticalSection( cs )) { //simple call (Fastest)
-			int result = pfnProc(wParam,lParam);
-			LeaveCriticalSection( cs );
-			return result;
-		}
-		else { //Window SendMessage Call(Middle)
-			if ( SyncCallWinProcProxy( pfnProc, wParam, lParam, nReturn ) == S_OK)
-				return nReturn;
-		}
-	}
-	if ( SyncCallAPCProxy( pfnProc, wParam, lParam, nReturn ) == S_OK)
-		return nReturn;
-	
-	return NULL;
-}
-
-HRESULT SyncCallWinProcProxy( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam, int& nReturn )
-{
-	nReturn = 0;
-	if (pcli->hwndContactList == NULL )
-		return E_FAIL;
-	
-	SYNCCALLITEM item = {0};
-	item.wParam = wParam;
-	item.lParam = lParam;
-	item.pfnProc = pfnProc;
-	nReturn = SendMessage(pcli->hwndContactList, UM_SYNCCALL, (WPARAM)&item,0);
-	return S_OK;
-}
-
-HRESULT SyncCallAPCProxy( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam, int& hReturn )
-{
-	hReturn = 0;
-
-	if (pfnProc == NULL) 
-		return E_FAIL;
-
-	if (GetCurrentThreadId() != g_dwMainThreadID) {
-		SYNCCALLITEM item = {0};
-		item.wParam = wParam;
-		item.lParam = lParam;
-		item.pfnProc = pfnProc;
-		item.hDoneEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-
-		CallFunctionAsync(_SyncCallerUserAPCProc, &item);	
-		
-		WaitForSingleObject(item.hDoneEvent, INFINITE);
-		CloseHandle(item.hDoneEvent);
-
-		hReturn = item.nResult;
-
-		return S_OK;
-	}
-	/* else */
-
-	hReturn = pfnProc(wParam, lParam);
-	return S_OK;
-}
-
-LRESULT SyncOnWndProcCall( WPARAM wParam )
-{
-	SYNCCALLITEM *psci = (SYNCCALLITEM *)wParam;
-	if (psci)
-		return psci->pfnProc( psci->wParam, psci->lParam );
-	return 0;
-}
-
-int DoCall( PSYNCCALLBACKPROC pfnProc, WPARAM wParam, LPARAM lParam )
-{
-	return SyncCallProxy( pfnProc, 0, lParam );
+	return SyncCallAPCProxy(SyncCaller, (WPARAM)vproc, (LPARAM) params);
 }

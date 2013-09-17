@@ -51,16 +51,16 @@ BEGIN
     CONTROL         "Show character count",IDC_CHARCOUNT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,148,192,149,10
     LTEXT           "Show warning when message has not been received after",IDC_STATIC,8,208,211,8
     EDITTEXT        IDC_SECONDS,223,206,25,12,ES_AUTOHSCROLL
-    LTEXT           "seconds.",IDC_STATIC,253,208,44,8
+    LTEXT           "seconds",IDC_STATIC,253,208,44,8
     CONTROL         "Support control up/down in message area to show previously sent messages",IDC_CTRLSUPPORT,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,110,289,10
     CONTROL         "Delete temporary contacts when closing message window",IDC_DELTEMP,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,122,287,10
     CONTROL         "Enable avatar support in the message window",IDC_AVATARSUPPORT,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,135,289,10
-    CONTROL         "Limit avatar height to ",IDC_LIMITAVATARH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,149,126,10
+    CONTROL         "Limit avatar height to",IDC_LIMITAVATARH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,22,149,126,10
     EDITTEXT        IDC_AVATARHEIGHT,148,148,28,13,ES_AUTOHSCROLL
-    LTEXT           "pixels.",IDC_STATIC,181,150,35,8
+    LTEXT           "pixels",IDC_STATIC,181,150,35,8
     LTEXT           "Max Number of Flashes",IDC_STATIC,7,35,141,8
     EDITTEXT        IDC_NFLASHES,148,33,25,12,ES_AUTOHSCROLL | ES_NUMBER
 END
@@ -123,7 +123,7 @@ BEGIN
     CONTROL         "Show Formatting",IDC_SHOWFORMATTING,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,169,10,126,10
 END
 
-IDD_OPT_MSGTYPE DIALOGEX 0, 0, 283, 252
+IDD_OPT_MSGTYPE DIALOGEX 0, 0, 283, 234
 STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_VISIBLE
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
@@ -165,16 +165,16 @@ BEGIN
     CONTROL         "Show character count",IDC_CHARCOUNT,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,59,142,22,10
     LTEXT           "Show warning when message has not been received after",IDC_STATIC,10,93,211,8
     EDITTEXT        IDC_SECONDS,226,91,25,12,ES_AUTOHSCROLL
-    LTEXT           "seconds.",IDC_STATIC,256,93,44,8
+    LTEXT           "seconds",IDC_STATIC,256,93,44,8
     CONTROL         "Support control up/down in message area to show previously sent messages",IDC_CTRLSUPPORT,
                     "Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,240,131,20,10
     CONTROL         "Delete temporary contacts when closing message window",IDC_DELTEMP,
                     "Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,240,143,22,10
     CONTROL         "Enable avatar support in the message window",IDC_AVATARSUPPORT,
                     "Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,239,155,23,10
-    CONTROL         "Limit avatar height to ",IDC_LIMITAVATARH,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,236,166,26,10
+    CONTROL         "Limit avatar height to",IDC_LIMITAVATARH,"Button",BS_AUTOCHECKBOX | NOT WS_VISIBLE | WS_TABSTOP,236,166,26,10
     EDITTEXT        IDC_AVATARHEIGHT,242,178,12,13,ES_AUTOHSCROLL | NOT WS_VISIBLE
-    LTEXT           "pixels.",IDC_STATIC,271,177,8,8,NOT WS_VISIBLE
+    LTEXT           "pixels",IDC_STATIC,271,177,8,8,NOT WS_VISIBLE
     LTEXT           "Message window behaviour:",IDC_TXT_TITLE1,1,0,183,8
     LTEXT           "Messaging:",IDC_TXT_TITLE3,1,64,368,8
 END
@@ -264,12 +264,12 @@ END
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE 
+1 TEXTINCLUDE
 BEGIN
     "..\\sxr\\resource.h\0"
 END
 
-2 TEXTINCLUDE 
+2 TEXTINCLUDE
 BEGIN
     "#include <winres.h>\r\n"
     "#include <richedit.h>\r\n"
@@ -277,7 +277,7 @@ BEGIN
     "\0"
 END
 
-3 TEXTINCLUDE 
+3 TEXTINCLUDE
 BEGIN
     "\r\n"
     "\0"
@@ -358,4 +358,3 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
-

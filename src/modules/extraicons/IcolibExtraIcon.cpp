@@ -1,21 +1,23 @@
 /*
- Copyright (C) 2009 Ricardo Pescuma Domenecci
 
- This is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
+Copyright (C) 2009 Ricardo Pescuma Domenecci
+Copyright (C) 2012-13 Miranda NG Project
 
- This is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
+This is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
 
- You should have received a copy of the GNU Library General Public
- License along with this file; see the file license.txt.  If
- not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- Boston, MA 02111-1307, USA.
- */
+This is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Library General Public
+License along with this file; see the file license.txt.  If
+not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+*/
 
 #include "..\..\core\commonheaders.h"
 
@@ -28,9 +30,7 @@ IcolibExtraIcon::IcolibExtraIcon(int _id, const char *_name, const TCHAR *_descr
 		MIRANDAHOOKPARAM _OnClick, LPARAM _param) :
 	BaseExtraIcon(_id, _name, _description, _descIcon, _OnClick, _param)
 {
-	char setting[512];
-	mir_snprintf(setting, SIZEOF(setting), "%s/%s", MODULE_NAME, _name);
-	CallService(MS_DB_SETSETTINGRESIDENT, TRUE, (WPARAM) setting);
+	db_set_resident(MODULE_NAME, _name);
 }
 
 IcolibExtraIcon::~IcolibExtraIcon()
@@ -54,7 +54,7 @@ void IcolibExtraIcon::applyIcon(HANDLE hContact)
 	HANDLE hImage = INVALID_HANDLE_VALUE;
 
 	DBVARIANT dbv;
-	if ( !DBGetContactSettingString(hContact, MODULE_NAME, name.c_str(), &dbv)) {
+	if ( !db_get_s(hContact, MODULE_NAME, name.c_str(), &dbv)) {
 		if (!IsEmpty(dbv.pszVal))
 			hImage = GetIcon(dbv.pszVal);
 
@@ -74,7 +74,7 @@ int IcolibExtraIcon::setIcon(int id, HANDLE hContact, HANDLE hIcoLib)
 
 	if ( isEnabled()) {
 		DBVARIANT dbv;
-		if ( !DBGetContactSettingString(hContact, MODULE_NAME, name.c_str(), &dbv)) {
+		if ( !db_get_s(hContact, MODULE_NAME, name.c_str(), &dbv)) {
 			if (!IsEmpty(dbv.pszVal))
 				RemoveIcon(dbv.pszVal);
 
@@ -102,7 +102,7 @@ int IcolibExtraIcon::setIconByName(int id, HANDLE hContact, const char *icon)
 
 	if ( isEnabled()) {
 		DBVARIANT dbv;
-		if ( !DBGetContactSettingString(hContact, MODULE_NAME, name.c_str(), &dbv)) {
+		if ( !db_get_s(hContact, MODULE_NAME, name.c_str(), &dbv)) {
 			if (!IsEmpty(dbv.pszVal))
 				RemoveIcon(dbv.pszVal);
 

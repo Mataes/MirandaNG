@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -62,7 +62,7 @@ static void fnReloadProtoMenus(void)
 	cli.pfnCluiProtocolStatusChanged(0, 0);
 }
 
-static INT_PTR srvRetrieveInterface(WPARAM, LPARAM lParam)
+static INT_PTR srvRetrieveInterface(WPARAM, LPARAM)
 {
 	int rc;
 
@@ -169,6 +169,7 @@ static INT_PTR srvRetrieveInterface(WPARAM, LPARAM lParam)
 		cli.pfnTrayIconTaskbarCreated          = fnTrayIconTaskbarCreated;
 		cli.pfnTrayIconUpdate                  = fnTrayIconUpdate;
 		cli.pfnTrayIconUpdateBase              = fnTrayIconUpdateBase;
+		cli.pfnTrayCalcChanged                 = fnTrayCalcChanged;
 		cli.pfnTrayIconUpdateWithImageList	   = fnTrayIconUpdateWithImageList;
 		cli.pfnCListTrayNotify                 = fnCListTrayNotify;
 
@@ -211,7 +212,7 @@ static INT_PTR srvRetrieveInterface(WPARAM, LPARAM lParam)
 		cli.pfnReloadExtraIcons                = fnReloadExtraIcons;
 		cli.pfnSetAllExtraIcons                = fnSetAllExtraIcons;
 
-		cli.hInst = (HMODULE)lParam;
+		cli.pfnGetContactIcon                  = fnGetContactIcon;
 
 		rc = LoadContactListModule2();
 		if (rc == 0)

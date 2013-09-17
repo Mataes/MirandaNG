@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -56,7 +57,7 @@ class CPrivacyListRule
 protected:
 	friend class CPrivacyList;
 public:
-	CPrivacyListRule(CJabberProto* ppro, PrivacyListRuleType type = Else, const TCHAR *szValue = _T(""), BOOL bAction = TRUE, DWORD dwOrder = 90, DWORD dwPackets = 0)
+	CPrivacyListRule(CJabberProto *ppro, PrivacyListRuleType type = Else, const TCHAR *szValue = _T(""), BOOL bAction = TRUE, DWORD dwOrder = 90, DWORD dwPackets = 0)
 	{
 		m_proto = ppro;
 		m_szValue = mir_tstrdup(szValue);
@@ -68,9 +69,7 @@ public:
 	};
 	~CPrivacyListRule()
 	{
-		if (m_szValue)
-			mir_free(m_szValue);
-
+		mir_free(m_szValue);
 		if (m_pNext)
 			delete m_pNext;
 	};
@@ -153,7 +152,7 @@ protected:
 public:
 	CJabberProto* m_proto;
 
-	CPrivacyList(CJabberProto* ppro, TCHAR *szListName)
+	CPrivacyList(CJabberProto *ppro, TCHAR *szListName)
 	{
 		m_proto = ppro;
 		m_szListName = mir_tstrdup(szListName);
@@ -165,8 +164,7 @@ public:
 	};
 	~CPrivacyList()
 	{
-		if (m_szListName)
-			mir_free(m_szListName);
+		mir_free(m_szListName);
 		RemoveAllRules();
 		if (m_pNext)
 			delete m_pNext;
@@ -215,7 +213,7 @@ public:
 	{
 		if ( !m_pRules)
 			return FALSE;
-		
+
 		if (m_pRules == pRuleToRemove) {
 			m_pRules = m_pRules->GetNext();
 			pRuleToRemove->SetNext(NULL);
@@ -252,7 +250,7 @@ public:
 			dwCount++;
 			pRule = pRule->GetNext();
 		}
-		
+
 		// create pointer array for sort procedure
 		CPrivacyListRule **pRules = (CPrivacyListRule **)mir_alloc(dwCount * sizeof(CPrivacyListRule *));
 		if ( !pRules)
@@ -263,7 +261,7 @@ public:
 			pRules[dwPos++] = pRule;
 			pRule = pRule->GetNext();
 		}
-		
+
 		// sort array of pointers, slow, but working :)
 		DWORD i, j;
 		CPrivacyListRule *pTmp;
@@ -329,7 +327,7 @@ protected:
 public:
 	CJabberProto* m_proto;
 
-	CPrivacyListManager(CJabberProto* ppro)
+	CPrivacyListManager(CJabberProto *ppro)
 	{
 		m_proto = ppro;
 		m_szActiveListName = NULL;
@@ -340,10 +338,8 @@ public:
 	};
 	~CPrivacyListManager()
 	{
-		if (m_szActiveListName)
-			mir_free(m_szActiveListName);
-		if (m_szDefaultListName)
-			mir_free(m_szDefaultListName);
+		mir_free(m_szActiveListName);
+		mir_free(m_szDefaultListName);
 		RemoveAllLists();
 		DeleteCriticalSection(&m_cs);
 	};

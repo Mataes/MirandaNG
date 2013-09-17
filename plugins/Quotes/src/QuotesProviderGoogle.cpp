@@ -1,16 +1,4 @@
 #include "StdAfx.h"
-#include "QuotesProviderGoogle.h"
-#include "resource.h"
-#include "HTTPSession.h"
-#include "Log.h"
-#include "DBUtils.h"
-#include "EconomicRateInfo.h"
-#include "ModuleInfo.h"
-#include "QuotesProviders.h"
-#include "IHTMLParser.h"
-#include "IHTMLEngine.h"
-#include "CommonOptionDlg.h"
-#include "QuotesProviderVisitor.h"
 
 CQuotesProviderGoogle::CQuotesProviderGoogle()
 {
@@ -51,15 +39,15 @@ bool CQuotesProviderGoogle::WatchForRate(const CRateInfo& ri,
 		HANDLE hContact = CreateNewContact(sName);
 		if(hContact)
 		{
-			DBWriteContactSettingTString(hContact,QUOTES_PROTOCOL_NAME,DB_STR_FROM_ID,ri.m_from.GetID().c_str());
-			DBWriteContactSettingTString(hContact,QUOTES_PROTOCOL_NAME,DB_STR_TO_ID,ri.m_to.GetID().c_str());
+			db_set_ts(hContact,QUOTES_PROTOCOL_NAME,DB_STR_FROM_ID,ri.m_from.GetID().c_str());
+			db_set_ts(hContact,QUOTES_PROTOCOL_NAME,DB_STR_TO_ID,ri.m_to.GetID().c_str());
 			if(false == ri.m_from.GetName().empty())
 			{
-				DBWriteContactSettingTString(hContact,QUOTES_PROTOCOL_NAME,DB_STR_FROM_DESCRIPTION,ri.m_from.GetName().c_str());
+				db_set_ts(hContact,QUOTES_PROTOCOL_NAME,DB_STR_FROM_DESCRIPTION,ri.m_from.GetName().c_str());
 			}
 			if(false == ri.m_to.GetName().empty())
 			{
-				DBWriteContactSettingTString(hContact,QUOTES_PROTOCOL_NAME,DB_STR_TO_DESCRIPTION,ri.m_to.GetName().c_str());
+				db_set_ts(hContact,QUOTES_PROTOCOL_NAME,DB_STR_TO_DESCRIPTION,ri.m_to.GetName().c_str());
 			}
 
 			return true;
@@ -125,7 +113,7 @@ namespace
 	bool parse_html_node(const THTMLNodePtr& pNode,double& rdRate)
 	{
 		tstring sID = pNode->GetAttribute(_T("id"));
-		if ((false == sID.empty()) && (0 == quotes_stricmp(sID.c_str(),_T("currency_converter_result"))))
+		if ((false == sID.empty()) && (0 == quotes_stricmp(sID.c_str(), _T("currency_converter_result"))))
 		{
 			size_t cChild = pNode->GetChildCount();
 // 			assert(1 == cChild);

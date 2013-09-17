@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -462,7 +462,7 @@ static void ShowEffectButton(HWND hwndDlg, BOOL bShow)
 	ShowWindow( GetDlgItem(hwndDlg, IDC_EFFECT_STATIC), bShow ? SW_SHOW : SW_HIDE);
 }
 
-TCHAR* ModernEffectNames[] = { _T("<none>"), _T("Shadow at left"), _T("Shadow at right"), _T("Outline"), _T("Outline smooth"), _T("Smooth bump"), _T("Contour thin"), _T("Contour heavy") };
+TCHAR* ModernEffectNames[] = { LPGENT("<none>"), LPGENT("Shadow at left"), LPGENT("Shadow at right"), LPGENT("Outline"), LPGENT("Outline smooth"), LPGENT("Smooth bump"), LPGENT("Contour thin"), LPGENT("Contour heavy") };
 
 static INT_PTR CALLBACK ChooseEffectDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -540,13 +540,11 @@ static void sttSaveFontData(HWND hwndDlg, FontInternal &F)
 
 	mir_snprintf(str, SIZEOF(str), "%sSize", F.prefix);
 	if (F.flags & FIDF_SAVEACTUALHEIGHT) {
-		HDC hdc;
 		SIZE size;
-		HFONT hFont, hOldFont;
 		CreateFromFontSettings(&F.value, &lf);
-		hFont = CreateFontIndirect(&lf);
-		hdc = GetDC(hwndDlg);
-		hOldFont = (HFONT)SelectObject(hdc, hFont);
+		HFONT hFont = CreateFontIndirect(&lf);
+		HDC hdc = GetDC(hwndDlg);
+		HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
 		GetTextExtentPoint32(hdc, _T("_W"), 2, &size);
 		ReleaseDC(hwndDlg, hdc);
 		SelectObject(hdc, hOldFont);
@@ -569,10 +567,10 @@ static void sttSaveFontData(HWND hwndDlg, FontInternal &F)
 	db_set_dw(NULL, F.dbSettingsGroup, str, F.value.colour);
 	if (F.flags & FIDF_NOAS) {
 		mir_snprintf(str, SIZEOF(str), "%sAs", F.prefix);
-		DBWriteContactSettingWord(NULL, F.dbSettingsGroup, str, (WORD)0x00FF);
+		db_set_w(NULL, F.dbSettingsGroup, str, (WORD)0x00FF);
 	}
 	mir_snprintf(str, SIZEOF(str), "%sFlags", F.prefix);
-	DBWriteContactSettingWord(NULL, F.dbSettingsGroup, str, (WORD)F.flags);
+	db_set_w(NULL, F.dbSettingsGroup, str, (WORD)F.flags);
 }
 
 static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)

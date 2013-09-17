@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
-// Used by resource.rc
+// Microsoft Visual C++ generated include file.
+// Used by C:\Users\xx\Documents\Visual Studio 2010\Projects\miranda-ng\plugins\MyDetails\res\resource.rc
 //
 #define IDD_SETNICKNAME                 101
 #define IDD_OPTS                        102
@@ -45,6 +45,7 @@
 #define IDC_AVATAR_CUSTOM_SIZE_CHK      1765
 #define IDC_AVATAR_ROUND_CORNERS        1800
 #define IDC_AVATAR_USE_FREE_SPACE       1801
+#define IDC_USE_SKINNING                1838
 #define IDC_AVATAR_BORDER_COLOR_L       1839
 #define IDC_AVATAR_BORDER_COLOR         1840
 #define IDC_AVATAR_BKG_COLOR_L          1841

@@ -18,115 +18,114 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
-#include "TextToken.h"
-#include "m_MathModule.h"
-//#include "m_metacontacts.h"
-#include "Utils.h"
 
-TextToken::TextToken(int type, const char *text, int len) {
+#include "ieview_common.h"
+
+TextToken::TextToken(int type, const char *text, int len)
+{
 	next = NULL;
 	tag = 0;
 	end = false;
 	this->type = type;
-	this->text = Utils::dupString(text, len);
-	this->wtext = Utils::convertToWCS(this->text);
+	this->text = mir_strndup(text, len);
+	this->wtext = mir_a2t(this->text);
 	this->link = NULL;
 	this->wlink = NULL;
 }
 
-TextToken::TextToken(int type, const wchar_t *wtext, int len) {
+TextToken::TextToken(int type, const wchar_t *wtext, int len)
+{
 	next = NULL;
 	tag = 0;
 	end = false;
 	this->type = type;
-	this->wtext = Utils::dupString(wtext, len);
-	this->text = Utils::convertToString(this->wtext);
+	this->wtext = mir_tstrndup(wtext, len);
+	this->text = mir_t2a(this->wtext);
 	this->link = NULL;
 	this->wlink = NULL;
 }
 
-TextToken::~TextToken() {
-	if (text!=NULL) {
-		delete text;
-	}
-	if (wtext!=NULL) {
-		delete wtext;
-	}
-	if (link!=NULL) {
-		delete link;
-	}
-	if (wlink!=NULL) {
-		delete wlink;
-	}
+TextToken::~TextToken()
+{
+	mir_free(text);
+	mir_free(wtext);
+	mir_free(link);
+	mir_free(wlink);
 }
 
-TextToken * TextToken::getNext() {
+TextToken * TextToken::getNext()
+{
 	return next;
 }
 
-void TextToken::setNext(TextToken *ptr) {
+void TextToken::setNext(TextToken *ptr)
+{
 	next = ptr;
 }
 
-int TextToken::getType() {
+int TextToken::getType()
+{
 	return type;
 }
 
-const char *TextToken::getText() {
+const char *TextToken::getText()
+{
 	return text;
 }
 
-const wchar_t *TextToken::getTextW() {
+const wchar_t *TextToken::getTextW()
+{
 	return wtext;
 }
 
-int TextToken::getTag() {
+int TextToken::getTag()
+{
 	return tag;
 }
 
-void TextToken::setTag(int tag) {
+void TextToken::setTag(int tag)
+{
 	this->tag = tag;
 }
 
-bool TextToken::isEnd() {
+bool TextToken::isEnd()
+{
 	return end;
 }
 
-void TextToken::setEnd(bool b) {
+void TextToken::setEnd(bool b)
+{
 	this->end = b;
 }
 
-const char *TextToken::getLink() {
+const char *TextToken::getLink()
+{
 	return link;
 }
 
-const wchar_t *TextToken::getLinkW() {
+const wchar_t *TextToken::getLinkW()
+{
 	return wlink;
 }
 
-void TextToken::setLink(const char *link) {
-	if (this->link != NULL) {
-		delete this->link;
-	}
-	if (this->wlink != NULL) {
-		delete this->wlink;
-	}
-	this->link = Utils::dupString(link);
-	this->wlink = Utils::convertToWCS(link);
+void TextToken::setLink(const char *_link)
+{
+	replaceStr(link, _link);
+
+	mir_free(wlink);
+	this->wlink = mir_a2t(_link);
 }
 
-void TextToken::setLink(const wchar_t *link) {
-	if (this->link != NULL) {
-		delete this->link;
-	}
-	if (this->wlink != NULL) {
-		delete this->wlink;
-	}
-	this->link = Utils::convertToString(link);
-	this->wlink = Utils::dupString(link);
+void TextToken::setLink(const wchar_t *_link)
+{
+	replaceStrW(wlink, _link);
+
+	mir_free(link);
+	link = mir_u2a(_link);
 }
 
-static int countNoWhitespace(const wchar_t *str) {
+static int countNoWhitespace(const wchar_t *str)
+{
 	int c;
 	for (c=0; *str!='\n' && *str!='\r' && *str!='\t' && *str!=' ' && *str!='\0'; str++, c++);
 	return c;
@@ -147,11 +146,11 @@ TextToken* TextToken::tokenizeMath(const wchar_t *text) {
 			char* mthDelStart =  (char *)CallService(MATH_GET_PARAMS, (WPARAM)MATH_PARAM_STARTDELIMITER, 0);
 			char* mthDelEnd   =  (char *)CallService(MATH_GET_PARAMS, (WPARAM)MATH_PARAM_ENDDELIMITER, 0);
 			if (mthDelStart!=NULL) {
-				mathTagName[0] = Utils::convertToWCS(mthDelStart);
+				mathTagName[0] = mir_a2t(mthDelStart);
 				mathTagLen[0] = (int)wcslen(mathTagName[0]);
 			}
 			if (mthDelEnd!=NULL) {
-				mathTagName[1] = Utils::convertToWCS(mthDelEnd);
+				mathTagName[1] = mir_a2t(mthDelEnd);
 				mathTagLen[1] = (int)wcslen(mathTagName[1]);
 			}
 			CallService(MTH_FREE_MATH_BUFFER,0, (LPARAM) mthDelStart);
@@ -309,9 +308,9 @@ TextToken* TextToken::tokenizeBBCodes(const wchar_t *text, int l) {
 						newTokenType = BBCODE;
 						newTokenSize = k - i;
 						if (bbTagArg[j]) {
-							wchar_t *urlLink = 	Utils::dupString(text + tagArgStart, tagArgEnd - tagArgStart);
+							wchar_t *urlLink = mir_tstrndup(text + tagArgStart, tagArgEnd - tagArgStart);
 							bbToken->setLink(urlLink);
-							delete urlLink;
+							mir_free(urlLink);
 						}
 						break;
 					}
@@ -580,14 +579,15 @@ TextToken* TextToken::tokenizeChatFormatting(const wchar_t *text) {
 	return firstToken;
 }
 
-wchar_t *TextToken::htmlEncode(const wchar_t *str) {
+wchar_t *TextToken::htmlEncode(const wchar_t *str)
+{
 	wchar_t *out;
 	const wchar_t *ptr;
-	bool wasSpace;
-	int c;
-	c = 0;
-	wasSpace = false;
+	if (str == NULL)
+		return NULL;
+	int c = 0;
 	for (ptr=str; *ptr!='\0'; ptr++) {
+		bool wasSpace = false;
 		if (*ptr==' ' && wasSpace) {
 			wasSpace = true;
 			c += 6;
@@ -606,8 +606,8 @@ wchar_t *TextToken::htmlEncode(const wchar_t *str) {
 		}
 	}
 	wchar_t *output = new wchar_t[c+1];
-	wasSpace = false;
 	for (out=output, ptr=str; *ptr!='\0'; ptr++) {
+		bool wasSpace = false;
 		if (*ptr==' ' && wasSpace) {
 			wcscpy(out, L"&nbsp;");
 			out += 6;
@@ -629,7 +629,8 @@ wchar_t *TextToken::htmlEncode(const wchar_t *str) {
 	return output;
 }
 
-void TextToken::toString(wchar_t **str, int *sizeAlloced) {
+void TextToken::toString(wchar_t **str, int *sizeAlloced)
+{
 	wchar_t *eText = NULL, *eLink = NULL;
 	switch (type) {
 		case TEXT:
@@ -736,16 +737,16 @@ void TextToken::toString(wchar_t **str, int *sizeAlloced) {
 					break;
 				case BB_IMG:
 					eText = htmlEncode(wtext);
-					if ((Options::getGeneralFlags()&Options::GENERAL_ENABLE_FLASH) && (wcsstr(eText, L".swf")!=NULL)) {
+					if ((Options::getGeneralFlags()&Options::GENERAL_ENABLE_FLASH) && eText != NULL && (wcsstr(eText, L".swf")!=NULL)) {
 						Utils::appendText(str, sizeAlloced,
 		L"<div style=\"width: 100%%; border: 0; overflow: hidden;\"><object classid=\"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000\" \
 		codebase=\"http://active.macromedia.com/flash2/cabs/swflash.cab#version=4,0,0,0\" width=\"100%%\" >\
 		<param NAME=\"movie\" VALUE=\"%s\"><param NAME=\"quality\" VALUE=\"high\"><PARAM NAME=\"loop\" VALUE=\"true\"></object></div>",
 						eText);
-					} else if ((Options::getGeneralFlags()&Options::GENERAL_ENABLE_PNGHACK) && (wcsstr(eText, L".png")!=NULL)) {
+					} else if ((Options::getGeneralFlags()&Options::GENERAL_ENABLE_PNGHACK) && eText != NULL && (wcsstr(eText, L".png")!=NULL)) {
 						Utils::appendText(str, sizeAlloced, L"<img class=\"img\" style=\"height:1px;width:1px;filter:progid:DXImageTransform.Microsoft.AlphaImageLoader(src='%s',sizingMethod='image');\" />", eText);
 					} else {
-						if (wcsncmp(eText, L"http://", 7)) {
+						if (eText != NULL && wcsncmp(eText, L"http://", 7)) {
 							Utils::appendText(str, sizeAlloced, L"<div style=\"width: 100%%; border: 0; overflow: hidden;\"><img class=\"img\" style=\"width: expression((maxw = this.parentNode.offsetWidth ) > this.width ? 'auto' : maxw);\" src=\"file://%s\" /></div>", eText);
 						} else {
 							Utils::appendText(str, sizeAlloced, L"<div style=\"width: 100%%; border: 0; overflow: hidden;\"><img class=\"img\" style=\"width: expression((maxw = this.parentNode.offsetWidth ) > this.width ? 'auto' : maxw);\" src=\"%s\" /></div>", eText);
@@ -753,11 +754,8 @@ void TextToken::toString(wchar_t **str, int *sizeAlloced) {
 					}
 					break;
 				case BB_BIMG:
-					{
-						wchar_t *absolutePath = Utils::toAbsolute(wtext);
-						eText = htmlEncode(absolutePath);
-						delete absolutePath;
-					}
+					eText = htmlEncode(mir_ptr<wchar_t>(Utils::toAbsolute(wtext)));
+
 					if ((Options::getGeneralFlags()&Options::GENERAL_ENABLE_FLASH) && (wcsstr(eText, L".swf")!=NULL)) {
 						Utils::appendText(str, sizeAlloced,
 		L"<div style=\"width: 100%%; border: 0; overflow: hidden;\"><object classid=\"clsid:D27CDB6E-AE6D-11cf-96B8-444553540000\" \

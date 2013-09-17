@@ -1,16 +1,8 @@
-#include "license.hunspell"
-#include "license.myspell"
+#include "..\commons.h"
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
-#include "hunspell.hxx"
-#include "hunspell.h"
 #ifndef MOZILLA_CLIENT
 #    include "config.h"
 #endif
-#include "csutil.hxx"
 
 Hunspell::Hunspell(const char * affpath, const char * dpath, const char * key)
 {
@@ -242,10 +234,25 @@ int Hunspell::mkallcap2(char * p, w_char * u, int nc)
 
 void Hunspell::mkallsmall(char * p)
 {
+  if (utf8) {
+      w_char u[MAXWORDLEN];
+      int nc = u8_u16(u, MAXWORDLEN, p);
+      unsigned short idx;
+      for (int i = 0; i < nc; i++) {
+         idx = (u[i].h << 8) + u[i].l;
+         unsigned short low = unicodetolower(idx, langnum);
+         if (idx != low) {
+            u[i].h = (unsigned char) (low >> 8);
+            u[i].l = (unsigned char) (low & 0x00FF);
+         }
+      }
+      u16_u8(p, MAXWORDUTF8LEN, u, nc);
+  } else {
     while (*p != '\0') {
         *p = csconv[((unsigned char) *p)].clower;
         p++;
     }
+  }
 }
 
 int Hunspell::mkallsmall2(char * p, w_char * u, int nc)

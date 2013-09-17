@@ -304,10 +304,10 @@ int OptInit(WPARAM wParam,LPARAM lParam) {
 	if (( ServiceExists(MS_POPUP_ADDPOPUPT))) {
 		odp.position      = 100000000;
 		odp.pszTemplate   = MAKEINTRESOURCEA(IDD_POPUP);
-		odp.ptszGroup     = LPGENT("PopUps");
+		odp.ptszGroup     = LPGENT("Popups");
 		odp.groupPosition = 910000000;
 		odp.ptszTab       = NULL;
-		odp.pfnDlgProc    = DlgPopUpOpts;
+		odp.pfnDlgProc    = DlgPopupOpts;
 		Options_AddPage(wParam, &odp);
 	}
 

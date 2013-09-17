@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -22,13 +23,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "jabber.h"
-
-#include <io.h>
-#include "version.h"
 #include "jabber_iq.h"
 #include "jabber_rc.h"
-
-extern int bSecureIM;
+#include "version.h"
 
 #ifndef VER_SUITE_WH_SERVER
 	#define VER_SUITE_WH_SERVER                     0x00008000
@@ -114,14 +111,13 @@ extern int bSecureIM;
 	#define PRODUCT_CORE                              0x00000065
 	#define PRODUCT_PROFESSIONAL_WMC                  0x00000067
 	#define PRODUCT_UNLICENSED                        0xABCDABCD
-#endif	
+#endif
 
 typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
 #define StringCchCopy(x,y,z)      lstrcpyn((x),(z),(y))
 #define StringCchCat(x,y,z)       lstrcat((x),(z))
-#define StringCchPrintf           mir_sntprintf
 
 // slightly modified sample from MSDN
 BOOL GetOSDisplayString(LPTSTR pszOS, int BUFSIZE)
@@ -130,7 +126,7 @@ BOOL GetOSDisplayString(LPTSTR pszOS, int BUFSIZE)
 	SYSTEM_INFO si;
 	PGNSI pGNSI;
 	PGPI pGPI;
-	
+
 	DWORD dwType;
 
 	ZeroMemory(&si, sizeof(SYSTEM_INFO));
@@ -142,7 +138,7 @@ BOOL GetOSDisplayString(LPTSTR pszOS, int BUFSIZE)
 	if ( !bOsVersionInfoEx)
 	{
 		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-		if ( !GetVersionEx((OSVERSIONINFO*)&osvi)) 
+		if ( !GetVersionEx((OSVERSIONINFO*)&osvi))
 			return FALSE;
 	}
 
@@ -167,21 +163,21 @@ BOOL GetOSDisplayString(LPTSTR pszOS, int BUFSIZE)
 			case 0:
 				if (osvi.wProductType == VER_NT_WORKSTATION)
 					StringCchCat(pszOS, BUFSIZE, TEXT("Windows Vista "));
-				else 
+				else
 					StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2008 "));
 				break;
 
 			case 1:
 				if (osvi.wProductType == VER_NT_WORKSTATION)
 					StringCchCat(pszOS, BUFSIZE, TEXT("Windows 7 "));
-				else 
+				else
 					StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2008 R2 "));
 				break;
 
 			case 2:
 				if (osvi.wProductType == VER_NT_WORKSTATION)
 					StringCchCat(pszOS, BUFSIZE, TEXT("Windows 8 "));
-				else 
+				else
 					StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2012 "));
 				break;
 			}
@@ -322,7 +318,7 @@ BOOL GetOSDisplayString(LPTSTR pszOS, int BUFSIZE)
 			{
 				StringCchCat(pszOS, BUFSIZE, TEXT("Professional"));
 			}
-			else 
+			else
 			{
 				if (osvi.wSuiteMask & VER_SUITE_DATACENTER)
 					StringCchCat(pszOS, BUFSIZE, TEXT("Datacenter Server"));
@@ -342,13 +338,13 @@ BOOL GetOSDisplayString(LPTSTR pszOS, int BUFSIZE)
 
 		TCHAR buf[80];
 
-		StringCchPrintf(buf, 80, TEXT(" (build %d)"), osvi.dwBuildNumber);
+		mir_sntprintf(buf, 80, TEXT(" (build %d)"), osvi.dwBuildNumber);
 		StringCchCat(pszOS, BUFSIZE, buf);
 
-		return TRUE; 
+		return TRUE;
 	}
 	else
-	{  
+	{
 		return FALSE;
 	}
 }
@@ -363,7 +359,7 @@ BOOL CJabberProto::OnIqRequestVersion(HXML, CJabberIqInfo* pInfo)
 		return FALSE;
 
 	XmlNodeIq iq(_T("result"), pInfo);
-	HXML query = iq << XQUERY(_T(JABBER_FEAT_VERSION));
+	HXML query = iq << XQUERY(JABBER_FEAT_VERSION);
 	query << XCHILD(_T("name"), _T("Miranda NG Jabber"));
 	query << XCHILD(_T("version"), szCoreVersion);
 
@@ -383,7 +379,7 @@ BOOL CJabberProto::OnIqRequestVersion(HXML, CJabberIqInfo* pInfo)
 BOOL CJabberProto::OnIqRequestLastActivity(HXML, CJabberIqInfo *pInfo)
 {
 	m_ThreadInfo->send(
-		XmlNodeIq(_T("result"), pInfo) << XQUERY(_T(JABBER_FEAT_LAST_ACTIVITY))
+		XmlNodeIq(_T("result"), pInfo) << XQUERY(JABBER_FEAT_LAST_ACTIVITY)
 			<< XATTRI(_T("seconds"), m_tmJabberIdleStartTime ? time(0) - m_tmJabberIdleStartTime : 0));
 	return TRUE;
 }
@@ -391,7 +387,7 @@ BOOL CJabberProto::OnIqRequestLastActivity(HXML, CJabberIqInfo *pInfo)
 // XEP-0199: XMPP Ping support
 BOOL CJabberProto::OnIqRequestPing(HXML, CJabberIqInfo *pInfo)
 {
-	m_ThreadInfo->send(XmlNodeIq(_T("result"), pInfo) << XATTR(_T("from"), m_ThreadInfo->fullJID));
+	m_ThreadInfo->send( XmlNodeIq(_T("result"), pInfo) << XATTR(_T("from"), m_ThreadInfo->fullJID));
 	return TRUE;
 }
 
@@ -434,7 +430,7 @@ BOOL CJabberProto::OnIqRequestTime(HXML, CJabberIqInfo *pInfo)
 	mir_sntprintf(szTZ, SIZEOF(szTZ), _T("%+03d:%02d"), nGmtOffset / 60, nGmtOffset % 60);
 
 	XmlNodeIq iq(_T("result"), pInfo);
-	HXML timeNode = iq << XCHILDNS(_T("time"), _T(JABBER_FEAT_ENTITY_TIME));
+	HXML timeNode = iq << XCHILDNS(_T("time"), JABBER_FEAT_ENTITY_TIME);
 	timeNode << XCHILD(_T("utc"), stime); timeNode << XCHILD(_T("tzo"), szTZ);
 	LPCTSTR szTZName = tmi.getTzName(NULL);
 	if (szTZName)
@@ -459,7 +455,7 @@ BOOL CJabberProto::OnIqProcessIqOldTime(HXML, CJabberIqInfo *pInfo)
 	dtime[ 24 ] = 0;
 
 	XmlNodeIq iq(_T("result"), pInfo);
-	HXML queryNode = iq << XQUERY(_T(JABBER_FEAT_ENTITY_TIME_OLD));
+	HXML queryNode = iq << XQUERY(JABBER_FEAT_ENTITY_TIME_OLD);
 	queryNode << XCHILD(_T("utc"), stime);
 	LPCTSTR szTZName = tmi.getTzName(NULL);
 	if (szTZName)
@@ -478,7 +474,7 @@ BOOL CJabberProto::OnIqRequestAvatar(HXML, CJabberIqInfo *pInfo)
 	if (pictureType == PA_FORMAT_UNKNOWN)
 		return TRUE;
 
-	TCHAR* szMimeType;
+	TCHAR *szMimeType;
 	switch(pictureType) {
 		case PA_FORMAT_JPEG:	 szMimeType = _T("image/jpeg");   break;
 		case PA_FORMAT_GIF:	 szMimeType = _T("image/gif");    break;
@@ -495,7 +491,7 @@ BOOL CJabberProto::OnIqRequestAvatar(HXML, CJabberIqInfo *pInfo)
 		return TRUE;
 
 	long bytes = _filelength(_fileno(in));
-	char* buffer = (char*)mir_alloc(bytes*4/3 + bytes + 1000);
+	ptrA buffer((char*)mir_alloc(bytes*4/3 + bytes + 1000));
 	if (buffer == NULL) {
 		fclose(in);
 		return TRUE;
@@ -504,10 +500,8 @@ BOOL CJabberProto::OnIqRequestAvatar(HXML, CJabberIqInfo *pInfo)
 	fread(buffer, bytes, 1, in);
 	fclose(in);
 
-	char* str = JabberBase64Encode(buffer, bytes);
-	m_ThreadInfo->send(XmlNodeIq(_T("result"), pInfo) << XQUERY(_T(JABBER_FEAT_AVATAR)) << XCHILD(_T("query"), _A2T(str)) << XATTR(_T("mimetype"), szMimeType));
-	mir_free(str);
-	mir_free(buffer);
+	ptrA str( mir_base64_encode((PBYTE)(char*)buffer, bytes));
+	m_ThreadInfo->send( XmlNodeIq(_T("result"), pInfo) << XQUERY(JABBER_FEAT_AVATAR) << XCHILD(_T("query"), _A2T(str)) << XATTR(_T("mimetype"), szMimeType));
 	return TRUE;
 }
 
@@ -515,13 +509,13 @@ BOOL CJabberProto::OnSiRequest(HXML node, CJabberIqInfo *pInfo)
 {
 	const TCHAR *szProfile = xmlGetAttrValue(pInfo->GetChildNode(), _T("profile"));
 
-	if (szProfile && !_tcscmp(szProfile, _T(JABBER_FEAT_SI_FT)))
+	if (szProfile && !_tcscmp(szProfile, JABBER_FEAT_SI_FT))
 		FtHandleSiRequest(node);
 	else {
 		XmlNodeIq iq(_T("error"), pInfo);
 		HXML error = iq << XCHILD(_T("error")) << XATTRI(_T("code"), 400) << XATTR(_T("type"), _T("cancel"));
 		error << XCHILDNS(_T("bad-request"), _T("urn:ietf:params:xml:ns:xmpp-stanzas"));
-		error << XCHILD(_T("bad-profile")); 
+		error << XCHILD(_T("bad-profile"));
 		m_ThreadInfo->send(iq);
 	}
 	return TRUE;
@@ -533,17 +527,17 @@ BOOL CJabberProto::OnRosterPushRequest(HXML, CJabberIqInfo *pInfo)
 
 	// RFC 3921 #7.2 Business Rules
 	if (pInfo->GetFrom()) {
-		TCHAR* szFrom = JabberPrepareJid(pInfo->GetFrom());
+		TCHAR *szFrom = JabberPrepareJid(pInfo->GetFrom());
 		if ( !szFrom)
 			return TRUE;
 
-		TCHAR* szTo = JabberPrepareJid(m_ThreadInfo->fullJID);
+		TCHAR *szTo = JabberPrepareJid(m_ThreadInfo->fullJID);
 		if ( !szTo) {
 			mir_free(szFrom);
 			return TRUE;
 		}
 
-		TCHAR* pDelimiter = _tcschr(szFrom, _T('/'));
+		TCHAR *pDelimiter = _tcschr(szFrom, _T('/'));
 		if (pDelimiter) *pDelimiter = _T('\0');
 
 		pDelimiter = _tcschr(szTo, _T('/'));
@@ -556,7 +550,7 @@ BOOL CJabberProto::OnRosterPushRequest(HXML, CJabberIqInfo *pInfo)
 
 		// invalid JID
 		if ( !bRetVal) {
-			Log("<iq/> attempt to hack via roster push from " TCHAR_STR_PARAM, pInfo->GetFrom());
+			Log("<iq/> attempt to hack via roster push from %S", pInfo->GetFrom());
 			return TRUE;
 		}
 	}
@@ -564,7 +558,7 @@ BOOL CJabberProto::OnRosterPushRequest(HXML, CJabberIqInfo *pInfo)
 	JABBER_LIST_ITEM *item;
 	HANDLE hContact = NULL;
 	const TCHAR *jid, *str, *name;
-	TCHAR* nick;
+	TCHAR *nick;
 
 	Log("<iq/> Got roster push, query has %d children", xmlGetChildCount(queryNode));
 	for (int i=0; ; i++) {
@@ -591,18 +585,18 @@ BOOL CJabberProto::OnRosterPushRequest(HXML, CJabberIqInfo *pInfo)
 					replaceStrT(item->nick, nick);
 
 					HXML groupNode = xmlGetChild(itemNode , "group");
-					replaceStrT(item->group, (groupNode) ? xmlGetText(groupNode) : NULL);
+					replaceStrT(item->group, xmlGetText(groupNode));
 
 					if ((hContact=HContactFromJID(jid, 0)) == NULL) {
 						// Received roster has a new JID.
 						// Add the jid (with empty resource) to Miranda contact list.
 						hContact = DBCreateContact(jid, nick, FALSE, FALSE);
 					}
-					else JSetStringT(hContact, "jid", jid);
+					else setTString(hContact, "jid", jid);
 
 					if (name != NULL) {
 						DBVARIANT dbnick;
-						if ( !JGetStringT(hContact, "Nick", &dbnick)) {
+						if ( !getTString(hContact, "Nick", &dbnick)) {
 							if (_tcscmp(nick, dbnick.ptszVal) != 0)
 								db_set_ts(hContact, "CList", "MyHandle", nick);
 							else
@@ -614,14 +608,12 @@ BOOL CJabberProto::OnRosterPushRequest(HXML, CJabberIqInfo *pInfo)
 					}
 					else db_unset(hContact, "CList", "MyHandle");
 
-					if ( !m_options.IgnoreRosterGroups)
-					{
+					if ( !m_options.IgnoreRosterGroups) {
 						if (item->group != NULL) {
-							JabberContactListCreateGroup(item->group);
+							Clist_CreateGroup(0, item->group);
 							db_set_ts(hContact, "CList", "Group", item->group);
 						}
-						else 
-							db_unset(hContact, "CList", "Group");
+						else db_unset(hContact, "CList", "Group");
 					}
 				}
 				mir_free(nick);
@@ -632,7 +624,7 @@ BOOL CJabberProto::OnRosterPushRequest(HXML, CJabberIqInfo *pInfo)
 			else if ( !_tcscmp(str, _T("to"))) item->subscription = SUB_TO;
 			else if ( !_tcscmp(str, _T("from"))) item->subscription = SUB_FROM;
 			else item->subscription = SUB_NONE;
-			Log("Roster push for jid=" TCHAR_STR_PARAM ", set subscription to " TCHAR_STR_PARAM, jid, str);
+			Log("Roster push for jid=%S, set subscription to %S", jid, str);
 			// subscription = remove is to remove from roster list
 			// but we will just set the contact to offline and not actually
 			// remove, so that history will be retained.
@@ -641,7 +633,7 @@ BOOL CJabberProto::OnRosterPushRequest(HXML, CJabberIqInfo *pInfo)
 					SetContactOfflineStatus(hContact);
 					ListRemove(LIST_ROSTER, jid);
 			}	}
-			else if (JGetByte(hContact, "ChatRoom", 0))
+			else if ( isChatRoom(hContact))
 				db_unset(hContact, "CList", "Hidden");
 			else
 				UpdateSubscriptionInfo(hContact, item);
@@ -671,7 +663,7 @@ BOOL CJabberProto::OnIqRequestOOB(HXML, CJabberIqInfo *pInfo)
 
 	TCHAR text[ 1024 ];
 	TCHAR *str, *p, *q;
-	
+
 	str = (TCHAR*)xmlGetText(n);	// URL of the file to get
 	filetransfer *ft = new filetransfer(this);
 	ft->std.totalFiles = 1;
@@ -700,13 +692,13 @@ BOOL CJabberProto::OnIqRequestOOB(HXML, CJabberIqInfo *pInfo)
 		ft->iqId = mir_tstrdup(pInfo->GetIdStr());
 
 	if (ft->httpHostName && ft->httpPath) {
-		TCHAR* desc = NULL;
+		TCHAR *desc = NULL;
 
 		Log("Host=%s Port=%d Path=%s", ft->httpHostName, ft->httpPort, ft->httpPath);
 		if ((n = xmlGetChild(pInfo->GetChildNode(), "desc")) != NULL)
 			desc = (TCHAR*)xmlGetText(n);
 
-		TCHAR* str2;
+		TCHAR *str2;
 		Log("description = %s", desc);
 		if ((str2 = _tcsrchr(ft->httpPath, '/')) != NULL)
 			str2++;
@@ -722,7 +714,7 @@ BOOL CJabberProto::OnIqRequestOOB(HXML, CJabberIqInfo *pInfo)
 		pre.ptszFiles = &str2;
 		pre.fileCount = 1;
 		pre.lParam = (LPARAM)ft;
-		ProtoChainRecvFile(ft->std.hContact, &pre);		
+		ProtoChainRecvFile(ft->std.hContact, &pre);
 		mir_free(str2);
 	}
 	else {
@@ -769,13 +761,13 @@ BOOL CJabberProto::OnHandleDiscoItemsRequest(HXML iqNode, CJabberIqInfo* pInfo)
 
 	// another request, send empty result
 	XmlNodeIq iq(_T("result"), pInfo);
-	HXML resultQuery = iq << XQUERY(_T(JABBER_FEAT_DISCO_ITEMS));
+	HXML resultQuery = iq << XQUERY(JABBER_FEAT_DISCO_ITEMS);
 	if (szNode)
 		xmlAddAttr(resultQuery, _T("node"), szNode);
 
 	if ( !szNode && m_options.EnableRemoteControl)
-		resultQuery << XCHILD(_T("item")) << XATTR(_T("jid"), m_ThreadInfo->fullJID) 
-			<< XATTR(_T("node"), _T(JABBER_FEAT_COMMANDS)) << XATTR(_T("name"), _T("Ad-hoc commands"));
+		resultQuery << XCHILD(_T("item")) << XATTR(_T("jid"), m_ThreadInfo->fullJID)
+			<< XATTR(_T("node"), JABBER_FEAT_COMMANDS) << XATTR(_T("name"), _T("Ad-hoc commands"));
 
 	m_ThreadInfo->send(iq);
 	return TRUE;
@@ -785,7 +777,7 @@ BOOL CJabberProto::AddClistHttpAuthEvent(CJabberHttpAuthParams *pParams)
 {
 	CLISTEVENT cle = {0};
 	char szService[256];
-	mir_snprintf(szService, sizeof(szService),"%s%s", m_szModuleName, JS_HTTP_AUTH);
+	mir_snprintf(szService, sizeof(szService), "%s%s", m_szModuleName, JS_HTTP_AUTH);
 	cle.cbSize = sizeof(CLISTEVENT);
 	cle.hIcon = (HICON) LoadIconEx("openid");
 	cle.flags = CLEF_PROTOCOLGLOBAL | CLEF_TCHAR;
@@ -794,7 +786,7 @@ BOOL CJabberProto::AddClistHttpAuthEvent(CJabberHttpAuthParams *pParams)
 	cle.pszService = szService;
 	cle.ptszTooltip = TranslateT("Http authentication request received");
 	CallService(MS_CLIST_ADDEVENT, 0, (LPARAM)&cle);
-	
+
 	return TRUE;
 }
 

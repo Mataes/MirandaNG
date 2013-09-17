@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 XEP-0146 support for Miranda IM
 
@@ -49,7 +50,7 @@ protected:
 
 	DWORD m_dwStage;
 public:
-	CJabberProto* ppro;
+	CJabberProto *ppro;
 	CJabberAdhocSession(CJabberProto* global);
 	~CJabberAdhocSession()
 	{
@@ -100,12 +101,12 @@ class CJabberAdhocNode;
 class CJabberAdhocNode
 {
 protected:
-	TCHAR* m_szJid;
-	TCHAR* m_szNode;
-	TCHAR* m_szName;
+	TCHAR *m_szJid;
+	TCHAR *m_szNode;
+	TCHAR *m_szName;
 	CJabberAdhocNode* m_pNext;
 	JABBER_ADHOC_HANDLER m_pHandler;
-	CJabberProto* m_pProto;
+	CJabberProto *m_pProto;
 public:
 	CJabberAdhocNode(CJabberProto* pProto, TCHAR* szJid, TCHAR* szNode, TCHAR* szName, JABBER_ADHOC_HANDLER pHandler)
 	{
@@ -118,12 +119,10 @@ public:
 	}
 	~CJabberAdhocNode()
 	{
-		if (m_szJid) 
-			mir_free(m_szJid);
-		if (m_szNode)
-			mir_free(m_szNode);
-		if (m_szName)
-			mir_free(m_szName);
+		mir_free(m_szJid);
+		mir_free(m_szNode);
+		mir_free(m_szName);
+
 		if (m_pNext)
 			delete m_pNext;
 	}
@@ -160,7 +159,7 @@ public:
 class CJabberAdhocManager
 {
 protected:
-	CJabberProto* m_pProto;
+	CJabberProto *m_pProto;
 	CJabberAdhocNode* m_pNodes;
 	CJabberAdhocSession* m_pSessions;
 	CRITICAL_SECTION m_cs;

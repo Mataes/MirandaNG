@@ -67,19 +67,18 @@ int FillList(HWND list, BOOL sort)
 		if (_tcslen(swzContactDisplayName) > 1023)
 			swzContactDisplayName[1024] = 0;
 
-		int index;
+		int pos = -1;
 		if (sort) {
-			for (int j = 0; j < i; j++) {
+			for (pos = 0; pos < i; pos++) {
 				TCHAR buff[1024];
-				SendMessage(list, LB_GETTEXT, j, (LPARAM)buff);
+				SendMessage(list, LB_GETTEXT, pos, (LPARAM)buff);
 				if ( _tcscmp(buff, swzContactDisplayName) > 0) {
-					index = SendMessage(list, LB_INSERTSTRING, j, (LPARAM)swzContactDisplayName);
 					break;
 				}
 			}
 		}
-		else index = SendMessage(list, LB_INSERTSTRING, (WPARAM)-1, (LPARAM)swzContactDisplayName);
 
+		int index = SendMessage(list, LB_INSERTSTRING, (WPARAM)pos, (LPARAM)swzContactDisplayName);
 		SendMessage(list, LB_SETITEMDATA, index, (LPARAM)hMetaUser);
 
 		i++;
@@ -115,9 +114,9 @@ int BuildList(HWND list, BOOL sort)
 * @return			\c TRUE if the dialog processed the message, \c FALSE if it did not.
 */
 
-#define szConvMsg "Either there is no MetaContact in the database (in this case you should first convert a contact into one)\n\
+#define szConvMsg LPGEN("Either there is no MetaContact in the database (in this case you should first convert a contact into one)\n\
 or there is none that can host this contact.\n\
-Another solution could be to convert this contact into a new MetaContact.\n\nConvert this contact into a new MetaContact?"
+Another solution could be to convert this contact into a new MetaContact.\n\nConvert this contact into a new MetaContact?")
 
 INT_PTR CALLBACK Meta_SelectDialogProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {

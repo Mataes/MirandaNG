@@ -90,26 +90,26 @@ void CIcqProto::handleExtensionError(BYTE *buf, WORD wPackLen)
 						{
 							HANDLE hContact;
 							cookie_fam15_data *pCookieData = NULL;
-							int foundCookie;
 
-							foundCookie = FindCookie(wCookie, &hContact, (void**)&pCookieData);
+							int foundCookie = FindCookie(wCookie, &hContact, (void**)&pCookieData);
 							if (foundCookie && pCookieData)
 							{
-								BroadcastAck(hContact,  ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
+								ProtoBroadcastAck(hContact,  ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
 
 								ReleaseCookie(wCookie);  // we do not leak cookie and memory
 							}
 
 							NetLog_Server("Full info request error 0x%02x received", wErrorCode);
 						}
-            else if (wSubType == META_SET_PASSWORD_REQ)
-            { // failed to change user password, report to UI
-              BroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_FAILED, (HANDLE)wCookie, 0);
+						else if (wSubType == META_SET_PASSWORD_REQ)
+						{
+							// failed to change user password, report to UI
+							ProtoBroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_FAILED, (HANDLE)wCookie, 0);
 
-              NetLog_Server("Meta change password request failed, error 0x%02x", wErrorCode);
-            }
-            else
-              NetLog_Server("Meta request error 0x%02x received", wErrorCode);
+							NetLog_Server("Meta change password request failed, error 0x%02x", wErrorCode);
+						}
+						else
+							NetLog_Server("Meta request error 0x%02x received", wErrorCode);
 					}
 					else 
 						NetLog_Server("Meta request error 0x%02x received", wErrorCode);
@@ -228,7 +228,7 @@ void CIcqProto::handleExtensionMetaResponse(BYTE *databuf, WORD wPacketLen, WORD
 					memcpy(pszInfo, databuf, wPacketLen);
 				pszInfo[wPacketLen] = 0;
 
-				BroadcastAck(NULL, ICQACKTYPE_SMS, ACKRESULT_FAILED, (HANDLE)wCookie, (LPARAM)pszInfo);
+				ProtoBroadcastAck(NULL, ICQACKTYPE_SMS, ACKRESULT_FAILED, (HANDLE)wCookie, (LPARAM)pszInfo);
 				FreeCookie(wCookie);
 				break;
 			}
@@ -261,7 +261,7 @@ void CIcqProto::handleExtensionMetaResponse(BYTE *databuf, WORD wPacketLen, WORD
 							memcpy(pszInfo, databuf, wAckLen);
 						pszInfo[wAckLen] = 0;
 
-						BroadcastAck(NULL, ICQACKTYPE_SMS, ACKRESULT_SENTREQUEST, (HANDLE)wCookie, (LPARAM)pszInfo);
+						ProtoBroadcastAck(NULL, ICQACKTYPE_SMS, ACKRESULT_SENTREQUEST, (HANDLE)wCookie, (LPARAM)pszInfo);
 						FreeCookie(wCookie);
 
 						// Parsing success
@@ -289,6 +289,18 @@ void CIcqProto::handleExtensionMetaResponse(BYTE *databuf, WORD wPacketLen, WORD
 				NetLog_Server("Error: Directory request failed, code %u", bResultCode);
 			break;
 
+		case META_BASIC_USERINFO:
+		case META_WORK_USERINFO:
+		case META_MORE_USERINFO:
+		case META_NOTES_USERINFO:
+		case META_EMAIL_USERINFO:
+		case META_INTERESTS_USERINFO:
+		case META_AFFILATIONS_USERINFO:
+		case META_SHORT_USERINFO:
+		case META_HPAGECAT_USERINFO:
+			NetLog_Server("Warning: Ignored 15/03 (legacy user info) replysubtype x%x", wReplySubtype);
+			break;
+
 		default:
 			NetLog_Server("Warning: Ignored 15/03 replysubtype x%x", wReplySubtype);
 			//      _ASSERTE(0);
@@ -314,7 +326,7 @@ void CIcqProto::ReleaseSearchCookie(DWORD dwCookie, cookie_search *pCookie)
 			if (pCookie->dwStatus)
 			{
 				SAFE_FREE((void**)&pCookie);
-				BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
+				ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
 			}
 			else
 				pCookie->dwStatus = 1;
@@ -322,11 +334,11 @@ void CIcqProto::ReleaseSearchCookie(DWORD dwCookie, cookie_search *pCookie)
 		else
 		{
 			SAFE_FREE((void**)&pCookie);
-			BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
+			ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
 		}
 	}
 	else
-		BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
+		ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
 }
 
 
@@ -358,7 +370,7 @@ void CIcqProto::parseSearchReplies(unsigned char *databuf, WORD wPacketLen, WORD
 		{
 			ICQSEARCHRESULT sr = {0};
 			DWORD dwUin;
-      char szUin[UINMAXLEN];
+			char szUin[UINMAXLEN];
 			WORD wLen;
 
 			sr.hdr.cbSize = sizeof(sr);
@@ -379,8 +391,8 @@ void CIcqProto::parseSearchReplies(unsigned char *databuf, WORD wPacketLen, WORD
 			unpackLEDWord(&databuf, &dwUin); // Uin
 			wPacketLen -= 4;
 			sr.uin = dwUin;
-      _itoa(dwUin, szUin, 10);
-      sr.hdr.id = (FNAMECHAR*)szUin;
+			_itoa(dwUin, szUin, 10);
+			sr.hdr.id = (FNAMECHAR*)szUin;
 
 			// Nick
 			if (wPacketLen < 2)
@@ -456,7 +468,7 @@ void CIcqProto::parseSearchReplies(unsigned char *databuf, WORD wPacketLen, WORD
 			unpackByte(&databuf, &sr.auth);
 
 			// Finally, broadcast the result
-			BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, (HANDLE)wCookie, (LPARAM)&sr);
+			ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, (HANDLE)wCookie, (LPARAM)&sr);
 
 			// Broadcast "Last result" ack if this was the last user found
 			if (wReplySubtype == SRV_LAST_USER_FOUND)
@@ -507,9 +519,9 @@ void CIcqProto::parseUserInfoUpdateAck(unsigned char *databuf, WORD wPacketLen, 
 	case META_SET_PASSWORD_ACK:  // Set user password server ack
 
 		if (bResultCode == 0xA)
-			BroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0);
+			ProtoBroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0);
 		else
-			BroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_FAILED, (HANDLE)wCookie, 0);
+			ProtoBroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_FAILED, (HANDLE)wCookie, 0);
 
 		FreeCookie(wCookie);
 		break;
@@ -522,7 +534,7 @@ void CIcqProto::parseUserInfoUpdateAck(unsigned char *databuf, WORD wPacketLen, 
 
 
 UserInfoRecordItem rEmail[] = {
-	{0x64, DBVT_ASCIIZ, "e-mail%u"}
+	{0x64, DBVT_UTF8, "e-mail%u"}
 };
 
 UserInfoRecordItem rAddress[] = {
@@ -544,7 +556,7 @@ UserInfoRecordItem rCompany[] = {
 	{0x64, DBVT_UTF8, "CompanyPosition"},
 	{0x6E, DBVT_UTF8, "Company"},
 	{0x7D, DBVT_UTF8, "CompanyDepartment"},
-	{0x78, DBVT_ASCIIZ, "CompanyHomepage"},
+	{0x78, DBVT_UTF8, "CompanyHomepage"},
 	{0x82, DBVT_WORD, "CompanyIndustry"},
 	{0xAA, DBVT_UTF8, "CompanyStreet"},
 	{0xB4, DBVT_UTF8, "CompanyCity"},
@@ -570,29 +582,21 @@ int CIcqProto::parseUserInfoRecord(HANDLE hContact, oscar_tlv *pData, UserInfoRe
 {
 	int nRecords = 0;
 
-	if (pData && pData->wLen >= 2)
-	{
+	if (pData && pData->wLen >= 2) {
 		BYTE *pRecords = pData->pData;
 		WORD wRecordCount;
 		unpackWord(&pRecords, &wRecordCount);
 		oscar_tlv_record_list *cData = readIntoTLVRecordList(&pRecords, pData->wLen - 2, nMaxRecords > wRecordCount ? wRecordCount : nMaxRecords);
 		oscar_tlv_record_list *cDataItem = cData;
-		while (cDataItem)
-		{
+		while (cDataItem) {
 			oscar_tlv_chain *cItem = cDataItem->item;
 
-			for (int i = 0; i < nRecordDef; i++)
-			{
+			for (int i = 0; i < nRecordDef; i++) {
 				char szItemKey[MAX_PATH];
 
-				null_snprintf(szItemKey, MAX_PATH, pRecordDef[i].szDbSetting, nRecords);
+				mir_snprintf(szItemKey, MAX_PATH, pRecordDef[i].szDbSetting, nRecords);
 
-				switch (pRecordDef[i].dbType)
-				{
-				case DBVT_ASCIIZ:
-					writeDbInfoSettingTLVString(hContact, szItemKey, cItem, pRecordDef[i].wTLV);
-					break;
-
+				switch (pRecordDef[i].dbType) {
 				case DBVT_UTF8:
 					writeDbInfoSettingTLVStringUtf(hContact, szItemKey, cItem, pRecordDef[i].wTLV);
 					break;
@@ -609,16 +613,14 @@ int CIcqProto::parseUserInfoRecord(HANDLE hContact, oscar_tlv *pData, UserInfoRe
 		// release memory
 		disposeRecordList(&cData);
 	}
+
 	// remove old data from database
 	if (!nRecords || nMaxRecords > 1)
 		for (int i = nRecords; i <= nMaxRecords; i++)
-			for (int j = 0; j < nRecordDef; j++)
-			{
+			for (int j = 0; j < nRecordDef; j++) {
 				char szItemKey[MAX_PATH];
-
-				null_snprintf(szItemKey, MAX_PATH, pRecordDef[j].szDbSetting, i);
-
-				deleteSetting(hContact, szItemKey);
+				mir_snprintf(szItemKey, MAX_PATH, pRecordDef[j].szDbSetting, i);
+				delSetting(hContact, szItemKey);
 			}
 
 	return nRecords;
@@ -674,9 +676,9 @@ void CIcqProto::handleDirectoryQueryResponse(BYTE *databuf, WORD wPacketLen, WOR
 		if (!bMoreDataFollows)
 		{
 			if (pCookieData->bRequestType == DIRECTORYREQUEST_INFOUSER)
-				BroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
+				ProtoBroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
 			else if (pCookieData->bRequestType == DIRECTORYREQUEST_SEARCH)
-				BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
+				ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
 			ReleaseCookie(wCookie);
 		}
 		return;
@@ -695,9 +697,9 @@ void CIcqProto::handleDirectoryQueryResponse(BYTE *databuf, WORD wPacketLen, WOR
 		if (!bMoreDataFollows)
 		{
 			if (pCookieData->bRequestType == DIRECTORYREQUEST_INFOUSER)
-				BroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
+				ProtoBroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
 			else if (pCookieData->bRequestType == DIRECTORYREQUEST_SEARCH)
-				BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
+				ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
 			ReleaseCookie(wCookie);
 		}
 		return;
@@ -724,9 +726,9 @@ void CIcqProto::handleDirectoryQueryResponse(BYTE *databuf, WORD wPacketLen, WOR
 		if (!bMoreDataFollows)
 		{
 			if (pCookieData->bRequestType == DIRECTORYREQUEST_INFOUSER)
-				BroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
+				ProtoBroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
 			else if (pCookieData->bRequestType == DIRECTORYREQUEST_SEARCH)
-				BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
+				ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
 			ReleaseCookie(wCookie);
 		}
 		return;
@@ -744,7 +746,7 @@ void CIcqProto::handleDirectoryQueryResponse(BYTE *databuf, WORD wPacketLen, WOR
 	if (wData == 0 && pCookieData->bRequestType == DIRECTORYREQUEST_SEARCH)
 	{
 		NetLog_Server("Directory Search: No contacts found");
-		BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0);
+		ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0);
 		ReleaseCookie(wCookie);
 		return;
 	}
@@ -757,9 +759,9 @@ void CIcqProto::handleDirectoryQueryResponse(BYTE *databuf, WORD wPacketLen, WOR
 		if (!bMoreDataFollows)
 		{
 			if (pCookieData->bRequestType == DIRECTORYREQUEST_INFOUSER)
-				BroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
+				ProtoBroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
 			else if (pCookieData->bRequestType == DIRECTORYREQUEST_SEARCH)
-				BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
+				ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0); // should report error here, but Find/Add module does not support that
 			ReleaseCookie(wCookie);
 		}
 		return;
@@ -887,9 +889,9 @@ void CIcqProto::parseDirectoryUserDetailsData(HANDLE hContact, oscar_tlv_chain *
 
 	pTLV = cDetails->getTLV(0x50, 1);
 	if (pTLV && pTLV->wLen > 0)
-		writeDbInfoSettingTLVString(hContact, "e-mail",  cDetails, 0x50); // Verified e-mail
+		writeDbInfoSettingTLVStringUtf(hContact, "e-mail",  cDetails, 0x50); // Verified e-mail
 	else
-		writeDbInfoSettingTLVString(hContact, "e-mail",  cDetails, 0x55); // Pending e-mail
+		writeDbInfoSettingTLVStringUtf(hContact, "e-mail",  cDetails, 0x55); // Pending e-mail
 
 	writeDbInfoSettingTLVStringUtf(hContact, "FirstName", cDetails, 0x64);
 	writeDbInfoSettingTLVStringUtf(hContact, "LastName",  cDetails, 0x6E);
@@ -909,34 +911,34 @@ void CIcqProto::parseDirectoryUserDetailsData(HANDLE hContact, oscar_tlv_chain *
 		{
 			oscar_tlv_chain *cPhone;
 			cPhone = cPhones->getRecordByTLV(0x6E, 1);
-			writeDbInfoSettingTLVString(hContact, "Phone", cPhone, 0x64);
+			writeDbInfoSettingTLVStringUtf(hContact, "Phone", cPhone, 0x64);
 			cPhone = cPhones->getRecordByTLV(0x6E, 2);
-			writeDbInfoSettingTLVString(hContact, "CompanyPhone", cPhone, 0x64);
+			writeDbInfoSettingTLVStringUtf(hContact, "CompanyPhone", cPhone, 0x64);
 			cPhone = cPhones->getRecordByTLV(0x6E, 3);
-			writeDbInfoSettingTLVString(hContact, "Cellular", cPhone, 0x64);
+			writeDbInfoSettingTLVStringUtf(hContact, "Cellular", cPhone, 0x64);
 			cPhone = cPhones->getRecordByTLV(0x6E, 4);
-			writeDbInfoSettingTLVString(hContact, "Fax", cPhone, 0x64);
+			writeDbInfoSettingTLVStringUtf(hContact, "Fax", cPhone, 0x64);
 			cPhone = cPhones->getRecordByTLV(0x6E, 5);
-			writeDbInfoSettingTLVString(hContact, "CompanyFax", cPhone, 0x64);
+			writeDbInfoSettingTLVStringUtf(hContact, "CompanyFax", cPhone, 0x64);
 
 			disposeRecordList(&cPhones);
 		}
 		else
 		{ // Remove old data when phones not available
-			deleteSetting(hContact, "Phone");
-			deleteSetting(hContact, "CompanyPhone");
-			deleteSetting(hContact, "Cellular");
-			deleteSetting(hContact, "Fax");
-			deleteSetting(hContact, "CompanyFax");
+			delSetting(hContact, "Phone");
+			delSetting(hContact, "CompanyPhone");
+			delSetting(hContact, "Cellular");
+			delSetting(hContact, "Fax");
+			delSetting(hContact, "CompanyFax");
 		}
 	}
 	else
 	{ // Remove old data when phones not available
-		deleteSetting(hContact, "Phone");
-		deleteSetting(hContact, "CompanyPhone");
-		deleteSetting(hContact, "Cellular");
-		deleteSetting(hContact, "Fax");
-		deleteSetting(hContact, "CompanyFax");
+		delSetting(hContact, "Phone");
+		delSetting(hContact, "CompanyPhone");
+		delSetting(hContact, "Cellular");
+		delSetting(hContact, "Fax");
+		delSetting(hContact, "CompanyFax");
 	}
 	// Emails
 	parseUserInfoRecord(hContact, cDetails->getTLV(0x8C, 1), rEmail, SIZEOF(rEmail), 4);
@@ -950,16 +952,16 @@ void CIcqProto::parseDirectoryUserDetailsData(HANDLE hContact, oscar_tlv_chain *
 	switch (cDetails->getNumber(0x82, 1))
 	{
 	case 1: 
-		setSettingByte(hContact, "Gender", 'F');
+		setByte(hContact, "Gender", 'F');
 		break;
 	case 2:
-		setSettingByte(hContact, "Gender", 'M');
+		setByte(hContact, "Gender", 'M');
 		break;
 	default:
-		deleteSetting(hContact, "Gender");
+		delSetting(hContact, "Gender");
 	}
 
-	writeDbInfoSettingTLVString(hContact, "Homepage", cDetails, 0xFA);
+	writeDbInfoSettingTLVStringUtf(hContact, "Homepage", cDetails, 0xFA);
 	writeDbInfoSettingTLVDate(hContact, "BirthYear", "BirthMonth", "BirthDay", cDetails, 0x1A4);
 
 	writeDbInfoSettingTLVByte(hContact, "Language1", cDetails, 0xAA);
@@ -994,7 +996,7 @@ void CIcqProto::parseDirectoryUserDetailsData(HANDLE hContact, oscar_tlv_chain *
 
 	if (!hContact)
 	{
-		setSettingByte(hContact, "Auth", !cDetails->getByte(0x19A, 1));
+		setByte(hContact, "Auth", !cDetails->getByte(0x19A, 1));
 		writeDbInfoSettingTLVByte(hContact, "WebAware", cDetails, 0x212);
 		writeDbInfoSettingTLVByte(hContact, "AllowSpam", cDetails, 0x1EA);
 	}
@@ -1006,12 +1008,12 @@ void CIcqProto::parseDirectoryUserDetailsData(HANDLE hContact, oscar_tlv_chain *
 		int nAge = calcAgeFromBirthDate(cDetails->getDouble(0x1A4, 1));
 
 		if (nAge)
-			setSettingWord(hContact, "Age", nAge);
+			setWord(hContact, "Age", nAge);
 		else
-			deleteSetting(hContact, "Age");
+			delSetting(hContact, "Age");
 	}
 	else // we do not need to calculate age for owner
-		deleteSetting(hContact, "Age");
+		delSetting(hContact, "Age");
 
 	{ // Save user info last update time and privacy token
 		double dInfoTime;
@@ -1028,12 +1030,12 @@ void CIcqProto::parseDirectoryUserDetailsData(HANDLE hContact, oscar_tlv_chain *
 		else if (bHasMetaToken || !hContact)
 			writeDbInfoSettingTLVDouble(hContact, DBSETTING_METAINFO_SAVED, cDetails, 0x1CC);
 		else
-			setSettingDword(hContact, DBSETTING_METAINFO_SAVED, time(NULL));
+			setDword(hContact, DBSETTING_METAINFO_SAVED, time(NULL));
 	}
 
 	if (wReplySubType == META_DIRECTORY_RESPONSE)
 		if (pCookieData->bRequestType == DIRECTORYREQUEST_INFOUSER)
-			BroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE)1 ,0);
+			ProtoBroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE)1 ,0);
 
 	// Remove user from info update queue. Removing is fast so we always call this
 	// even if it is likely that the user is not queued at all.
@@ -1051,10 +1053,10 @@ void CIcqProto::parseDirectorySearchData(oscar_tlv_chain *cDetails, DWORD dwCook
 	NetLog_Server("Directory Search: Found user %s", szUid);
 #endif
 	isr.hdr.cbSize = sizeof(ICQSEARCHRESULT);
-  isr.hdr.flags = PSR_TCHAR;
-  isr.hdr.id = ansi_to_tchar(szUid);
+	isr.hdr.flags = PSR_TCHAR;
+	isr.hdr.id = ansi_to_tchar(szUid);
 
-  if (IsStringUIN(szUid))
+	if (IsStringUIN(szUid))
 		isr.uin = atoi(szUid);
 	else
 		isr.uin = 0;
@@ -1062,7 +1064,7 @@ void CIcqProto::parseDirectorySearchData(oscar_tlv_chain *cDetails, DWORD dwCook
 	SAFE_FREE(&szUid);
 
 	oscar_tlv *pTLV = cDetails->getTLV(0x50, 1);
-  char *szData = NULL;
+	char *szData = NULL;
 
 	if (pTLV && pTLV->wLen > 0)
 		szData = cDetails->getString(0x50, 1); // Verified e-mail
@@ -1075,12 +1077,12 @@ void CIcqProto::parseDirectorySearchData(oscar_tlv_chain *cDetails, DWORD dwCook
 	szData = cDetails->getString(0x64, 1); // First Name
 	if (strlennull(szData))
 		isr.hdr.firstName = utf8_to_tchar(szData);
-  SAFE_FREE(&szData);
+	SAFE_FREE(&szData);
 
 	szData = cDetails->getString(0x6E, 1); // Last Name
 	if (strlennull(szData))
 		isr.hdr.lastName = utf8_to_tchar(szData);
-  SAFE_FREE(&szData);
+	SAFE_FREE(&szData);
 
 	szData = cDetails->getString(0x78, 1); // Nick
 	if (strlennull(szData))
@@ -1114,10 +1116,10 @@ void CIcqProto::parseDirectorySearchData(oscar_tlv_chain *cDetails, DWORD dwCook
 	isr.age = calcAgeFromBirthDate(cDetails->getDouble(0x1A4, 1));
 
 	// Finally, broadcast the result
-	BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, (HANDLE)dwCookie, (LPARAM)&isr);
+	ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_DATA, (HANDLE)dwCookie, (LPARAM)&isr);
 
 	// Release memory
-  SAFE_FREE(&isr.hdr.id);
+	SAFE_FREE(&isr.hdr.id);
 	SAFE_FREE(&isr.hdr.nick);
 	SAFE_FREE(&isr.hdr.firstName);
 	SAFE_FREE(&isr.hdr.lastName);
@@ -1125,7 +1127,7 @@ void CIcqProto::parseDirectorySearchData(oscar_tlv_chain *cDetails, DWORD dwCook
 
 	// Search is over, broadcast final ack
 	if (wReplySubType == META_DIRECTORY_RESPONSE)
-		BroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
+		ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)dwCookie, 0);
 }
 
 
@@ -1172,7 +1174,7 @@ void CIcqProto::handleDirectoryUpdateResponse(BYTE *databuf, WORD wPacketLen, WO
 		NetLog_Server("Error: Directory request failed, status %u", requestResult);
 
 		if (pCookieData->bRequestType == DIRECTORYREQUEST_UPDATEOWNER)
-			BroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_FAILED, (HANDLE)wCookie, 0);
+			ProtoBroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_FAILED, (HANDLE)wCookie, 0);
 
 		ReleaseCookie(wCookie);
 		return;
@@ -1185,7 +1187,7 @@ void CIcqProto::handleDirectoryUpdateResponse(BYTE *databuf, WORD wPacketLen, WO
 		NetLog_Server("Warning: Data in error message present!");
 
 	if (pCookieData->bRequestType == DIRECTORYREQUEST_UPDATEOWNER)
-		BroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0);
+		ProtoBroadcastAck(NULL, ACKTYPE_SETINFO, ACKRESULT_SUCCESS, (HANDLE)wCookie, 0);
 	if (wPacketLen == 0x18)
 	{
 		DWORD64 qwMetaTime;

@@ -16,26 +16,9 @@
 
 #include <m_protoint.h>
 
-struct CYahooProto;
-
-#ifdef __GNUC__
-extern "C"
+struct CYahooProto : public PROTO<CYahooProto>
 {
-	typedef void    ( CYahooProto::*YThreadFunc )( void* );
-	typedef INT_PTR ( CYahooProto::*YEventFunc )( WPARAM, LPARAM );
-	typedef INT_PTR ( CYahooProto::*YServiceFunc )( WPARAM, LPARAM );
-	typedef INT_PTR ( CYahooProto::*YServiceFuncParam )( WPARAM, LPARAM, LPARAM );
-}
-#else
-	typedef void    ( __cdecl CYahooProto::*YThreadFunc )( void* );
-	typedef int     ( __cdecl CYahooProto::*YEventFunc )( WPARAM, LPARAM );
-	typedef INT_PTR ( __cdecl CYahooProto::*YServiceFunc )( WPARAM, LPARAM );
-	typedef INT_PTR ( __cdecl CYahooProto::*YServiceFuncParam )( WPARAM, LPARAM, LPARAM );
-#endif
-
-struct CYahooProto : public PROTO_INTERFACE, public MZeroedObject
-{
-				CYahooProto( const char*, const TCHAR* );
+				CYahooProto(const char*, const TCHAR*);
 				virtual ~CYahooProto();
 
 	//====================================================================================
@@ -57,8 +40,7 @@ struct CYahooProto : public PROTO_INTERFACE, public MZeroedObject
 	virtual	int    __cdecl FileDeny( HANDLE hContact, HANDLE hTransfer, const PROTOCHAR* szReason );
 	virtual	int    __cdecl FileResume( HANDLE hTransfer, int* action, const PROTOCHAR** szFilename );
 
-	virtual	DWORD_PTR __cdecl GetCaps( int type, HANDLE hContact = NULL );
-	virtual	HICON  __cdecl GetIcon( int iconIndex );
+	virtual	DWORD_PTR __cdecl GetCaps( int type, HANDLE hContact = NULL);
 	virtual	int    __cdecl GetInfo( HANDLE hContact, int infoType );
 
 	virtual	HANDLE __cdecl SearchBasic( const PROTOCHAR* id );
@@ -242,35 +224,14 @@ struct CYahooProto : public PROTO_INTERFACE, public MZeroedObject
 	int     __cdecl  OnUserInfoInit( WPARAM wParam, LPARAM lParam );
 
 	//====| util.cpp |====================================================================
-	int  GetByte( const char* valueName, int parDefltValue );
-	int  SetByte( const char* valueName, int parValue );
-	int  GetByte( HANDLE hContact, const char* valueName, int parDefltValue );
-	int  SetByte( HANDLE hContact, const char* valueName, int parValue );
-
-	int    GetString( const char* name, DBVARIANT* );
-	int    GetString( HANDLE hContact, const char* name, DBVARIANT* );
 	int    GetStringUtf( HANDLE hContact, const char* name, DBVARIANT* );
-
-	void   SetString( const char* name, const char* value );
-	void   SetString( HANDLE hContact, const char* name, const char* value );
-	void   SetStringT( HANDLE hContact, const char* name, const TCHAR* value );
 	DWORD  SetStringUtf( HANDLE hContact, const char* valueName, const char* parValue );
-
-	DWORD  GetDword( const char* valueName, DWORD parDefltValue );
-	DWORD  SetDword( const char* valueName, DWORD parValue );
-	DWORD  GetDword( HANDLE hContact, const char* valueName, DWORD parDefltValue );
-	DWORD  SetDword( HANDLE hContact, const char* valueName, DWORD parValue );
-
-	WORD   GetWord( HANDLE hContact, const char* valueName, int parDefltValue );
-	WORD   SetWord( HANDLE hContact, const char* valueName, int parValue );
 
 	DWORD  Set_Protocol( HANDLE hContact, int protocol );
 
-	int    SendBroadcast( HANDLE hContact, int type, int result, HANDLE hProcess, LPARAM lParam );
-
-	int    ShowNotification(const char *title, const char *info, DWORD flags);
-	void   ShowError(const char *title, const char *buff);
-	int    ShowPopup( const char* nickname, const char* msg, const char *szURL );
+	int    ShowNotification(const TCHAR *title, const TCHAR *info, DWORD flags);
+	void   ShowError(const TCHAR *title, const TCHAR *buff);
+	int    ShowPopup( const TCHAR* nickname, const TCHAR* msg, const char *szURL );
 	bool   IsMyContact(HANDLE hContact);
 
 	#ifdef __GNUC__
@@ -342,12 +303,6 @@ private:
 	HANDLE hYahooAvatarsFolder;
 	bool   InitCstFldRan;
 	void   InitCustomFolders(void);
-
-	void   YCreateService( const char* szService, YServiceFunc serviceProc );
-	void   YCreateServiceParam( const char* szService, YServiceFuncParam serviceProc, LPARAM lParam );
-	HANDLE YCreateHookableEvent( const char* szService );
-	void   YForkThread( YThreadFunc pFunc, void *param );
-	void   YHookEvent( const char* szEvent, YEventFunc handler );
 };
 
 extern LIST<CYahooProto> g_instances;

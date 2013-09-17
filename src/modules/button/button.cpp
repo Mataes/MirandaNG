@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +11,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,6 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "..\..\core\commonheaders.h"
 
 #include <m_button_int.h>
@@ -33,7 +34,7 @@ struct TTooltips
 	HWND  hwnd;
 };
 
-static LIST<TTooltips> lToolTips(1, (LIST<TTooltips>::FTSortFunc)NumericKeySort);
+static LIST<TTooltips> lToolTips(1, NumericKeySortT);
 static CRITICAL_SECTION csTips;
 static BOOL bModuleInitialized = FALSE;
 
@@ -66,7 +67,7 @@ static void LoadTheme(MButtonCtrl *ctl)
 	}
 }
 
-static void SetHwndPropInt(MButtonCtrl* bct, DWORD idObject, DWORD idChild, MSAAPROPID idProp, int val) 
+static void SetHwndPropInt(MButtonCtrl* bct, DWORD idObject, DWORD idChild, MSAAPROPID idProp, int val)
 {
 	if (bct->pAccPropServices == NULL) return;
 	VARIANT var;
@@ -245,10 +246,7 @@ static void PaintWorker(MButtonCtrl *ctl, HDC hdcPaint)
 
 static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPARAM lParam)
 {
-	MButtonCtrl* bct = (MButtonCtrl *)GetWindowLongPtr(hwnd, 0);
-	if (bct && bct->fnWindowProc)
-		if ( bct->fnWindowProc(hwnd, msg, wParam, lParam))
-			return bct->lResult;
+	MButtonCtrl *bct = (MButtonCtrl *)GetWindowLongPtr(hwnd, 0);
 
 	switch(msg) {
 	case WM_NCCREATE:
@@ -261,13 +259,16 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		bct->fnPainter = PaintWorker;
 		bct->hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 		LoadTheme(bct);
-		if (SUCCEEDED(CoCreateInstance(CLSID_AccPropServices, NULL, CLSCTX_SERVER, IID_IAccPropServices, (void**)&bct->pAccPropServices))) {
-			// Annotating the Role of this object to be PushButton
+		
+		// Annotating the Role of this object to be PushButton
+		if (SUCCEEDED(CoCreateInstance(CLSID_AccPropServices, NULL, CLSCTX_SERVER, IID_IAccPropServices, (void**)&bct->pAccPropServices)))
 			SetHwndPropInt(bct, OBJID_CLIENT, CHILDID_SELF, PROPID_ACC_ROLE, ROLE_SYSTEM_PUSHBUTTON);
-		}
-		else bct->pAccPropServices = NULL;
+		else
+			bct->pAccPropServices = NULL;
+
 		SetWindowLongPtr(hwnd, 0, (LONG_PTR)bct);
-		if (((CREATESTRUCT *)lParam)->lpszName) SetWindowText(hwnd, ((CREATESTRUCT *)lParam)->lpszName);
+		if (((CREATESTRUCT *)lParam)->lpszName)
+			SetWindowText(hwnd, ((CREATESTRUCT*)lParam)->lpszName);
 		return TRUE;
 
 	case WM_DESTROY:
@@ -302,7 +303,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 			if (bct->arrow) IcoLib_ReleaseIcon(bct->arrow, 0);
 			DestroyTheme(bct);
 		}
-		break;	// DONT! fall thru
+		break;
 
 	case WM_NCDESTROY:
 		SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
@@ -325,7 +326,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		break;
 
 	case WM_KEYUP:
-		if (bct->stateId != PBS_DISABLED && wParam == VK_SPACE) {
+		if (bct->stateId != PBS_DISABLED && wParam == VK_SPACE && !(GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_SHIFT) & 0x8000)) {
 			if (bct->bIsPushBtn) {
 				if (bct->bIsPushed) {
 					bct->bIsPushed = 0;
@@ -343,14 +344,14 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		break;
 
 	case WM_SYSKEYUP:
-		if (bct->stateId != PBS_DISABLED && bct->cHot && bct->cHot == tolower((int)wParam)) {
+		if (bct->stateId != PBS_DISABLED && !bct->bSendOnDown && bct->cHot && bct->cHot == tolower((int)wParam)) {
 			if (bct->bIsPushBtn) {
 				if (bct->bIsPushed) {
-					bct->bIsPushed = 0;
+					bct->bIsPushed = false;
 					bct->stateId = PBS_NORMAL;
 				}
 				else {
-					bct->bIsPushed = 1;
+					bct->bIsPushed = true;
 					bct->stateId = PBS_PRESSED;
 				}
 				InvalidateRect(bct->hwnd, NULL, TRUE);
@@ -496,7 +497,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 				ti.lpszText = Langpack_PcharToTchar((char*)wParam);
 			if (bct->pAccPropServices) {
 				wchar_t *tmpstr = mir_t2u(ti.lpszText);
-				bct->pAccPropServices->SetHwndPropStr(bct->hwnd, OBJID_CLIENT, 
+				bct->pAccPropServices->SetHwndPropStr(bct->hwnd, OBJID_CLIENT,
 					CHILDID_SELF, PROPID_ACC_DESCRIPTION, tmpstr);
 				mir_free(tmpstr);
 			}
@@ -505,19 +506,18 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		}
 		break;
 
-	case BUTTONSETCUSTOM:
-		{
-			MButtonCustomize *pCustom = (MButtonCustomize*)lParam;
-			if (pCustom == NULL || bct->fnWindowProc)
-				break;
-
-			bct = (MButtonCtrl*)mir_realloc(bct, pCustom->cbLen);
-			if (pCustom->cbLen > sizeof(MButtonCtrl))
-				memset(bct+1, 0, pCustom->cbLen - sizeof(MButtonCtrl));
-			bct->fnPainter = pCustom->fnPainter;
-			bct->fnWindowProc = pCustom->fnWindowProc;
+	case BUTTONSETCUSTOMPAINT:
+		if (wParam > sizeof(MButtonCtrl)) {
+			bct = (MButtonCtrl*)mir_realloc(bct, wParam);
+			memset(bct+1, 0, wParam - sizeof(MButtonCtrl));
 			SetWindowLongPtr(hwnd, 0, (LONG_PTR)bct);
 		}
+		if (lParam)
+			bct->fnPainter = pfnPainterFunc(lParam);
+		break;
+
+	case BUTTONSETSENDONDOWN:
+		bct->bSendOnDown = (wParam != 0);
 		break;
 
 	case WM_SETFOCUS: // set keybord focus and redraw
@@ -535,7 +535,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		break;
 
 	case WM_ENABLE: // windows tells us to enable/disable
-		bct->stateId = wParam?PBS_NORMAL:PBS_DISABLED;
+		bct->stateId = wParam ? PBS_NORMAL : PBS_DISABLED;
 		InvalidateRect(bct->hwnd, NULL, TRUE);
 		break;
 
@@ -550,6 +550,11 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		if (bct->stateId != PBS_DISABLED) { // don't change states if disabled
 			bct->stateId = PBS_PRESSED;
 			InvalidateRect(bct->hwnd, NULL, TRUE);
+			if (bct->bSendOnDown) {
+				SendMessage( GetParent(hwnd), WM_COMMAND, MAKELONG(GetDlgCtrlID(hwnd), BN_CLICKED), (LPARAM)hwnd);
+				bct->stateId = PBS_NORMAL;
+				InvalidateRect(bct->hwnd, NULL, TRUE);
+			}
 		}
 		break;
 
@@ -565,8 +570,8 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 				bct->stateId = (msg == WM_LBUTTONUP) ? PBS_HOT : PBS_NORMAL;
 				InvalidateRect(bct->hwnd, NULL, TRUE);
 			}
-			if (showClick) // Tell your daddy you got clicked.
-				SendMessage(GetParent(hwnd), WM_COMMAND, MAKELONG(GetDlgCtrlID(hwnd), BN_CLICKED), (LPARAM)hwnd);
+			if (showClick && !bct->bSendOnDown) // Tell your daddy you got clicked.
+				SendMessage( GetParent(hwnd), WM_COMMAND, MAKELONG(GetDlgCtrlID(hwnd), BN_CLICKED), (LPARAM)hwnd);
 		}
 		break;
 

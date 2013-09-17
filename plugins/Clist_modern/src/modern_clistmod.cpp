@@ -21,9 +21,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 #include "hdr/modern_commonheaders.h"
-#include "m_clui.h"
-#include <m_file.h>
-#include <m_addcontact.h>
 #include "hdr/modern_clist.h"
 #include "hdr/modern_commonprototypes.h"
 #include "hdr/modern_sync.h"
@@ -34,10 +31,7 @@ pfnMyMonitorFromPoint  MyMonitorFromPoint = NULL;
 pfnMyMonitorFromWindow MyMonitorFromWindow = NULL;
 pfnMyGetMonitorInfo    MyGetMonitorInfo = NULL;
 
-static HANDLE hookSystemShutdown_CListMod = NULL;
-HANDLE  hookOptInitialise_CList = NULL,
-        hookOptInitialise_Skin = NULL,
-        hookContactAdded_CListSettings = NULL;
+int OnLoadLangpack(WPARAM, LPARAM);
 
 int CListMod_HideWindow(HWND hwndContactList, int mode);
 
@@ -53,7 +47,6 @@ int ModernSkinOptInit(WPARAM wParam,LPARAM lParam);
 int EventsProcessContactDoubleClick(HANDLE hContact);
 
 INT_PTR TrayIconPauseAutoHide(WPARAM wParam,LPARAM lParam);
-INT_PTR ContactChangeGroup(WPARAM wParam,LPARAM lParam);
 
 void InitTrayMenus(void);
 void UninitTrayMenu();
@@ -65,61 +58,37 @@ BOOL (WINAPI *MySetProcessWorkingSetSize)(HANDLE,SIZE_T,SIZE_T);
 //returns normal icon or combined with status overlay. Needs to be destroyed.
 HICON cliGetIconFromStatusMode(HANDLE hContact, const char *szProto,int status)
 {
-	HICON hIcon = NULL;
-	HICON hXIcon = NULL;
 	// check if options is turned on
 	BYTE trayOption = db_get_b(NULL,"CLUI","XStatusTray",SETTING_TRAYOPTION_DEFAULT);
-	if (trayOption&3 && szProto != NULL)
-	{
-		// check service exists
-		char str[MAXMODULELABELLENGTH];
-		strcpy(str,szProto);
-		strcat(str,"/GetXStatusIcon");
-		if ( ServiceExists(str))
-		{
+	if ((trayOption & 3) && szProto != NULL) {
+		if ( ProtoServiceExists(szProto, PS_GETCUSTOMSTATUSICON)) {
 			// check status is online
-			if (status>ID_STATUS_OFFLINE)
-			{
+			if (status > ID_STATUS_OFFLINE) {
 				// get xicon
-				hXIcon = (HICON)CallService(str,0,0);
-				if (hXIcon)
-				{
+				HICON hXIcon = (HICON)ProtoCallService(szProto, PS_GETCUSTOMSTATUSICON, 0, 0);
+				if (hXIcon) {
 					// check overlay mode
-					if (trayOption&2)
-					{
+					if (trayOption & 2) {
 						// get overlay
 						HICON MainOverlay = (HICON)GetMainStatusOverlay(status);
-						hIcon = ske_CreateJoinedIcon(hXIcon,MainOverlay,(trayOption&4)?192:0);
+						HICON hIcon = ske_CreateJoinedIcon(hXIcon,MainOverlay,(trayOption&4)?192:0);
 						DestroyIcon_protect(hXIcon);
 						DestroyIcon_protect(MainOverlay);
+						return hIcon;
 					}
-					else
-					{
-						// paint it
-						hIcon = hXIcon;
-					}
+					return hXIcon;
 				}
 			}
 		}
 	}
-	if ( !hIcon)
-	{
-		hIcon = ske_ImageList_GetIcon(g_himlCListClc,ExtIconFromStatusMode(hContact,szProto,status),ILD_NORMAL);
-	}
-	// if not ready take normal icon
-	return hIcon;
-}
 
-int ExtIconFromStatusMode(HANDLE hContact, const char *szProto,int status)
-{
-	return pcli->pfnIconFromStatusMode(szProto,status,hContact);
+	return ske_ImageList_GetIcon(g_himlCListClc,pcli->pfnIconFromStatusMode(szProto,status,hContact),ILD_NORMAL);
 }
 
 int cli_IconFromStatusMode(const char *szProto,int nStatus, HANDLE hContact)
 {
 	if (hContact && szProto) {
 		char *szActProto = (char*)szProto;
-		char AdvancedService[255] = {0};
 		int nActStatus = nStatus;
 		HANDLE hActContact = hContact;
 		if ( !db_get_b(NULL,"CLC","Meta",SETTING_USEMETAICON_DEFAULT) && g_szMetaModuleName && !mir_strcmp(szActProto,g_szMetaModuleName)) {
@@ -134,11 +103,10 @@ int cli_IconFromStatusMode(const char *szProto,int nStatus, HANDLE hContact)
 				}
 			}
 		}
-		mir_snprintf(AdvancedService,SIZEOF(AdvancedService),"%s%s",szActProto,"/GetAdvancedStatusIcon");
 
 		int result = -1;
-		if ( ServiceExists(AdvancedService))
-			result = CallService(AdvancedService,(WPARAM)hActContact, 0);
+		if ( ProtoServiceExists(szActProto, PS_GETADVANCEDSTATUSICON))
+			result = ProtoCallService(szActProto, PS_GETADVANCEDSTATUSICON, (WPARAM)hActContact, 0);
 
 		if (result == -1 || !(LOWORD(result))) {
 			//Get normal Icon
@@ -154,28 +122,21 @@ int cli_IconFromStatusMode(const char *szProto,int nStatus, HANDLE hContact)
 	return corecli.pfnIconFromStatusMode(szProto,nStatus,NULL);
 }
 
-int GetContactIconC(ClcCacheEntry *cacheEntry)
+int cli_GetContactIcon(HANDLE hContact)
 {
-	return ExtIconFromStatusMode(cacheEntry->hContact,cacheEntry->m_cache_cszProto,cacheEntry->m_cache_cszProto == NULL ? ID_STATUS_OFFLINE : pdnce___GetStatus( cacheEntry ));
+	int res = corecli.pfnGetContactIcon(hContact);
+	if (res != -1)
+		res &= 0xFFFF;
+	return res;
+}
+
+int GetContactIconC(ClcCacheEntry *p)
+{
+	return pcli->pfnIconFromStatusMode(p->m_cache_cszProto,p->m_cache_cszProto == NULL ? ID_STATUS_OFFLINE : pdnce___GetStatus(p), p->hContact);
 }
 
 //lParam
 // 0 - default - return icon id in order: transport status icon, protostatus icon, meta is affected
-
-
-INT_PTR GetContactIcon(WPARAM wParam,LPARAM lParam)
-{
-	int status;
-	char *szProto = GetContactProto((HANDLE)wParam);
-	if (szProto == NULL)
-		status = ID_STATUS_OFFLINE;
-	else
-		status = db_get_w((HANDLE) wParam, szProto, "Status", ID_STATUS_OFFLINE);
-	int res = ExtIconFromStatusMode((HANDLE)wParam,szProto,szProto == NULL?ID_STATUS_OFFLINE:status); //by FYR
-	if (lParam == 0 && res != -1)
-		res &= 0xFFFF;
-	return res;
-}
 
 void UnLoadContactListModule()  //unhooks noncritical events
 {
@@ -189,42 +150,16 @@ int CListMod_ContactListShutdownProc(WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
-INT_PTR GetCapsService(WPARAM wParam,LPARAM lParam)
-{
-	if (lParam) {
-		switch (lParam) {
-		case 0:
-			return 0;
-		case CLUIF2_PLUGININFO:
-			return (INT_PTR)&pluginInfo;
-		case CLUIF2_CLISTTYPE:
-			return 0x0107;
-		case CLUIF2_EXTRACOLUMNCOUNT:
-			return EXTRA_ICON_COUNT;
-		}
-	}
-	else {
-		switch (wParam) {
-		case CLUICAPS_FLAGS1:
-			return CLUIF_HIDEEMPTYGROUPS|CLUIF_DISABLEGROUPS|CLUIF_HASONTOPOPTION|CLUIF_HASAUTOHIDEOPTION;
-		case CLUICAPS_FLAGS2:
-			return MAKELONG(EXTRA_ICON_COUNT,1);
-		}
-	}
-	return 0;
-}
-
 HRESULT PreLoadContactListModule()
 {
 	/* Global data initialization */
 	g_CluiData.fOnDesktop = FALSE;
-	g_CluiData.dwKeyColor = RGB(255,0,255);
+	g_CluiData.dwKeyColor = RGB(255, 0, 255);
 	g_CluiData.bCurrentAlpha = 255;
 
-	//initialize firstly hooks
-	//clist interface is empty yet so handles should check
-	CreateServiceFunction(MS_CLIST_GETCONTACTICON, GetContactIcon);
-	CreateServiceFunction(MS_CLUI_GETCAPS, GetCapsService);
+	// catch langpack events
+	HookEvent(ME_LANGPACK_CHANGED, OnLoadLangpack);
+	OnLoadLangpack(0, 0);
 	return S_OK;
 }
 
@@ -235,25 +170,21 @@ INT_PTR SvcApplySkin(WPARAM wParam, LPARAM lParam);
 HRESULT  CluiLoadModule()
 {
 	InitDisplayNameCache();
-	hookSystemShutdown_CListMod  = HookEvent(ME_SYSTEM_SHUTDOWN,CListMod_ContactListShutdownProc);
-	hookOptInitialise_CList      = HookEvent(ME_OPT_INITIALISE,CListOptInit);
-	hookOptInitialise_Skin       = HookEvent(ME_OPT_INITIALISE,SkinOptInit);
+	HookEvent(ME_SYSTEM_SHUTDOWN,CListMod_ContactListShutdownProc);
+	HookEvent(ME_OPT_INITIALISE,CListOptInit);
+	HookEvent(ME_OPT_INITIALISE,SkinOptInit);
 
 	CreateServiceFunction("ModernSkinSel/Active", SvcActiveSkin);
 	CreateServiceFunction("ModernSkinSel/Preview", SvcPreviewSkin);
 	CreateServiceFunction("ModernSkinSel/Apply", SvcApplySkin);
 	
-	hookContactAdded_CListSettings = HookEvent(ME_DB_CONTACT_ADDED,ContactAdded);	
-	CreateServiceFunction(MS_CLIST_TRAYICONPROCESSMESSAGE,cli_TrayIconProcessMessage);
-	CreateServiceFunction(MS_CLIST_PAUSEAUTOHIDE,TrayIconPauseAutoHide);
-	CreateServiceFunction(MS_CLIST_CONTACTCHANGEGROUP,ContactChangeGroup);
+	HookEvent(ME_DB_CONTACT_ADDED,ContactAdded);	
+
 	CreateServiceFunction(MS_CLIST_TOGGLEHIDEOFFLINE,ToggleHideOffline);
 
 	CreateServiceFunction(MS_CLIST_TOGGLEGROUPS,ToggleGroups);
 	CreateServiceFunction(MS_CLIST_TOGGLESOUNDS,ToggleSounds);
 	CreateServiceFunction(MS_CLIST_SETUSEGROUPS,SetUseGroups);
-
-	CreateServiceFunction(MS_CLIST_GETCONTACTICON,GetContactIcon);
 
 	MySetProcessWorkingSetSize = (BOOL (WINAPI*)(HANDLE,SIZE_T,SIZE_T))GetProcAddress(GetModuleHandle(_T("kernel32")),"SetProcessWorkingSetSize");
 	hCListImages = ImageList_Create(16, 16, ILC_MASK|ILC_COLOR32, 32, 0);
@@ -261,8 +192,8 @@ HRESULT  CluiLoadModule()
 	InitTray();
 	
 	HINSTANCE hUser = GetModuleHandleA("USER32");
-	MyMonitorFromPoint  = ( pfnMyMonitorFromPoint )GetProcAddress( hUser,"MonitorFromPoint" );
-	MyMonitorFromWindow = ( pfnMyMonitorFromWindow )GetProcAddress( hUser, "MonitorFromWindow" );
+	MyMonitorFromPoint  = ( pfnMyMonitorFromPoint )GetProcAddress( hUser,"MonitorFromPoint");
+	MyMonitorFromWindow = ( pfnMyMonitorFromWindow )GetProcAddress( hUser, "MonitorFromWindow");
 	MyGetMonitorInfo = ( pfnMyGetMonitorInfo )GetProcAddress( hUser, "GetMonitorInfoW");
 	
 	CLUI::InitClui();
@@ -335,7 +266,7 @@ int GetWindowVisibleState(HWND hWnd, int iStepX, int iStepY)
 	{
 		RECT rc;
 		int i=0;
-		rgn = CreateRectRgn(0,0,1,1);
+		rgn = CreateRectRgn(0, 0, 1,1);
 		GetWindowRect(hWnd,&rc);
 		GetWindowRgn(hWnd,rgn);
 		OffsetRgn(rgn,rc.left,rc.top);
@@ -425,10 +356,10 @@ int cliShowHide(WPARAM wParam,LPARAM lParam)
 {
 	BOOL bShow = FALSE;
 
-	int iVisibleState = GetWindowVisibleState(pcli->hwndContactList,0,0);
+	int iVisibleState = GetWindowVisibleState(pcli->hwndContactList, 0, 0);
 	int method = db_get_b(NULL, "ModernData", "HideBehind", SETTING_HIDEBEHIND_DEFAULT);; //(0-none, 1-leftedge, 2-rightedge);
 	if (method) {
-		if (db_get_b(NULL, "ModernData", "BehindEdge", SETTING_BEHINDEDGE_DEFAULT) == 0 && lParam != 1)
+		if ( db_get_b(NULL, "ModernData", "BehindEdge", SETTING_BEHINDEDGE_DEFAULT) == 0 && lParam != 1)
 			CLUI_HideBehindEdge(); //hide
 		else
 			CLUI_ShowFromBehindEdge();
@@ -490,7 +421,7 @@ int cliShowHide(WPARAM wParam,LPARAM lParam)
 			db_set_b(NULL,"CList","State",SETTING_STATE_HIDDEN);
 		}
 		else {
-			if (db_get_b(NULL,"CList","Min2Tray",SETTING_MIN2TRAY_DEFAULT)) {
+			if ( db_get_b(NULL,"CList","Min2Tray",SETTING_MIN2TRAY_DEFAULT)) {
 				CLUI_ShowWindowMod(pcli->hwndContactList, SW_HIDE);
 				db_set_b(NULL,"CList","State",SETTING_STATE_HIDDEN);
 			}

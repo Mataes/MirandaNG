@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,9 +20,6 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
-
-// to enable all 0.9.0 core functions
-#define MIRANDA_VER 0x0A00
 
 #define WINVER 0x0700
 #define _WIN32_WINNT 0x0700
@@ -54,33 +51,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <newpluginapi.h>
 #include <m_database.h>
 #include <m_netlib.h>
-#include <m_clc.h>
-#include <m_clui.h>
-#include <m_crypto.h>
 #include <m_langpack.h>
-#include <m_clist.h>
 #include <m_clistint.h>
-#include <m_avatars.h>
 #include <m_button.h>
 #include <m_protosvc.h>
 #include <m_protomod.h>
 #include <m_protocols.h>
-#include <m_protoint.h>
 #include <m_options.h>
 #include <m_skin.h>
 #include <m_contacts.h>
 #include <m_message.h>
 #include <m_userinfo.h>
-#include <m_history.h>
 #include <m_findadd.h>
-#include <m_file.h>
 #include <m_email.h>
-#include <m_awaymsg.h>
-#include <m_idle.h>
-#include <m_ignore.h>
 #include <m_icolib.h>
 #include <m_modernopt.h>
-#include <m_help.h>
 #include <m_timezones.h>
 
 #include "version.h"

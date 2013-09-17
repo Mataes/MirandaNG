@@ -101,15 +101,15 @@ void exportModule(HANDLE hContact, char* module, FILE* file)
 			{
 				case DBVT_BYTE:
 					fprintf(file, "\n%s=b%s", setting->name, itoa(dbv.bVal,tmp,10));
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					break;
 				case DBVT_WORD:
 					fprintf(file, "\n%s=w%s", setting->name, itoa(dbv.wVal,tmp,10));
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					break;
 				case DBVT_DWORD:
 					fprintf(file, "\n%s=d%s", setting->name, itoa(dbv.dVal,tmp,10));
-					DBFreeVariant(&dbv);
+					db_free(&dbv);
 					break;
 				case DBVT_ASCIIZ:
 				case DBVT_UTF8:
@@ -125,7 +125,7 @@ void exportModule(HANDLE hContact, char* module, FILE* file)
 							fprintf(file, "\n%s=u%s", setting->name, dbv.pszVal);
 						else
 							fprintf(file, "\n%s=s%s", setting->name, dbv.pszVal);
-						DBFreeVariant(&dbv);
+						db_free(&dbv);
 						break;
 				case DBVT_BLOB:
 				{
@@ -143,7 +143,7 @@ void exportModule(HANDLE hContact, char* module, FILE* file)
 					fprintf(file,"\n%s=n%s",setting->name , data);
 					mir_free(data);
 				}
-				DBFreeVariant(&dbv);
+				db_free(&dbv);
 				break;
 			}
 		}
@@ -326,61 +326,17 @@ void exportDB(HANDLE hContact, char* module) // hContact == -1 export entire db.
 	FreeModuleSettingLL(&modlist);
 }
 
-
 HANDLE CheckNewContact(char *myProto, char *uid, char *myName)
 {
 	char szProto[256], szName[256];
-	HANDLE resultHandle = INVALID_HANDLE_VALUE;
-	HANDLE hContact = db_find_first();
 
-	while (hContact)
-	{
-		//szProto = GetContactProto(hContact);
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
 		if (DBGetContactSettingStringStatic(hContact, "Protocol", "p", szProto, 256))
-		{
 			if (!mir_strcmp(szProto, myProto))
-			{
-				if (GetValue(hContact, szProto, uid, szName, SIZEOF(szName)) &&
-					!mir_strcmp(szName, myName))
-				{
-					//char msg[1024];
-					//_snprintf(msg, 1024, Translate("Do you want to overwrite it \"%s\"?"), szName);
-					//if (MessageBox(0,msg, Translate("Contact already exists"), MB_YESNO|MB_ICONEXCLAMATION) == IDYES)
-					resultHandle = hContact;
-					break;
-				}
-			}
-		}
+				if (GetValue(hContact, szProto, uid, szName, SIZEOF(szName)) && !mir_strcmp(szName, myName))
+					return hContact;
 
-		hContact = db_find_next(hContact);
-	}
-
-	return resultHandle;
-
-}
-
-HANDLE Clist_GroupExists(WCHAR *tszGroup)
-{
-	unsigned int i = 0;
-	WCHAR*		 _t = 0;
-	char		 str[10];
-	INT_PTR		 result = 0;
-	DBVARIANT	 dbv = {0};
-	int			 match;
-
-	do {
-		_itoa(i, str, 10);
-		result = DBGetContactSettingTString(0, "CListGroups", str, &dbv);
-		if (!result) {
-			match = (!lstrcmpW(tszGroup, (LPCWSTR)&dbv.ptszVal[1]) && (lstrlenW(tszGroup) == lstrlenW((LPCWSTR)&dbv.ptszVal[1])));
-			DBFreeVariant(&dbv);
-			if(match)
-				return((HANDLE)(i + 1));
-		}
-		i++;
-	}
-	while(result == 0);
-	return(0);
+	return INVALID_HANDLE_VALUE;
 }
 
 void importSettings(HANDLE hContact, char *importstring )
@@ -439,16 +395,16 @@ void importSettings(HANDLE hContact, char *importstring )
 							protouid = (char*)CallProtoService(szProto,PS_GETCAPS,PFLAG_UNIQUEIDSETTING,0);
 							if ((INT_PTR)protouid != CALLSERVICE_NOTFOUND) {
 								if (!mir_strcmp(protouid, uid))
-        							hContact = CheckNewContact(szProto, uid, szUID);
-        					}
-	        				else hContact = CheckNewContact(szProto, uid, szUID);
+									hContact = CheckNewContact(szProto, uid, szUID);
+							}
+							else hContact = CheckNewContact(szProto, uid, szUID);
 						}
 					}
 				}
 			}
 
- 			if (hContact == INVALID_HANDLE_VALUE)
- 			{
+			if (hContact == INVALID_HANDLE_VALUE)
+			{
 				HANDLE temp = (HANDLE)CallService(MS_DB_CONTACT_ADD,0,0);
 				if (temp)
 					hContact = temp;
@@ -483,7 +439,7 @@ void importSettings(HANDLE hContact, char *importstring )
 					WCHAR* GroupName = mir_a2u(end+2);
 					if (!GroupName)
 						continue;
-					HANDLE GroupHandle = Clist_GroupExists(GroupName);
+					HANDLE GroupHandle = (HANDLE)CallService(MS_CLIST_GROUPEXISTS, 0, LPARAM(GroupName));
 					if(GroupHandle == 0) {
 						GroupHandle = (HANDLE)CallService(MS_CLIST_GROUPCREATE, 0, (LPARAM)GroupName);
 
@@ -499,21 +455,21 @@ void importSettings(HANDLE hContact, char *importstring )
 					case 'b':
 					case 'B':
 						if (sscanf((end+2), "%d", &value) == 1)
-							DBWriteContactSettingByte(hContact, module, setting, (BYTE)value);
+							db_set_b(hContact, module, setting, (BYTE)value);
 						break;
 					case 'w':
 					case 'W':
 						if (sscanf((end+2), "%d", &value) == 1)
-							DBWriteContactSettingWord(hContact, module, setting, (WORD)value);
+							db_set_w(hContact, module, setting, (WORD)value);
 						break;
 					case 'd':
 					case 'D':
 						if (sscanf((end+2), "%d", &value) == 1)
-							DBWriteContactSettingDword(hContact, module, setting, (DWORD)value);
+							db_set_dw(hContact, module, setting, (DWORD)value);
 						break;
 					case 's':
 					case 'S':
-						DBWriteContactSettingString(hContact,module, setting, (end+2));
+						db_set_s(hContact,module, setting, (end+2));
 						break;
 					case 'g':
 					case 'G':
@@ -530,11 +486,12 @@ void importSettings(HANDLE hContact, char *importstring )
 						}	}	}
 					case 'u':
 					case 'U':
-						DBWriteContactSettingStringUtf(hContact,module, setting, (end+2));
+						db_set_utf(hContact,module, setting, (end+2));
 						break;
 					case 'l':
 					case 'L':
-						DBDeleteContactSetting(hContact, module, setting);
+					case '-':
+						db_unset(hContact, module, setting);
 						break;
 					case 'n':
 					case 'N':
@@ -571,12 +528,11 @@ INT_PTR CALLBACK ImportDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
 					char *string = (char*)_alloca(length+3);
 					int Pos = 2;
 
-    				if (length)
+					if (length)
 					{
 						int	Range = SendDlgItemMessage(hwnd,IDC_TEXT,EM_GETSEL,0,0);
 						int Min = LOWORD(Range);
 						int Max = HIWORD(Range);
-
 
 						GetDlgItemText(hwnd, IDC_TEXT, string, length+1);
 
@@ -665,8 +621,8 @@ int Openfile2Import(char *outputFiles)
 }
 
 BOOL Exists(LPCTSTR strName)
-{   
-    return GetFileAttributes(strName) != INVALID_FILE_ATTRIBUTES;   
+{
+	return GetFileAttributes(strName) != INVALID_FILE_ATTRIBUTES;
 }
 
 void ImportSettingsFromFileMenuItem(HANDLE hContact, char* FilePath)
@@ -707,7 +663,7 @@ void ImportSettingsFromFileMenuItem(HANDLE hContact, char* FilePath)
 			if (hFile != INVALID_HANDLE_VALUE)
 			{
 				if (GetFileSize(hFile,  NULL) > 0)
-			 	{
+				{
 					hMap = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
 
 					if (hMap) {

@@ -4,6 +4,7 @@ Jabber Protocol Plugin for Miranda IM
 Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-12  George Hazan
 Copyright (C) 2007     Maxim Mluhov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -31,10 +32,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "jabber_list.h"
 #include "jabber_iq.h"
 #include "jabber_caps.h"
-#include "m_file.h"
 #include "m_addcontact.h"
 #include "jabber_disco.h"
-#include "m_proto_listeningto.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // GetMyAwayMsg - obtain the current away message
@@ -80,7 +79,7 @@ INT_PTR __cdecl CJabberProto::GetMyAwayMsg(WPARAM wParam, LPARAM lParam)
 
 INT_PTR __cdecl CJabberProto::JabberGetAvatar(WPARAM wParam, LPARAM lParam)
 {
-	TCHAR* buf = (TCHAR*)wParam;
+	TCHAR *buf = (TCHAR*)wParam;
 	int  size = (int)lParam;
 
 	if (buf == NULL || size <= 0)
@@ -129,8 +128,8 @@ INT_PTR __cdecl CJabberProto::JabberGetAvatarInfo(WPARAM wParam, LPARAM lParam)
 
 	PROTO_AVATAR_INFORMATIONT* AI = (PROTO_AVATAR_INFORMATIONT*)lParam;
 
-	char szHashValue[ MAX_PATH ];
-	if (JGetStaticString("AvatarHash", AI->hContact, szHashValue, sizeof szHashValue)) {
+	ptrA szHashValue( getStringA(AI->hContact, "AvatarHash"));
+	if (szHashValue == NULL) {
 		Log("No avatar");
 		return GAIR_NOAVATAR;
 	}
@@ -139,31 +138,31 @@ INT_PTR __cdecl CJabberProto::JabberGetAvatarInfo(WPARAM wParam, LPARAM lParam)
 	GetAvatarFileName(AI->hContact, tszFileName, SIZEOF(tszFileName));
 	_tcsncpy(AI->filename, tszFileName, SIZEOF(AI->filename));
 
-	AI->format = (AI->hContact == NULL) ? PA_FORMAT_PNG : JGetByte(AI->hContact, "AvatarType", 0);
+	AI->format = (AI->hContact == NULL) ? PA_FORMAT_PNG : getByte(AI->hContact, "AvatarType", 0);
 
 	if (::_taccess(AI->filename, 0) == 0) {
-		char szSavedHash[ 256 ];
-		if ( !JGetStaticString("AvatarSaved", AI->hContact, szSavedHash, sizeof szSavedHash)) {
-			if ( !strcmp(szSavedHash, szHashValue)) {
-				Log("Avatar is Ok: %s == %s", szSavedHash, szHashValue);
-				return GAIR_SUCCESS;
-	}	}	}
+		ptrA szSavedHash( getStringA(AI->hContact, "AvatarSaved"));
+		if (szSavedHash != NULL && !strcmp(szSavedHash, szHashValue)) {
+			Log("Avatar is Ok: %s == %s", szSavedHash, szHashValue);
+			return GAIR_SUCCESS;
+		}
+	}
 
 	if ((wParam & GAIF_FORCE) != 0 && AI->hContact != NULL && m_bJabberOnline) {
 		DBVARIANT dbv;
-		if ( !JGetStringT(AI->hContact, "jid", &dbv)) {
-			JABBER_LIST_ITEM* item = ListGetItemPtr(LIST_ROSTER, dbv.ptszVal);
+		if ( !getTString(AI->hContact, "jid", &dbv)) {
+			JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_ROSTER, dbv.ptszVal);
 			if (item != NULL) {
-				BOOL isXVcard = JGetByte(AI->hContact, "AvatarXVcard", 0);
+				BOOL isXVcard = getByte(AI->hContact, "AvatarXVcard", 0);
 
-				TCHAR szJid[ JABBER_MAX_JID_LEN ];
-				if (item->resourceCount != NULL && !isXVcard) {
+				TCHAR szJid[JABBER_MAX_JID_LEN];
+				if (item->arResources.getCount() != NULL && !isXVcard) {
 					TCHAR *bestResName = ListGetBestClientResourceNamePtr(dbv.ptszVal);
 					mir_sntprintf(szJid, SIZEOF(szJid), bestResName?_T("%s/%s"):_T("%s"), dbv.ptszVal, bestResName);
 				}
 				else lstrcpyn(szJid, dbv.ptszVal, SIZEOF(szJid));
 
-				Log("Rereading %s for " TCHAR_STR_PARAM, isXVcard ? JABBER_FEAT_VCARD_TEMP : JABBER_FEAT_AVATAR, szJid);
+				Log("Rereading %s for %S", isXVcard ? JABBER_FEAT_VCARD_TEMP : JABBER_FEAT_AVATAR, szJid);
 
 				int iqId = SerialNext();
 				if (isXVcard)
@@ -173,9 +172,9 @@ INT_PTR __cdecl CJabberProto::JabberGetAvatarInfo(WPARAM wParam, LPARAM lParam)
 
 				XmlNodeIq iq(_T("get"), iqId, szJid);
 				if (isXVcard)
-					iq << XCHILDNS(_T("vCard"), _T(JABBER_FEAT_VCARD_TEMP));
+					iq << XCHILDNS(_T("vCard"), JABBER_FEAT_VCARD_TEMP);
 				else
-					iq << XQUERY(isXVcard ? _T("") : _T(JABBER_FEAT_AVATAR));
+					iq << XQUERY(isXVcard ? _T("") : JABBER_FEAT_AVATAR);
 				m_ThreadInfo->send(iq);
 
 				db_free(&dbv);
@@ -281,7 +280,7 @@ INT_PTR __cdecl CJabberProto::OnGetEventTextPresence(WPARAM, LPARAM lParam)
 
 INT_PTR __cdecl CJabberProto::JabberSetAvatar(WPARAM, LPARAM lParam)
 {
-	TCHAR* tszFileName = (TCHAR*)lParam;
+	TCHAR *tszFileName = (TCHAR*)lParam;
 
 	if (m_bJabberOnline) {
 		SetServerVcard(TRUE, tszFileName);
@@ -293,8 +292,8 @@ INT_PTR __cdecl CJabberProto::JabberSetAvatar(WPARAM, LPARAM lParam)
 		GetAvatarFileName(NULL, tFileName, MAX_PATH);
 		DeleteFile(tFileName);
 
-		JDeleteSetting(NULL, "AvatarSaved");
-		JDeleteSetting(NULL, "AvatarHash");
+		delSetting("AvatarSaved");
+		delSetting("AvatarHash");
 	}
 	else {
 		int fileIn = _topen(tszFileName, O_RDWR | O_BINARY, S_IREAD | S_IWRITE);
@@ -314,10 +313,10 @@ INT_PTR __cdecl CJabberProto::JabberSetAvatar(WPARAM, LPARAM lParam)
 		_read(fileIn, pResult, dwPngSize);
 		_close(fileIn);
 
-		mir_sha1_byte_t digest[MIR_SHA1_HASH_SIZE];
+		BYTE digest[MIR_SHA1_HASH_SIZE];
 		mir_sha1_ctx sha1ctx;
 		mir_sha1_init(&sha1ctx);
-		mir_sha1_append(&sha1ctx, (mir_sha1_byte_t*)pResult, dwPngSize);
+		mir_sha1_append(&sha1ctx, (BYTE*)pResult, dwPngSize);
 		mir_sha1_finish(&sha1ctx, digest);
 
 		TCHAR tFileName[ MAX_PATH ];
@@ -325,10 +324,9 @@ INT_PTR __cdecl CJabberProto::JabberSetAvatar(WPARAM, LPARAM lParam)
 		DeleteFile(tFileName);
 
 		char buf[MIR_SHA1_HASH_SIZE*2+1];
-		for (int i=0; i<MIR_SHA1_HASH_SIZE; i++)
-			sprintf(buf+(i<<1), "%02x", digest[i]);
+		bin2hex(digest, sizeof(digest), buf);
 
-		m_options.AvatarType = JabberGetPictureType(pResult);
+		m_options.AvatarType = ProtoGetBufferFormat(pResult);
 
 		GetAvatarFileName(NULL, tFileName, MAX_PATH);
 		FILE* out = _tfopen(tFileName, _T("wb"));
@@ -338,7 +336,7 @@ INT_PTR __cdecl CJabberProto::JabberSetAvatar(WPARAM, LPARAM lParam)
 		}
 		delete[] pResult;
 
-		JSetString(NULL, "AvatarSaved", buf);
+		setString("AvatarSaved", buf);
 	}
 
 	return 0;
@@ -351,7 +349,7 @@ INT_PTR __cdecl CJabberProto::JabberSetNickname(WPARAM wParam, LPARAM lParam)
 {
 	TCHAR *nickname = (wParam & SMNN_UNICODE) ? mir_u2t((WCHAR *) lParam) : mir_a2t((char *) lParam);
 
-	JSetStringT(NULL, "Nick", nickname);
+	setTString("Nick", nickname);
 	SetServerVcard(FALSE, _T(""));
 	return 0;
 }
@@ -370,12 +368,6 @@ INT_PTR __cdecl CJabberProto::ServiceSendXML(WPARAM, LPARAM lParam)
 static const TCHAR * JabberEnum2AffilationStr[]={ _T("None"), _T("Outcast"), _T("Member"), _T("Admin"), _T("Owner") };
 static const TCHAR * JabberEnum2RoleStr[]={ _T("None"), _T("Visitor"), _T("Participant"), _T("Moderator") };
 
-//FIXME Table conversion fast but is not safe
-static const TCHAR * JabberEnum2StatusStr[]= {	_T("Offline"), _T("Online"), _T("Away"), _T("DND"),
-	_T("NA"), _T("Occupied"), _T("Free for chat"),
-	_T("Invisible"), _T("On the phone"), _T("Out to lunch"),
-	_T("Idle")  };
-
 static void appendString(bool bIsTipper, const TCHAR *tszTitle, const TCHAR *tszValue, TCHAR* buf, size_t bufSize)
 {
 	if (*buf) {
@@ -390,7 +382,7 @@ static void appendString(bool bIsTipper, const TCHAR *tszTitle, const TCHAR *tsz
 	if (bIsTipper)
 		mir_sntprintf(buf, bufSize, _T("%s%s%s%s"), _T("<b>"), TranslateTS(tszTitle), _T("</b>\t"), tszValue);
 	else {
-		TCHAR* p = TranslateTS(tszTitle);
+		TCHAR *p = TranslateTS(tszTitle);
 		mir_sntprintf(buf, bufSize, _T("%s%s\t%s"), p, _tcslen(p)<=7 ? _T("\t") : _T(""), tszValue);
 	}
 }
@@ -400,18 +392,11 @@ INT_PTR __cdecl CJabberProto::JabberGCGetToolTipText(WPARAM wParam, LPARAM lPara
 	if ( !wParam || !lParam)
 		return 0; //room global tooltip not supported yet
 
-	JABBER_LIST_ITEM* item = ListGetItemPtr(LIST_CHATROOM, (TCHAR*)wParam);
+	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_CHATROOM, (TCHAR*)wParam);
 	if (item == NULL)
 		return 0;  //no room found
 
-	JABBER_RESOURCE_STATUS * info = NULL;
-	for (int i=0; i < item->resourceCount; i++) {
-		JABBER_RESOURCE_STATUS& p = item->resource[i];
-		if ( !lstrcmp(p.resourceName, (TCHAR*)lParam)) {
-			info = &p;
-			break;
-	}	}
-
+	JABBER_RESOURCE_STATUS *info = item->findResource((TCHAR*)lParam);
 	if (info == NULL)
 		return 0; //no info found
 
@@ -430,13 +415,12 @@ INT_PTR __cdecl CJabberProto::JabberGCGetToolTipText(WPARAM wParam, LPARAM lPara
 	//JID:
 	if (_tcschr(info->resourceName, _T('@')) != NULL)
 		appendString(bIsTipper, _T("JID:"), info->resourceName, outBuf, SIZEOF(outBuf));
-	else if (lParam) { //or simple nick
+	else if (lParam) //or simple nick
 		appendString(bIsTipper, _T("Nick:"), (TCHAR*) lParam, outBuf, SIZEOF(outBuf));
-	}
 
 	// status
 	if (info->status >= ID_STATUS_OFFLINE && info->status <= ID_STATUS_IDLE )
-		appendString(bIsTipper, _T("Status:"), TranslateTS(JabberEnum2StatusStr[info->status-ID_STATUS_OFFLINE]), outBuf, SIZEOF(outBuf));
+		appendString(bIsTipper, _T("Status:"), pcli->pfnGetStatusModeDescription(info->status, 0), outBuf, SIZEOF(outBuf));
 
 	// status text
 	if (info->statusMessage)
@@ -512,7 +496,7 @@ INT_PTR __cdecl CJabberProto::JabberServiceParseXmppURI(WPARAM wParam, LPARAM lP
 				szMsgBody = _tcsstr(szSecondParam, _T("body="));
 				if (szMsgBody) {
 					szMsgBody += 5;
-					TCHAR* szDelim = _tcschr(szMsgBody, _T(';'));
+					TCHAR *szDelim = _tcschr(szMsgBody, _T(';'));
 					if (szDelim)
 						szDelim = 0;
 					JabberHttpUrlDecode(szMsgBody);
@@ -596,8 +580,8 @@ INT_PTR __cdecl CJabberProto::JabberSendNudge(WPARAM wParam, LPARAM)
 
 	HANDLE hContact = (HANDLE)wParam;
 	DBVARIANT dbv;
-	if ( !JGetStringT(hContact, "jid", &dbv)) {
-		TCHAR tszJid[ JABBER_MAX_JID_LEN ];
+	if ( !getTString(hContact, "jid", &dbv)) {
+		TCHAR tszJid[JABBER_MAX_JID_LEN];
 		TCHAR *szResource = ListGetBestClientResourceNamePtr(dbv.ptszVal);
 		if (szResource)
 			mir_sntprintf(tszJid, SIZEOF(tszJid), _T("%s/%s"), dbv.ptszVal, szResource);
@@ -610,7 +594,7 @@ INT_PTR __cdecl CJabberProto::JabberSendNudge(WPARAM wParam, LPARAM)
 		m_ThreadInfo->send(
 			XmlNode(_T("message")) << XATTR(_T("type"), _T("headline")) << XATTR(_T("to"), tszJid)
 				<< XCHILDNS(_T("attention"),
-				jcb & JABBER_CAPS_ATTENTION ? _T(JABBER_FEAT_ATTENTION) : _T(JABBER_FEAT_ATTENTION_0)));
+				jcb & JABBER_CAPS_ATTENTION ? JABBER_FEAT_ATTENTION : JABBER_FEAT_ATTENTION_0));
 	}
 	return 0;
 }
@@ -623,7 +607,7 @@ BOOL CJabberProto::SendHttpAuthReply(CJabberHttpAuthParams *pParams, BOOL bAutho
 	if (pParams->m_nType == CJabberHttpAuthParams::IQ) {
 		XmlNodeIq iq(bAuthorized ? _T("result") : _T("error"), pParams->m_szIqId, pParams->m_szFrom);
 		if ( !bAuthorized) {
-			iq << XCHILDNS(_T("confirm"), _T(JABBER_FEAT_HTTP_AUTH)) << XATTR(_T("id"), pParams->m_szId)
+			iq << XCHILDNS(_T("confirm"), JABBER_FEAT_HTTP_AUTH) << XATTR(_T("id"), pParams->m_szId)
 					<< XATTR(_T("method"), pParams->m_szMethod) << XATTR(_T("url"), pParams->m_szUrl);
 			iq << XCHILD(_T("error")) << XATTRI(_T("code"), 401) << XATTR(_T("type"), _T("auth"))
 					<< XCHILDNS(_T("not-authorized"), _T("urn:ietf:params:xml:xmpp-stanzas"));
@@ -638,7 +622,7 @@ BOOL CJabberProto::SendHttpAuthReply(CJabberHttpAuthParams *pParams, BOOL bAutho
 		if (pParams->m_szThreadId)
 			msg << XCHILD(_T("thread"), pParams->m_szThreadId);
 
-		msg << XCHILDNS(_T("confirm"), _T(JABBER_FEAT_HTTP_AUTH)) << XATTR(_T("id"), pParams->m_szId)
+		msg << XCHILDNS(_T("confirm"), JABBER_FEAT_HTTP_AUTH) << XATTR(_T("id"), pParams->m_szId)
 					<< XATTR(_T("method"), pParams->m_szMethod) << XATTR(_T("url"), pParams->m_szUrl);
 
 		if ( !bAuthorized)
@@ -794,7 +778,7 @@ HANDLE CJabberSysInterface::ContactFromJID(LPCTSTR jid)
 
 LPTSTR CJabberSysInterface::ContactToJID(HANDLE hContact)
 {
-	return m_psProto->JGetStringT(hContact, m_psProto->JGetByte(hContact, "ChatRoom", 0) ? "ChatRoomID" : "jid");
+	return m_psProto->getTStringA(hContact, m_psProto->isChatRoom(hContact) ? "ChatRoomID" : "jid");
 }
 
 LPTSTR CJabberSysInterface::GetBestResourceName(LPCTSTR jid)
@@ -803,10 +787,8 @@ LPTSTR CJabberSysInterface::GetBestResourceName(LPCTSTR jid)
 		return NULL;
 	LPCTSTR p = _tcschr(jid, '/');
 	if (p == NULL) {
-		m_psProto->ListLock(); // make sure we allow access to the list only after making mir_tstrdup() of resource name
-		LPTSTR res = mir_tstrdup(m_psProto->ListGetBestClientResourceNamePtr(jid));
-		m_psProto->ListUnlock();
-		return res;
+		mir_cslock lck(m_psProto->m_csLists);
+		return mir_tstrdup(m_psProto->ListGetBestClientResourceNamePtr(jid));
 	}
 	return mir_tstrdup(jid);
 }
@@ -816,37 +798,32 @@ LPTSTR CJabberSysInterface::GetResourceList(LPCTSTR jid)
 	if ( !jid)
 		return NULL;
 
-	m_psProto->ListLock();
+	mir_cslock lck(m_psProto->m_csLists);
 	JABBER_LIST_ITEM *item = NULL;
 	if ((item = m_psProto->ListGetItemPtr(LIST_VCARD_TEMP, jid)) == NULL)
 		item = m_psProto->ListGetItemPtr(LIST_ROSTER, jid);
-	if (item == NULL) {
-		m_psProto->ListUnlock();
+	if (item == NULL)
 		return NULL;
-	}
 
-	if (item->resource == NULL) {
-		m_psProto->ListUnlock();
+	if (!item->arResources.getCount())
 		return NULL;
-	}
 
 	int i;
 	int iLen = 1; // 1 for extra zero terminator at the end of the string
 	// calculate total necessary string length
-	for (i=0; i<item->resourceCount; i++) {
-		iLen += lstrlen(item->resource[i].resourceName) + 1;
-	}
+	for (i=0; i<item->arResources.getCount(); i++)
+		iLen += lstrlen(item->arResources[i]->resourceName) + 1;
 
 	// allocate memory and fill it
 	LPTSTR str = (LPTSTR)mir_alloc(iLen * sizeof(TCHAR));
 	LPTSTR p = str;
-	for (i=0; i<item->resourceCount; i++) {
-		lstrcpy(p, item->resource[i].resourceName);
-		p += lstrlen(item->resource[i].resourceName) + 1;
+	for (i=0; i<item->arResources.getCount(); i++) {
+		JABBER_RESOURCE_STATUS *r = item->arResources[i];
+		lstrcpy(p, r->resourceName);
+		p += lstrlen(r->resourceName) + 1;
 	}
 	*p = 0; // extra zero terminator
 
-	m_psProto->ListUnlock();
 	return str;
 }
 
@@ -985,10 +962,9 @@ int CJabberNetInterface::RegisterFeature(LPCTSTR szFeature, LPCTSTR szDescriptio
 		}
 	}
 
-	m_psProto->ListLock();
+	mir_cslock lck(m_psProto->m_csLists);
 	JabberFeatCapPairDynamic *fcp = FindFeature(szFeature);
-	if ( !fcp) {
-	// if the feature is not registered yet, allocate new bit for it
+	if ( !fcp) { // if the feature is not registered yet, allocate new bit for it
 		JabberCapsBits jcb = JABBER_CAPS_OTHER_SPECIAL; // set all bits not included in g_JabberFeatCapPairs
 
 		// set all bits occupied by g_JabberFeatCapPairs
@@ -1002,22 +978,18 @@ int CJabberNetInterface::RegisterFeature(LPCTSTR szFeature, LPCTSTR szDescriptio
 		// Now get first zero bit. The line below is a fast way to do it. If there are no zero bits, it returns 0.
 		jcb = (~jcb) & (JabberCapsBits)(-(__int64)(~jcb));
 
-		if ( !jcb) {
 		// no more free bits
-			m_psProto->ListUnlock();
+		if ( !jcb)
 			return false;
-		}
 
+		// remove unnecessary symbols from szFeature to make the string shorter, and use it as szExt
 		LPTSTR szExt = mir_tstrdup(szFeature);
 		LPTSTR pSrc, pDst;
-		for (pSrc = szExt, pDst = szExt; *pSrc; pSrc++) {
-		// remove unnecessary symbols from szFeature to make the string shorter, and use it as szExt
-			if (_tcschr(_T("bcdfghjklmnpqrstvwxz0123456789"), *pSrc)) {
+		for (pSrc = szExt, pDst = szExt; *pSrc; pSrc++)
+			if (_tcschr(_T("bcdfghjklmnpqrstvwxz0123456789"), *pSrc))
 				*pDst++ = *pSrc;
-			}
-		}
 		*pDst = 0;
-		m_psProto->m_clientCapsManager.SetClientCaps(_T(JABBER_CAPS_MIRANDA_NODE), szExt, jcb);
+		m_psProto->m_clientCapsManager.SetClientCaps(JABBER_CAPS_MIRANDA_NODE, szExt, jcb);
 
 		fcp = new JabberFeatCapPairDynamic();
 		fcp->szExt = szExt; // will be deallocated along with other values of JabberFeatCapPairDynamic in CJabberProto destructor
@@ -1025,114 +997,109 @@ int CJabberNetInterface::RegisterFeature(LPCTSTR szFeature, LPCTSTR szDescriptio
 		fcp->szDescription = szDescription ? mir_tstrdup(szDescription) : NULL;
 		fcp->jcbCap = jcb;
 		m_psProto->m_lstJabberFeatCapPairsDynamic.insert(fcp);
-	} else if (szDescription) {
-	// update description
+	}
+	else if (szDescription) { // update description
 		if (fcp->szDescription)
 			mir_free(fcp->szDescription);
 		fcp->szDescription = mir_tstrdup(szDescription);
 	}
-	m_psProto->ListUnlock();
 	return true;
 }
 
 int CJabberNetInterface::AddFeatures(LPCTSTR szFeatures)
 {
-	if ( !szFeatures) {
+	if ( !szFeatures)
 		return false;
-	}
 
-	m_psProto->ListLock();
+	mir_cslockfull lck(m_psProto->m_csLists);
 	BOOL ret = true;
 	LPCTSTR szFeat = szFeatures;
 	while (szFeat[0]) {
 		JabberFeatCapPairDynamic *fcp = FindFeature(szFeat);
 		// if someone is trying to add one of core features, RegisterFeature() will return false, so we don't have to perform this check here
-		if ( !fcp) {
-		// if the feature is not registered yet
-			if ( !RegisterFeature(szFeat, NULL)) {
+		if ( !fcp) { // if the feature is not registered yet
+			if ( !RegisterFeature(szFeat, NULL))
 				ret = false;
-			} else {
+			else
 				fcp = FindFeature(szFeat); // update fcp after RegisterFeature()
-			}
 		}
-		if (fcp) {
+		if (fcp)
 			m_psProto->m_uEnabledFeatCapsDynamic |= fcp->jcbCap;
-		} else {
+		else
 			ret = false;
-		}
 		szFeat += lstrlen(szFeat) + 1;
 	}
-	m_psProto->ListUnlock();
+	lck.unlock();
 
-	if (m_psProto->m_bJabberOnline) {
+	if (m_psProto->m_bJabberOnline)
 		m_psProto->SendPresence(m_psProto->m_iStatus, true);
-	}
+
 	return ret;
 }
 
 int CJabberNetInterface::RemoveFeatures(LPCTSTR szFeatures)
 {
-	if ( !szFeatures) {
+	if ( !szFeatures)
 		return false;
-	}
 
-	m_psProto->ListLock();
+	mir_cslockfull lck(m_psProto->m_csLists);
 	BOOL ret = true;
 	LPCTSTR szFeat = szFeatures;
 	while (szFeat[0]) {
 		JabberFeatCapPairDynamic *fcp = FindFeature(szFeat);
-		if (fcp) {
+		if (fcp)
 			m_psProto->m_uEnabledFeatCapsDynamic &= ~fcp->jcbCap;
-		} else {
+		else
 			ret = false; // indicate that there was an error removing at least one of the specified features
-		}
+
 		szFeat += lstrlen(szFeat) + 1;
 	}
-	m_psProto->ListUnlock();
+	lck.unlock();
 
-	if (m_psProto->m_bJabberOnline) {
+	if (m_psProto->m_bJabberOnline)
 		m_psProto->SendPresence(m_psProto->m_iStatus, true);
-	}
+
 	return ret;
 }
 
 LPTSTR CJabberNetInterface::GetResourceFeatures(LPCTSTR jid)
 {
 	JabberCapsBits jcb = m_psProto->GetResourceCapabilites(jid, true);
-	if ( !(jcb & JABBER_RESOURCE_CAPS_ERROR)) {
-		m_psProto->ListLock(); // contents of m_lstJabberFeatCapPairsDynamic must not change from the moment we calculate total length and to the moment when we fill the string
-		int i;
-		int iLen = 1; // 1 for extra zero terminator at the end of the string
-		// calculate total necessary string length
-		for (i = 0; g_JabberFeatCapPairs[i].szFeature; i++) {
-			if (jcb & g_JabberFeatCapPairs[i].jcbCap) {
-				iLen += lstrlen(g_JabberFeatCapPairs[i].szFeature) + 1;
-			}
-		}
-		for (i = 0; i < m_psProto->m_lstJabberFeatCapPairsDynamic.getCount(); i++) {
-			if (jcb & m_psProto->m_lstJabberFeatCapPairsDynamic[i]->jcbCap) {
-				iLen += lstrlen(m_psProto->m_lstJabberFeatCapPairsDynamic[i]->szFeature) + 1;
-			}
+	if (jcb & JABBER_RESOURCE_CAPS_ERROR)
+		return NULL;
+
+	mir_cslockfull lck(m_psProto->m_csLists);
+	int i;
+	int iLen = 1; // 1 for extra zero terminator at the end of the string
+	// calculate total necessary string length
+	for (i = 0; g_JabberFeatCapPairs[i].szFeature; i++)
+		if (jcb & g_JabberFeatCapPairs[i].jcbCap)
+			iLen += lstrlen(g_JabberFeatCapPairs[i].szFeature) + 1;
+
+	for (i = 0; i < m_psProto->m_lstJabberFeatCapPairsDynamic.getCount(); i++)
+		if (jcb & m_psProto->m_lstJabberFeatCapPairsDynamic[i]->jcbCap)
+			iLen += lstrlen(m_psProto->m_lstJabberFeatCapPairsDynamic[i]->szFeature) + 1;
+
+	// allocate memory and fill it
+	LPTSTR str = (LPTSTR)mir_alloc(iLen * sizeof(TCHAR));
+	LPTSTR p = str;
+	for (i = 0; g_JabberFeatCapPairs[i].szFeature; i++)
+		if (jcb & g_JabberFeatCapPairs[i].jcbCap) {
+			lstrcpy(p, g_JabberFeatCapPairs[i].szFeature);
+			p += lstrlen(g_JabberFeatCapPairs[i].szFeature) + 1;
 		}
 
-		// allocate memory and fill it
-		LPTSTR str = (LPTSTR)mir_alloc(iLen * sizeof(TCHAR));
-		LPTSTR p = str;
-		for (i = 0; g_JabberFeatCapPairs[i].szFeature; i++) {
-			if (jcb & g_JabberFeatCapPairs[i].jcbCap) {
-				lstrcpy(p, g_JabberFeatCapPairs[i].szFeature);
-				p += lstrlen(g_JabberFeatCapPairs[i].szFeature) + 1;
-			}
+	for (i = 0; i < m_psProto->m_lstJabberFeatCapPairsDynamic.getCount(); i++)
+		if (jcb & m_psProto->m_lstJabberFeatCapPairsDynamic[i]->jcbCap) {
+			lstrcpy(p, m_psProto->m_lstJabberFeatCapPairsDynamic[i]->szFeature);
+			p += lstrlen(m_psProto->m_lstJabberFeatCapPairsDynamic[i]->szFeature) + 1;
 		}
-		for (i = 0; i < m_psProto->m_lstJabberFeatCapPairsDynamic.getCount(); i++) {
-			if (jcb & m_psProto->m_lstJabberFeatCapPairsDynamic[i]->jcbCap) {
-				lstrcpy(p, m_psProto->m_lstJabberFeatCapPairsDynamic[i]->szFeature);
-				p += lstrlen(m_psProto->m_lstJabberFeatCapPairsDynamic[i]->szFeature) + 1;
-			}
-		}
-		*p = 0; // extra zero terminator
-		m_psProto->ListUnlock();
-		return str;
-	}
-	return NULL;
+
+	*p = 0; // extra zero terminator
+	return str;
+}
+
+HANDLE CJabberNetInterface::GetHandle()
+{
+	return m_psProto->m_hNetlibUser;
 }

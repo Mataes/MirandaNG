@@ -127,7 +127,7 @@
     <ClInclude Include="src\resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="res\Proto_Jabber.rc" />
+    <ResourceCompile Include="res\Proto_Vkontakte.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

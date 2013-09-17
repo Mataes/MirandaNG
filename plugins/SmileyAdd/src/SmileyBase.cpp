@@ -17,9 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "general.h"
-#include "SmileyBase.h"
-
-#include <olectl.h>
 
 static void HiMetricToPixel(const SIZEL * lpSizeInHiMetric, LPSIZEL lpSizeInPix)
 {
@@ -369,8 +366,7 @@ HRESULT ISmileyBase::GetTooltip(BSTR *bstrHint)
 
 void CloseSmileys(void)
 {
-	for (int i=regSmileys.getCount(); i--;)
-	{
+	for (int i=regSmileys.getCount()-1; i >= 0; i--) {
 		regSmileys[i]->OnClose();
 		regSmileys[i]->Close(OLECLOSE_NOSAVE);
 	}
@@ -378,8 +374,9 @@ void CloseSmileys(void)
 
 int CheckForTip(int x, int y, HWND hwnd, TCHAR** smltxt)
 {
-	for (int i=0; i<regSmileys.getCount(); ++i)
-		if (regSmileys[i]->QueryHitPointSpecial(x, y, hwnd, smltxt)) return i;
+	for (int i=0; i < regSmileys.getCount(); i++)
+		if (regSmileys[i]->QueryHitPointSpecial(x, y, hwnd, smltxt))
+			return i;
 
 	return -1;
 }

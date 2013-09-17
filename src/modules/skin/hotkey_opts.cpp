@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -66,10 +66,10 @@ static TCHAR *sttHokeyVkToName(WORD vkKey)
 void HotkeyToName(TCHAR *buf, int size, BYTE shift, BYTE key)
 {
 	mir_sntprintf(buf, size, _T("%s%s%s%s%s"),
-		(shift & HOTKEYF_CONTROL)	? _T("Ctrl + ")		: _T(""),
-		(shift & HOTKEYF_ALT)		? _T("Alt + ")		: _T(""),
-		(shift & HOTKEYF_SHIFT)		? _T("Shift + ")	: _T(""),
-		(shift & HOTKEYF_EXT)		? _T("Win + ")		: _T(""),
+		(shift & HOTKEYF_CONTROL)	? TranslateT("Ctrl + ")  : _T(""),
+		(shift & HOTKEYF_ALT)		? TranslateT("Alt + ")   : _T(""),
+		(shift & HOTKEYF_SHIFT)		? TranslateT("Shift + ") : _T(""),
+		(shift & HOTKEYF_EXT)		? TranslateT("Win + ")   : _T(""),
 		sttHokeyVkToName(key));
 }
 
@@ -142,29 +142,23 @@ static LRESULT CALLBACK sttHotkeyEditProc(HWND hwnd, UINT msg, WPARAM wParam, LP
 		return TRUE;
 
 	case WM_DESTROY:
-		{
-			WNDPROC saveOldWndProc = data->oldWndProc;
-			SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)data->oldWndProc);
-			SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
-			mir_free(data);
-			return CallWindowProc(saveOldWndProc, hwnd, msg, wParam, lParam);
-		}	
+		SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+		mir_free(data);
 	}
 
-	return CallWindowProc(data->oldWndProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, sttHotkeyEditProc, msg, wParam, lParam);
 }
 
 void HotkeyEditCreate(HWND hwnd)
 {
 	THotkeyBoxData *data = (THotkeyBoxData *)mir_alloc(sizeof(THotkeyBoxData));
 	SetWindowLongPtr(hwnd, GWLP_USERDATA, (ULONG_PTR)data);
-	data->oldWndProc = (WNDPROC)SetWindowLongPtr(hwnd, GWLP_WNDPROC, (ULONG_PTR)sttHotkeyEditProc);
+	mir_subclassWindow(hwnd, sttHotkeyEditProc);
 }
 
 void HotkeyEditDestroy(HWND hwnd)
 {
 	THotkeyBoxData *data = (THotkeyBoxData *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-	SetWindowLongPtr(hwnd, GWLP_WNDPROC, (ULONG_PTR)data->oldWndProc);
 	SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
 	mir_free(data);
 }
@@ -325,7 +319,7 @@ static void sttOptionsSaveItem(THotkeyItem *item)
 	item->type = item->OptType;
 	item->Enabled = item->OptEnabled;
 
-	DBWriteContactSettingWord(NULL, DBMODULENAME, item->pszName, item->Hotkey);
+	db_set_w(NULL, DBMODULENAME, item->pszName, item->Hotkey);
 	db_set_b(NULL, DBMODULENAME "Off", item->pszName, (BYTE)!item->Enabled);
 	if (item->type != HKT_MANUAL)
 		db_set_b(NULL, DBMODULENAME "Types", item->pszName, (BYTE)item->type);
@@ -338,7 +332,7 @@ static void sttOptionsSaveItem(THotkeyItem *item)
 			subItem->type = subItem->OptType;
 
 			mir_snprintf(buf, SIZEOF(buf), "%s$%d", item->pszName, item->nSubHotkeys);
-			DBWriteContactSettingWord(NULL, DBMODULENAME, buf, subItem->Hotkey);
+			db_set_w(NULL, DBMODULENAME, buf, subItem->Hotkey);
 			if (subItem->type != HKT_MANUAL)
 				db_set_b(NULL, DBMODULENAME "Types", buf, (BYTE)subItem->type);
 

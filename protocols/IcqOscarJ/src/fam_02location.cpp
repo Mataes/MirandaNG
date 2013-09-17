@@ -60,7 +60,7 @@ void CIcqProto::handleLocationFam(BYTE *pBuffer, WORD wBufferLength, snac_header
 			{
 				if (FindCookie(pSnacHeader->dwRef, &hCookieContact, (void**)&pCookieData) && !getContactUin(hCookieContact) && pCookieData->bRequestType == REQUESTTYPE_PROFILE)
 				{
-					BroadcastAck(hCookieContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
+					ProtoBroadcastAck(hCookieContact, ACKTYPE_GETINFO, ACKRESULT_FAILED, (HANDLE)1 ,0);
 
 					ReleaseCookie(pSnacHeader->dwRef);
 				}
@@ -89,7 +89,8 @@ static char* AimApplyEncoding(char* pszStr, const char* pszEncoding)
 			char *szRes = NULL;
 
 			SAFE_FREE((void**)&pszStr);
-			utf8_decode(szStr, &szRes);
+			if (!utf8_decode(szStr, &szRes))
+				szRes = _strdup(szStr);		// Legacy fix
 			SAFE_FREE((void**)&szStr);
 
 			return szRes;
@@ -184,21 +185,10 @@ void CIcqProto::handleLocationUserInfoReply(BYTE* buf, WORD wLen, DWORD dwCookie
 					// Get Profile encoding TLV
 					
 					pTLV = pChain->getTLV(0x05, 1);
-					if (pTLV && (pTLV->wLen > 0))
-					{
-						// store client capabilities
-						BYTE* capBuf = pTLV->pData;
-						WORD capLen = pTLV->wLen;
-						DBCONTACTWRITESETTING dbcws;
-						dbcws.value.type = DBVT_BLOB;
-						dbcws.value.cpbVal = capLen;
-						dbcws.value.pbVal = capBuf;
-						dbcws.szModule = m_szModuleName;
-						dbcws.szSetting = "CapBuf";
-						CallService(MS_DB_CONTACT_WRITESETTING, (WPARAM)hContact, (LPARAM)&dbcws);
-					}
+					if (pTLV && pTLV->wLen > 0) // store client capabilities
+						db_set_blob(hContact, m_szModuleName, "CapBuf", pTLV->pData, pTLV->wLen);
 					else
-						deleteSetting(hContact, "CapBuf");
+						delSetting(hContact, "CapBuf");
 
 					pTLV = pChain->getTLV(0x01, 1);
 					if (pTLV && (pTLV->wLen >= 1))
@@ -222,8 +212,8 @@ void CIcqProto::handleLocationUserInfoReply(BYTE* buf, WORD wLen, DWORD dwCookie
 					disposeChain(&pChain);
 				}
 
-				setSettingString(hContact, "About", szMsg);
-				BroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE)1 ,0);
+				setString(hContact, "About", szMsg);
+				ProtoBroadcastAck(hContact, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE)1 ,0);
 
 				SAFE_FREE((void**)&szMsg);
 			}

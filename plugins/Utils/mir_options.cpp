@@ -22,7 +22,6 @@ Boston, MA 02111-1307, USA.
 #include <stdio.h>
 #include <tchar.h>
 
-#define MIRANDA_VER 0x0A00
 #include <newpluginapi.h>
 #include <m_database.h>
 #include <m_utils.h>
@@ -33,8 +32,6 @@ Boston, MA 02111-1307, USA.
 
 #include "mir_options.h"
 #include "mir_memory.h"
-
-#define SIZEOF(_A_) ( sizeof(_A_) / sizeof(_A_[0]))
 
 static TCHAR* MyDBGetContactSettingTString(HANDLE hContact, char* module, char* setting, TCHAR* out, size_t len, TCHAR *def)
 {
@@ -77,7 +74,7 @@ static void PathToRelative(TCHAR *pOut, size_t outSize, const TCHAR *pSrc)
 		if (dbPath[0] == _T('\0')) {
 			char tmp[1024];
 			CallService(MS_DB_GETPROFILEPATH, SIZEOF(tmp), (LPARAM) tmp);
-			mir_sntprintf(dbPath, SIZEOF(dbPath), _T(TCHAR_STR_PARAM) _T("\\"), tmp);
+			mir_sntprintf(dbPath, SIZEOF(dbPath), _T("%S\\"), tmp);
 		}
 
 		size_t len = lstrlen(dbPath);
@@ -97,7 +94,7 @@ static void PathToAbsolute(TCHAR *pOut, size_t outSize, const TCHAR *pSrc)
 		{
 			char tmp[1024];
 			CallService(MS_DB_GETPROFILEPATH, SIZEOF(tmp), (LPARAM) tmp);
-			mir_sntprintf(dbPath, SIZEOF(dbPath), _T(TCHAR_STR_PARAM) _T("\\"), tmp);
+			mir_sntprintf(dbPath, SIZEOF(dbPath), _T("%S\\"), tmp);
 		}
 
 		mir_sntprintf(pOut, outSize, _T("%s%s"), dbPath, pSrc);
@@ -115,19 +112,19 @@ static void LoadOpt(OptPageControl *ctrl, char *module)
 		break;
 
 	case CONTROL_SPIN:
-		*((WORD *) ctrl->var) = DBGetContactSettingWord(NULL, module, ctrl->setting, ctrl->dwDefValue);
+		*((WORD *) ctrl->var) = db_get_w(NULL, module, ctrl->setting, ctrl->dwDefValue);
 		break;
 
 	case CONTROL_COLOR:
-		*((COLORREF *) ctrl->var) = (COLORREF) DBGetContactSettingDword(NULL, module, ctrl->setting, ctrl->dwDefValue);
+		*((COLORREF *) ctrl->var) = (COLORREF) db_get_dw(NULL, module, ctrl->setting, ctrl->dwDefValue);
 		break;
 
 	case CONTROL_RADIO:
-		*((WORD *) ctrl->var) = DBGetContactSettingWord(NULL, module, ctrl->setting, ctrl->dwDefValue);
+		*((WORD *) ctrl->var) = db_get_w(NULL, module, ctrl->setting, ctrl->dwDefValue);
 		break;
 
 	case CONTROL_COMBO:
-		*((WORD *) ctrl->var) = DBGetContactSettingWord(NULL, module, ctrl->setting, ctrl->dwDefValue);
+		*((WORD *) ctrl->var) = db_get_w(NULL, module, ctrl->setting, ctrl->dwDefValue);
 		break;
 
 	case CONTROL_PROTOCOL_LIST:
@@ -137,31 +134,8 @@ static void LoadOpt(OptPageControl *ctrl, char *module)
 		MyDBGetContactSettingTString(NULL, module, ctrl->setting, ((TCHAR *) ctrl->var), min(ctrl->max <= 0 ? 1024 : ctrl->max, 1024), ctrl->tszDefValue == NULL ? NULL : TranslateTS(ctrl->tszDefValue));
 		break;
 
-	case CONTROL_PASSWORD:
-		{
-			char tmp[1024];
-			tmp[0]=0;
-
-			DBVARIANT dbv = {0};
-			if ( !DBGetContactSettingString(NULL, module, ctrl->setting, &dbv))
-			{
-				lstrcpynA(tmp, dbv.pszVal, SIZEOF(tmp));
-				db_free(&dbv);
-			}
-
-			if (tmp[0] != 0)
-				CallService(MS_DB_CRYPT_DECODESTRING, SIZEOF(tmp), (LPARAM) tmp);
-			else if (ctrl->szDefValue != NULL)
-				lstrcpynA(tmp, ctrl->szDefValue, SIZEOF(tmp));
-
-			char *var = (char *) ctrl->var;
-			int size = min(ctrl->max <= 0 ? 1024 : ctrl->max, 1024);
-			lstrcpynA(var, tmp, size);
-		}
-		break;
-
 	case CONTROL_INT:
-		*((int *) ctrl->var) = (int) DBGetContactSettingDword(NULL, module, ctrl->setting, ctrl->dwDefValue);
+		*((int *) ctrl->var) = (int) db_get_dw(NULL, module, ctrl->setting, ctrl->dwDefValue);
 		break;
 
 	case CONTROL_FILE:
@@ -205,19 +179,19 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 				case CONTROL_SPIN:
 					SendDlgItemMessage(hwndDlg, ctrl->nIDSpin, UDM_SETBUDDY, (WPARAM)GetDlgItem(hwndDlg, ctrl->nID),0);
 					SendDlgItemMessage(hwndDlg, ctrl->nIDSpin, UDM_SETRANGE, 0, MAKELONG(ctrl->max, ctrl->min));
-					SendDlgItemMessage(hwndDlg, ctrl->nIDSpin, UDM_SETPOS,0, MAKELONG(DBGetContactSettingWord(NULL, module, ctrl->setting, ctrl->dwDefValue), 0));
+					SendDlgItemMessage(hwndDlg, ctrl->nIDSpin, UDM_SETPOS,0, MAKELONG(db_get_w(NULL, module, ctrl->setting, ctrl->dwDefValue), 0));
 					break;
 
 				case CONTROL_COLOR:
-					SendDlgItemMessage(hwndDlg, ctrl->nID, CPM_SETCOLOUR, 0, (COLORREF) DBGetContactSettingDword(NULL, module, ctrl->setting, ctrl->dwDefValue));
+					SendDlgItemMessage(hwndDlg, ctrl->nID, CPM_SETCOLOUR, 0, (COLORREF) db_get_dw(NULL, module, ctrl->setting, ctrl->dwDefValue));
 					break;
 
 				case CONTROL_RADIO:
-					CheckDlgButton(hwndDlg, ctrl->nID, DBGetContactSettingWord(NULL, module, ctrl->setting, ctrl->dwDefValue) == ctrl->value ? BST_CHECKED : BST_UNCHECKED);
+					CheckDlgButton(hwndDlg, ctrl->nID, db_get_w(NULL, module, ctrl->setting, ctrl->dwDefValue) == ctrl->value ? BST_CHECKED : BST_UNCHECKED);
 					break;
 
 				case CONTROL_COMBO:
-					SendDlgItemMessage(hwndDlg, ctrl->nID, CB_SETCURSEL, DBGetContactSettingWord(NULL, module, ctrl->setting, ctrl->dwDefValue), 0);
+					SendDlgItemMessage(hwndDlg, ctrl->nID, CB_SETCURSEL, db_get_w(NULL, module, ctrl->setting, ctrl->dwDefValue), 0);
 					break;
 
 				case CONTROL_PROTOCOL_LIST:
@@ -273,29 +247,9 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 						SendDlgItemMessage(hwndDlg, ctrl->nID, EM_LIMITTEXT, min(ctrl->max <= 0 ? 1024 : ctrl->max, 1024), 0);
 					}
 					break;
-				case CONTROL_PASSWORD:
-					{
-						char tmp[1024];
-						tmp[0]=0;
-
-						DBVARIANT dbv = {0};
-						if ( !DBGetContactSettingString(NULL, module, ctrl->setting, &dbv)) {
-							lstrcpynA(tmp, dbv.pszVal, SIZEOF(tmp));
-							db_free(&dbv);
-						}
-
-						if (tmp[0] != 0)
-							CallService(MS_DB_CRYPT_DECODESTRING, SIZEOF(tmp), (LPARAM) tmp);
-						else if (ctrl->szDefValue != NULL)
-							lstrcpynA(tmp, ctrl->szDefValue, SIZEOF(tmp));
-
-						SetDlgItemTextA(hwndDlg, ctrl->nID, tmp);
-						SendDlgItemMessage(hwndDlg, ctrl->nID, EM_LIMITTEXT, min(ctrl->max <= 0 ? 1024 : ctrl->max, 1024), 0);
-					}
-					break;
 				case CONTROL_INT:
 					{
-						DWORD var = DBGetContactSettingDword(NULL, module, ctrl->setting, ctrl->dwDefValue);
+						DWORD var = db_get_dw(NULL, module, ctrl->setting, ctrl->dwDefValue);
 						SetDlgItemInt(hwndDlg, ctrl->nID, var, ctrl->min <= 0);
 						SendDlgItemMessage(hwndDlg, ctrl->nID, EM_LIMITTEXT, 9, 0);
 					}
@@ -348,7 +302,6 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 					case CONTROL_TEXT:
 					case CONTROL_SPIN:
 					case CONTROL_INT:
-					case CONTROL_PASSWORD:
 						// Don't make apply enabled during buddy set
 						if (HIWORD(wParam) != EN_CHANGE || (HWND)lParam != GetFocus())
 							return 0;
@@ -381,24 +334,24 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 
 					switch(ctrl->type) {
 					case CONTROL_CHECKBOX:
-						DBWriteContactSettingByte(NULL, module, ctrl->setting, (BYTE) IsDlgButtonChecked(hwndDlg, ctrl->nID));
+						db_set_b(NULL, module, ctrl->setting, (BYTE) IsDlgButtonChecked(hwndDlg, ctrl->nID));
 						break;
 
 					case CONTROL_SPIN:
-						DBWriteContactSettingWord(NULL, module, ctrl->setting, (WORD) SendDlgItemMessage(hwndDlg, ctrl->nIDSpin, UDM_GETPOS, 0, 0));
+						db_set_w(NULL, module, ctrl->setting, (WORD) SendDlgItemMessage(hwndDlg, ctrl->nIDSpin, UDM_GETPOS, 0, 0));
 						break;
 
 					case CONTROL_COLOR:
-						DBWriteContactSettingDword(NULL, module, ctrl->setting, (DWORD) SendDlgItemMessage(hwndDlg, ctrl->nID, CPM_GETCOLOUR, 0, 0));
+						db_set_dw(NULL, module, ctrl->setting, (DWORD) SendDlgItemMessage(hwndDlg, ctrl->nID, CPM_GETCOLOUR, 0, 0));
 						break;
 
 					case CONTROL_RADIO:
 						if (IsDlgButtonChecked(hwndDlg, ctrl->nID))
-							DBWriteContactSettingWord(NULL, module, ctrl->setting, (BYTE) ctrl->value);
+							db_set_w(NULL, module, ctrl->setting, (BYTE) ctrl->value);
 						break;
 
 					case CONTROL_COMBO:
-						DBWriteContactSettingWord(NULL, module, ctrl->setting, (WORD) SendDlgItemMessage(hwndDlg, ctrl->nID, CB_GETCURSEL, 0, 0));
+						db_set_w(NULL, module, ctrl->setting, (WORD) SendDlgItemMessage(hwndDlg, ctrl->nID, CB_GETCURSEL, 0, 0));
 						break;
 
 					case CONTROL_PROTOCOL_LIST:
@@ -415,7 +368,7 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 								ListView_GetItem(hwndProtocols, &lvi);
 
 								char *setting = (char *)lvi.lParam;
-								DBWriteContactSettingByte(NULL, module, setting, (BYTE)ListView_GetCheckState(hwndProtocols, i));
+								db_set_b(NULL, module, setting, (BYTE)ListView_GetCheckState(hwndProtocols, i));
 							}
 						}
 						break;
@@ -424,32 +377,10 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 						{
 							TCHAR tmp[1024];
 							GetDlgItemText(hwndDlg, ctrl->nID, tmp, SIZEOF(tmp));
-							DBWriteContactSettingTString(NULL, module, ctrl->setting, tmp);
+							db_set_ts(NULL, module, ctrl->setting, tmp);
 						}
 						break;
 
-					case CONTROL_PASSWORD:
-						{
-							char tmp[1024];
-							GetDlgItemTextA(hwndDlg, ctrl->nID, tmp, SIZEOF(tmp));
-
-							if (ctrl->var != NULL) {
-								char *var = (char *) ctrl->var;
-								int size = min(ctrl->max <= 0 ? 1024 : ctrl->max, 1024);
-								lstrcpynA(var, tmp, size);
-							}
-
-							if (ctrl->checkboxID != 0 && !IsDlgButtonChecked(hwndDlg, ctrl->checkboxID)) {
-								db_unset(NULL, module, ctrl->setting);
-								continue;
-							}
-
-							CallService(MS_DB_CRYPT_ENCODESTRING, SIZEOF(tmp), (LPARAM) tmp);
-							DBWriteContactSettingString(NULL, module, ctrl->setting, tmp);
-
-							// Don't load from DB
-							continue;
-						}
 					case CONTROL_INT:
 						{
 							BOOL trans;
@@ -460,7 +391,7 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 								val = min(val, ctrl->max);
 							if (ctrl->min != 0)
 								val = max(val, ctrl->min);
-							DBWriteContactSettingDword(NULL, module, ctrl->setting, val);
+							db_set_dw(NULL, module, ctrl->setting, val);
 						}
 						break;
 					case CONTROL_FILE:
@@ -469,20 +400,20 @@ INT_PTR CALLBACK SaveOptsDlgProc(OptPageControl *controls, int controlsSize, cha
 							GetDlgItemText(hwndDlg, ctrl->nID, tmp, 1024);
 							TCHAR rel[1024];
 							PathToRelative(rel, 1024, tmp);
-							DBWriteContactSettingTString(NULL, module, ctrl->setting, rel);
+							db_set_ts(NULL, module, ctrl->setting, rel);
 						}
 						break;
 					case CONTROL_COMBO_TEXT:
 						{
 							TCHAR tmp[1024];
 							GetDlgItemText(hwndDlg, ctrl->nID, tmp, 1024);
-							DBWriteContactSettingTString(NULL, module, ctrl->setting, tmp);
+							db_set_ts(NULL, module, ctrl->setting, tmp);
 						}
 						break;
 					case CONTROL_COMBO_ITEMDATA:
 						{
 							int sel = SendDlgItemMessage(hwndDlg, ctrl->nID, CB_GETCURSEL, 0, 0);
-							DBWriteContactSettingTString(NULL, module, ctrl->setting, (TCHAR *) SendDlgItemMessage(hwndDlg, ctrl->nID, CB_GETITEMDATA, (WPARAM) sel, 0));
+							db_set_ts(NULL, module, ctrl->setting, (TCHAR *) SendDlgItemMessage(hwndDlg, ctrl->nID, CB_GETITEMDATA, (WPARAM) sel, 0));
 						}
 						break;
 					}

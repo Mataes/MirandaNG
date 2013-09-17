@@ -16,6 +16,7 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+
 #include "variables.h"
 
 BOOL (WINAPI *pfnEnableThemeDialogTexture)(HANDLE, DWORD) = 0;
@@ -24,7 +25,6 @@ static BOOL bWarningShown = FALSE; // unicode on ansi warning
 /* some handles */
 static HANDLE
 	hFormatStringService,
-	hFreeMemoryService,
 	hRegisterVariableService,
 	hGetMMIService,
 	hShowHelpService,
@@ -39,8 +39,6 @@ HCURSOR hCurSplitNS;
 
 struct ParseOptions gParseOpts;
 
-extern HINSTANCE hInst;
-
 TCHAR *getArguments(TCHAR *string, TCHAR ***aargv, int *aargc) {
 
 	BOOL bDontParse, bNewArg, bDone;
@@ -52,63 +50,53 @@ TCHAR *getArguments(TCHAR *string, TCHAR ***aargv, int *aargc) {
 	argc = brackets = 0;
 	argv = NULL;
 	cur = string;
-	while (*cur == _T(' ')) {
+	while (*cur == ' ')
 		cur++;
-	}
-	if (*cur != _T('(')) {
+
+	if (*cur != '(')
 		return NULL;
-	}
+
 	cur++;
 	scur = cur-1;
 	bDontParse = bNewArg = bDone = FALSE;
-	while ( (!bDone) && (*cur != _T('\0'))) {
+	while ( (!bDone) && (*cur != 0)) {
 		switch (*cur) {
-		case _T(DONTPARSE_CHAR):
-			if (bDontParse) {
-				bDontParse = FALSE;
-			}
-			else {
-				bDontParse = TRUE;
-			}
+		case DONTPARSE_CHAR:
+			bDontParse = !bDontParse;
 			break;
 
-		case _T(','):
-			if ((!bDontParse) && (brackets == 0)) {
+		case ',':
+			if ((!bDontParse) && (brackets == 0))
 				bNewArg = TRUE;
-			}
 			break;
 
-		case _T('('):
-			if (!bDontParse) {
+		case '(':
+			if (!bDontParse)
 				brackets += 1;
-			}
 			break;
 
-		case _T(')'):
-			if ((brackets == 0) && (!bDontParse)) {
+		case ')':
+			if ((brackets == 0) && (!bDontParse))
 				bDone = bNewArg = TRUE;
-			}
-			else if ((brackets > 0) && (!bDontParse)) {
+			else if ((brackets > 0) && (!bDontParse))
 				brackets -= 1;
-			}
 			break;
 		}
 		if (bNewArg) {
 			argv = ( TCHAR** )mir_realloc(argv, (argc+1)*sizeof(TCHAR*));
-			if (argv == NULL) {
+			if (argv == NULL)
 				return NULL;
-			}
+
 			if (cur > scur) {
 				argv[argc] = (TCHAR*)mir_alloc((cur-scur+2)*sizeof(TCHAR));
-				if (argv[argc] == NULL) {
+				if (argv[argc] == NULL)
 					return NULL;
-				}
+
 				memset(argv[argc], '\0', (cur-(scur+1)+1)*sizeof(TCHAR));
 				_tcsncpy(argv[argc], scur+1, cur-(scur+1));
 			}
-			else {
-				argv[argc] = mir_tstrdup(_T(""));
-			}
+			else argv[argc] = mir_tstrdup(_T(""));
+
 			argc += 1;
 			bNewArg = FALSE;
 			scur = cur;
@@ -116,7 +104,7 @@ TCHAR *getArguments(TCHAR *string, TCHAR ***aargv, int *aargc) {
 		cur++;
 	}
 	// set args
-	if (*(cur-1) == _T(')')) {
+	if (*(cur-1) == ')') {
 		*aargv = argv;
 		*aargc = argc;
 	}
@@ -137,16 +125,15 @@ TCHAR *getArguments(TCHAR *string, TCHAR ***aargv, int *aargc) {
 
 int isValidTokenChar(TCHAR tc) {
 
-	return (
-		(tc != _T('(')) &&
-		(tc != _T(',')) &&
-		(tc != _T(')')) &&
-		(tc != _T(FIELD_CHAR)) &&
-		(tc != _T(FUNC_CHAR)) &&
-		(tc != _T(FUNC_ONCE_CHAR)) &&
-		(tc != _T('/')) &&
-		(tc != _T('\0'))
-		);
+	return 
+		(tc != '(') &&
+		(tc != ',') &&
+		(tc != ')') &&
+		(tc != FIELD_CHAR) &&
+		(tc != FUNC_CHAR) &&
+		(tc != FUNC_ONCE_CHAR) &&
+		(tc != '/') &&
+		(tc != 0);
 }
 
 /* pretty much the main loop */
@@ -161,8 +148,8 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 		**argv, // arguments (dyn alloc)
 		**pargv, //  dyn alloc
 		*token; // variable name (pnt only)
- 	int argc, i, parsedTokenLen, initStrLen, tokenLen, scurPos, curPos, tmpVarPos;
-	unsigned int pos;
+ 	int argc = 0, i, scurPos, curPos, tmpVarPos;
+	size_t pos;
 	FORMATINFO afi;
 	TOKENREGISTEREX *tr;
 	ARGUMENTSINFO ai = { 0 };
@@ -171,7 +158,6 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 	if (string == NULL)
 		return NULL;
 
-	argc = parsedTokenLen = initStrLen = tokenLen = 0;
 	cur = tcur = scur = token = parsedToken = NULL;
 	pargv = argv = NULL;
 	//fi->pCount = 0;
@@ -190,16 +176,16 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 		if (argv != NULL)
 			mir_free(argv);
 
-		argc = parsedTokenLen = initStrLen = tokenLen = 0;
+		argc = 0;
 		tcur = scur = token = parsedToken = NULL;
 		pargv = argv = NULL;
 		// new round
-		if (*cur == _T(DONTPARSE_CHAR)) {
+		if (*cur == DONTPARSE_CHAR) {
 			MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
-			if (*cur == _T(DONTPARSE_CHAR))
+			if (*cur == DONTPARSE_CHAR)
 				continue;
 
-			while ( (*cur != _T(DONTPARSE_CHAR)) && (*cur != _T('\0')))
+			while ( (*cur != DONTPARSE_CHAR) && (*cur != 0))
 				cur++;
 
 			MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
@@ -212,7 +198,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 			pos = cur-string-1;
 			continue;
 		}
-		else if (((*cur == _T('\n')) && (gParseOpts.bStripEOL)) || ((*cur == _T(' ')) && (gParseOpts.bStripWS))) {
+		else if ((*cur == '\n' && gParseOpts.bStripEOL) || (*cur == ' ' && gParseOpts.bStripWS)) {
 			MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
 			pos = cur - string - 1;
 			continue;
@@ -220,11 +206,11 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 		// remove comments
 		else if (!_tcsncmp(cur, _T(COMMENT_STRING), _tcslen(_T(COMMENT_STRING)))) {
 			scur = cur;
-			while ( (_tcsncmp(cur, _T("\r\n"), 2)) && (*cur != _T('\n')) && (*cur != _T('\0')))
+			while ( _tcsncmp(cur, _T("\r\n"), 2) && *cur != '\n' && *cur != 0)
 				cur++;
 
-			if (*cur == _T('\0')) {
-				*scur = _T('\0');
+			if (*cur == 0) {
+				*scur = 0;
 				string = (TCHAR*)mir_realloc(string, (_tcslen(string)+1)*sizeof(TCHAR));
 				continue;
 			}
@@ -232,7 +218,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 			pos = scur-string-1;
 			continue;
 		}
-		else if ((*cur != _T(FIELD_CHAR)) && (*cur != _T(FUNC_CHAR)) && (*cur != _T(FUNC_ONCE_CHAR))) {
+		else if ((*cur != FIELD_CHAR) && (*cur != FUNC_CHAR) && (*cur != FUNC_ONCE_CHAR)) {
 			if (gParseOpts.bStripAll) {
 				MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
 				pos = cur - string - 1;
@@ -257,7 +243,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 		// cur points to FIELD_CHAR or FUNC_CHAR
  		tmpVarPos = -1;
  		tr = NULL;
- 		if (*cur==_T(FIELD_CHAR)) {
+ 		if (*cur==FIELD_CHAR) {
  			for(i = 0; i < fi->cbTemporaryVarsSize; i += 2) {
  				if (lstrcmp(fi->tszaTemporaryVars[i], token) == 0) {
  					tmpVarPos = i;
@@ -266,7 +252,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
  			}
  		}
  		if (tmpVarPos < 0)
- 			tr = searchRegister(token, (*cur==_T(FIELD_CHAR))?TRF_FIELD:TRF_FUNCTION);
+ 			tr = searchRegister(token, (*cur==FIELD_CHAR)?TRF_FIELD:TRF_FUNCTION);
  		mir_free(token);
  		if (tmpVarPos < 0 && tr == NULL) {
 			fi->eCount += 1;
@@ -274,16 +260,16 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 			continue;
 		}
 		scur = cur; // store this pointer for later use
-		if (*cur == _T(FIELD_CHAR)) {
+		if (*cur == FIELD_CHAR) {
  			size_t len = _tcslen(tr != NULL ? tr->tszTokenString : fi->tszaTemporaryVars[tmpVarPos]);
 			cur++;
- 			if (*(cur + len) != _T(FIELD_CHAR)) { // the next char after the token should be %
+ 			if (*(cur + len) != FIELD_CHAR) { // the next char after the token should be %
 				fi->eCount += 1;
 				continue;
 			}
  			cur += len+1;
 		}
-		else if ((*cur == _T(FUNC_CHAR)) || (*cur == _T(FUNC_ONCE_CHAR))) {
+		else if ((*cur == FUNC_CHAR) || (*cur == FUNC_ONCE_CHAR)) {
 			TCHAR *argcur;
 
 			cur += _tcslen(tr->tszTokenString)+1;
@@ -326,7 +312,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
  			ai.argc = argc+1;
  			ai.targv = pargv;
  			ai.fi = fi;
- 			if ((*scur == _T(FUNC_ONCE_CHAR)) || (*scur == _T(FIELD_CHAR)))
+ 			if ((*scur == FUNC_ONCE_CHAR) || (*scur == FIELD_CHAR))
  				ai.flags |= AIF_DONTPARSE;
 
  			parsedToken = parseFromRegister(&ai);
@@ -359,9 +345,9 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 			}
 		}*/
 
-		parsedTokenLen = _tcslen(parsedToken);
-		initStrLen = _tcslen(string);
-		tokenLen = cur-scur;
+		size_t parsedTokenLen = _tcslen(parsedToken);
+		size_t initStrLen = _tcslen(string);
+		size_t tokenLen = cur-scur;
 		scurPos = scur-string;
 		curPos = cur-string;
 		if (tokenLen < parsedTokenLen) {
@@ -393,7 +379,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 
 	for ( i=0; i < argc; i++ )
 		if (argv[i] != NULL)
-			mir_free( argv[i] );
+			mir_free(argv[i]);
 
 	if (argv != NULL)
 		mir_free(argv);
@@ -404,8 +390,8 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 /*
 	MS_VARS_FORMATSTRING
 */
-static INT_PTR formatStringService(WPARAM wParam, LPARAM lParam) {
-
+static INT_PTR formatStringService(WPARAM wParam, LPARAM lParam)
+{
  	INT_PTR res;
  	int i;
  	BOOL copied;
@@ -460,25 +446,14 @@ static INT_PTR formatStringService(WPARAM wParam, LPARAM lParam) {
 		res = (INT_PTR)mir_u2a(tRes);
 		mir_free(tRes);
 	}
-	else {
-		res = (INT_PTR)tRes;
-	}
+	else res = (INT_PTR)tRes;
 
  	if (copied) {
- 		if (tszFormat != NULL) {
- 			mir_free(tszFormat);
- 		}
- 		if (tszSource != NULL) {
- 			mir_free(tszSource);
- 		}
- 		for(i = 0; i < fi->cbTemporaryVarsSize; i++) {
- 			if (fi->tszaTemporaryVars != NULL) {
- 				mir_free(fi->tszaTemporaryVars);
- 			}
- 		}
+		mir_free(tszFormat);
+		mir_free(tszSource);
+ 		for(i = 0; i < fi->cbTemporaryVarsSize; i++)
+			mir_free(fi->tszaTemporaryVars);
  	}
-	//fi->tszFormat = orgFormat;
-	//fi->tszExtraText = orgSource;
 
 	if (((FORMATINFO *)wParam)->cbSize == sizeof(FORMATINFOV1)) {
 		((FORMATINFOV1 *)wParam)->eCount = fi->eCount;
@@ -488,64 +463,40 @@ static INT_PTR formatStringService(WPARAM wParam, LPARAM lParam) {
 		((FORMATINFO *)wParam)->eCount = fi->eCount;
 		((FORMATINFO *)wParam)->pCount = fi->pCount;
 	}
-//	clearVariableRegister();?
 
 	return res;
 }
 
-TCHAR *formatString(FORMATINFO *fi) {
-
+TCHAR *formatString(FORMATINFO *fi)
+{
 	/* the service to format a given string */
-	TCHAR *string, *formattedString;
-
 	if (fi->eCount + fi->pCount > 5000) {
 		fi->eCount += 1;
 		fi->pCount += 1;
 		log_debugA("Variables: Overflow protection; %d parses", fi->eCount + fi->pCount);
 		return NULL;
 	}
-	if ((fi == NULL) || (fi->tszFormat == NULL)) {
+	if ((fi == NULL) || (fi->tszFormat == NULL))
 		return NULL;
-	}
-	string = mir_tstrdup(fi->tszFormat);
-	if (string == NULL) {
-		return NULL;
-	}
-	formattedString = replaceDynVars(string, fi);
-	mir_free(string);
-	if (formattedString == NULL) {
-		return NULL;
-	}
 
-	return formattedString;
+	ptrT string( mir_tstrdup(fi->tszFormat));
+	if (string == NULL)
+		return NULL;
+
+	return replaceDynVars(string, fi);
 }
 
-/*
-	MS_VARS_FREEMEMORY
-*/
-static INT_PTR freeMemory(WPARAM wParam, LPARAM lParam) {
-
-	if ((void*)wParam == NULL) {
-		return -1;
-	}
-	mir_free((void*)wParam);
-
-	return 0;
-}
-
-int setParseOptions(struct ParseOptions *po) {
-
-	if (po == NULL) {
+int setParseOptions(struct ParseOptions *po)
+{
+	if (po == NULL)
 		po = &gParseOpts;
-	}
+
 	ZeroMemory(po, sizeof(struct ParseOptions));
 	if (!db_get_b(NULL, MODULENAME, SETTING_STRIPALL, 0)) {
 		po->bStripEOL = db_get_b(NULL, MODULENAME, SETTING_STRIPCRLF, 0);
 		po->bStripWS = db_get_b(NULL, MODULENAME, SETTING_STRIPWS, 0);
 	}
-	else {
-		po->bStripAll = TRUE;
-	}
+	else po->bStripAll = TRUE;
 
 	return 0;
 }
@@ -559,7 +510,6 @@ int LoadVarModule()
 
 	setParseOptions(NULL);
 	hFormatStringService = CreateServiceFunction(MS_VARS_FORMATSTRING, formatStringService);
-	hFreeMemoryService = CreateServiceFunction(MS_VARS_FREEMEMORY, freeMemory);
 	hRegisterVariableService = CreateServiceFunction(MS_VARS_REGISTERTOKEN, registerToken);
 	// help dialog
 	hCurSplitNS = LoadCursor(NULL, IDC_SIZENS);
@@ -574,7 +524,7 @@ int LoadVarModule()
 	hShowHelpExService = CreateServiceFunction(MS_VARS_SHOWHELPEX, showHelpExService);
 
 	Icon_Register(hInst, LPGEN("Variables"), &icon, 1);
-	
+
 	hIconsChangedHook = HookEvent(ME_SKIN2_ICONSCHANGED, iconsChanged);
 
 	hGetIconService = CreateServiceFunction(MS_VARS_GETSKINITEM, getSkinItemService);
@@ -601,7 +551,7 @@ int LoadVarModule()
 		fi.cbSize = sizeof(fi);
 		fi.tszFormat = db_get_tsa(NULL, MODULENAME, SETTING_STARTUPTEXT);
 		if (fi.tszFormat != NULL) {
-			freeMemory((WPARAM)formatString(&fi), 0);
+			mir_free(formatString(&fi));
 			mir_free(fi.tszFormat);
 		}
 	}
@@ -617,7 +567,6 @@ int UnloadVarModule() {
 		UnhookEvent(hIconsChangedHook);
 
 	DestroyServiceFunction(hRegisterVariableService);
-	DestroyServiceFunction(hFreeMemoryService);
 	DestroyServiceFunction(hFormatStringService);
 	DestroyServiceFunction(hGetMMIService);
 	DestroyServiceFunction(hShowHelpService);

@@ -402,7 +402,7 @@ XMLNode XMLNode::openFileHelper(XMLCSTR filename, XMLCSTR tag)
 		// create message
 		char message[2000], *s1 = (char*)"", *s3 = (char*)""; XMLCSTR s2 = _CXML("");
 		if (pResults.error == eXMLErrorFirstTagNotFound) { s1 = (char*)"First Tag should be '"; s2 = tag; s3 = (char*)"'.\n"; }
-		sprintf(message, 
+		mir_snprintf(message, SIZEOF(message), 
 #ifdef _XMLWIDECHAR
 			"XML Parsing error inside file '%S'.\n%S\nAt line %i, column %i.\n%s%S%s"
 #else
@@ -596,7 +596,7 @@ XMLError XMLNode::writeToFile(XMLCSTR filename, const char *encoding, char nForm
 	}
 	if (( !isDeclaration())&&((d->lpszName) || ( !getChildNode().isDeclaration())))
 	{
-		if ( !fwrite(L"<?xml version = \"1.0\" encoding = \"utf-16\"?>\n", sizeof(wchar_t)*40, 1, f))
+		if ( fputws(L"<?xml version = \"1.0\" encoding = \"utf-16\"?>\n", f) == EOF)
 		{
 			fclose(f);
 			return eXMLErrorCannotWriteFile;

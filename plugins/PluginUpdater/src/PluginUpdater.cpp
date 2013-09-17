@@ -29,10 +29,11 @@ Boston, MA 02111-1307, USA.
 	UTF8_INTERFACE utfi;
 #endif
 
-HANDLE hPluginUpdaterFolder = NULL, hCheckUpdates = NULL, hEmptyFolder = NULL;
+HANDLE hPluginUpdaterFolder = NULL, hEmptyFolder = NULL;
 HINSTANCE hInst = NULL;
-TCHAR tszRoot[MAX_PATH] = {0};
+TCHAR tszRoot[MAX_PATH] = {0}, tszTempPath[MAX_PATH];
 int hLangpack;
+DWORD g_mirandaVersion;
 
 PLUGININFOEX pluginInfoEx = {
 	sizeof(PLUGININFOEX),
@@ -47,7 +48,7 @@ PLUGININFOEX pluginInfoEx = {
 #if MIRANDA_VER < 0x0A00
 	0,
 #endif
-	//{968DEF4A-BC60-4266-AC08-754CE721DB5F}
+	// {968DEF4A-BC60-4266-AC08-754CE721DB5F}
 	{0x968def4a, 0xbc60, 0x4266, {0xac, 0x8, 0x75, 0x4c, 0xe7, 0x21, 0xdb, 0x5f}} 
 };
 
@@ -68,6 +69,7 @@ extern "C" __declspec(dllexport) const MUUID* MirandaPluginInterfaces(void)
 
 extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
 {
+	g_mirandaVersion = mirandaVersion;
 	return &pluginInfoEx;
 }
 
@@ -84,16 +86,18 @@ extern "C" __declspec(dllexport) int Load(PLUGINLINK *link)
 extern "C" __declspec(dllexport) int Load(void)
 {
 	mir_getLP(&pluginInfoEx);
-#endif
-	if (ServiceExists(MS_FOLDERS_REGISTER_PATH))
-		hPluginUpdaterFolder = FoldersRegisterCustomPathT(MODULEA, "Plugin Updater", MIRANDA_USERDATAT _T("\\")DEFAULT_UPDATES_FOLDER);
 
+	ServiceInit();
+#endif
+	hPluginUpdaterFolder = FoldersRegisterCustomPathT(MODULEA, LPGEN("Plugin Updater"), MIRANDA_PATHT _T("\\")DEFAULT_UPDATES_FOLDER);
 	if (hPluginUpdaterFolder)
 		OnFoldersChanged(0, 0);
-	else {
-		mir_ptr<TCHAR> tszFolder( Utils_ReplaceVarsT(_T("%miranda_userdata%\\"DEFAULT_UPDATES_FOLDER)));
-		lstrcpyn(tszRoot, tszFolder, SIZEOF(tszRoot));
-	}
+	else
+		lstrcpyn(tszRoot, VARST( _T("%miranda_path%\\"DEFAULT_UPDATES_FOLDER)), SIZEOF(tszRoot));
+
+	DWORD dwLen = GetTempPath( SIZEOF(tszTempPath), tszTempPath);
+	if (tszTempPath[dwLen-1] == '\\')
+		tszTempPath[dwLen-1] = 0;
 
 	LoadOptions();
 	InitPopupList();
@@ -101,19 +105,26 @@ extern "C" __declspec(dllexport) int Load(void)
 	IcoLibInit();
 
 	// Add cheking update menu item
-	hCheckUpdates = CreateServiceFunction(MODNAME"/CheckUpdates", MenuCommand);
-
+	CreateServiceFunction(MODNAME"/CheckUpdates", MenuCommand);
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.position = -0x7FFFFFFF;
-	mi.flags = CMIF_ICONFROMICOLIB;
+	mi.position = 400010000;
 	mi.icolibItem = Skin_GetIconHandle("check_update");
 	mi.pszName = LPGEN("Check for plugin updates");
 	mi.pszService = MODNAME"/CheckUpdates";
 	Menu_AddMainMenuItem(&mi);
 
+	#if MIRANDA_VER >= 0x0A00
+		CreateServiceFunction(MODNAME"/ShowList", ShowListCommand);
+
+		mi.position++;
+		mi.icolibItem = Skin_GetIconHandle("plg_list");
+		mi.pszName = LPGEN("Show full plugin list");
+		mi.pszService = MODNAME"/ShowList";
+		Menu_AddMainMenuItem(&mi);
+	#endif
+
 	// Add hotkey
-	HOTKEYDESC hkd = {0};
-	hkd.cbSize = sizeof(hkd);
+	HOTKEYDESC hkd = { sizeof(hkd) };
 	hkd.pszName = "Check for plugin updates";
 	hkd.pszDescription = "Check for plugin updates";
 	hkd.pszSection = "Plugin Updater";
@@ -131,10 +142,12 @@ extern "C" __declspec(dllexport) int Load(void)
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	if (CheckThread)
-		CheckThread = NULL;
+	if (hCheckThread)
+		hCheckThread = NULL;
+
+	if (hListThread)
+		hListThread = NULL;
 
 	NetlibUnInit();
-	DestroyServiceFunction(hCheckUpdates);
 	return 0;
 }

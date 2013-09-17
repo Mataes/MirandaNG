@@ -5,6 +5,7 @@ Copyright (C) 2002-04  Santithorn Bunchua
 Copyright (C) 2005-08  George Hazan
 Copyright (C) 2007     Maxim Mluhov
 Copyright (C) 2008-09  Dmitriy Chervov
+Copyright (C) 2012-13  Miranda NG Project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -28,8 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 BOOL CJabberMessageManager::FillPermanentHandlers()
 {
 	AddPermanentHandler(&CJabberProto::OnMessageError, JABBER_MESSAGE_TYPE_ERROR, JABBER_MESSAGE_PARSE_FROM | JABBER_MESSAGE_PARSE_HCONTACT, NULL, FALSE, _T("error"));
-	AddPermanentHandler(&CJabberProto::OnMessageIbb, 0, 0, _T(JABBER_FEAT_IBB), FALSE, _T("data"));
-	AddPermanentHandler(&CJabberProto::OnMessagePubsubEvent, 0, 0, _T(JABBER_FEAT_PUBSUB_EVENT), FALSE, _T("event"));
+	AddPermanentHandler(&CJabberProto::OnMessageIbb, 0, 0, JABBER_FEAT_IBB, FALSE, _T("data"));
+	AddPermanentHandler(&CJabberProto::OnMessagePubsubEvent, 0, 0, JABBER_FEAT_PUBSUB_EVENT, FALSE, _T("event"));
 	AddPermanentHandler(&CJabberProto::OnMessageGroupchat, JABBER_MESSAGE_TYPE_GROUPCHAT, JABBER_MESSAGE_PARSE_FROM, NULL, FALSE, NULL);
 	return TRUE;
 }
@@ -68,7 +69,7 @@ BOOL CJabberMessageManager::HandleMessagePermanent(HXML node, ThreadData *pThrea
 			for (i = xmlGetChildCount(node) - 1; i >= 0; i--) {
 			// enumerate all children and see whether this node suits handler criteria
 				HXML child = xmlGetChild(node, i);
-				
+
 				LPCTSTR szTagName = xmlGetName(child);
 				LPCTSTR szXmlns = xmlGetAttrValue(child, _T("xmlns"));
 
@@ -91,7 +92,7 @@ BOOL CJabberMessageManager::HandleMessagePermanent(HXML node, ThreadData *pThrea
 						messageInfo.m_hContact = ppro->HContactFromJID(messageInfo.m_szFrom, 3);
 
 					if (messageInfo.m_szFrom)
-						ppro->Log("Handling message from " TCHAR_STR_PARAM, messageInfo.m_szFrom);
+						ppro->Log("Handling message from %S", messageInfo.m_szFrom);
 					if ((ppro->*(pInfo->m_pHandler))(node, pThreadData, &messageInfo)) {
 						bStopHandling = TRUE;
 						break;

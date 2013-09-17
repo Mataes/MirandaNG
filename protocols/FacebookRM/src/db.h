@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-12 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,21 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #pragma once
-
-// DB macros
-#define getByte( setting, error )           DBGetContactSettingByte( NULL, m_szModuleName, setting, error )
-#define setByte( setting, value )           DBWriteContactSettingByte( NULL, m_szModuleName, setting, value )
-#define getWord( setting, error )           DBGetContactSettingWord( NULL, m_szModuleName, setting, error )
-#define setWord( setting, value )           DBWriteContactSettingWord( NULL, m_szModuleName, setting, value )
-#define getDword( setting, error )          DBGetContactSettingDword( NULL, m_szModuleName, setting, error )
-#define setDword( setting, value )          DBWriteContactSettingDword( NULL, m_szModuleName, setting, value )
-#define getString( setting, dest )          DBGetContactSettingString( NULL, m_szModuleName, setting, dest )
-#define setString( setting, value )         DBWriteContactSettingString( NULL, m_szModuleName, setting, value )
-#define getTString( setting, dest )         DBGetContactSettingTString( NULL, m_szModuleName, setting, dest )
-#define setTString( setting, value )        DBWriteContactSettingTString( NULL, m_szModuleName, setting, value )
-#define getU8String( setting, dest )        DBGetContactSettingUTF8String( NULL, m_szModuleName, setting, dest )
-#define setU8String( setting, value )       DBWriteContactSettingUTF8String( NULL, m_szModuleName, setting, value )
-#define deleteSetting( setting )            DBDeleteContactSetting( NULL, m_szModuleName, setting )
 
 // DB keys
 #define FACEBOOK_KEY_LOGIN					"Email"
@@ -61,35 +46,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define FACEBOOK_KEY_MAP_STATUSES			"MapStatuses"
 #define FACEBOOK_KEY_LOAD_MOBILE			"LoadMobile"
 #define FACEBOOK_KEY_CUSTOM_SMILEYS			"CustomSmileys"
+#define FACEBOOK_KEY_MESSAGE_ID				"LastMessageId"
+#define FACEBOOK_KEY_SERVER_TYPE			"ServerType"
+#define FACEBOOK_KEY_LOCAL_TIMESTAMP		"UseLocalTimestamp"
+#define FACEBOOK_KEY_PRIVACY_TYPE			"PrivacyType"
+#define FACEBOOK_KEY_PLACE					"Place"
+#define FACEBOOK_KEY_LAST_WALL				"LastWall"
+#define FACEBOOK_KEY_LOAD_PAGES				"LoadPages"
 
 #define FACEBOOK_KEY_POLL_RATE				"PollRate" // [HIDDEN]
 #define FACEBOOK_KEY_TIMEOUTS_LIMIT			"TimeoutsLimit" // [HIDDEN]
 #define FACEBOOK_KEY_DISABLE_LOGOUT			"DisableLogout" // [HIDDEN]
 #define FACEBOOK_KEY_VALIDATE_RESPONSE		"ValidateResponse" // [HIDDEN] - 0 = standard, 1 = always, 2 = never
-#define FACEBOOK_KEY_LOCAL_TIMESTAMP		"UseLocalTimestamp" // [HIDDEN]
+#define	FACEBOOK_KEY_LOCALE					"Locale" // [HIDDEN] - en_US, cs_CZ, etc.
 
 #define FACEBOOK_KEY_EVENT_NOTIFICATIONS_ENABLE     "EventNotificationsEnable"
 #define FACEBOOK_KEY_EVENT_FEEDS_ENABLE             "EventFeedsEnable"
 #define FACEBOOK_KEY_EVENT_OTHER_ENABLE             "EventOtherEnable"
 #define FACEBOOK_KEY_EVENT_CLIENT_ENABLE            "EventClientEnable"
 #define FACEBOOK_KEY_FEED_TYPE                      "EventFeedsType"
-
-#define FACEBOOK_KEY_EVENT_NOTIFICATIONS_COLBACK    "PopupNotificationsColorBack"
-#define FACEBOOK_KEY_EVENT_NOTIFICATIONS_COLTEXT    "PopupNotificationsColorText"
-#define FACEBOOK_KEY_EVENT_NOTIFICATIONS_TIMEOUT    "PopupNotificationsTimeout"
-#define FACEBOOK_KEY_EVENT_NOTIFICATIONS_DEFAULT    "PopupNotificationsColorDefault"
-
-#define FACEBOOK_KEY_EVENT_FEEDS_COLBACK            "PopupFeedsColorBack"
-#define FACEBOOK_KEY_EVENT_FEEDS_COLTEXT            "PopupFeedsColorText"
-#define FACEBOOK_KEY_EVENT_FEEDS_TIMEOUT            "PopupFeedsTimeout"
-#define FACEBOOK_KEY_EVENT_FEEDS_DEFAULT            "PopupFeedsColorDefault"
-
-#define FACEBOOK_KEY_EVENT_OTHER_COLBACK            "PopupOtherColorBack"
-#define FACEBOOK_KEY_EVENT_OTHER_COLTEXT            "PopupOtherColorText"
-#define FACEBOOK_KEY_EVENT_OTHER_TIMEOUT            "PopupOtherTimeout"
-#define FACEBOOK_KEY_EVENT_OTHER_DEFAULT            "PopupOtherColorDefault"
-
-#define FACEBOOK_KEY_EVENT_CLIENT_COLBACK           "PopupClientColorBack"
-#define FACEBOOK_KEY_EVENT_CLIENT_COLTEXT           "PopupClientColorText"
-#define FACEBOOK_KEY_EVENT_CLIENT_TIMEOUT           "PopupClientTimeout"
-#define FACEBOOK_KEY_EVENT_CLIENT_DEFAULT           "PopupClientColorDefault"

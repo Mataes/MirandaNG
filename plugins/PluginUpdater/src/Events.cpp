@@ -36,9 +36,9 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 
 	opts.bSilent = true;
 
-	int iRestartCount = DBGetContactSettingByte(NULL, MODNAME, "RestartCount", 2);
+	int iRestartCount = db_get_b(NULL, MODNAME, "RestartCount", 2);
 	if (iRestartCount > 0)
-		DBWriteContactSettingByte(NULL, MODNAME, "RestartCount", iRestartCount-1);
+		db_set_b(NULL, MODNAME, "RestartCount", iRestartCount-1);
 	else
 		EmptyFolder(0, TRUE); // silently
 
@@ -54,9 +54,18 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 INT_PTR MenuCommand(WPARAM wParam,LPARAM lParam)
 {
 	opts.bSilent = false;
-	DoCheck(1);
+	DoCheck(true);
 	return 0;
 }
+
+#if MIRANDA_VER >= 0x0A00
+INT_PTR ShowListCommand(WPARAM wParam,LPARAM lParam)
+{
+	opts.bSilent = false;
+	DoGetList(true);
+	return 0;
+}
+#endif
 
 INT_PTR EmptyFolder(WPARAM wParam,LPARAM lParam)
 {

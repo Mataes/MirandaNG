@@ -1,6 +1,4 @@
 #include "menuex.h"
-#include "images.h"
-#include "version.h"
 
 #define MS_SETINVIS		"MenuEx/SetInvis"
 #define MS_SETVIS		"MenuEx/SetVis"
@@ -21,14 +19,13 @@ const int vf_default = VF_VS|VF_HFL|VF_IGN|VF_CID|VF_SHOWID|VF_RECV|VF_STAT|VF_S
 HINSTANCE hinstance;
 HGENMENU hmenuVis,hmenuOff,hmenuHide,hmenuIgnore,hmenuProto,hmenuAdded,hmenuAuthReq;
 HGENMENU hmenuCopyID,hmenuRecvFiles,hmenuStatusMsg,hmenuCopyIP,hmenuCopyMirVer;
-static HANDLE hIgnoreItem[9], hProtoItem[MAX_PROTOS];
+static HGENMENU hIgnoreItem[9], hProtoItem[MAX_PROTOS];
 HICON hIcon[5];
-BOOL bMetaContacts;
+BOOL bMetaContacts = FALSE, bPopupService = FALSE;
 PROTOACCOUNT **accs;
 OPENOPTIONSDIALOG ood;
 int protoCount;
 int hLangpack;
-static LONG_PTR OldAuthReqEditProc;
 
 struct {
 	char *module;
@@ -50,9 +47,7 @@ static IconItem iconList[] = {
 	{ LPGEN("Show in list"),          "miex_showil",        IDI_ICON8 },
 	{ LPGEN("Always visible"),        "miex_vis",           IDI_ICON1 },
 	{ LPGEN("Never visible"),         "miex_invis",         IDI_ICON2 },
-	{ LPGEN("Send 'You were added'"), "miex_added",         IDI_ICON4 },
-	{ LPGEN("Request authorization"), "miex_authorization", IDI_ICON5 },
-	{ LPGEN("Copy to Account"),       "miex_protocol",      IDI_ICON6	},
+	{ LPGEN("Copy to Account"),       "miex_protocol",      IDI_ICON6 },
 	{ LPGEN("Ignore"),                "miex_ignore",        IDI_ICON7 },
 	{ LPGEN("Browse Received Files"), "miex_recfiles",      IDI_ICON12 },
 	{ LPGEN("Copy MirVer"),           "miex_copymver",      IDI_ICON13 }
@@ -71,27 +66,28 @@ struct {
 	int icon;
 }
 static const ii[] = {
-	{ LPGENT("All"),			IGNOREEVENT_ALL,			SKINICON_OTHER_FILLEDBLOB	},
-	{ LPGENT("Messages"),		IGNOREEVENT_MESSAGE,		SKINICON_EVENT_MESSAGE		},
-	{ LPGENT("URL"),			IGNOREEVENT_URL,			SKINICON_EVENT_URL			},
-	{ LPGENT("Files"),			IGNOREEVENT_FILE,			SKINICON_EVENT_FILE			},
-	{ LPGENT("User Online"),	IGNOREEVENT_USERONLINE,		SKINICON_OTHER_USERONLINE	},
-	{ LPGENT("Authorization"),	IGNOREEVENT_AUTHORIZATION,	SKINICON_OTHER_MIRANDA		},
-	{ LPGENT("You Were Added"),	IGNOREEVENT_YOUWEREADDED,	SKINICON_OTHER_ADDCONTACT	},
-	{ LPGENT("Typing Notify"),	IGNOREEVENT_TYPINGNOTIFY,	SKINICON_OTHER_TYPING		}
+	{ LPGENT("All"),            IGNOREEVENT_ALL,           SKINICON_OTHER_FILLEDBLOB	},
+	{ LPGENT("Messages"),       IGNOREEVENT_MESSAGE,       SKINICON_EVENT_MESSAGE		},
+	{ LPGENT("URL"),            IGNOREEVENT_URL,           SKINICON_EVENT_URL			},
+	{ LPGENT("Files"),          IGNOREEVENT_FILE,          SKINICON_EVENT_FILE			},
+	{ LPGENT("User Online"),    IGNOREEVENT_USERONLINE,    SKINICON_OTHER_USERONLINE	},
+	{ LPGENT("Authorization"),  IGNOREEVENT_AUTHORIZATION, SKINICON_AUTH_REQUEST		},
+	{ LPGENT("You Were Added"), IGNOREEVENT_YOUWEREADDED,  SKINICON_AUTH_ADD			},
+	{ LPGENT("Typing Notify"),  IGNOREEVENT_TYPINGNOTIFY,  SKINICON_OTHER_TYPING		}
 };
 
 PLUGININFOEX pluginInfoEx = {
 	sizeof(PLUGININFOEX),
-	MODULENAME,
-	__VERSION_DWORD,
-	__DESC,
-	__AUTHORS,
-	__EMAIL,
-	__COPYRIGHTS,
-	__WEB,
-	UNICODE_AWARE, 
-	MIID_MENUEX
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
+	UNICODE_AWARE,
+	// {B1902A52-9114-4D7E-AC2E-B3A52E01D574}
+	{0xb1902a52, 0x9114, 0x4d7e, {0xac, 0x2e, 0xb3, 0xa5, 0x2e, 0x01, 0xd5, 0x74}}
 };
 
 struct ModSetLinkLinkItem { // code from dbe++ plugin by Bio
@@ -106,14 +102,7 @@ typedef struct {
 
 int GetSetting(HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv)
 {
-	DBCONTACTGETSETTING cgs;
-
-	cgs.szModule = szModule;
-	cgs.szSetting = szSetting;
-	cgs.pValue = dbv;
-	dbv->type = 0;
-
-	return CallService(MS_DB_CONTACT_GETSETTING_STR,(WPARAM)hContact,(LPARAM)&cgs);
+	return db_get_s(hContact, szModule, szSetting, dbv, 0);
 }
 
 int enumModulesSettingsProc( const char *szName, LPARAM lParam)
@@ -141,8 +130,8 @@ int enumModulesSettingsProc( const char *szName, LPARAM lParam)
 
 void FreeModuleSettingLL(ModuleSettingLL* msll)
 {
-    if (msll)
-    {
+	if (msll)
+	{
 		struct ModSetLinkLinkItem *item = msll->first;
 		struct ModSetLinkLinkItem *temp;
 
@@ -187,29 +176,28 @@ void RenameDbProto(HANDLE hContact, HANDLE hContactNew, char* oldName, char* new
 		if (!GetSetting(hContact,oldName,setting->name,&dbv)) {
 			switch (dbv.type) {
 			case DBVT_BYTE:
-				DBWriteContactSettingByte(hContactNew, newName, setting->name, dbv.bVal);
+				db_set_b(hContactNew, newName, setting->name, dbv.bVal);
 				break;
 			case DBVT_WORD:
-				DBWriteContactSettingWord(hContactNew, newName, setting->name, dbv.wVal);
+				db_set_w(hContactNew, newName, setting->name, dbv.wVal);
 				break;
 			case DBVT_DWORD:
-				DBWriteContactSettingDword(hContactNew, newName, setting->name, dbv.dVal);
+				db_set_dw(hContactNew, newName, setting->name, dbv.dVal);
 				break;
 			case DBVT_ASCIIZ:
-				DBWriteContactSettingString(hContactNew, newName, setting->name, dbv.pszVal);
+				db_set_s(hContactNew, newName, setting->name, dbv.pszVal);
 				break;
 			case DBVT_UTF8:
-				DBWriteContactSettingStringUtf(hContactNew, newName, setting->name, dbv.pszVal);
+				db_set_utf(hContactNew, newName, setting->name, dbv.pszVal);
 				break;
 			case DBVT_BLOB:
-				DBWriteContactSettingBlob(hContactNew, newName, setting->name, dbv.pbVal, dbv.cpbVal);
+				db_set_blob(hContactNew, newName, setting->name, dbv.pbVal, dbv.cpbVal);
 				break;
-
 			}
 			if (delOld)
-				DBDeleteContactSetting(hContact, oldName, setting->name);
+				db_unset(hContact, oldName, setting->name);
 		}
-		DBFreeVariant(&dbv);
+		db_free(&dbv);
 		setting = (struct ModSetLinkLinkItem *)setting->next;
 	}
 	FreeModuleSettingLL(&settinglist);
@@ -232,7 +220,7 @@ void ShowPopup(char* szText, TCHAR* tszText, HANDLE hContact)
 	_tcsncpy(ppd.lptzText, text, MAX_SECONDLINE - 1);
 	ppd.iSeconds = -1;
 
-	PUAddPopUpT(&ppd);
+	PUAddPopupT(&ppd);
 	mir_free(text);
 }
 
@@ -253,50 +241,48 @@ void CopyToClipboard(HWND hwnd,LPSTR pszMsg, LPTSTR ptszMsg)
 	if (ptszMsg)
 		buf = mir_tstrdup(ptszMsg);
 	else if (pszMsg)
-		buf = mir_a2t(pszMsg);		
+		buf = mir_a2t(pszMsg);
 
 	if (buf == 0)
 		return;
 
-	hglbCopy = GlobalAlloc(GMEM_MOVEABLE, (lstrlen(buf)+1)*sizeof(TCHAR)); 
-	lptstrCopy = (LPTSTR)GlobalLock(hglbCopy); 
+	hglbCopy = GlobalAlloc(GMEM_MOVEABLE, (lstrlen(buf)+1)*sizeof(TCHAR));
+	lptstrCopy = (LPTSTR)GlobalLock(hglbCopy);
 	lstrcpy(lptstrCopy, buf);
 	mir_free(buf);
-	GlobalUnlock(hglbCopy); 
+	GlobalUnlock(hglbCopy);
 
 	OpenClipboard(NULL);
-	EmptyClipboard(); 
+	EmptyClipboard();
 
 	SetClipboardData(CF_UNICODETEXT, hglbCopy);
 
 	CloseClipboard();
 }
 
-BOOL isMetaContact(HANDLE hContact) {
-
+BOOL isMetaContact(HANDLE hContact)
+{
 	char *proto;
-	if(bMetaContacts) {
+	if (bMetaContacts) {
 		proto = GetContactProto(hContact);
-		if ( lstrcmpA(proto,"MetaContacts") == 0 ) {
+		if ( lstrcmpA(proto, "MetaContacts") == 0 ) {
 			return TRUE;
 		}
 	}
 	return FALSE;
 }
 
-HANDLE getDefaultContact(HANDLE hContact) {
-
-	if(bMetaContacts) {
-		return (HANDLE)CallService(MS_MC_GETDEFAULTCONTACT,(WPARAM)hContact,0);
-	}
+HANDLE getDefaultContact(HANDLE hContact)
+{
+	if (bMetaContacts)
+		return (HANDLE)CallService(MS_MC_GETDEFAULTCONTACT, (WPARAM)hContact, 0);
 	return 0;
 }
 
-HANDLE getMostOnline(HANDLE hContact) {
-
-	if(bMetaContacts) {
-		return (HANDLE)CallService(MS_MC_GETMOSTONLINECONTACT,(WPARAM)hContact,0);
-	}
+HANDLE getMostOnline(HANDLE hContact)
+{
+	if (bMetaContacts)
+		return (HANDLE)CallService(MS_MC_GETMOSTONLINECONTACT, (WPARAM)hContact, 0);
 	return 0;
 }
 
@@ -309,39 +295,37 @@ void GetID(HANDLE hContact,LPSTR szProto,LPSTR szID)
 
 	*szID = '\0';
 
-	if ( uID && DBGetContactSetting(hContact, szProto, uID ,&dbv_uniqueid) == 0 ) {
+	if ( uID && db_get(hContact, szProto, uID ,&dbv_uniqueid) == 0 ) {
 		if (dbv_uniqueid.type == DBVT_DWORD)
-			wsprintfA(szID, "%u", dbv_uniqueid.dVal);
+			wsprintfA(szID, "%u", dbv_uniqueid.dVal); //!!!!!!!!!
 		else if (dbv_uniqueid.type == DBVT_WORD)
-			wsprintfA(szID, "%u", dbv_uniqueid.wVal);
+			wsprintfA(szID, "%u", dbv_uniqueid.wVal); //!!!!!!!!!
 		else if (dbv_uniqueid.type == DBVT_BLOB)
-			wsprintfA(szID, "%s", dbv_uniqueid.cpbVal);
+			wsprintfA(szID, "%s", dbv_uniqueid.cpbVal); //!!!!!!!!!
 		else
-			wsprintfA(szID, "%s", dbv_uniqueid.pszVal);
+			wsprintfA(szID, "%s", dbv_uniqueid.pszVal); //!!!!!!!!
 
-		DBFreeVariant(&dbv_uniqueid);
+		db_free(&dbv_uniqueid);
 	}
 }
 
 int StatusMsgExists(HANDLE hContact)
 {
-	LPSTR module,msg;
 	char par[32];
 	BOOL ret = 0;
-	int i;
 
-	module = GetContactProto(hContact);
+	LPSTR module = GetContactProto(hContact);
 	if (!module) return 0;
 
-	for(i = 0; i < SIZEOF(statusMsg); i++) {
+	for(int i = 0; i < SIZEOF(statusMsg); i++) {
 		if (statusMsg[i].flag & 8)
 			mir_snprintf(par, SIZEOF(par), "%s/%s", module, statusMsg[i].name);
 		else
 			strcpy(par, statusMsg[i].name);
 
-		msg = DBGetString(hContact, (statusMsg[i].module) ? statusMsg[i].module : module, par);
-		if(msg) {
-			if(strlen(msg))	
+		LPSTR msg = db_get_sa(hContact, (statusMsg[i].module) ? statusMsg[i].module : module, par);
+		if (msg) {
+			if (strlen(msg))	
 				ret |= statusMsg[i].flag;
 			mir_free(msg);
 		}
@@ -357,8 +341,8 @@ BOOL IPExists(HANDLE hContact)
 	szProto = GetContactProto(hContact);
 	if (!szProto) return 0;
 
-	mIP = DBGetContactSettingDword(hContact, szProto, "IP", 0);
-	rIP = DBGetContactSettingDword(hContact, szProto, "RealIP", 0);
+	mIP = db_get_dw(hContact, szProto, "IP", 0);
+	rIP = db_get_dw(hContact, szProto, "RealIP", 0);
 
 	return (mIP != 0 || rIP != 0);
 }
@@ -371,9 +355,9 @@ BOOL MirVerExists(HANDLE hContact)
 	szProto = GetContactProto(hContact);
 	if (!szProto) return 0;
 
-	msg = DBGetString(hContact,szProto,"MirVer");
-	if(msg) {
-		if(strlen(msg))	ret = 1;
+	msg = db_get_sa(hContact,szProto,"MirVer");
+	if (msg) {
+		if (strlen(msg))	ret = 1;
 		mir_free(msg);
 	}
 
@@ -384,24 +368,24 @@ void getIP(HANDLE hContact,LPSTR szProto,LPSTR szIP)
 {
 	char szmIP[64] = {0};
 	char szrIP[64] = {0};
-	DWORD mIP = DBGetContactSettingDword(hContact, szProto, "IP", 0);
-	DWORD rIP = DBGetContactSettingDword(hContact, szProto, "RealIP", 0);
-	if ( mIP ) wsprintfA(szmIP, "External IP: %d.%d.%d.%d\r\n", mIP>>24,(mIP>>16)&0xFF,(mIP>>8)&0xFF,mIP&0xFF);
-	if ( rIP ) wsprintfA(szrIP, "Internal IP: %d.%d.%d.%d\r\n", rIP>>24,(rIP>>16)&0xFF,(rIP>>8)&0xFF,rIP&0xFF);
-	strcpy(szIP,szrIP);
-	strcat(szIP,szmIP);
+	DWORD mIP = db_get_dw(hContact, szProto, "IP", 0);
+	DWORD rIP = db_get_dw(hContact, szProto, "RealIP", 0);
+	if (mIP)
+		mir_snprintf(szmIP, SIZEOF(szmIP), "External IP: %d.%d.%d.%d\r\n", mIP>>24, (mIP>>16)&0xFF, (mIP>>8)&0xFF, mIP&0xFF);
+	if (rIP)
+		mir_snprintf(szrIP, SIZEOF(szrIP), "Internal IP: %d.%d.%d.%d\r\n", rIP>>24, (rIP>>16)&0xFF, (rIP>>8)&0xFF, rIP&0xFF);
+	strcpy(szIP, szrIP);
+	strcat(szIP, szmIP);
 }
 
-LPSTR getMirVer(HANDLE hContact)
+LPTSTR getMirVer(HANDLE hContact)
 {
-	LPSTR szProto, msg;
-
-	szProto = GetContactProto(hContact);
+	LPSTR szProto = GetContactProto(hContact);
 	if (!szProto) return NULL;
 
-	msg = DBGetString(hContact,szProto,"MirVer");
-	if(msg) {
-		if(strlen(msg))	
+	LPTSTR msg = db_get_tsa(hContact,szProto,"MirVer");
+	if (msg) {
+		if (msg[0] != 0)	
 			return msg;
 		mir_free(msg);
 	}
@@ -412,21 +396,21 @@ LPSTR getMirVer(HANDLE hContact)
 static LRESULT CALLBACK AuthReqEditSubclassProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 {
 	switch(msg) {
-		case WM_CHAR:
-			if(wParam == '\n' && CTRL_IS_PRESSED) { // ctrl + ENTER
-				PostMessage(GetParent(hwnd), WM_COMMAND, IDOK, 0);
-				return 0;
-			}
-			if(wParam == 1 && CTRL_IS_PRESSED) { // ctrl + a
-				SendMessage(hwnd, EM_SETSEL, 0, -1);
-				return 0;
-			}
-			break;
-		case WM_SETFOCUS:
+	case WM_CHAR:
+		if (wParam == '\n' && CTRL_IS_PRESSED) { // ctrl + ENTER
+			PostMessage(GetParent(hwnd), WM_COMMAND, IDOK, 0);
+			return 0;
+		}
+		if (wParam == 1 && CTRL_IS_PRESSED) { // ctrl + a
 			SendMessage(hwnd, EM_SETSEL, 0, -1);
-			break;
+			return 0;
+		}
+		break;
+	case WM_SETFOCUS:
+		SendMessage(hwnd, EM_SETSEL, 0, -1);
+		break;
 	}
-	return CallWindowProc((WNDPROC)OldAuthReqEditProc,hwnd,msg,wParam,lParam);
+	return mir_callNextSubclass(hwnd, AuthReqEditSubclassProc, msg, wParam, lParam);
 }
 
 INT_PTR CALLBACK AuthReqWndProc(HWND hdlg,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -436,7 +420,7 @@ INT_PTR CALLBACK AuthReqWndProc(HWND hdlg,UINT msg,WPARAM wparam,LPARAM lparam)
 	switch(msg){
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hdlg);
-		OldAuthReqEditProc = SetWindowLongPtr(GetDlgItem(hdlg, IDC_REASON), GWLP_WNDPROC, (LONG_PTR)AuthReqEditSubclassProc);
+		mir_subclassWindow( GetDlgItem(hdlg, IDC_REASON), AuthReqEditSubclassProc);
 		SendDlgItemMessage(hdlg, IDC_REASON, EM_LIMITTEXT, (WPARAM)255, 0);
 		SetDlgItemText(hdlg, IDC_REASON, TranslateT("Please authorize me to add you to my contact list."));
 		hcontact = (HANDLE)lparam;
@@ -444,34 +428,20 @@ INT_PTR CALLBACK AuthReqWndProc(HWND hdlg,UINT msg,WPARAM wparam,LPARAM lparam)
 
 	case WM_COMMAND:
 		switch(LOWORD(wparam)) {
-	case IDOK:
-		{
-			TCHAR tszReason[256] = {0};
-			GetDlgItemText(hdlg,IDC_REASON,tszReason,255);
-			CallContactService(hcontact,PSS_AUTHREQUESTT,0,(LPARAM)tszReason);
-		} // fall through
-	case IDCANCEL:
-		DestroyWindow(hdlg);
-		break;
+		case IDOK:
+			{
+				TCHAR tszReason[256] = {0};
+				GetDlgItemText(hdlg,IDC_REASON,tszReason,255);
+				CallContactService(hcontact,PSS_AUTHREQUESTT,0,(LPARAM)tszReason);
+			} // fall through
+		case IDCANCEL:
+			DestroyWindow(hdlg);
+			break;
 		}
 		break;
 	}
 
 	return 0;
-}
-
-BOOL isVisSupport(HANDLE hContact)
-{
-	char *szProto = GetContactProto(hContact);
-	if(szProto == NULL) return 0;
-	return CallProtoService(szProto,PS_GETCAPS,PFLAGNUM_1,0)&PF1_INVISLIST;
-}
-
-BOOL isInvSupport(HANDLE hContact)
-{
-	char *szProto = GetContactProto(hContact);
-	if(szProto == NULL) return 0;
-	return CallProtoService(szProto,PS_GETCAPS,PFLAGNUM_1,0)&PF1_VISLIST;
 }
 
 BOOL isProtoOnline(char *szProto)
@@ -509,192 +479,158 @@ INT_PTR onSendAdded(WPARAM wparam,LPARAM lparam)
 // set the invisible-flag in db
 INT_PTR onSetInvis(WPARAM wparam,LPARAM lparam)
 {
-	CallContactService((HANDLE)wparam,PSS_SETAPPARENTMODE,(DBGetContactSettingWord((HANDLE)wparam, GetContactProto((HANDLE)wparam),"ApparentMode",0) == ID_STATUS_OFFLINE)?0:ID_STATUS_OFFLINE,0);
+	CallContactService((HANDLE)wparam,PSS_SETAPPARENTMODE,(db_get_w((HANDLE)wparam, GetContactProto((HANDLE)wparam),"ApparentMode",0) == ID_STATUS_OFFLINE)?0:ID_STATUS_OFFLINE,0);
 	return 0;
 }
 
 // set visible-flag in db
 INT_PTR onSetVis(WPARAM wparam,LPARAM lparam)
 {
-	CallContactService((HANDLE)wparam,PSS_SETAPPARENTMODE,(DBGetContactSettingWord((HANDLE)wparam, GetContactProto((HANDLE)wparam),"ApparentMode",0) == ID_STATUS_ONLINE)?0:ID_STATUS_ONLINE,0);
+	CallContactService((HANDLE)wparam,PSS_SETAPPARENTMODE,(db_get_w((HANDLE)wparam, GetContactProto((HANDLE)wparam),"ApparentMode",0) == ID_STATUS_ONLINE)?0:ID_STATUS_ONLINE,0);
 	return 0;
 }
 
 INT_PTR onHide(WPARAM wparam,LPARAM lparam)
 {
-	DBWriteContactSettingByte((HANDLE)wparam,"CList","Hidden",(byte)!DBGetContactSettingByte((HANDLE)wparam,"CList","Hidden",0));
-	CallService(MS_CLUI_SORTLIST,0,0);
+	db_set_b((HANDLE)wparam,"CList","Hidden",(byte)!db_get_b((HANDLE)wparam,"CList","Hidden",0));
 	return 0;
 }
 
-void ShowItem(CLISTMENUITEM *cli, HANDLE hmenu)
-{
-	cli->flags = CMIM_FLAGS | CMIF_TCHAR;
-	CallService(MS_CLIST_MODIFYMENUITEM,(WPARAM)hmenu,(LPARAM)cli);
-}
-
-void HideItem(CLISTMENUITEM *cli,HANDLE hmenu)
-{
-	cli->flags|=CMIF_HIDDEN;
-	CallService(MS_CLIST_MODIFYMENUITEM,(WPARAM)hmenu,(LPARAM)cli);
-}
-
 // following 4 functions should be self-explanatory
-void ModifyVisibleSet(CLISTMENUITEM *cli,int mode,BOOL alpha)
+void ModifyVisibleSet(int mode, BOOL alpha)
 {
-	cli->flags |= CMIM_ICON;
-	cli->hIcon = (mode) ? hIcon[1] : (alpha?hIcon[3] : LoadSkinnedIcon(SKINICON_OTHER_SMALLDOT));
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hmenuVis, (LPARAM)cli);
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.flags = CMIM_ICON;
+	mi.hIcon = (mode) ? hIcon[1] : (alpha ? hIcon[3] : LoadSkinnedIcon(SKINICON_OTHER_SMALLDOT));
+	Menu_ModifyItem(hmenuVis, &mi);
 }
 
-void ModifyInvisSet(CLISTMENUITEM *cli,int mode,BOOL alpha)
+void ModifyInvisSet(int mode,BOOL alpha)
 {
-	cli->flags |= CMIM_ICON;
-	cli->hIcon = (mode) ? hIcon[2] : (alpha ? hIcon[4] : LoadSkinnedIcon(SKINICON_OTHER_SMALLDOT));
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hmenuOff, (LPARAM)cli);
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.flags = CMIM_ICON;
+	mi.hIcon = (mode) ? hIcon[2] : (alpha ? hIcon[4] : LoadSkinnedIcon(SKINICON_OTHER_SMALLDOT));
+	Menu_ModifyItem(hmenuOff, &mi);
 }
 
-void ModifyHidden(CLISTMENUITEM *cli,int mode)
+void ModifyCopyID(HANDLE hContact, BOOL bShowID, BOOL bTrimID)
 {
-	cli->flags |= CMIM_ICON | CMIM_NAME;
-	cli->hIcon = Skin_GetIcon((mode) ? "miex_showil" : "miex_hidefl");
-	cli->ptszName = mode ? LPGENT("Show in list") : LPGENT("Hide from list");
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hmenuHide, (LPARAM)cli);
-}
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.flags = CMIM_ICON | CMIM_NAME | CMIF_UNICODE;
 
-void ModifyCopyID(CLISTMENUITEM *cli, HANDLE hContact, BOOL bShowID, BOOL bTrimID)
-{
-	LPSTR szProto;
-	char szID[256];
-	TCHAR buffer[256];
-	HICON hIconCID;
-	HANDLE hC;
-
-	cli->flags|=CMIM_ICON|CMIM_NAME;
-
-	if(isMetaContact(hContact)) {
-		hC = getMostOnline(hContact);
+	if (isMetaContact(hContact)) {
+		HANDLE hC = getMostOnline(hContact);
 		if ( !hContact ) hC = getDefaultContact(hContact);
 		hContact = hC;
 	}
 
-	szProto = GetContactProto(hContact);
+	LPSTR szProto = GetContactProto(hContact);
 	if (!szProto) {
-		HideItem(cli,hmenuCopyID);
-		return;
-	}
-	hIconCID = (HICON) CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
-	cli->hIcon = BindOverlayIcon(hIconCID, "miex_copyid");
-	DestroyIcon(hIconCID);
-	hIconCID = cli->hIcon;
-
-	GetID(hContact,szProto,(LPSTR)&szID);
-	if(szID[0]) 
-	{
-		if (bShowID) 
-		{
-			TCHAR* tmp;
-
-			if (bTrimID && (strlen(szID) > MAX_IDLEN))
-			{
-				szID[MAX_IDLEN - 2] = szID[MAX_IDLEN - 1] = szID[MAX_IDLEN] = '.';
-				szID[MAX_IDLEN + 1] = 0;
-			}
-			tmp = mir_a2t(szID);
-			mir_sntprintf(buffer, SIZEOF(buffer), _T("%s [%s]"), TranslateT("Copy ID"), tmp);
-			mir_free(tmp);
-
-			cli->ptszName = (TCHAR*)&buffer;
-		}
-		else
-			cli->ptszName = _T("Copy ID");
-	}
-	else {
-		cli->flags = CMIM_FLAGS|CMIF_HIDDEN;
-	}
-	CallService(MS_CLIST_MODIFYMENUITEM,(WPARAM)hmenuCopyID,(LPARAM)cli);
-	DestroyIcon(hIconCID);
-}
-
-void ModifyStatusMsg(CLISTMENUITEM *cli,HANDLE hContact)
-{
-	LPSTR szProto;
-	HICON hIconSMsg;
-
-	cli->flags|=CMIM_ICON;
-
-	szProto = GetContactProto(hContact);
-	if (!szProto) {
-		HideItem(cli,hmenuStatusMsg);
+		Menu_ShowItem(hmenuCopyID, false);
 		return;
 	}
 	
-	hIconSMsg = (HICON) CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
-	cli->hIcon = BindOverlayIcon(hIconSMsg,	(StatusMsgExists(hContact)&2) ? "miex_copysm2" : "miex_copysm1");
-	DestroyIcon(hIconSMsg);
-	hIconSMsg = cli->hIcon;
+	HICON hIconCID = (HICON)CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
+	mi.hIcon = BindOverlayIcon(hIconCID, "miex_copyid");
+	DestroyIcon(hIconCID);
+	hIconCID = mi.hIcon;
 
-	CallService(MS_CLIST_MODIFYMENUITEM,(WPARAM)hmenuStatusMsg,(LPARAM)cli);
-	DestroyIcon(hIconSMsg);
+	char szID[256];
+	GetID(hContact, szProto, (LPSTR)&szID);
+	if (szID[0])  {
+		if (bShowID) {
+			if (bTrimID && (strlen(szID) > MAX_IDLEN)) {
+				szID[MAX_IDLEN - 2] = szID[MAX_IDLEN - 1] = szID[MAX_IDLEN] = '.';
+				szID[MAX_IDLEN + 1] = 0;
+			}
+
+			TCHAR buffer[256];
+			mir_sntprintf(buffer, SIZEOF(buffer), _T("%s [%S]"), TranslateT("Copy ID"), szID);
+			mi.ptszName = buffer;
+		}
+		else mi.ptszName = LPGENT("Copy ID");
+	}
+	else mi.flags = CMIM_FLAGS | CMIF_HIDDEN;
+
+	Menu_ModifyItem(hmenuCopyID, &mi);
+	DestroyIcon(hIconCID);
 }
 
-void ModifyCopyIP(CLISTMENUITEM *cli,HANDLE hContact)
+void ModifyStatusMsg(HANDLE hContact)
 {
-	LPSTR szProto;
-	HICON hIconCIP;
-
-	cli->flags |= CMIM_ICON;
-
-	szProto = GetContactProto(hContact);
+	LPSTR szProto = GetContactProto(hContact);
 	if (!szProto) {
-		HideItem(cli,hmenuCopyIP);
+		Menu_ShowItem(hmenuStatusMsg, false);
 		return;
 	}
 
-	hIconCIP = (HICON) CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.flags = CMIM_ICON;
 
-	cli->hIcon = BindOverlayIcon(hIconCIP, "miex_copyip");
+	HICON hIconSMsg = (HICON)CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
+	mi.hIcon = BindOverlayIcon(hIconSMsg,	(StatusMsgExists(hContact)&2) ? "miex_copysm2" : "miex_copysm1");
+	DestroyIcon(hIconSMsg);
+	hIconSMsg = mi.hIcon;
+
+	Menu_ModifyItem(hmenuStatusMsg, &mi);
+	DestroyIcon(hIconSMsg);
+}
+
+void ModifyCopyIP(HANDLE hContact)
+{
+	LPSTR szProto = GetContactProto(hContact);
+	if (!szProto) {
+		Menu_ShowItem(hmenuCopyIP, false);
+		return;
+	}
+
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.flags = CMIM_ICON;
+
+	HICON hIconCIP = (HICON)CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
+	mi.hIcon = BindOverlayIcon(hIconCIP, "miex_copyip");
 	DestroyIcon(hIconCIP);
-	hIconCIP = cli->hIcon;
+	hIconCIP = mi.hIcon;
 
-	CallService(MS_CLIST_MODIFYMENUITEM,(WPARAM)hmenuCopyIP,(LPARAM)cli);
+	Menu_ModifyItem(hmenuCopyIP, &mi);
 	DestroyIcon(hIconCIP);
 }
 
-void ModifyCopyMirVer(CLISTMENUITEM *cli,HANDLE hContact)
+void ModifyCopyMirVer(HANDLE hContact)
 {
-	LPSTR msg;
-	cli->flags|=CMIM_ICON;
-	cli->hIcon = NULL;
-	if(ServiceExists(MS_FP_GETCLIENTICON)) {
-		msg = getMirVer(hContact);
-		if(msg) {
-			cli->hIcon = (HICON)CallService(MS_FP_GETCLIENTICON,(WPARAM)msg,(LPARAM)1);
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.flags = CMIM_ICON;
+
+	if ( ServiceExists(MS_FP_GETCLIENTICONT)) {
+		LPTSTR msg = getMirVer(hContact);
+		if (msg) {
+			mi.hIcon = Finger_GetClientIcon(msg, 1);
 			mir_free(msg);
 		}
 	}
-	if (!cli->hIcon) cli->hIcon = hIcon[0];
-	CallService(MS_CLIST_MODIFYMENUITEM,(WPARAM)hmenuCopyMirVer,(LPARAM)cli);
+	if (!mi.hIcon) mi.hIcon = hIcon[0];
+	Menu_ModifyItem(hmenuCopyMirVer, &mi);
 }
 
 INT_PTR onCopyID(WPARAM wparam,LPARAM lparam)
 {
-	LPSTR szProto;
 	char szID[128] = {0}, buffer[256] = {0};
-	HANDLE hContact ,hC;
 
-	hContact = (HANDLE)wparam;
-	if(isMetaContact(hContact)) {
-		hC = getMostOnline(hContact);
-		if ( !hContact ) hC = getDefaultContact(hContact);
+	HANDLE hContact = (HANDLE)wparam;
+	if (isMetaContact(hContact)) {
+		HANDLE hC = getMostOnline(hContact);
+		if (!hContact)
+			hC = getDefaultContact(hContact);
 		hContact = hC;
 	}
-	if ((szProto = GetContactProto(hContact)) == NULL)
+
+	LPSTR szProto = GetContactProto(hContact);
+	if (szProto == NULL)
 		return 0;
 
-	GetID(hContact,szProto,(LPSTR)&szID);
+	GetID(hContact, szProto, (LPSTR)&szID);
 
-	if(DBGetContactSettingDword(NULL,VISPLG,"flags",vf_default)&VF_CIDN) {
+	if (db_get_dw(NULL, MODULENAME, "flags", vf_default) & VF_CIDN) {
 		PROTOACCOUNT *pa = ProtoGetAccount(szProto);
 		
 		if (!pa->bOldProto) 
@@ -702,11 +638,10 @@ INT_PTR onCopyID(WPARAM wparam,LPARAM lparam)
 		else
 			mir_snprintf(buffer, SIZEOF(buffer), "%s: %s", szProto, szID);
 	}
-	else
-		strcpy(buffer, szID);
+	else strcpy(buffer, szID);
 
 	CopyToClipboard((HWND)lparam, buffer, 0);
-	if(CTRL_IS_PRESSED && ServiceExists(MS_POPUP_ADDPOPUP))
+	if (CTRL_IS_PRESSED && bPopupService)
 		ShowPopup(buffer, 0, hContact);
 
 	return 0;
@@ -715,11 +650,10 @@ INT_PTR onCopyID(WPARAM wparam,LPARAM lparam)
 INT_PTR onCopyStatusMsg(WPARAM wparam,LPARAM lparam)
 {
 	LPSTR module; 
-	LPTSTR msg;
 	char par[32];
 	TCHAR buffer[2048];
 	int i;
-	DWORD flags = DBGetContactSettingDword(NULL,VISPLG,"flags",vf_default);
+	DWORD flags = db_get_dw(NULL, MODULENAME, "flags", vf_default);
 
 	module = GetContactProto((HANDLE)wparam);
 	if (!module)
@@ -732,13 +666,10 @@ INT_PTR onCopyStatusMsg(WPARAM wparam,LPARAM lparam)
 		else
 			strcpy(par, statusMsg[i].name);
 
-		msg = DBGetStringT((HANDLE)wparam, (statusMsg[i].module) ? statusMsg[i].module : module, par);
-		if(msg) 
-		{
-			if(_tcsclen(msg))
-			{
-				if (flags&VF_SMNAME) 
-				{
+		LPTSTR msg = db_get_tsa((HANDLE)wparam, (statusMsg[i].module) ? statusMsg[i].module : module, par);
+		if (msg) {
+			if (_tcsclen(msg)) {
+				if (flags & VF_SMNAME) {
 					_tcsncat (buffer, TranslateTS(statusMsg[i].fullName), (SIZEOF(buffer) - _tcsclen(buffer) - 1));
 					_tcsncat (buffer, _T(": "), (SIZEOF(buffer) - _tcsclen(buffer) - 1));
 				}
@@ -750,7 +681,7 @@ INT_PTR onCopyStatusMsg(WPARAM wparam,LPARAM lparam)
 	}
 
 	CopyToClipboard((HWND)lparam, 0, buffer);
-	if(CTRL_IS_PRESSED && ServiceExists(MS_POPUP_ADDPOPUP))
+	if (CTRL_IS_PRESSED && bPopupService)
 		ShowPopup(0, buffer, (HANDLE)wparam);
 
 	return 0;
@@ -764,7 +695,7 @@ INT_PTR onCopyIP(WPARAM wparam,LPARAM lparam)
 	getIP((HANDLE)wparam,szProto,(LPSTR)&szIP);
 
 	CopyToClipboard((HWND)lparam, szIP, 0);
-	if(CTRL_IS_PRESSED && ServiceExists(MS_POPUP_ADDPOPUP))
+	if (CTRL_IS_PRESSED && bPopupService)
 		ShowPopup(szIP, 0, (HANDLE)wparam);
 
 	return 0;
@@ -772,11 +703,11 @@ INT_PTR onCopyIP(WPARAM wparam,LPARAM lparam)
 
 INT_PTR onCopyMirVer(WPARAM wparam,LPARAM lparam)
 {
-	LPSTR msg = getMirVer((HANDLE)wparam);
-	if(msg) {
-		CopyToClipboard((HWND)lparam, msg, 0);
-		if(CTRL_IS_PRESSED && ServiceExists(MS_POPUP_ADDPOPUP))
-			ShowPopup(msg, 0, (HANDLE)wparam);
+	LPTSTR msg = getMirVer((HANDLE)wparam);
+	if (msg) {
+		CopyToClipboard((HWND)lparam, _T2A(msg), 0);
+		if (CTRL_IS_PRESSED && bPopupService)
+			ShowPopup( _T2A(msg), 0, (HANDLE)wparam);
 
 		mir_free(msg);
 	}
@@ -804,11 +735,9 @@ INT_PTR onChangeProto(WPARAM wparam,LPARAM lparam)
 		CallService(MS_PROTO_REMOVEFROMCONTACT, (WPARAM)hContact, (LPARAM)GetContactProto(hContact));
 		CallService(MS_PROTO_ADDTOCONTACT, (WPARAM)hContactNew, lparam);
 	}
-	else
-	{
+	else {
 		hContactNew = (HANDLE)CallService(MS_DB_CONTACT_ADD, 0, 0);
-		if (hContactNew)
-		{
+		if (hContactNew) {
 			CallService(MS_PROTO_ADDTOCONTACT, (WPARAM)hContactNew, lparam);
 			RenameDbProto(hContact, hContactNew, GetContactProto(hContact), (char*)lparam, 0);
 			RenameDbProto(hContact, hContactNew, "CList", "CList", 0);
@@ -816,7 +745,7 @@ INT_PTR onChangeProto(WPARAM wparam,LPARAM lparam)
 		else
 			return 0;
 	}
-	if(MessageBox(NULL,(LPCTSTR)TranslateT("Do you want to send authorization request\nto new contact?"),
+	if (MessageBox(NULL,(LPCTSTR)TranslateT("Do you want to send authorization request\nto new contact?"),
 		TranslateT("Miranda NG"), MB_OKCANCEL | MB_SETFOREGROUND | MB_TOPMOST) == IDOK)
 
 		onSendAuthRequest((WPARAM)hContactNew, 0);
@@ -826,32 +755,27 @@ INT_PTR onChangeProto(WPARAM wparam,LPARAM lparam)
 
 int isIgnored(HANDLE  hContact, int type)
 {
-	int i = 0, all = 0;
-	if (type == IGNOREEVENT_ALL)
-	{
-		for (i = 1; i < SIZEOF(ii); i++)
-		{
-			if (isIgnored(hContact, ii[i].type))
-				all++;
-		}
-		return (all == SIZEOF(ii) - 1) ? 1 : 0; // ignoring all or not
-	}
-	else
+	if (type != IGNOREEVENT_ALL)
 		return CallService(MS_IGNORE_ISIGNORED, (WPARAM)hContact, (LPARAM)type);
+
+	int i = 0, all = 0;
+	for (i = 1; i < SIZEOF(ii); i++)
+		if (isIgnored(hContact, ii[i].type))
+			all++;
+
+	return (all == SIZEOF(ii) - 1) ? 1 : 0; // ignoring all or not
 }
 
 INT_PTR onIgnore(WPARAM wparam,LPARAM lparam)
 {
-	if (DBGetContactSettingByte(NULL, VISPLG, "ignorehide", 0) && (lparam == IGNOREEVENT_ALL)) {
-		DBWriteContactSettingByte((HANDLE)wparam, "CList", "Hidden", (isIgnored((HANDLE)wparam, lparam) ? (byte)0 : (byte)1));
-		CallService(MS_CLUI_SORTLIST, 0, 0);
-	}
+	if (db_get_b(NULL, MODULENAME, "ignorehide", 0) && (lparam == IGNOREEVENT_ALL))
+		db_set_b((HANDLE)wparam, "CList", "Hidden", (isIgnored((HANDLE)wparam, lparam) ? (byte)0 : (byte)1));
 
 	CallService(isIgnored((HANDLE)wparam, lparam) ? MS_IGNORE_UNIGNORE : MS_IGNORE_IGNORE, wparam, lparam); 
 	return 0;
 }
 
-static HANDLE AddSubmenuItem(HGENMENU hRoot, TCHAR* name, HICON icon, DWORD flag, char* service, int pos, int param)
+static HGENMENU AddSubmenuItem(HGENMENU hRoot, TCHAR* name, HICON icon, DWORD flag, char* service, int pos, int param)
 {
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.hParentMenu   =  hRoot;
@@ -859,64 +783,58 @@ static HANDLE AddSubmenuItem(HGENMENU hRoot, TCHAR* name, HICON icon, DWORD flag
 	mi.position      =  pos;
 	mi.ptszName      =  name;
 	mi.hIcon         =  icon; 
-	mi.flags         =  CMIF_TCHAR | CMIF_CHILDPOPUP | flag;
+	mi.flags         =  CMIF_UNICODE | CMIF_CHILDPOPUP | flag;
 	mi.pszService    =  service;
 	return Menu_AddContactMenuItem(&mi);
 }
 
-static void ModifySubmenuItem(HANDLE hItem, TCHAR* name, int checked, int hidden)
+static void ModifySubmenuItem(HGENMENU hItem, TCHAR *name, int checked, int hidden)
 {
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.ptszName =  name;
-	mi.flags =  CMIM_FLAGS | CMIF_TCHAR;
-	if ( checked )
+	mi.ptszName = name;
+	mi.flags = CMIM_FLAGS | CMIF_UNICODE;
+	if (checked)
 		mi.flags |= CMIF_CHECKED;
-	if ( hidden )
+	if (hidden)
 		mi.flags |= CMIF_HIDDEN;
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hItem, (LPARAM)&mi);
+	Menu_ModifyItem(hItem, &mi);
 }
 
 // called when the contact-menu is built
 int BuildMenu(WPARAM wparam,LPARAM lparam)
 {
-	CLISTMENUITEM miAV = {0},miNV,miHFL,miIGN,miPROTO,miADD,miREQ,miCID,miRECV,miSTAT,miCIP,miCMV;
-	DWORD flags = DBGetContactSettingDword(NULL,VISPLG,"flags",vf_default);
-	int i = 0, j = 0, check = 0, all = 0, hide = 0;
+	DWORD flags = db_get_dw(NULL, MODULENAME, "flags", vf_default);
+	int j = 0, all = 0, hide = 0;
 	BOOL bIsOnline = FALSE, bShowAll = CTRL_IS_PRESSED;
-	char* pszProto = GetContactProto((HANDLE)wparam);
+	HANDLE hContact = (HANDLE)wparam;
+	char* pszProto = GetContactProto(hContact);
 	PROTOACCOUNT *pa = ProtoGetAccount(pszProto);
 
 	bIsOnline = isProtoOnline(pszProto);
 
-	miAV.cbSize = sizeof(CLISTMENUITEM);
-	miAV.flags = CMIM_FLAGS | CMIF_TCHAR;
-	miAV.hIcon = NULL;
-	miAV.pszContactOwner = NULL;
-	miNV = miHFL = miIGN = miPROTO = miADD = miREQ = miCID = miRECV = miSTAT = miCIP = miCMV = miAV;
+	bool bEnabled = bShowAll || (flags & VF_VS);
+	Menu_ShowItem(hmenuVis, bEnabled);
+	Menu_ShowItem(hmenuOff, bEnabled);
 
-	if(bShowAll || flags&VF_VS)	{
-		ShowItem(&miAV,hmenuVis);
-		ShowItem(&miNV,hmenuOff);
-	}
-	else {
-		HideItem(&miAV,hmenuVis);
-		HideItem(&miNV,hmenuOff);
+	bEnabled = bShowAll || (flags & VF_HFL);
+	Menu_ShowItem(hmenuHide, bEnabled);
+	if (bEnabled) {
+		BYTE bHidden = db_get_b((HANDLE)wparam,"CList","Hidden",0);
+		CLISTMENUITEM mi = { sizeof(mi) };
+		mi.flags |= CMIM_ICON | CMIM_NAME | CMIF_UNICODE;
+		mi.hIcon = Skin_GetIcon(bHidden ? "miex_showil" : "miex_hidefl");
+		mi.ptszName = bHidden ? LPGENT("Show in list") : LPGENT("Hide from list");
+		Menu_ModifyItem(hmenuHide, &mi);
 	}
 
-	if(bShowAll || flags&VF_HFL){
-		ShowItem(&miHFL,hmenuHide);
-		ModifyHidden(&miHFL,DBGetContactSettingByte((HANDLE)wparam,"CList","Hidden",0));
-	}
-	else HideItem(&miHFL,hmenuHide);
-
-	if(bShowAll || flags&VF_IGN) 
-	{
-		ShowItem(&miIGN,hmenuIgnore);
-		for (i = 1; i < SIZEOF(ii); i++)
-		{ 
-			check = isIgnored((HANDLE)wparam, ii[i].type);
+	bEnabled = bShowAll || (flags & VF_IGN);
+	Menu_ShowItem(hmenuIgnore, bEnabled);
+	if (bEnabled) {
+		for (int i=1; i < SIZEOF(ii); i++) { 
+			int check = isIgnored(hContact, ii[i].type);
 			if (check) 
 				all++;
+
 			ModifySubmenuItem(hIgnoreItem[i], ii[i].name, check, 0);
 
 			if (all == SIZEOF(ii) - 1) // ignor all
@@ -927,78 +845,58 @@ int BuildMenu(WPARAM wparam,LPARAM lparam)
 		}
 	}
 
-	else HideItem(&miIGN,hmenuIgnore);
-
-	if(pa && (bShowAll || flags&VF_PROTO)) 
-	{
-		for (i = 0; i < protoCount; i++) 
-		{
+	if (pa && (bShowAll || (flags & VF_PROTO))) {
+		for (int i=0; i < protoCount; i++) {
 			if ((!accs[i]->bIsEnabled) || (strcmp(pa->szProtoName, accs[i]->szProtoName)))
 				hide = 1;
-			else
-			{
+			else {
 				hide = 0;
 				j++;
 			}
 
-			if (CallService(MS_PROTO_ISPROTOONCONTACT, wparam, (LPARAM)accs[i]->szModuleName))
-				check = 1;
-			else
-				check = 0;
-
+			int check = 0 != CallService(MS_PROTO_ISPROTOONCONTACT, wparam, (LPARAM)accs[i]->szModuleName);
 			ModifySubmenuItem(hProtoItem[i], accs[i]->tszAccountName, check, hide);
 		}
-		if (j > 1)
-			ShowItem(&miPROTO,hmenuProto);
-		else
-			HideItem(&miPROTO,hmenuProto);
+		Menu_ShowItem(hmenuProto, j > 1);
 	}
-	else HideItem(&miPROTO,hmenuProto);
+	else Menu_ShowItem(hmenuProto, false);
 
-	if ((bShowAll || flags & VF_ADD) && bIsOnline && IsAccountEnabled(pa))
-		ShowItem(&miADD,hmenuAdded);
-	else 
-		HideItem(&miADD,hmenuAdded);
+	Menu_ShowItem(hmenuAdded, (bShowAll || (flags & VF_ADD)) && bIsOnline && IsAccountEnabled(pa));
+	Menu_ShowItem(hmenuAuthReq, (bShowAll || (flags & VF_REQ)) && bIsOnline && IsAccountEnabled(pa));
 
-	if ((bShowAll || flags & VF_REQ) && bIsOnline && IsAccountEnabled(pa))
-		ShowItem(&miREQ,hmenuAuthReq);
-	else 
-		HideItem(&miREQ,hmenuAuthReq);
+	bEnabled = bShowAll || (flags & VF_CID);
+	Menu_ShowItem(hmenuCopyID, bEnabled);
+	if (bEnabled)
+		ModifyCopyID(hContact, flags & VF_SHOWID, flags & VF_TRIMID);
 
-	if(bShowAll || flags&VF_CID){
-		ShowItem(&miCID,hmenuCopyID);
-		ModifyCopyID(&miCID,(HANDLE)wparam, flags&VF_SHOWID, flags&VF_TRIMID);
-	}
-	else HideItem(&miCID,hmenuCopyID);
+	Menu_ShowItem(hmenuRecvFiles, (bShowAll || (flags & VF_RECV)) && DirectoryExists(hContact));
 
-	if ((bShowAll || flags&VF_RECV) && DirectoryExists((HANDLE)wparam)) ShowItem(&miRECV,hmenuRecvFiles);
-	else HideItem(&miRECV,hmenuRecvFiles);
+	bEnabled = (bShowAll || (flags & VF_STAT)) && StatusMsgExists(hContact);
+	Menu_ShowItem(hmenuStatusMsg, bEnabled);
+	if (bEnabled)
+		ModifyStatusMsg(hContact);
 
-	if ((bShowAll || flags&VF_STAT) && StatusMsgExists((HANDLE)wparam)) {
-		ShowItem(&miSTAT,hmenuStatusMsg);
-		ModifyStatusMsg(&miSTAT,(HANDLE)wparam);
-	}
-	else HideItem(&miSTAT,hmenuStatusMsg);
+	bEnabled = (bShowAll || (flags & VF_CIP)) && IPExists(hContact);
+	Menu_ShowItem(hmenuCopyIP, bEnabled);
+	if (bEnabled)
+		ModifyCopyIP(hContact);
 
-	if ((bShowAll || flags&VF_CIP) && IPExists((HANDLE)wparam)) {
-		ShowItem(&miCIP,hmenuCopyIP);
-		ModifyCopyIP(&miCIP,(HANDLE)wparam);
-	}
-	else HideItem(&miCIP,hmenuCopyIP);
+	bEnabled = (bShowAll || (flags & VF_CMV)) && MirVerExists(hContact);
+	Menu_ShowItem(hmenuCopyMirVer, bEnabled);
+	if (bEnabled)
+		ModifyCopyMirVer(hContact);
 
-	if ((bShowAll || flags&VF_CMV) && MirVerExists((HANDLE)wparam)) {
-		ShowItem(&miCMV,hmenuCopyMirVer);
-		ModifyCopyMirVer(&miCMV,(HANDLE)wparam);
-	}
-	else HideItem(&miCMV,hmenuCopyMirVer);
-
-	if(bShowAll || (flags&VF_VS))
-	{
-		int apparent = DBGetContactSettingWord((HANDLE)wparam, GetContactProto((HANDLE)wparam),"ApparentMode",0);
-		if(isVisSupport((HANDLE)wparam)) ModifyVisibleSet(&miAV,apparent == ID_STATUS_ONLINE,flags&VF_SAI);
-		else HideItem(&miAV,hmenuVis);
-		if(isInvSupport((HANDLE)wparam)) ModifyInvisSet(&miNV,apparent == ID_STATUS_OFFLINE,flags&VF_SAI);
-		else HideItem(&miAV,hmenuOff);
+	if ((bShowAll || (flags & VF_VS)) && pszProto) {
+		INT_PTR caps = CallProtoService(pszProto, PS_GETCAPS, PFLAGNUM_1, 0);
+		int apparent = db_get_w(hContact, GetContactProto(hContact),"ApparentMode", 0);
+		
+		Menu_ShowItem(hmenuVis, caps & PF1_VISLIST);
+		if (caps & PF1_VISLIST)
+			ModifyVisibleSet(apparent == ID_STATUS_ONLINE, flags & VF_SAI);
+		
+		Menu_ShowItem(hmenuOff, caps & PF1_INVISLIST);
+		if (caps & PF1_INVISLIST)
+			ModifyInvisSet(apparent == ID_STATUS_OFFLINE, flags & VF_SAI);
 	}
 	return 0;
 }
@@ -1049,7 +947,7 @@ static int TabsrmmButtonsInit(WPARAM wParam, LPARAM lParam)
 	bbd.pszModuleName = MODULENAME;
 	bbd.dwButtonID = 0;
 	bbd.dwDefPos = 1000;
-	bbd.ptszTooltip = _T("Browse Received Files");
+	bbd.ptszTooltip = LPGENT("Browse Received Files");
 	bbd.bbbFlags = BBBF_ISLSIDEBUTTON | BBBF_CANBEHIDDEN;
 	bbd.hIcon = Skin_GetIconHandle("miex_recfiles");
 	CallService (MS_BB_ADDBUTTON, 0, (LPARAM)&bbd);
@@ -1074,75 +972,17 @@ static int ContactWindowOpen(WPARAM wparam,LPARAM lParam)
 { 
 	MessageWindowEventData *MWeventdata = (MessageWindowEventData*)lParam;
 
-	if(MWeventdata->uType == MSG_WINDOW_EVT_OPENING && MWeventdata->hContact) 
+	if (MWeventdata->uType == MSG_WINDOW_EVT_OPENING && MWeventdata->hContact) 
 	{ 
 		TabsrmmButtonsModify(MWeventdata->hContact); 
 	} 
 	return 0; 
 }
 
-//========================================================================================
-
-struct SaveStatus
+static int ModuleLoad(WPARAM wParam, LPARAM lParam)
 {
-	HANDLE hContact;
-	int    iStatus;
-};
-
-static LIST<SaveStatus> saveStatuses(100, (LIST<SaveStatus>::FTSortFunc)HandleKeySortT);
-
-static int ContactSettingChanged( WPARAM wParam, LPARAM lParam )
-{
-	DBCONTACTWRITESETTING *cws = ( DBCONTACTWRITESETTING* )lParam;
-	HANDLE hContact = ( HANDLE )wParam;
-	if (hContact == NULL || lstrcmpA( cws->szSetting, "Status" ))
-		return 0;
-
-	int oldStatus = ID_STATUS_OFFLINE, newStatus = cws->value.wVal;
-
-	SaveStatus tmp = { hContact, 0 }, *p;
-	if (( p = saveStatuses.find( &tmp )) != NULL)
-		oldStatus = p->iStatus;
-	if (oldStatus == newStatus)
-		return 0;
-
-	char *lpzProto = ( char* )CallService( MS_PROTO_GETCONTACTBASEPROTO, ( WPARAM )wParam, 0);
-
-	// ignore chat rooms
-	if (DBGetContactSettingByte(hContact, lpzProto, "ChatRoom", 0))
-		return 0;
-
-	if (oldStatus == ID_STATUS_OFFLINE) { 
-		// set logon timestamp for this contact, only when not set already
-		if (!DBGetContactSettingDword(hContact, lpzProto, "LogonTS", FALSE))
-			DBWriteContactSettingDword(hContact, lpzProto, "LogonTS", ( DWORD )time(NULL));
-
-		// reset logoff timestamp
-		DBDeleteContactSetting(hContact, lpzProto, "LogoffTS");
-	
-		// TESTING: updating user's details
-		if (DBGetContactSettingDword(NULL, VISPLG, "flags", vf_default) & VF_REFRESH) {	
-			// don't refresh Hidden or NotOnList contact's details
-			if (!DBGetContactSettingByte(hContact, "CList", "Hidden", 0) && !DBGetContactSettingByte((HANDLE)wParam, "CList", "NotOnList", 0))
-				CallContactService(hContact, PSS_GETINFO, 0, 0 );
-		}
-	}
-	if (newStatus == ID_STATUS_OFFLINE) {
-		// set logoff timestamp for this contact
-		DBWriteContactSettingDword(hContact, lpzProto, "LogoffTS", ( DWORD )time(NULL));
-		// reset logon timestamp
-		DBDeleteContactSetting(hContact, lpzProto, "LogonTS");
-	}
-
-	if (p != NULL)
-		p->iStatus = newStatus;
-	else {
-		p = new SaveStatus;
-		p->hContact = hContact;
-		p->iStatus = newStatus;
-		saveStatuses.insert(p);
-	}
-
+	bPopupService = ServiceExists(MS_POPUP_ADDPOPUP);
+	bMetaContacts = ServiceExists(MS_MC_GETMETACONTACT);
 	return 0;
 }
 
@@ -1151,26 +991,26 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 {
 	int pos = 1000, i = 0;
 
-	Icon_Register(hinstance, MODULENAME, iconList, SIZEOF(iconList));
-	Icon_Register(hinstance, MODULENAME, overlayIconList, SIZEOF(overlayIconList));
+	Icon_Register(hinstance, LPGEN("MenuItemEx"), iconList, SIZEOF(iconList));
+	Icon_Register(hinstance, LPGEN("MenuItemEx"), overlayIconList, SIZEOF(overlayIconList));
 
-	bMetaContacts = ServiceExists(MS_MC_GETMETACONTACT) != 0;
+	CreateServiceFunction(MS_SETINVIS, onSetInvis);
+	CreateServiceFunction(MS_SETVIS, onSetVis);
+	CreateServiceFunction(MS_HIDE, onHide);
+	CreateServiceFunction(MS_IGNORE, onIgnore);
+	CreateServiceFunction(MS_PROTO, onChangeProto);
+	CreateServiceFunction(MS_ADDED, onSendAdded);
+	CreateServiceFunction(MS_AUTHREQ, onSendAuthRequest);
+	CreateServiceFunction(MS_COPYID, onCopyID);
+	CreateServiceFunction(MS_RECVFILES, onRecvFiles);
+	CreateServiceFunction(MS_STATUSMSG, onCopyStatusMsg);
+	CreateServiceFunction(MS_COPYIP, onCopyIP);
+	CreateServiceFunction(MS_COPYMIRVER, onCopyMirVer);
 
-	CreateServiceFunction(MS_SETINVIS,onSetInvis);
-	CreateServiceFunction(MS_SETVIS,onSetVis);
-	CreateServiceFunction(MS_HIDE,onHide);
-	CreateServiceFunction(MS_IGNORE,onIgnore);
-	CreateServiceFunction(MS_PROTO,onChangeProto);
-	CreateServiceFunction(MS_ADDED,onSendAdded);
-	CreateServiceFunction(MS_AUTHREQ,onSendAuthRequest);
-	CreateServiceFunction(MS_COPYID,onCopyID);
-	CreateServiceFunction(MS_RECVFILES,onRecvFiles);
-	CreateServiceFunction(MS_STATUSMSG,onCopyStatusMsg);
-	CreateServiceFunction(MS_COPYIP,onCopyIP);
-	CreateServiceFunction(MS_COPYMIRVER,onCopyMirVer);
+	ModuleLoad(0, 0);
 
 	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_TCHAR;
+	mi.flags = CMIF_UNICODE;
 	mi.hIcon = NULL;
 	mi.pszContactOwner = NULL;
 
@@ -1217,18 +1057,18 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 
 	EnumProtoSubmenu(0, 0);
 
-	mi.flags = CMIF_TCHAR;
+	mi.flags = CMIF_UNICODE;
 
 	mi.position++;
 	mi.ptszName = LPGENT("Send 'You were added'");
 	mi.pszService = MS_ADDED;
-	mi.hIcon = Skin_GetIcon("miex_added");
+	mi.hIcon = LoadSkinnedIcon(SKINICON_AUTH_ADD);
 	hmenuAdded = Menu_AddContactMenuItem(&mi);
 
 	mi.position++;
 	mi.ptszName = LPGENT("Request authorization");
 	mi.pszService = MS_AUTHREQ;
-	mi.hIcon = Skin_GetIcon("miex_authorization");
+	mi.hIcon = LoadSkinnedIcon(SKINICON_AUTH_REQUEST);
 	hmenuAuthReq = Menu_AddContactMenuItem(&mi);
 	
 	mi.position++;
@@ -1266,7 +1106,6 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 
 	HookEvent(ME_CLIST_PREBUILDCONTACTMENU,BuildMenu);
 	HookEvent(ME_OPT_INITIALISE,OptionsInit);
-	HookEvent(ME_DB_CONTACT_SETTINGCHANGED,ContactSettingChanged);
 	HookEvent(ME_PROTO_ACCLISTCHANGED, EnumProtoSubmenu);
 	if (HookEvent(ME_MSG_TOOLBARLOADED, TabsrmmButtonsInit)) {
 		HookEvent(ME_MSG_BUTTONPRESSED, TabsrmmButtonPressed);
@@ -1276,8 +1115,6 @@ static int PluginInit(WPARAM wparam,LPARAM lparam)
 	return 0;
 }
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_MENUEX, MIID_LAST};
-
 extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
 {
 	return &pluginInfoEx;
@@ -1286,14 +1123,16 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 extern "C" __declspec(dllexport) int Load(void)
 {
 	mir_getLP(&pluginInfoEx);
-	HookEvent(ME_SYSTEM_MODULESLOADED,PluginInit);
+	HookEvent(ME_SYSTEM_MODULESLOADED, PluginInit);
+	HookEvent(ME_SYSTEM_MODULELOAD, ModuleLoad);
+	HookEvent(ME_SYSTEM_MODULEUNLOAD, ModuleLoad);
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	DestroyIcon( hIcon[3] );
-	DestroyIcon( hIcon[4] );
+	DestroyIcon(hIcon[3]);
+	DestroyIcon(hIcon[4]);
 	return 0;
 }
 

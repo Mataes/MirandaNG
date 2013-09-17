@@ -22,46 +22,19 @@
 
 #include "resource.h"
 
-void CYahooProto::YCreateService( const char* szService, YServiceFunc serviceProc )
-{
-	char str[ 255 ];
-	unsigned int len;
-	
-	len = snprintf(str, sizeof(str), "%s%s", m_szModuleName, szService);
-	
-	if (len >= sizeof(str)) {
-		DebugLog("[YCreateService] Failed Registering Service: %s. Reason: buffer too small?", szService);
-		return;
-	}
-	
-	::CreateServiceFunctionObj( str, ( MIRANDASERVICEOBJ )*( void** )&serviceProc, this );
-}
-
-void CYahooProto::YForkThread( YThreadFunc pFunc, void *param )
-{
-	UINT lthreadID;
-	
-	CloseHandle(( HANDLE )::mir_forkthreadowner(( pThreadFuncOwner ) *( void** )&pFunc, this, param, &lthreadID));
-}
-
-void CYahooProto::YHookEvent( const char* szEvent, YEventFunc handler )
-{
-	::HookEventObj( szEvent, ( MIRANDAHOOKOBJ )*( void** )&handler, this );
-}
-
 int CYahooProto::DebugLog( const char *fmt, ... )
 {
 	char str[ 4096 ];
 	va_list vararg;
 	va_start( vararg, fmt );
 	
-	int tBytes = _vsnprintf( str, sizeof( str ), fmt, vararg );
-	if ( tBytes > 0 )
+	int tBytes = mir_vsnprintf(str, sizeof(str), fmt, vararg);
+	if ( tBytes > 0)
 		str[ tBytes ] = 0;
 
 	va_end( vararg );
 	
-	return CallService( MS_NETLIB_LOG, ( WPARAM )m_hNetlibUser, ( LPARAM )str );
+	return CallService(MS_NETLIB_LOG, (WPARAM)m_hNetlibUser, (LPARAM)str);
 }
 
 extern HANDLE g_hNetlibUser;
@@ -72,72 +45,20 @@ int DebugLog( const char *fmt, ... )
 	va_list vararg;
 	va_start( vararg, fmt );
 	
-	int tBytes = _vsnprintf( str, sizeof( str ), fmt, vararg );
-	if ( tBytes > 0 )
+	int tBytes = mir_vsnprintf(str, sizeof(str), fmt, vararg);
+	if ( tBytes > 0)
 		str[ tBytes ] = 0;
 
 	va_end( vararg );
 	
-	return CallService( MS_NETLIB_LOG, ( WPARAM )g_hNetlibUser, ( LPARAM )str );
-}
-
-int CYahooProto::GetByte( const char* valueName, int parDefltValue )
-{
-	return DBGetContactSettingByte( NULL, m_szModuleName, valueName, parDefltValue );
-}
-
-int CYahooProto::SetByte( const char* valueName, int parValue )
-{
-	return DBWriteContactSettingByte( NULL, m_szModuleName, valueName, parValue );
-}
-
-int CYahooProto::GetByte( HANDLE hContact, const char* valueName, int parDefltValue )
-{
-	return DBGetContactSettingByte( hContact, m_szModuleName, valueName, parDefltValue );
-}
-
-int CYahooProto::SetByte( HANDLE hContact, const char* valueName, int parValue )
-{
-	return DBWriteContactSettingByte( hContact, m_szModuleName, valueName, parValue );
-}
-
-
-DWORD CYahooProto::GetDword( HANDLE hContact, const char* valueName, DWORD parDefltValue )
-{
-	return DBGetContactSettingDword( hContact, m_szModuleName, valueName, parDefltValue );
-}
-
-DWORD CYahooProto::SetDword( const char* valueName, DWORD parValue )
-{
-	return DBWriteContactSettingDword( NULL, m_szModuleName, valueName, parValue);
-}
-
-DWORD CYahooProto::GetDword( const char* valueName, DWORD parDefltValue )
-{
-	return DBGetContactSettingDword( NULL, m_szModuleName, valueName, parDefltValue );
-}
-
-DWORD CYahooProto::SetDword( HANDLE hContact, const char* valueName, DWORD parValue )
-{
-	return DBWriteContactSettingDword( hContact, m_szModuleName, valueName, parValue);
-}
-
-
-WORD CYahooProto::SetWord( HANDLE hContact, const char* valueName, int parValue )
-{
-	return DBWriteContactSettingWord( hContact, m_szModuleName, valueName, parValue );
-}
-
-WORD CYahooProto::GetWord( HANDLE hContact, const char* valueName, int parDefltValue )
-{
-	return DBGetContactSettingWord( hContact, m_szModuleName, valueName, parDefltValue );
+	return CallService(MS_NETLIB_LOG, (WPARAM)g_hNetlibUser, (LPARAM)str);
 }
 
 DWORD CYahooProto::Set_Protocol( HANDLE hContact, int protocol )
 {
 	char *s=NULL;
 	
-	SetWord(hContact, "yprotoid", protocol);
+	setWord(hContact, "yprotoid", protocol);
 	
 	switch (protocol) {
 		case YAHOO_IM_YAHOO: s = "Yahoo"; break; /* Yahoo, nothing special here */
@@ -147,85 +68,48 @@ DWORD CYahooProto::Set_Protocol( HANDLE hContact, int protocol )
 	} 
 	
 	if (protocol != YAHOO_IM_YAHOO)
-		SetString(hContact, "MirVer", s);
+		setString(hContact, "MirVer", s);
 	
-	SetString(hContact, "Transport", s);
+	setString(hContact, "Transport", s);
 	return 0;
 }
 
-int CYahooProto::SendBroadcast( HANDLE hContact, int type, int result, HANDLE hProcess, LPARAM lParam )
-{
-	ACKDATA ack;
-
-	ZeroMemory(&ack, sizeof(ack));
-
-	ack.cbSize = sizeof( ACKDATA );
-	ack.szModule = m_szModuleName; 
-	ack.hContact = hContact;
-	ack.type = type; 
-	ack.result = result;
-	ack.hProcess = hProcess; 
-	ack.lParam = lParam;
-	return CallService( MS_PROTO_BROADCASTACK, 0, ( LPARAM )&ack );
+int CYahooProto::GetStringUtf(HANDLE hContact, const char* name, DBVARIANT* result)
+{	return db_get_utf(hContact, m_szModuleName, name, result);
 }
 
-int CYahooProto::GetString( const char* name, DBVARIANT* result )
-{	return DBGetContactSettingString( NULL, m_szModuleName, name, result );
-}
-
-int CYahooProto::GetString( HANDLE hContact, const char* name, DBVARIANT* result )
-{	return DBGetContactSettingString( hContact, m_szModuleName, name, result );
-}
-
-int CYahooProto::GetStringUtf( HANDLE hContact, const char* name, DBVARIANT* result )
-{	return DBGetContactSettingStringUtf(hContact, m_szModuleName, name, result);
-}
-
-void CYahooProto::SetString( const char* name, const char* value )
-{	DBWriteContactSettingString(NULL, m_szModuleName, name, value );
-}
-
-void CYahooProto::SetString( HANDLE hContact, const char* name, const char* value )
-{	DBWriteContactSettingString(hContact, m_szModuleName, name, value );
-}
-
-void CYahooProto::SetStringT( HANDLE hContact, const char* name, const TCHAR* value )
-{	DBWriteContactSettingTString(hContact, m_szModuleName, name, value );
-}
-
-DWORD CYahooProto::SetStringUtf( HANDLE hContact, const char* valueName, const char* parValue )
-{
-	return DBWriteContactSettingStringUtf( hContact, m_szModuleName, valueName, parValue );
+DWORD CYahooProto::SetStringUtf(HANDLE hContact, const char* valueName, const char* parValue)
+{	return db_set_utf(hContact, m_szModuleName, valueName, parValue);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Popups
 
-static int CALLBACK PopupWindowProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
+static LRESULT CALLBACK PopupWindowProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 {
-	switch( message ) {
+	switch(message) {
 	case WM_COMMAND:
 		DebugLog("[PopupWindowProc] WM_COMMAND");
-		if ( HIWORD( wParam ) == STN_CLICKED) {
-			char *szURL = (char *)PUGetPluginData( hWnd );
-			if ( szURL != NULL ) 
-				CallService( MS_UTILS_OPENURL, TRUE, ( LPARAM )szURL );    
+		if ( HIWORD(wParam) == STN_CLICKED) {
+			char *szURL = (char*)PUGetPluginData(hWnd);
+			if (szURL != NULL)
+				CallService(MS_UTILS_OPENURL, TRUE, (LPARAM)szURL);
 
-			PUDeletePopUp( hWnd );
+			PUDeletePopup(hWnd);
 			return 0;
 		}
 		break;
 
 	case WM_CONTEXTMENU:
 		DebugLog("[PopupWindowProc] WM_CONTEXTMENU");
-		PUDeletePopUp( hWnd ); 
+		PUDeletePopup(hWnd); 
 		return TRUE;
 
 	case UM_FREEPLUGINDATA:
 		DebugLog("[PopupWindowProc] UM_FREEPLUGINDATA");
 		{
-			char *szURL = (char *)PUGetPluginData( hWnd );
-			if ( szURL != NULL ) 
+			char *szURL = (char *)PUGetPluginData(hWnd);
+			if (szURL != NULL) 
 				free(szURL);
 		}
 
@@ -235,83 +119,68 @@ static int CALLBACK PopupWindowProc( HWND hWnd, UINT message, WPARAM wParam, LPA
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-int CYahooProto::ShowPopup( const char* nickname, const char* msg, const char *szURL )
+int CYahooProto::ShowPopup(const TCHAR* nickname, const TCHAR* msg, const char *szURL)
 {
-	POPUPDATAEX ppd;
-
-	if ( !ServiceExists( MS_POPUP_ADDPOPUPEX )) 
+	if ( !ServiceExists(MS_POPUP_ADDPOPUPT)) 
 		return 0;
 
-	ZeroMemory(&ppd, sizeof(ppd));
-	lstrcpyA( ppd.lpzContactName, nickname );
-	lstrcpyA( ppd.lpzText, msg );
-
-	ppd.PluginWindowProc = ( WNDPROC )PopupWindowProc;
+	POPUPDATAT ppd = { 0 };
+	ppd.PluginWindowProc = PopupWindowProc;
+	lstrcpyn(ppd.lptzContactName, nickname, SIZEOF(ppd.lptzContactName));
+	lstrcpyn(ppd.lptzText, msg, SIZEOF(ppd.lptzText));
 
 	if (szURL != NULL) {
-		if (lstrcmpiA(szURL, "http://mail.yahoo.com") == 0) {
-			ppd.lchIcon = LoadIconEx( "mail" );
-		} else {
-			ppd.lchIcon = LoadIconEx( "calendar" );
-		}
-		
-		ppd.PluginData =  (void *) strdup( szURL );
-	} else {
-		ppd.lchIcon = LoadIconEx( "yahoo" );
+		ppd.lchIcon = LoadIconEx( !lstrcmpiA(szURL, "http://mail.yahoo.com") ? "mail" : "calendar");
+		ppd.PluginData = (void*)strdup(szURL);
 	}
+	else ppd.lchIcon = LoadIconEx("yahoo");
 	
-	DebugLog("[MS_POPUP_ADDPOPUPEX] Generating a popup for [%s] %s", nickname, msg);
+	DebugLog("[MS_POPUP_ADDPOPUP] Generating a popup for [%S] %S", nickname, msg);
 	
-	CallService( MS_POPUP_ADDPOPUPEX, (WPARAM)&ppd, 0 );
-	
+	PUAddPopupT(&ppd);
 	return 1;
 }
 
-int CYahooProto::ShowNotification(const char *title, const char *info, DWORD flags)
+int CYahooProto::ShowNotification(const TCHAR *title, const TCHAR *info, DWORD flags)
 {
 	if (ServiceExists(MS_CLIST_SYSTRAY_NOTIFY)) {
 		MIRANDASYSTRAYNOTIFY err;
-		int ret;
-
 		err.szProto = m_szModuleName;
 		err.cbSize = sizeof(err);
-		err.szInfoTitle = (char *)title;
-		err.szInfo = (char *)info;
-		err.dwInfoFlags = flags;
+		err.tszInfoTitle = (TCHAR*)title;
+		err.tszInfo = (TCHAR*)info;
+		err.dwInfoFlags = flags | NIIF_INTERN_UNICODE;
 		err.uTimeout = 1000 * 3;
-		ret = CallService(MS_CLIST_SYSTRAY_NOTIFY, 0, (LPARAM) & err);
-
+		INT_PTR ret = CallService(MS_CLIST_SYSTRAY_NOTIFY, 0, (LPARAM) & err);
 		if (ret == 0)
 			return 1;
 	} 
 
-	MessageBoxA(NULL, info, title, MB_OK | MB_ICONINFORMATION);
+	MessageBox(NULL, info, title, MB_OK | MB_ICONINFORMATION);
 	return 0;
 }
 
-void CYahooProto::ShowError(const char *title, const char *buff)
+void CYahooProto::ShowError(const TCHAR *title, const TCHAR *buff)
 {
-	if (GetByte( "ShowErrors", 1 )) 
-		if (!ShowPopup(title, buff, NULL))
+	if ( getByte("ShowErrors", 1)) 
+		if ( !ShowPopup(title, buff, NULL))
 			ShowNotification(title, buff, NIIF_ERROR);
 }
 
 int __cdecl CYahooProto::OnSettingChanged(WPARAM wParam, LPARAM lParam)
 {
-	DBCONTACTWRITESETTING *cws = (DBCONTACTWRITESETTING *) lParam;
-
 	if (!wParam || !m_bLoggedIn)
 		return 0;
 
-	if (!strcmp(cws->szSetting, "ApparentMode")) {
-		DBVARIANT dbv;
-
+	DBCONTACTWRITESETTING *cws = (DBCONTACTWRITESETTING*) lParam;
+	if ( !strcmp(cws->szSetting, "ApparentMode")) {
 		DebugLog("DB Setting changed.  YAHOO user's visible setting changed.");
 
-		if (!GetString((HANDLE)wParam, YAHOO_LOGINID, &dbv)) {
-			int iAdd = (ID_STATUS_OFFLINE == GetWord((HANDLE) wParam, "ApparentMode", 0));
+		DBVARIANT dbv;
+		if (!getString((HANDLE)wParam, YAHOO_LOGINID, &dbv)) {
+			int iAdd = (ID_STATUS_OFFLINE == getWord((HANDLE) wParam, "ApparentMode", 0));
 			stealth(dbv.pszVal, iAdd);
-			DBFreeVariant(&dbv);
+			db_free(&dbv);
 		}
 	}
 	return 0;
@@ -319,15 +188,11 @@ int __cdecl CYahooProto::OnSettingChanged(WPARAM wParam, LPARAM lParam)
 
 bool CYahooProto::IsMyContact(HANDLE hContact)
 {
-	if (!hContact) return false;
+	if (!hContact)
+		return false;
 
 	char* szProto = GetContactProto(hContact);
 	return szProto && !strcmp(szProto, m_szModuleName);
-}
-
-char* YAHOO_GetContactName( HANDLE hContact )
-{
-	return ( char* )CallService( MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM) hContact, 0 );
 }
 
 extern PLUGININFOEX pluginInfo;
@@ -338,7 +203,7 @@ extern PLUGININFOEX pluginInfo;
 void CYahooProto::YAHOO_utils_logversion()
 {
     char str[256];
-    _snprintf(str, sizeof(str), "Yahoo v%d.%d.%d.%d", (pluginInfo.version >> 24) & 0xFF, (pluginInfo.version >> 16) & 0xFF,
+    mir_snprintf(str, sizeof(str), "Yahoo v%d.%d.%d.%d", (pluginInfo.version >> 24) & 0xFF, (pluginInfo.version >> 16) & 0xFF,
               (pluginInfo.version >> 8) & 0xFF, pluginInfo.version & 0xFF);
     DebugLog(str);
 }
@@ -347,5 +212,5 @@ void SetButtonCheck(HWND hwndDlg, int CtrlID, BOOL bCheck)
 {
 	HWND hwndCtrl = GetDlgItem(hwndDlg, CtrlID);
 	
-	Button_SetCheck(hwndCtrl, (bCheck)?BST_CHECKED:BST_UNCHECKED);
+	Button_SetCheck(hwndCtrl, (bCheck) ? BST_CHECKED : BST_UNCHECKED);
 }

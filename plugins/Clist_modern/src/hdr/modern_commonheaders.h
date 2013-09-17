@@ -25,8 +25,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #pragma once
-#define MIRANDA_VER 0x0A00
-
 #define _WIN32_WINNT 0x0501
 
 #ifndef _WIN32_IE
@@ -67,75 +65,53 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define EVENTHOOK(eventhookproc)     static int eventhookproc(WPARAM wParam,LPARAM lParam)
 #define CLINTERFACE                  static
 
-#define PLUGININTERFACE extern "C" __declspec( dllexport )
-#define UPDATER_PATH "http://miranda-ng.org/"
-
-#include "m_stdhdr.h"
-
 #include <windows.h>
 #include <Shlwapi.h>
-#include <commctrl.h>
-#include <uxtheme.h>
 #include <vssym32.h>
-#include <stdio.h>
+
+#include <malloc.h>
 #include <time.h>
 #include <stddef.h>
-//#include <process.h>
 #include <io.h>
 #include <math.h>
-#include <string.h>
-#include <direct.h>
-#include <win2k.h>
-
-#include "modern_global_structure.h"
 
 #include <newpluginapi.h>
-#include <m_system.h>
 #include <m_system_cpp.h>
-#include <m_utils.h>
-
+#include <win2k.h>
 #include <m_database.h>
 #include <m_langpack.h>
-#include <m_button.h>
 #include <m_options.h>
 #include <m_protosvc.h>
-#include <m_clist.h>
 #include <m_clistint.h>
 #include <m_skin.h>
 #include <m_contacts.h>
 #include <m_avatars.h>
-#include <m_genmenu.h>
-#include <m_clui.h>
 #include <m_icolib.h>
-#include <m_userinfo.h>
-#include <m_addcontact.h>
 #include <m_fontservice.h>
-#include <m_file.h>
 #include <m_timezones.h>
-#include <m_toptoolbar.h>
 #include <m_extraicons.h>
 #include <m_xstatus.h>
+#include <m_cluiframes.h>
+#include <m_modernopt.h>
 
+#include <m_toptoolbar.h>
+#include <m_metacontacts.h>
+#include <m_variables.h>
+#include <m_smileyadd.h>
+#include <m_folders.h>
+
+#include "modern_global_structure.h"
 #include "modern_clc.h"
 #include "modern_clist.h"
 #include "modern_cluiframes.h"
-#include "m_cluiframes.h"
-#include "m_metacontacts.h"
-#include "../m_api/m_skin_eng.h"
-
 #include "modern_rowheight_funcs.h"
 #include "modern_cache_funcs.h"
 #include "modern_log.h"
-
-#include "richedit.h"
-#include "m_variables.h"
-
-#include "m_smileyadd.h"
-
-#include "../m_api/m_xpTheme.h"
 #include "../resource.h"
-
 #include "modern_layered_window_engine.h"
+
+#define DEFAULT_SKIN_FOLDER		"Skins\\Modern contact list"
+extern TCHAR SkinsFolder[MAX_PATH];
 
 // module name of MetaContacts plugin
 extern char *g_szMetaModuleName;
@@ -146,11 +122,6 @@ extern char *g_szMetaModuleName;
 
 #define CLUI_FRAME_AUTOHIDENOTIFY  512
 #define CLUI_FRAME_SHOWALWAYS      1024
-
-
-//#define alloc(n) mir_alloc(n)
-
-#define MAX_REGS(_A_) (sizeof(_A_)/sizeof(_A_[0]))
 
 #ifndef CS_DROPSHADOW
 #define CS_DROPSHADOW 0x00020000
@@ -163,7 +134,6 @@ extern char *g_szMetaModuleName;
 #define UM_CREATECLC                (WM_USER+1)
 #define UM_SETALLEXTRAICONS         (WM_USER+2)
 #define UM_UPDATE                   (WM_USER+50)
-#define UM_SYNCCALL                 (WM_USER+654)
 
 // Define constants for CLUI_SizingOnBorder SC_SIZE
 
@@ -204,19 +174,13 @@ DWORD exceptFunction(LPEXCEPTION_POINTERS EP);
 //  lParam = 0
 #define ME_BACKGROUNDCONFIG_CHANGED "ModernBkgrCfg/Changed"
 
-
-
 HBITMAP ske_CreateDIB32(int cx, int cy);
 
-extern void InitDisplayNameCache(void);
-extern void FreeDisplayNameCache();
-extern int CLUI_ShowWindowMod(HWND hwnd, int cmd);
+void InitDisplayNameCache(void);
+void FreeDisplayNameCache();
+int CLUI_ShowWindowMod(HWND hwnd, int cmd);
 
-#ifdef UNICODE
-	#define GSMDF_TCHAR_MY GSMDF_TCHAR|CNF_UNICODE
-#else
-	#define GSMDF_TCHAR_MY 0
-#endif
+void MakeButtonSkinned(HWND hWnd);
 
 #ifndef LWA_COLORKEY
 #define LWA_COLORKEY            0x00000001
@@ -225,10 +189,6 @@ extern int CLUI_ShowWindowMod(HWND hwnd, int cmd);
 #ifndef AC_SRC_ALPHA
 #define AC_SRC_ALPHA            0x01
 #endif
-
-//#ifdef _DEBUG
-//#define DeleteObject(a) DebugDeleteObject(a)
-//#endif
 
 #define strsetA(a,b) {if (a) mir_free_and_nill(a); a=mir_strdup(b);}
 #define strsetT(a,b) {if (a) mir_free_and_nill(a); a=mir_tstrdup(b);}
@@ -245,9 +205,6 @@ extern pfnTryEnterCriticalSection fnTryEnterCriticalSection;
 typedef BOOL (WINAPI *pfnGetScrollBarInfo)( HWND, LONG, PSCROLLBARINFO );
 extern pfnGetScrollBarInfo fnGetScrollBarInfo;
 
-typedef DWORD (WINAPI *pfnMsgWaitForMultipleObjectsEx)( DWORD, CONST HANDLE*, DWORD, DWORD, DWORD );
-extern pfnMsgWaitForMultipleObjectsEx fnMsgWaitForMultipleObjectsEx;
-
 typedef HWND (WINAPI *pfnGetAncestor)( HWND, UINT );
 extern pfnGetAncestor fnGetAncestor;
 HWND WINAPI MyGetAncestor( HWND, UINT );
@@ -255,11 +212,9 @@ HWND WINAPI MyGetAncestor( HWND, UINT );
 typedef BOOL (WINAPI *pfnGetMenuBarInfo)( HWND, LONG, LONG, PMENUBARINFO );
 extern pfnGetMenuBarInfo fnGetMenuBarInfo;
 
-void FreeAndNil( void **p );
-
 extern SortedList *clistCache;
 
-HICON LoadSmallIcon(HINSTANCE hInstance, LPCTSTR lpIconName);
+HICON LoadSmallIcon(HINSTANCE hInstance, int idx);
 BOOL DestroyIcon_protect(HICON icon);
 
 #ifndef ETDT_ENABLETAB
@@ -268,14 +223,6 @@ BOOL DestroyIcon_protect(HICON icon);
 #define ETDT_USETABTEXTURE  0x00000004
 #define ETDT_ENABLETAB      (ETDT_ENABLE  | ETDT_USETABTEXTURE)
 #endif
-
-
-
-#define TreeView_InsertItemA(hwnd, lpis) \
-	(HTREEITEM)SendMessageA((hwnd), TVM_INSERTITEMA, 0, (LPARAM)(LPTV_INSERTSTRUCTA)(lpis))
-
-#define TreeView_GetItemA(hwnd, pitem) \
-	(BOOL)SendMessageA((hwnd), TVM_GETITEMA, 0, (LPARAM)(TV_ITEM *)(pitem))
 
 enum
 {
@@ -317,26 +264,25 @@ int AniAva_RedrawAllAvatars(BOOL updateZOrder);			   // request to repaint all
 void AniAva_UpdateParent();
 int AniAva_RenderAvatar( HANDLE hContact, HDC hdcMem, RECT *rc );
 
-
-#define CCI_NAME			1
-#define CCI_GROUP			(1<<1)
-#define CCI_PROTO			(1<<2)
-#define CCI_STATUS			(1<<3)
-#define CCI_LINES			(1<<4)
-#define CCI_HIDDEN			(1<<4)
-#define CCI_NOHIDEOFFLINE	(1<<5)
-#define CCI_NOPROTO			(1<<6)
-#define CCI_HIDESUBCONTACT	(1<<7)
-#define CCI_I				(1<<8)
-#define CCI_APPARENT		(1<<9)
-#define CCI_NOTONLIST		(1<<10)
-#define CCI_IDLETS			(1<<11)
-#define CCI_CCONTACT		(1<<12)
-#define CCI_EXPAND			(1<<13)
-#define CCI_UNKNOWN			(1<<14)
-#define CCI_TIME			(1<<15)
-#define CCI_OTHER			~( CCI_NAME|CCI_GROUP|CCI_PROTO|CCI_STATUS|CCI_LINES|CCI_TIME )
-#define CCI_ALL				(0xFFFFFFFF)
+#define CCI_NAME            1
+#define CCI_GROUP          (1<<1)
+#define CCI_PROTO          (1<<2)
+#define CCI_STATUS         (1<<3)
+#define CCI_LINES          (1<<4)
+#define CCI_HIDDEN         (1<<4)
+#define CCI_NOHIDEOFFLINE  (1<<5)
+#define CCI_NOPROTO        (1<<6)
+#define CCI_HIDESUBCONTACT (1<<7)
+#define CCI_I              (1<<8)
+#define CCI_APPARENT       (1<<9)
+#define CCI_NOTONLIST      (1<<10)
+#define CCI_IDLETS         (1<<11)
+#define CCI_CCONTACT       (1<<12)
+#define CCI_EXPAND         (1<<13)
+#define CCI_UNKNOWN        (1<<14)
+#define CCI_TIME           (1<<15)
+#define CCI_OTHER         ~( CCI_NAME|CCI_GROUP|CCI_PROTO|CCI_STATUS|CCI_LINES|CCI_TIME )
+#define CCI_ALL            (0xFFFFFFFF)
 
 void CListSettings_FreeCacheItemData(ClcCacheEntry *pDst);
 int CLUI_SyncGetPDNCE(WPARAM wParam, LPARAM lParam);
@@ -345,10 +291,6 @@ void pdnce___SetStatus( ClcCacheEntry *pdnce, WORD wStatus );
 
 /* move to list module */
 typedef void (*ItemDestuctor)(void*);
-
-void li_ListDestruct(SortedList *pList, ItemDestuctor pItemDestructor);
-
-#define mir_safe_free(a) if(a) mir_free(a)
 
 template <class T> class INIT : public T
 {
@@ -366,6 +308,8 @@ void rowDeleteTree(ROWCELL *cell);
 BOOL rowParse(ROWCELL* &cell, ROWCELL* parent, char *tbuf, int &hbuf, int &sequence, ROWCELL** RowTabAccess );
 void rowSizeWithReposition(ROWCELL* &root, int width);
 #endif
+
+#define UNPACK_POINT(X) { (short)LOWORD(X), (short)HIWORD(X) }
 
 //////////////////////////////////////////////////////////////////////////
 // Specific class for quick implementation of map<string, *> list

@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -33,7 +33,7 @@ static bool Proto_IsAccountEnabled(PROTOACCOUNT* pa)
 
 static bool Proto_IsAccountLocked(PROTOACCOUNT* pa)
 {
-	return pa && DBGetContactSettingByte(NULL, pa->szModuleName, "LockMainStatus", 0) != 0;
+	return pa && db_get_b(NULL, pa->szModuleName, "LockMainStatus", 0) != 0;
 }
 
 static const TCHAR *GetDefaultMessage(int status)
@@ -98,11 +98,11 @@ static TCHAR* GetAwayMessage(int statusMode, char *szProto)
 
 	DBVARIANT dbv;
 	if ( GetStatusModeByte(statusMode, "UsePrev")) {
-		if ( DBGetContactSettingTString(NULL, "SRAway", StatusModeToDbSetting(statusMode, "Msg"), &dbv))
+		if ( db_get_ts(NULL, "SRAway", StatusModeToDbSetting(statusMode, "Msg"), &dbv))
 			dbv.ptszVal = mir_tstrdup(GetDefaultMessage(statusMode));
 	}
 	else {
-		if ( DBGetContactSettingTString(NULL, "SRAway", StatusModeToDbSetting(statusMode, "Default"), &dbv))
+		if ( db_get_ts(NULL, "SRAway", StatusModeToDbSetting(statusMode, "Default"), &dbv))
 			dbv.ptszVal = mir_tstrdup(GetDefaultMessage(statusMode));
 
 		for (int i=0; dbv.ptszVal[i]; i++) {
@@ -111,8 +111,7 @@ static TCHAR* GetAwayMessage(int statusMode, char *szProto)
 
 			TCHAR substituteStr[128];
 			if ( !_tcsnicmp(dbv.ptszVal + i, _T("%time%"), 6)) {
-				MIRANDA_IDLE_INFO mii = {0};
-				mii.cbSize = sizeof(mii);
+				MIRANDA_IDLE_INFO mii = { sizeof(mii) };
 				CallService(MS_IDLE_GETIDLEINFO, 0, (LPARAM)&mii);
 
 				if (mii.idleType == 1) {
@@ -140,12 +139,9 @@ static TCHAR* GetAwayMessage(int statusMode, char *szProto)
 	return dbv.ptszVal;
 }
 
-static WNDPROC OldMessageEditProc;
-
 static LRESULT CALLBACK MessageEditSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch(msg)
-	{
+	switch(msg) {
 	case WM_CHAR:
 		if (wParam == '\n' && GetKeyState(VK_CONTROL) & 0x8000)
 		{
@@ -181,7 +177,7 @@ static LRESULT CALLBACK MessageEditSubclassProc(HWND hwnd, UINT msg, WPARAM wPar
 		}
 		break;
 	}
-	return CallWindowProc(OldMessageEditProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, MessageEditSubclassProc, msg, wParam, lParam);
 }
 
 void ChangeAllProtoMessages(char *szProto, int statusMode, TCHAR *msg)
@@ -235,7 +231,7 @@ static INT_PTR CALLBACK SetAwayMsgDlgProc(HWND hwndDlg, UINT message, WPARAM wPa
 			dat->szProto = newdat->szProto;
 			mir_free(newdat);
 			SendDlgItemMessage(hwndDlg, IDC_MSG, EM_LIMITTEXT, 1024, 0);
-			OldMessageEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_MSG), GWLP_WNDPROC, (LONG_PTR)MessageEditSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg, IDC_MSG), MessageEditSubclassProc);
 			{
 				TCHAR str[256], format[128];
 				GetWindowText(hwndDlg, format, SIZEOF(format));
@@ -285,7 +281,7 @@ static INT_PTR CALLBACK SetAwayMsgDlgProc(HWND hwndDlg, UINT message, WPARAM wPa
 				TCHAR str[1024];
 				GetDlgItemText(hwndDlg, IDC_MSG, str, SIZEOF(str));
 				ChangeAllProtoMessages(dat->szProto, dat->statusMode, str);
-				DBWriteContactSettingTString(NULL, "SRAway", StatusModeToDbSetting(dat->statusMode, "Msg"), str);
+				db_set_ts(NULL, "SRAway", StatusModeToDbSetting(dat->statusMode, "Msg"), str);
 				DestroyWindow(hwndDlg);
 			}
 			else PostMessage(hwndDlg, WM_CLOSE, 0, 0);
@@ -310,7 +306,6 @@ static INT_PTR CALLBACK SetAwayMsgDlgProc(HWND hwndDlg, UINT message, WPARAM wPa
 		KillTimer(hwndDlg, 1);
 		UnhookEvent(dat->hPreshutdown);
 		Window_FreeIcon_IcoLib(hwndDlg);
-		SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_MSG), GWLP_WNDPROC, (LONG_PTR)OldMessageEditProc);
 		mir_free(dat);
 		hwndStatusMsg = NULL;
 		break;
@@ -344,7 +339,7 @@ static int StatusModeChange(WPARAM wParam, LPARAM lParam)
 	if (GetStatusModeByte(statusMode, "Ignore", true))
 		ChangeAllProtoMessages(szProto, statusMode, NULL);
 
-	else if (bScreenSaverRunning || ( !GetAsyncKeyState(VK_CONTROL) && GetStatusModeByte(statusMode, "NoDlg", true))) {
+	else if (bScreenSaverRunning || GetStatusModeByte(statusMode, "NoDlg", true)) {
 		TCHAR *msg = GetAwayMessage(statusMode, szProto);
 		ChangeAllProtoMessages(szProto, statusMode, msg);
 		mir_free(msg);
@@ -413,8 +408,8 @@ static INT_PTR CALLBACK DlgProcAwayMsgOpts(HWND hwndDlg, UINT msg, WPARAM wParam
 				dat->info[j].usePrevious = GetStatusModeByte(statusModes[i], "UsePrev");
 
 				DBVARIANT dbv;
-				if (DBGetContactSettingTString(NULL, "SRAway", StatusModeToDbSetting(statusModes[i], "Default"), &dbv))
-					if (DBGetContactSettingTString(NULL, "SRAway", StatusModeToDbSetting(statusModes[i], "Msg"), &dbv))
+				if (db_get_ts(NULL, "SRAway", StatusModeToDbSetting(statusModes[i], "Default"), &dbv))
+					if (db_get_ts(NULL, "SRAway", StatusModeToDbSetting(statusModes[i], "Msg"), &dbv))
 						dbv.ptszVal = mir_tstrdup(GetDefaultMessage(statusModes[i]));
 				lstrcpy(dat->info[j].msg, dbv.ptszVal);
 				mir_free(dbv.ptszVal);

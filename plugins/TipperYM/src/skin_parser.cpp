@@ -19,10 +19,6 @@ Boston, MA 02111-1307, USA.
 */
 
 #include "common.h"
-#include "options.h"
-#include "str_utils.h"
-
-extern TCHAR SKIN_FOLDER[256];
 
 int RefreshSkinList(HWND hwndDlg)
 {
@@ -214,7 +210,7 @@ void ParseFontPart(FILE *fp, TCHAR *buff)
 							if (_tcslen(pch) > 32)
 								pch[32] = 0;
 
-							DBWriteContactSettingTString(0, MODULE, szSetting, pch);
+							db_set_ts(0, MODULE, szSetting, pch);
 						}
 					} 
 					else if (_tcsstr(buff, _T("color")))
@@ -231,7 +227,7 @@ void ParseFontPart(FILE *fp, TCHAR *buff)
 								{
 									BYTE b = _ttoi(pch);
 									COLORREF color = RGB(r, g ,b);
-									DBWriteContactSettingDword(0, MODULE, szSetting, color);
+									db_set_dw(0, MODULE, szSetting, color);
 								}
 							}
 						}
@@ -242,7 +238,7 @@ void ParseFontPart(FILE *fp, TCHAR *buff)
 						{
 							HDC hdc = GetDC(0);
 							int size = -MulDiv(_ttoi(pch), GetDeviceCaps(hdc, LOGPIXELSY), 72);
-							DBWriteContactSettingByte(0, MODULE, szSetting, (BYTE)size);
+							db_set_b(0, MODULE, szSetting, (BYTE)size);
 							ReleaseDC(0, hdc);
 						}
 					} 
@@ -258,7 +254,7 @@ void ParseFontPart(FILE *fp, TCHAR *buff)
 							if (_tcsstr(pch, _T("font_underline")))
 								effect |= DBFONTF_UNDERLINE;
 
-							DBWriteContactSettingByte(0, MODULE, szSetting, effect);
+							db_set_b(0, MODULE, szSetting, effect);
 						}
 					}
 				}

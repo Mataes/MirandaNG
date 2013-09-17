@@ -1,70 +1,5 @@
 #pragma once
 
-#include "skype.h"
-#include <time.h>
-#include <stdlib.h>
-
-struct CSkypeProto;
-
-typedef void    (__cdecl CSkypeProto::* SkypeThreadFunc) (void*);
-typedef INT_PTR (__cdecl CSkypeProto::* SkypeServiceFunc)(WPARAM, LPARAM);
-typedef int     (__cdecl CSkypeProto::* SkypeEventFunc)(WPARAM, LPARAM);
-typedef INT_PTR (__cdecl CSkypeProto::* SkypeServiceFuncParam)(WPARAM, LPARAM, LPARAM);
-
-struct StringList : public LIST<char>
-{
-	static int compare(const char* p1, const char* p2)
-	{ return _stricmp(p1, p2); }
-
-	StringList() : LIST<char>(2, compare) {}
-	StringList(const char* string, const char *delimeters) : LIST<char>(2, compare) 
-	{
-		char *data = ::mir_strdup(string);
-		if (data)
-		{
-			char *p = ::strtok(data, delimeters);
-			if (p)
-			{
-				this->insert(::mir_strdup(p));
-				while (p = strtok(NULL, delimeters))
-				{
-					this->insert(::mir_strdup(p));
-				}
-			}
-			::mir_free(data);
-		}
-	}
-	~StringList() { destroy(); }
-
-	void destroy( void )
-	{
-		for (int i=0; i < count; i++)
-			mir_free(items[i]);
-
-		List_Destroy((SortedList*)this);
-	}
-
-	int insertn(const char* p) { return insert(mir_strdup(p)); }
-
-	int remove(int idx)
-	{
-		mir_free(items[idx]);
-		return List_Remove((SortedList*)this, idx);
-	}
-
-	int remove(const char* p)
-	{
-		int idx;
-		return  List_GetIndex((SortedList*)this, (char*)p, &idx) == 1 ? remove(idx) : -1;
-	}
-
-	bool contains(char* p)
-	{
-		int idx;
-		return List_GetIndex((SortedList*)this, (char*)p, &idx) == 1;
-	}
-};
-
 struct _tag_iconList
 {
 	wchar_t*	Description;
@@ -73,65 +8,174 @@ struct _tag_iconList
 	HANDLE		Handle;
 };
 
-struct LanguagesListEntry {
-	const char *szName;
-	char ISOcode[3];
-};
-
-#define LI_STRING        0
-#define LI_LIST          1
-#define LI_NUMBER        2
-
-struct SettingItem
+struct ReadMessageParam
 {
-  const TCHAR *szDescription;
-  const char *szDbSetting;
-  int dbType;              //DBVT_ constant
-  unsigned displayType;    //LI_ constant
+	SEBinary& guid;
+	CMessage::TYPE msgType;
 };
 
-const SettingItem setting[]={
-  {LPGENT("Full name"),		"Nick",			DBVT_WCHAR,	LI_STRING},
-  {LPGENT("Mood"),			"XStatusMsg",	DBVT_WCHAR,	LI_STRING},
-
-  {LPGENT("Mobile phone"),	"Cellular",		DBVT_WCHAR,	LI_NUMBER},
-  {LPGENT("Home phone"),	"Phone",		DBVT_WCHAR,	LI_NUMBER},
-  {LPGENT("Office phone"),	"CompanyPhone",	DBVT_WCHAR,	LI_NUMBER},
-  {LPGENT("E-mail 1"),		"e-mail0",		DBVT_WCHAR,	LI_STRING},
-  {LPGENT("E-mail 2"),		"e-mail1",		DBVT_WCHAR,	LI_STRING},
-  {LPGENT("E-mail 3"),		"e-mail2",		DBVT_WCHAR,	LI_STRING},
-
-  {LPGENT("Country"),		"Country",		DBVT_WCHAR,	LI_LIST},
-  {LPGENT("State"),			"State",		DBVT_WCHAR,	LI_STRING},
-  {LPGENT("City"),			"City",			DBVT_WCHAR,	LI_STRING},
-  {LPGENT("Time zone"),		"Timezone",		DBVT_BYTE,	LI_LIST},
-  {LPGENT("Homepage"),		"Homepage",		DBVT_WCHAR,	LI_STRING},
-  {LPGENT("Gender"),		"Gender",		DBVT_BYTE,	LI_LIST},
-  {LPGENT("Birth day"),		"BirthDay",		DBVT_BYTE,	LI_NUMBER},
-  {LPGENT("Birth month"),	"BirthMonth",	DBVT_BYTE,	LI_NUMBER},
-  {LPGENT("Birth year"),	"BirthYear",	DBVT_WORD,	LI_NUMBER},
-  {LPGENT("Language"),		"Language1",	DBVT_WCHAR,	LI_LIST},
-
-  {LPGENT("About"),			"About",		DBVT_WCHAR,	LI_STRING}
-};
-
-struct InviteChatParam
+struct ContactParam
 {
-	char		*id;
-	HANDLE		hContact;
+	ContactRef contact;
+	CSkypeProto *ppro;
+	
+	ContactParam(const ContactRef &contact, CSkypeProto *ppro) : contact(contact), ppro(ppro) 
+	{
+	}
+};
+
+struct BlockParam
+{
+	HANDLE hContact;
+	CSkypeProto *ppro;
+	bool remove;
+	bool abuse;
+
+	BlockParam(HANDLE hContact, CSkypeProto *ppro) : ppro(ppro) 
+	{
+		this->hContact = hContact;
+	}
+};
+
+struct ChatRoomParam
+{
+	wchar_t		*id;
+	StringList	invitedContacts;
 	CSkypeProto *ppro;
 
-	InviteChatParam(const char *id, HANDLE hContact, CSkypeProto *ppro)
-		: id(::mir_strdup(id)), hContact(hContact), ppro(ppro) {}
+	wchar_t		topic[256];
+	wchar_t		guidline[256];
 
-	~InviteChatParam()
+	bool		enableJoining;
+	int			joinRank;
+
+	bool		passwordProtection;
+	wchar_t		password[32];
+	wchar_t		confirmation[32];
+	wchar_t		hint[32];
+
+	ChatRoomParam(CSkypeProto *ppro)
+		: ppro(ppro) 
+	{
+		this->id = NULL;
+		this->topic[0] = 0;
+		this->guidline[0] = 0;
+		this->password[0] = 0;
+		this->confirmation[0] = 0;
+		this->hint[0] = 0;
+		this->enableJoining = true;
+		this->joinRank = Participant::WRITER;
+		this->passwordProtection = false;
+	}
+
+	ChatRoomParam(const wchar_t *id, const StringList &contacts, CSkypeProto *ppro)
+		: id(::mir_wstrdup(id)), invitedContacts(contacts), ppro(ppro) 
+	{
+		this->topic[0] = 0;
+		this->guidline[0] = 0;
+		this->password[0] = 0;
+		this->confirmation[0] = 0;
+		this->hint[0] = 0;
+		this->enableJoining = true;
+		this->joinRank = Participant::WRITER;
+		this->passwordProtection = false;
+	}
+
+	~ChatRoomParam()
 	{ ::mir_free(id); }
 };
 
-struct CSkypeProto : public PROTO_INTERFACE, public MZeroedObject
+struct PasswordRequestBoxParam
 {
+	wchar_t		*login;
+	char		*password;
+	bool		rememberPassword;
+	bool		showRememberPasswordBox;
+
+	PasswordRequestBoxParam(const wchar_t *login, bool showRememberPasswordBox = true, bool rememberPassword = false) :
+		login(::mir_wstrdup(login)),
+		password(NULL),
+		rememberPassword(rememberPassword),
+		showRememberPasswordBox(showRememberPasswordBox) { }
+
+	~PasswordRequestBoxParam()
+	{
+		::mir_free(login);
+		::mir_free(password);
+	}
+};
+
+struct PasswordChangeBoxParam
+{
+	char		*password;
+	char		*password2;
+
+	PasswordChangeBoxParam() { }
+
+	~PasswordChangeBoxParam()
+	{
+		::mir_free(password);
+		::mir_free(password2);
+	}
+};
+
+struct FileParam
+{
+	bool isCanceled;
+	bool isCompleted;
+	
+	unsigned __int64 size;
+	unsigned __int64 transfered;
+
+	FileParam() { }
+	FileParam(unsigned __int64 size) 
+	{
+		this->size = size;
+		this->transfered = 0;
+		this->isCanceled = this->isCompleted = false;
+	}
+};
+
+struct FileTransferParam
+{
+	//CTransfer::Refs transfers;
+	PROTOFILETRANSFERSTATUS pfts;
+	std::map<int, FileParam> files;
+
+	FileTransferParam() 
+	{
+		this->pfts.cbSize = sizeof(this->pfts);
+		this->pfts.flags = 0;
+		this->pfts.currentFileNumber = 0;
+		this->pfts.currentFileProgress = 0;
+		this->pfts.currentFileSize = 0;
+		this->pfts.currentFileTime = 0;
+		this->pfts.totalBytes = 0;
+		this->pfts.totalFiles = 0;
+		this->pfts.totalProgress = 0;
+		this->pfts.tszWorkingDir = NULL;
+		this->pfts.wszCurrentFile = NULL;
+
+		//Sid::fetch(this->transfers);
+	}
+};
+
+class ChatMember;
+class ChatRoom;
+
+struct CSkypeProto : public PROTO<CSkypeProto>, private Skype
+{
+	friend class ChatRoom;
+	friend class CAccount;
+	friend class CContact;
+	friend class CConversation;
+	friend class CContactGroup;
+	friend class CContactSearch;
+	friend class CTransfer;
+
 public:
-	CSkypeProto(const char*, const TCHAR*);
+	// PROTO_INTERFACE
+	CSkypeProto(const char *protoName, const wchar_t *userName);
 	~CSkypeProto();
 
 	// PROTO_INTERFACE
@@ -151,7 +195,6 @@ public:
 	virtual	int    __cdecl FileResume( HANDLE hTransfer, int* action, const TCHAR** szFilename );
 
 	virtual	DWORD_PTR __cdecl GetCaps( int type, HANDLE hContact = NULL );
-	virtual	HICON  __cdecl GetIcon( int iconIndex );
 	virtual	int    __cdecl GetInfo( HANDLE hContact, int infoType );
 
 	virtual	HANDLE __cdecl SearchBasic( const TCHAR* id );
@@ -182,275 +225,348 @@ public:
 
 	virtual	int    __cdecl OnEvent( PROTOEVENTTYPE eventType, WPARAM wParam, LPARAM lParam );
 
-	virtual	int __cdecl RequestAuth(WPARAM, LPARAM);
-	virtual	int __cdecl GrantAuth(WPARAM, LPARAM);
-	virtual	int __cdecl RevokeAuth(WPARAM, LPARAM);
-
-	// events
-	int __cdecl OnModulesLoaded(WPARAM, LPARAM);
-	int __cdecl OnPreShutdown(WPARAM, LPARAM);
-	int __cdecl OnContactDeleted(WPARAM, LPARAM);
-	int __cdecl OnOptionsInit(WPARAM, LPARAM);
-	int __cdecl OnUserInfoInit(WPARAM, LPARAM);
-	INT_PTR __cdecl OnAccountManagerInit(WPARAM wParam, LPARAM lParam);
-
 	// instances
 	static CSkypeProto* InitSkypeProto(const char* protoName, const wchar_t* userName);
 	static int UninitSkypeProto(CSkypeProto* ppro);
 
-	// services
-	static void InitServiceList();
+	static CSkypeProto* GetContactInstance(HANDLE hContact);
+	static void UninitInstances();
 
 	// icons
 	static void InitIcons();
 	static void UninitIcons();
-	static HANDLE GetIconHandle(const char *name);
 
 	// menus
 	void OnInitStatusMenu();
 	static void InitMenus();
 	static void UninitMenus();
 
-	INT_PTR __cdecl InviteCommand(WPARAM, LPARAM);
+	// services
+	static void InitServiceList();
 
-	static CSkypeProto* GetInstanceByHContact(HANDLE hContact);
-	static int PrebuildContactMenu(WPARAM wParam, LPARAM lParam);
+	// hooks
+	static void InitHookList();
 
-	bool	IsOnline();
+	// languages
+	static void InitLanguages();
+
+	static INT_PTR __cdecl ParseSkypeUri(WPARAM wParam, LPARAM lParam);
+
+private:
+	// Skype
+	CAccount		*newAccount(int oid);
+	CContactGroup	*newContactGroup(int oid);
+	CConversation	*newConversation(int oid);
+	CContactSearch	*newContactSearch(int oid);
+	CParticipant	*newParticipant(int oid);
+	CContact		*newContact(int oid);	
+	CMessage		*newMessage(int oid);
+	CTransfer		*newTransfer(int oid);
+
+	void OnMessage(
+		const MessageRef & message,
+		const bool & changesInboxTimestamp,
+		const MessageRef & supersedesHistoryMessage,
+		const ConversationRef & conversation);
+
+	void OnConversationListChange(
+		const ConversationRef& conversation,
+		const Conversation::LIST_TYPE& type,
+		const bool& added);
+
+	int skypeKitPort;
+	PROCESS_INFORMATION skypeKitProcessInfo;
 
 protected:
-	DWORD   dwCMDNum;
 	CAccount::Ref account;
 	CContact::Refs contactList;
+	CTransfer::Refs transferList;
+	
 	CContactGroup::Ref commonList;
 	CContactGroup::Ref authWaitList;
 
+	CRITICAL_SECTION contact_search_lock;
+
+	bool	IsOnline();
+
+	BYTE NeedUpdate;
+
 	// account
+	static wchar_t *LogoutReasons[];
+	static wchar_t *PasswordChangeReasons[];
+
+	wchar_t	*login;
+	char	*password;
+	bool	rememberPassword;	
+
+	bool	RequestPassword(PasswordRequestBoxParam &param);
+	bool	ChangePassword(PasswordChangeBoxParam &param);
+	
+	bool	PrepareLogin();
+	bool	PreparePassword();
+
+	void	InitProxy();
+	void	SetAccountSettings();
+
+	void	SetServerStatus(int iStatus);
+
+	bool	LogIn();
+	void	LogOut();
+	
+	void	OnLoggedIn();
+	void	OnCblUpdated();
+	void	OnLoggedOut(CAccount::LOGOUTREASON reason);
 
 	void	OnAccountChanged(int prop);
 
-	char	*login;
-	char	*password;
-	bool	rememberPassword;
-	void	RequestPassword();
+	INT_PTR __cdecl SetMyNickName(WPARAM, LPARAM);
 
-	HANDLE	signin_lock;
-	bool	SignIn(bool isReadPassword = true);
-	void __cdecl SignInAsync(void*);
-
-	static wchar_t* LogoutReasons[];
-	static LanguagesListEntry languages[223];
-
-	// messages
-	void	OnMessage(CConversation::Ref conversation, CMessage::Ref message);
-	void	OnMessageSended(CConversation::Ref conversation, CMessage::Ref message);
-	void	OnMessageReceived(CConversation::Ref conversation, CMessage::Ref message);
-
-	// chat
-	bool IsChatRoom(HANDLE hContact);
-	HANDLE GetChatRoomByID(const char *cid);
-	HANDLE	AddChatRoomByID(const char* cid, const char* name, DWORD flags = 0);
-	
-	char *CSkypeProto::GetChatUsers(const char *cid);
-
-	void ChatValidateContact(HANDLE hItem, HWND hwndList, const char *contacts);
-	void ChatPrepare(HANDLE hItem, HWND hwndList, const char *contacts);
-
-	void GetInviteContacts(HANDLE hItem, HWND hwndList, SEStringList &invitedContacts);
-	
-	void InitChat();
-	char *StartChat(const char *cid, const SEStringList &invitedContacts);
-	void JoinToChat(const char *cid, bool showWindow = true);
-	void LeaveChat(const char *cid);
-
-	void RaiseChatEvent(const char *cid, const char *sid, int evt, const char *message = NULL);
-	void SendChatMessage(const char *cid, const char *sid, const char *message);
-	void AddChatContact(const char *cid, const char *sid);
-	void KickChatContact(const char *cid, const char *sid);
-	void RemoveChatContact(const char *cid, const char *sid);
-
-	INT_PTR __cdecl OnJoinChat(WPARAM wParam, LPARAM);
-	INT_PTR __cdecl OnLeaveChat(WPARAM wParam, LPARAM);
-
-	int __cdecl OnGCMenuHook(WPARAM, LPARAM lParam);
-	int __cdecl OnGCEventHook(WPARAM, LPARAM lParam);
-
-	// contacts
-	void	UpdateContactAboutText(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactAuthState(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactAvatar(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactBirthday(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactCity(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactCountry(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactEmails(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactGender(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactHomepage(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactLanguages(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactMobilePhone(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactPhone(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactOfficePhone(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactState(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactStatus(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactStatusMessage(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactTimezone(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactProfile(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactOnlineSinceTime(HANDLE hContact, CContact::Ref contact);
-	void	UpdateContactLastEventDate(HANDLE hContact, CContact::Ref contact);
-	void	UpdateFullName(HANDLE hContact, CContact::Ref contact);
-
-	void	OnSearchCompleted(HANDLE hSearch);
-	void	OnContactFinded(HANDLE hSearch, CContact::Ref contact);
-
-	void	OnContactChanged(CContact::Ref contact, int prop);
-	void	OnContactListChanged(const ContactRef& contact);
-	
-	bool	IsProtoContact(HANDLE hContact);
-	HANDLE	GetContactBySid(const char* sid);
-	HANDLE	GetContactFromAuthEvent(HANDLE hEvent);
-	HANDLE	AddContactBySid(const char* sid, const char* nick, DWORD flags = 0);
-
-	int		SkypeToMirandaStatus(CContact::AVAILABILITY availability);
-	CContact::AVAILABILITY MirandaToSkypeStatus(int status);
-	void	SetAllContactStatus(int status);
-
-	void __cdecl LoadContactList(void*);
-	void __cdecl SearchBySidAsync(void*);
-	void __cdecl SearchByNamesAsync(void*);
-	void __cdecl SearchByEmailAsync(void*);
-
-	// profile
-	void	UpdateOwnAvatar();
-	void	UpdateOwnBirthday();
-	void	UpdateOwnCity();
-	void	UpdateOwnCountry();
-	void	UpdateOwnEmails();
-	void	UpdateOwnGender();
-	void	UpdateOwnHomepage();
-	void	UpdateOwnLanguages();
-	void	UpdateOwnMobilePhone();
-	void	UpdateOwnNickName();
-	void	UpdateOwnPhone();
-	void	UpdateOwnOfficePhone();
-	void	UpdateOwnState();
-	void	UpdateOwnStatusMessage();
-	void	UpdateOwnTimezone();
-	void	UpdateOwnProfile();	
-	void	UpdateOwnAbout();	
-
-	void	OnProfileChanged(int prop);
-
-	void __cdecl LoadOwnInfo(void*);
-
-	// utils
-	static void FakeAsync(void*);
-	void InitCustomFolders();
-
-	static int DetectAvatarFormatBuffer(const char *pBuffer);
-	static int DetectAvatarFormat(const wchar_t *path);
+	// avatars
+	bool IsAvatarChanged(const SEBinary &avatar, HANDLE hContact = NULL);
 
 	wchar_t* GetContactAvatarFilePath(HANDLE hContact);
-
-	int SkypeToMirandaLoginError(CAccount::LOGOUTREASON logoutReason);
-
-	void ShowNotification(const char *nick, const wchar_t *message, int flags = 0);
-
-	//
-	static char CharBase64[];
-	static ULONG Base64Encode(char *inputString, char *outputBuffer, SIZE_T nMaxLength);
-
-	// instances
-	static LIST<CSkypeProto> instanceList;
-	static int CompareProtos(const CSkypeProto *p1, const CSkypeProto *p2);
-
-	void	CreateService(const char* szService, SkypeServiceFunc serviceProc);
-	void	CreateServiceParam(const char* szService, SkypeServiceFunc serviceProc, LPARAM lParam);
-	
-	HANDLE	CreateEvent(const char* szService);
-	void	HookEvent(const char*, SkypeEventFunc);
-
-	int		SendBroadcast(int type, int result, HANDLE hProcess, LPARAM lParam);
-	int		SendBroadcast(HANDLE hContact, int type, int result, HANDLE hProcess, LPARAM lParam);
-	DWORD	SendBroadcastAsync(HANDLE hContact, int type, int hResult, HANDLE hProcess, LPARAM lParam, size_t paramSize = 0);
-
-	void	ForkThread(SkypeThreadFunc, void*);
-	HANDLE	ForkThreadEx(SkypeThreadFunc, void*, UINT* threadID = NULL);
-
-	// netlib
-	HANDLE	hNetlibUser;
-	void	InitNetLib();
-	void	UninitNetLib();
-	void	Log(const char* fmt, ...);
-
-	// services
-	static LIST<void> serviceList;
 
 	INT_PTR __cdecl GetAvatarInfo(WPARAM, LPARAM);
 	INT_PTR __cdecl GetAvatarCaps(WPARAM, LPARAM);
 	INT_PTR __cdecl GetMyAvatar(WPARAM, LPARAM);
 	INT_PTR __cdecl SetMyAvatar(WPARAM, LPARAM);
 
-	// icons
-	static _tag_iconList iconList[];
+	SEBinary GetAvatarBinary(wchar_t *path);
 
-	// menu
-	HGENMENU m_hMenuRoot;
-	static HANDLE hChooserMenu;
-	static HANDLE hPrebuildMenuHook;
-	static HANDLE g_hContactMenuItems[CMITEMS_COUNT];
-	static HANDLE g_hContactMenuSvc[CMITEMS_COUNT];
-	static INT_PTR MenuChooseService(WPARAM wParam, LPARAM lParam);
-	int OnPrebuildContactMenu(WPARAM wParam, LPARAM);
+	// messages
+	void	OnMessageEvent(const ConversationRef &conversation, const MessageRef &message);
+	void	OnMessageSent(const ConversationRef &conversation, const MessageRef &message);
+	void	OnMessageReceived(const ConversationRef &conversation, const MessageRef &message);
+
+	void	SyncMessageHystory(const ConversationRef &conversation, const time_t timestamp);
+	void	SyncHistoryCommand(HANDLE hContact, time_t timestamp);
+	int __cdecl SyncLastDayHistoryCommand(WPARAM wParam, LPARAM lParam);
+	int __cdecl SyncLastWeekHistoryCommand(WPARAM wParam, LPARAM lParam);
+	int __cdecl SyncLastMonthHistoryCommand(WPARAM wParam, LPARAM lParam);
+	int __cdecl SyncLast3MonthHistoryCommand(WPARAM wParam, LPARAM lParam);
+	int __cdecl SyncLastYearHistoryCommand(WPARAM wParam, LPARAM lParam);
+	int __cdecl SyncAllTimeHistoryCommand(WPARAM wParam, LPARAM lParam);
+
+	// contacts
+	void	OnContactsEvent(const ConversationRef &conversation, const MessageRef &message);
+	void	OnContactsSent(const ConversationRef &conversation, const MessageRef &message);
+	void	OnContactsReceived(const ConversationRef &conversation, const MessageRef &message);
+
+	// transfer
+	static wchar_t *TransferFailureReasons[];
+
+	std::map<int, FileTransferParam> transferts;
+
+	void	OnFileEvent(const ConversationRef &conversation, const MessageRef &message);
+	void	OnTransferChanged(const TransferRef &transfer, int prop);
+
+	// chat
+	void InitChatModule();
+	INT_PTR __cdecl SkypeGCGetToolTipText(WPARAM wParam, LPARAM lParam);
+
+	void UpdateChatUserStatus(const ContactRef &contact);
+	void UpdateChatUserNick(const ContactRef &contact);
+
+	void ChatValidateContact(HANDLE hItem, HWND hwndList, const StringList &contacts);
+	void ChatPrepare(HANDLE hItem, HWND hwndList, const StringList &contacts);
+
+	void GetInvitedContacts(HANDLE hItem, HWND hwndList, StringList &invitedContacts);	
+
+	void ChatRoomParseUriComands(const wchar_t *commands);
+
+	void ChatRoomInvite(HANDLE hContact);
+
+	void CloseAllChatSessions();
+
+	ChatRoom *FindChatRoom(const wchar_t *cid);
+
+	INT_PTR __cdecl CreateChatRoomCommand(WPARAM, LPARAM);
+	INT_PTR __cdecl OnJoinChat(WPARAM wParam, LPARAM);
+	INT_PTR __cdecl OnLeaveChat(WPARAM wParam, LPARAM);
+
+	int __cdecl OnGCEventHook(WPARAM, LPARAM lParam);
+	int __cdecl OnGCMenuHook(WPARAM, LPARAM lParam);
+
+	void	OnChatEvent(const ConversationRef &conversation, const MessageRef &message);
+
+	OBJLIST<ChatRoom> chatRooms;
+
+	// contacts
+	void	UpdateContactAuthState(HANDLE hContact, const ContactRef &contact);
+	void	UpdateContactStatus(HANDLE hContact, const ContactRef &contact);
+	void	UpdateContactClient(HANDLE hContact, const ContactRef &contact);
+	void	UpdateContactOnlineSinceTime(HANDLE hContact, const ContactRef &contact);
+	void	UpdateContactLastEventDate(HANDLE hContact, const ContactRef &contact);
+
+	void	OnSearchCompleted(HANDLE hSearch);
+	void	OnContactFinded(CContact::Ref contact, HANDLE hSearch);
+
+	void	OnContactChanged(const ContactRef &contact, int prop);
+	void	OnContactListChanged(const ContactRef &contact);
+
+	bool	IsProtoContact(HANDLE hContact);
+	HANDLE	GetContactBySid(const wchar_t* sid);
+	HANDLE	GetContactFromAuthEvent(HANDLE hEvent);
+	HANDLE	AddContact(CContact::Ref contact, bool isTemporary = false);
+
+	bool	IsContactOnline(HANDLE hContact);
+	void	SetAllContactStatus(int status);
+
+	void __cdecl LoadContactList(void*);
+	void __cdecl LoadChatList(void*);
+	void __cdecl LoadAuthWaitList(void*);
+
+	void __cdecl SearchBySidAsync(void*);
+	void __cdecl SearchByNamesAsync(void*);
+	void __cdecl SearchByEmailAsync(void*);
+
+	// profile
+	void	UpdateProfileAvatar(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileAboutText(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileBirthday(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileCity(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileCountry(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileEmails(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileFullName(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileGender(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileHomepage(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileLanguages(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileMobilePhone(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileNick(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfilePhone(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileOfficePhone(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileState(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileStatusMessage(SEObject *obj, HANDLE hContact = NULL);
+	void	UpdateProfileTimezone(SEObject *obj, HANDLE hContact = NULL);
+
+	void	UpdateProfile(SEObject *obj, HANDLE hContact = NULL);
+
+	void __cdecl LoadOwnInfo(void*);
+
+	void SaveOwnInfoToServer(HWND hwndPage, int iPage);
+
+	// utils
+	static wchar_t* ValidationReasons[];
+
+	void InitCustomFolders();
+
+	HANDLE m_hAvatarsFolder;
+	bool   m_bInitDone;
+
+	static int SkypeToMirandaLoginError(CAccount::LOGOUTREASON logoutReason);
+
+	static char *RemoveHtml(const char *data);
+
+	static int SkypeToMirandaStatus(CContact::AVAILABILITY availability);
+	static CContact::AVAILABILITY MirandaToSkypeStatus(int status);
+
+	static bool FileExists(wchar_t *path);
+
+	static void ShowNotification(const wchar_t *message, int flags = 0, HANDLE hContact = NULL);
+	static void ShowNotification(const wchar_t *caption, const wchar_t *message, int flags = 0, HANDLE hContact = NULL);
+
+	static void CopyToClipboard(const wchar_t *text);
+
+	static void ReplaceSpecialChars(wchar_t *text, wchar_t replaceWith = L'_');	
+
+	// languages
+	static std::map<std::wstring, std::wstring> languages;
+
+	// instances
+	static LIST<CSkypeProto> instanceList;
+	static int CompareProtos(const CSkypeProto *p1, const CSkypeProto *p2);
+
+	//
+	int SendBroadcast(int type, int result, HANDLE hProcess, LPARAM lParam);
+	int SendBroadcast(HANDLE hContact, int type, int result, HANDLE hProcess, LPARAM lParam);
+
+	HANDLE	CreateEvent(const char* szService);
 	
+	// netlib
+	HANDLE	hNetLibUser;
+	
+	void	InitNetLib();
+	void	UninitNetLib();
+
+	void	Log(const wchar_t *fmt, ...);
+
+	// services
+	void InitInstanceServiceList();
+
+	// hooks
+	void InitInstanceHookList();
+
+	// icons
+	static _tag_iconList IconList[];
+	static HANDLE GetIconHandle(const char *name);
+	static HANDLE GetSkinIconHandle(const char *name);
+
+	// menus
+	HGENMENU m_hMenuRoot;
+	static HGENMENU hChooserMenu;
+	static HGENMENU contactMenuItems[CMI_MAX];
+
+	virtual	int __cdecl RequestAuth(WPARAM, LPARAM);
+	virtual	int __cdecl GrantAuth(WPARAM, LPARAM);
+	virtual	int __cdecl RevokeAuth(WPARAM, LPARAM);
+	
+	static INT_PTR MenuChooseService(WPARAM wParam, LPARAM lParam);
+
+	static int PrebuildContactMenu(WPARAM wParam, LPARAM lParam);
+	int OnPrebuildContactMenu(WPARAM wParam, LPARAM);
+
+	// blocked list
+	int __cdecl BlockCommand(WPARAM, LPARAM);
+	INT_PTR __cdecl OpenBlockedListCommand(WPARAM, LPARAM);
+
+	static INT_PTR CALLBACK SkypeBlockProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK SkypeBlockedOptionsProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK SkypeBlockedOptionsSubProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 	// database
-	HANDLE AddDataBaseEvent(HANDLE hContact, WORD type, DWORD time, DWORD flags, DWORD cbBlob, PBYTE pBlob);
-	void RaiseMessageReceivedEvent(
-		DWORD timestamp, 
-		const char* sid, 
-		const char* nick, 
-		const char* message = "");
-	void RaiseMessageSendedEvent(
-		DWORD timestamp, 
-		const char* sid, 
-		const char* nick, 
-		const char* message = "");
-	void RaiseAuthRequestEvent(
-		DWORD timestamp, 
-		const char* sid, 
-		const char* nick, 
-		const char* firstName = "",
-		const char* lastName = "",
-		const char* reason = "");
+	bool IsMessageInDB(HANDLE hContact, DWORD timestamp, SEBinary &guid, int flag = 0);
 
-	// database settings
-	BYTE	GetSettingByte(const char *setting, BYTE errorValue = 0);
-	BYTE	GetSettingByte(HANDLE hContact, const char *setting, BYTE errorValue = 0);
-	WORD	GetSettingWord(const char *setting, WORD errorValue = 0);
-	WORD	GetSettingWord(HANDLE hContact, const char *setting, WORD errorValue = 0);
-	DWORD	GetSettingDword(const char *setting, DWORD defVal = 0);
-	DWORD	GetSettingDword(HANDLE hContact, const char *setting, DWORD errorValue = 0);
-	wchar_t *GetSettingString(const char *setting, wchar_t* errorValue = NULL);
-	wchar_t *GetSettingString(HANDLE hContact, const char *setting, wchar_t* errorValue = NULL);
-	char	*GetDecodeSettingString(HANDLE hContact, const char *setting, char* errorValue = NULL);
-	//
-	bool	SetSettingByte(const char *setting, BYTE value);
-	bool	SetSettingByte(HANDLE hContact, const char *setting, BYTE value);
-	bool	SetSettingWord(const char *setting, WORD value);
-	bool	SetSettingWord(HANDLE hContact, const char *setting, WORD value);
-	bool	SetSettingDword(const char *setting, DWORD value);
-	bool	SetSettingDword(HANDLE hContact, const char *setting, DWORD value);
-	bool	SetSettingString(const char *setting, const wchar_t* value);
-	bool	SetSettingString(HANDLE hContact, const char *setting, const wchar_t* value);
-	bool	SetDecodeSettingString(HANDLE hContact, const char *setting, const char* value);
-	//
-	void	DeleteSetting(const char *setting);
-	void	DeleteSetting(HANDLE hContact, const char *setting);
+	HANDLE AddDBEvent(HANDLE hContact, WORD type, DWORD time, DWORD flags = 0, DWORD cbBlob = 0, PBYTE pBlob = 0);
+	void RaiseMessageSentEvent(
+		HANDLE hContact,
+		DWORD timestamp,
+		SEBinary &guid,
+		const char *message,
+		bool isUnread = true);
+	void RaiseAuthRequestEvent(
+		DWORD timestamp,
+		CContact::Ref contact);
 
 	// dialog procs
-	static INT_PTR CALLBACK SkypeAccountProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
-	static INT_PTR CALLBACK SkypeOptionsProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
-	static INT_PTR CALLBACK SkypePasswordProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK SkypeMainOptionsProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+	static INT_PTR CALLBACK SkypePasswordRequestProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK SkypePasswordChangeProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK ChatRoomProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK SkypePrivacyOptionsProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+
 	static INT_PTR CALLBACK SkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-	static INT_PTR CALLBACK OwnSkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-	static INT_PTR CALLBACK InviteToChatProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK PersonalSkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK ContactSkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK HomeSkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+	static INT_PTR CALLBACK AccountSkypeDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+
+	// skype runtime
+	char *LoadKeyPair();
+	int StartSkypeRuntime(const wchar_t *profileName);
+	BOOL SafeTerminateProcess(HANDLE hProcess, UINT uExitCode);
+	void StopSkypeRuntime();
+
+	// events
+	static int OnModulesLoaded(WPARAM wParam, LPARAM lParam);
+
+	int __cdecl OnProtoModulesLoaded(WPARAM, LPARAM);
+	int __cdecl OnPreShutdown(WPARAM, LPARAM);
+	int __cdecl OnContactDeleted(WPARAM, LPARAM);
+	int __cdecl OnOptionsInit(WPARAM, LPARAM);
+	int __cdecl OnSrmmWindowOpen(WPARAM, LPARAM);
+	int __cdecl OnUserInfoInit(WPARAM, LPARAM);
+	INT_PTR __cdecl OnAccountManagerInit(WPARAM wParam, LPARAM lParam);
+
+	int __cdecl OnMessagePreCreate(WPARAM, LPARAM);
+	int __cdecl OnTabSRMMButtonPressed(WPARAM, LPARAM);
 };

@@ -48,7 +48,7 @@ BOOL is_number(TCHAR *s)
 	return FALSE;
 }
 
-static void numToStr(double num, TCHAR* str)
+static void numToStr(double num, TCHAR *str, size_t strSize)
 {
 	int i = (int)(num * (opt.NoFrac ? 10 : 100));
 	int u = abs(i);
@@ -63,11 +63,11 @@ static void numToStr(double num, TCHAR* str)
 		w /= 10;
 	}
 
-	if (i < 0 && (w || r)) *(str++) = '-';
+	if (i < 0 && (w || r)) w = -w;
 	if (r)
-		wsprintf(str, _T("%i.%i"), w, r);
+		mir_sntprintf(str, strSize, _T("%i.%i"), w, r);
 	else
-		wsprintf(str, _T("%i"), w);
+		mir_sntprintf(str, strSize, _T("%i"), w);
 }
 
 //============  UNIT CONVERSIONS  ============
@@ -107,19 +107,19 @@ void GetTemp(TCHAR *tempchar, TCHAR *unit, TCHAR* str)
 	switch (opt.tUnit) {
 	case 1:
 		// rounding
-		numToStr((temp-32)/9*5, tstr);
+		numToStr((temp-32)/9*5, tstr, SIZEOF(tstr));
 		if (opt.DoNotAppendUnit)
-			wsprintf(str, _T("%s"), tstr);
+			mir_sntprintf(str, MAX_DATA_LEN, _T("%s"), tstr);
 		else
-			wsprintf(str, _T("%s%sC"), tstr, opt.DegreeSign);
+			mir_sntprintf(str, MAX_DATA_LEN, _T("%s%sC"), tstr, opt.DegreeSign);
 		break;
 
 	case 2:
-		numToStr(temp, tstr);
+		numToStr(temp, tstr, SIZEOF(tstr));
 		if (opt.DoNotAppendUnit)
-			wsprintf(str, _T("%s"), tstr);
+			mir_sntprintf(str, MAX_DATA_LEN, _T("%s"), tstr);
 		else
-			wsprintf(str, _T("%s%sF"), tstr, opt.DegreeSign);
+			mir_sntprintf(str, MAX_DATA_LEN, _T("%s%sF"), tstr, opt.DegreeSign);
 		break;
 	}
 }
@@ -160,19 +160,19 @@ void GetPressure(TCHAR *tempchar, TCHAR *unit, TCHAR* str)
 	switch (opt.pUnit) {
 	case 1:
 		intunit = (int)(tempunit + 0.5);
-		wsprintf(str, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("kPa"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("kPa"));
 		break;
 	case 2:
 		intunit = (int)(tempunit + 0.5);
-		wsprintf(str, _T("%i %s"), intunit, opt.DoNotAppendUnit ? _T("") : TranslateT("mb"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i %s"), intunit, opt.DoNotAppendUnit ? _T("") : TranslateT("mb"));
 		break;
 	case 3:
 		intunit = (int)((tempunit*10 / 33.86388) + 0.5);
-		wsprintf(str, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("in"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("in"));
 		break;
 	case 4:
 		intunit = (int)((tempunit*10 / 1.33322) + 0.5);
-		wsprintf(str, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("mm"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("mm"));
 		break;
 	default:
 		_tcscpy(str, tempchar); 
@@ -212,20 +212,20 @@ void GetSpeed(TCHAR *tempchar, TCHAR *unit, TCHAR *str)
 	// convert to apporiate unit
 	switch (opt.wUnit) {
 	case 1:
-		numToStr(tempunit * 3.6, tstr);
-		wsprintf(str, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("km/h"));
+		numToStr(tempunit * 3.6, tstr, SIZEOF(tstr));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("km/h"));
 		break;
 	case 2:
-		numToStr(tempunit, tstr);
-		wsprintf(str, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("m/s"));
+		numToStr(tempunit, tstr, SIZEOF(tstr));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("m/s"));
 		break;
 	case 3:
-		numToStr(tempunit / 0.44704, tstr);
-		wsprintf(str, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("mph"));
+		numToStr(tempunit / 0.44704, tstr, SIZEOF(tstr));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("mph"));
 		break;
 	case 4:
-		numToStr(tempunit / 0.514444, tstr);
-		wsprintf(str, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("knots"));
+		numToStr(tempunit / 0.514444, tstr, SIZEOF(tstr));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%s %s"), tstr, opt.DoNotAppendUnit ? _T("") : TranslateT("knots"));
 		break;
 	}
 }
@@ -258,11 +258,11 @@ void GetDist(TCHAR *tempchar, TCHAR *unit, TCHAR *str)
 	switch (opt.vUnit) {
 	case 1:
 		intunit = (int)((tempunit*10) + 0.5);
-		wsprintf(str, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("km"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("km"));
 		break;
 	case 2:
 		intunit = (int)((tempunit*10 / 1.609) + 0.5);
-		wsprintf(str, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("miles"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("miles"));
 		break;
 	default:
 		_tcscpy(str, tempchar);
@@ -298,11 +298,11 @@ void GetElev(TCHAR *tempchar, TCHAR *unit, TCHAR *str)
 	switch (opt.eUnit) {
 	case 1:
 		intunit = (int)((tempunit*10 * 3.28) + 0.5);
-		wsprintf(str, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("ft"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("ft"));
 		break;
 	case 2:
 		intunit = (int)((tempunit*10) + 0.5);
-		wsprintf(str, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("m"));
+		mir_sntprintf(str, MAX_DATA_LEN, _T("%i.%i %s"), intunit/10, intunit%10, opt.DoNotAppendUnit ? _T("") : TranslateT("m"));
 		break;
 	default:
 		_tcscpy(str, tempchar);
@@ -322,10 +322,8 @@ static const WORD statusValue[10] = { LIGHT, FOG, SSHOWER, SNOW, RSHOWER, RAIN, 
 
 WORD GetIcon(const TCHAR* cond, WIDATA *Data) 
 {
-	int i;
-
 	// set the icon using ini
-	for (i=0; i<10; i++)
+	for (int i=0; i<10; i++)
 		if ( IsContainedInCondList(cond, &Data->CondList[i]))
 			return statusValue[i];
 
@@ -389,7 +387,7 @@ WORD GetIcon(const TCHAR* cond, WIDATA *Data)
 	}
 
 	// set the icon using langpack
-	for (i=0; i < 9; i++) {
+	for (int i=0; i < 9; i++) {
 		TCHAR LangPackStr[64], LangPackStr1[128];
 		int j = 0;
 		do {
@@ -550,7 +548,7 @@ TCHAR* GetDisplay(WEATHERINFO *w, const TCHAR *dis, TCHAR* str)
 				name[0] = 0;
 				// read the entire variable name
 				while (dis[i] != ']' && i < _tcslen(dis)) {
-					wsprintfA(temp, "%c", dis[i++]);
+					mir_snprintf(temp, SIZEOF(temp), "%c", dis[i++]);
 					strcat(name, temp);
 				}
 				// access the database to get its value
@@ -564,7 +562,7 @@ TCHAR* GetDisplay(WEATHERINFO *w, const TCHAR *dis, TCHAR* str)
 		}
 		// if the character is not a variable, write the original character to the new string
 		else {
-			wsprintf( lpzDate, _T("%c"), dis[i]);
+			mir_sntprintf(lpzDate, SIZEOF(lpzDate), _T("%c"), dis[i]);
 			_tcscat(str, lpzDate);
 	}	}
 

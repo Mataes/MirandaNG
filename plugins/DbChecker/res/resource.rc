@@ -7,7 +7,7 @@
 //
 // Generated from the TEXTINCLUDE 2 resource.
 //
-#include <windows.h>
+#include <winres.h>
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -35,7 +35,7 @@ BEGIN
     LTEXT           "Welcome to the Miranda Database Wizard",IDC_TITLE,77,12,178,24,0,WS_EX_TRANSPARENT
     LTEXT           "Using this Wizard you can compact your Miranda profile database to remove dead space created during normal usage, as well as repair a large number of issues that could affect the database.",IDC_STATIC,77,46,178,32,0,WS_EX_TRANSPARENT
     LTEXT           "To continue, click Next.",IDC_STATIC,77,85,178,8,0,WS_EX_TRANSPARENT
-    LTEXT           "This programme is licenced under the terms of the GNU General Public License.",IDC_STATIC,77,122,178,16,WS_DISABLED
+    LTEXT           "This program is licenced under the terms of the GNU General Public License.",IDC_STATIC,77,122,178,16,WS_DISABLED
 END
 
 IDD_WIZARD DIALOGEX 0, 0, 262, 174
@@ -62,8 +62,8 @@ BEGIN
     LTEXT           "Select the &profile database from the list below. If the database you wish to use is not listed here then click Other to browse your computer.",IDC_STATIC,10,35,242,16
     CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDHORZ,-1,32,264,1
     CONTROL         "List1",IDC_DBLIST,"SysListView32",LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_SORTASCENDING | LVS_AUTOARRANGE | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,10,53,242,72
-    LTEXT           "&File:",IDC_STATIC,10,130,12,8
-    EDITTEXT        IDC_FILE,24,128,184,12,ES_AUTOHSCROLL
+    RTEXT           "&File:",IDC_STATIC,10,130,22,8
+    EDITTEXT        IDC_FILE,31,128,177,12,ES_AUTOHSCROLL
     PUSHBUTTON      "&Other...",IDC_OTHER,212,128,40,12
 END
 
@@ -237,8 +237,8 @@ END
 // EMF
 //
 
-IDE_WATERMARK           EMF                     "res\\dbtool.emf"
-IDE_HDRLOGO             EMF                     "res\\dbthdr.emf"
+IDE_WATERMARK           EMF                     "dbtool.emf"
+IDE_HDRLOGO             EMF                     "dbthdr.emf"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -247,11 +247,11 @@ IDE_HDRLOGO             EMF                     "res\\dbthdr.emf"
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_DBTOOL              ICON                    "res\\dbtool.ico"
-IDI_PROFILEGREEN        ICON                    "res\\profileg.ico"
-IDI_PROFILEYELLOW       ICON                    "res\\profiley.ico"
-IDI_PROFILERED          ICON                    "res\\profiler.ico"
-IDI_BAD                 ICON                    "res\\delete.ico"
+IDI_DBTOOL              ICON                    "dbtool.ico"
+IDI_PROFILEGREEN        ICON                    "profileg.ico"
+IDI_PROFILEYELLOW       ICON                    "profiley.ico"
+IDI_PROFILERED          ICON                    "profiler.ico"
+IDI_BAD                 ICON                    "delete.ico"
 
 #endif    // Neutral resources
 /////////////////////////////////////////////////////////////////////////////

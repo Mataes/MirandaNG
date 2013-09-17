@@ -1,12 +1,4 @@
 #include "StdAfx.h"
-#include "CommonOptionDlg.h"
-#include "QuotesProviderBase.h"
-#include "resource.h"
-#include "EconomicRateInfo.h"
-#include "DBUtils.h"
-#include "QuotesProviderVisitorDbSettings.h"
-#include "WinCtrlHelper.h"
-#include "SettingsDlg.h"
 
 namespace
 {
@@ -80,13 +72,13 @@ void CommonOptionDlgProc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp,CCommonDlgProcDa
 				::SendMessage(hwndCombo,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(pszRefreshRateTypes[i]));
 			}
 
-			int nRefreshRateType = DBGetContactSettingWord(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateType,RRT_HOURS);
+			int nRefreshRateType = db_get_w(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateType,RRT_HOURS);
 			if(nRefreshRateType < RRT_SECONDS || nRefreshRateType > RRT_HOURS)
 			{
 				nRefreshRateType = RRT_MINUTES;
 			}
 
-			UINT nRate = DBGetContactSettingWord(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateValue,3);
+			UINT nRate = db_get_w(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateValue,3);
 			switch(nRefreshRateType)
 			{
 			default:
@@ -243,22 +235,22 @@ void CommonOptionDlgProc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp,CCommonDlgProcDa
 					assert(visitor.m_pszDbStatusMsgFormat);
 
 					rData.m_bFireSetingsChangedEvent = true;
-					DBWriteContactSettingWord(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateType,nType);
-					DBWriteContactSettingWord(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateValue,nRefreshRate);
+					db_set_w(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateType,nType);
+					db_set_w(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbRefreshRateValue,nRefreshRate);
 
 					tstring s = get_window_text(::GetDlgItem(hWnd,IDC_EDIT_CONTACT_LIST_FORMAT));
-					DBWriteContactSettingTString(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbDisplayNameFormat,s.c_str());
+					db_set_ts(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbDisplayNameFormat,s.c_str());
 
 					s = get_window_text(::GetDlgItem(hWnd,IDC_EDIT_STATUS_MESSAGE_FORMAT));
-					DBWriteContactSettingTString(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbStatusMsgFormat,s.c_str());
+					db_set_ts(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbStatusMsgFormat,s.c_str());
 
 					s = get_window_text(::GetDlgItem(hWnd,IDC_EDIT_TENDENCY_FORMAT));
-					DBWriteContactSettingTString(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbTendencyFormat,s.c_str());
+					db_set_ts(NULL,QUOTES_MODULE_NAME,visitor.m_pszDbTendencyFormat,s.c_str());
 
 					CAdvProviderSettings* pAdvSet = get_adv_settings(rData.m_pQuotesProvider,false);
 					if(pAdvSet)
 					{
-						pAdvSet->SaveToDb();						
+						pAdvSet->SaveToDb();
 					}
 				}
 				break;

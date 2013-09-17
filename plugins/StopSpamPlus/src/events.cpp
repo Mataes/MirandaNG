@@ -1,18 +1,17 @@
 #include "headers.h"
 
-
 MIRANDA_HOOK_EVENT(ME_DB_EVENT_ADDED, wParam, lParam)
 {
 	HANDLE hDbEvent = (HANDLE)lParam;
 
 	DBEVENTINFO dbei = {0};
 	dbei.cbSize = sizeof(dbei);
-	dbei.cbBlob = CallService(MS_DB_EVENT_GETBLOBSIZE, (WPARAM)hDbEvent, 0);
+	dbei.cbBlob = db_event_getBlobSize(hDbEvent);
 	if (-1 == dbei.cbBlob)
 		return 0;
 
 	dbei.pBlob = new BYTE[dbei.cbBlob];
-	CallService(MS_DB_EVENT_GET, lParam, (LPARAM)&dbei);
+	db_event_get(hDbEvent, &dbei);
 
 	// if event is in protocol that is not despammed
 	if(plSets->ProtoDisabled(dbei.szModule)) {
@@ -28,8 +27,8 @@ MIRANDA_HOOK_EVENT(ME_DB_EVENT_ADDED, wParam, lParam)
 		// if request is from unknown or not marked Answered contact
 		//and if I don't sent message to this contact
 
-		if(DBGetContactSettingByte(hcntct, "CList", "NotOnList", 0) &&
-			!DBGetContactSettingByte(hcntct, pluginName, answeredSetting, 0) &&
+		if(db_get_b(hcntct, "CList", "NotOnList", 0) &&
+			!db_get_b(hcntct, pluginName, answeredSetting, 0) &&
 			!IsExistMyMessage(hcntct))
 		{
 			if (!plSets->HandleAuthReq.Get())
@@ -51,10 +50,10 @@ MIRANDA_HOOK_EVENT(ME_DB_EVENT_ADDED, wParam, lParam)
 
 				mir_free(AuthRepl);
 
-			DBWriteContactSettingByte(hcntct, "CList", "NotOnList", 1);
-			DBWriteContactSettingByte(hcntct, "CList", "Hidden", 1);
+			db_set_b(hcntct, "CList", "NotOnList", 1);
+			db_set_b(hcntct, "CList", "Hidden", 1);
 			if (!plSets->HistLog.Get())
-				CallService(MS_DB_EVENT_DELETE, 0, (LPARAM)hDbEvent);
+				db_event_delete(0, hDbEvent);
 			delete [] dbei.pBlob;
 			return 1;
 		}
@@ -82,13 +81,13 @@ MIRANDA_HOOK_EVENT(ME_DB_EVENT_FILTER_ADD, w, l)
 		return 0;
 
 	// if message is from known or marked Answered contact
-	if(DBGetContactSettingByte(hContact, pluginName, answeredSetting, 0))
+	if(db_get_b(hContact, pluginName, answeredSetting, 0))
 		// ...let the event go its way
 		return 0;
 
 	// checking if message from self-added contact
 	//Contact in Not in list icq group
-	if (!DBGetContactSettingByte(hContact, "CList", "NotOnList", 0) && DBGetContactSettingWord(hContact, dbei->szModule, "SrvGroupId", -1) != 1)
+	if (!db_get_b(hContact, "CList", "NotOnList", 0) && db_get_w(hContact, dbei->szModule, "SrvGroupId", -1) != 1)
 		return 0;
 
 	//if I sent message to this contact
@@ -136,14 +135,14 @@ MIRANDA_HOOK_EVENT(ME_DB_EVENT_FILTER_ADD, w, l)
 			)
 			{
 				// unhide contact
-				DBDeleteContactSetting(hContact, "CList", "Hidden");
+				db_unset(hContact, "CList", "Hidden");
 
 				// mark contact as Answered
-				DBWriteContactSettingByte(hContact, pluginName, answeredSetting, 1);
+				db_set_b(hContact, pluginName, answeredSetting, 1);
 
 				//add contact permanently
 				if(plSets->AddPermanent.Get())
-					DBDeleteContactSetting(hContact, "CList", "NotOnList");
+					db_unset(hContact, "CList", "NotOnList");
 
 				// send congratulation
 
@@ -161,7 +160,7 @@ MIRANDA_HOOK_EVENT(ME_DB_EVENT_FILTER_ADD, w, l)
 	// if message message does not contain infintite talk protection prefix
 	// and question count for this contact is less then maximum
 	if ( (!plSets->InfTalkProtection.Get() || tstring::npos==message.find(infTalkProtPrefix))
-		&& (!plSets->MaxQuestCount.Get() || DBGetContactSettingDword(hContact, pluginName, questCountSetting, 0) < plSets->MaxQuestCount.Get()))
+		&& (!plSets->MaxQuestCount.Get() || db_get_dw(hContact, pluginName, questCountSetting, 0) < plSets->MaxQuestCount.Get()))
 	{
 		// send question
 		tstring q = infTalkProtPrefix + variables_parse((tstring)(plSets->Question), hContact);
@@ -173,17 +172,17 @@ MIRANDA_HOOK_EVENT(ME_DB_EVENT_FILTER_ADD, w, l)
 
 
 		// increment question count
-		DWORD questCount = DBGetContactSettingDword(hContact, pluginName, questCountSetting, 0);
-		DBWriteContactSettingDword(hContact, pluginName, questCountSetting, questCount + 1);
+		DWORD questCount = db_get_dw(hContact, pluginName, questCountSetting, 0);
+		db_set_dw(hContact, pluginName, questCountSetting, questCount + 1);
 
 		// hide contact from contact list
 	}
-	DBWriteContactSettingByte(hContact, "CList", "NotOnList", 1);
-	DBWriteContactSettingByte(hContact, "CList", "Hidden", 1);
+	db_set_b(hContact, "CList", "NotOnList", 1);
+	db_set_b(hContact, "CList", "Hidden", 1);
 
 	// save message from contact
 	dbei->flags |= DBEF_READ;
-	CallService(MS_DB_EVENT_ADD, (WPARAM)hContact, (LPARAM)dbei);
+	db_event_add(hContact, dbei);
 
 	// reject processing of the event
 	return 1;
@@ -198,7 +197,7 @@ MIRANDA_HOOK_EVENT(ME_OPT_INITIALISE, w, l)
 	odp.position = -1;
 	odp.hInstance = hInst;
 
-	odp.pszTab = LPGEN("Main");
+	odp.pszTab = LPGEN("General");
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_MAIN);
 	odp.pfnDlgProc = MainDlgProc;
 	Options_AddPage(w, &odp);
@@ -208,7 +207,7 @@ MIRANDA_HOOK_EVENT(ME_OPT_INITIALISE, w, l)
 	odp.pfnDlgProc = MessagesDlgProc;
 	Options_AddPage(w, &odp);
 
-	odp.pszTab = LPGEN("Protocols");
+	odp.pszTab = LPGEN("Accounts");
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_PROTO);
 	odp.pfnDlgProc = ProtoDlgProc;
 	Options_AddPage(w, &odp);
@@ -228,8 +227,8 @@ MIRANDA_HOOK_EVENT(ME_DB_CONTACT_SETTINGCHANGED, w, l)
 		return 0;
 	if (!cws->value.type)
 	{
-		DBDeleteContactSetting(hContact, pluginName, answeredSetting);
-		DBDeleteContactSetting(hContact, pluginName, questCountSetting);
+		db_unset(hContact, pluginName, answeredSetting);
+		db_unset(hContact, pluginName, questCountSetting);
 	}
 
 	return 0;

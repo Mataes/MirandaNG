@@ -18,15 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "general.h"
-#include "m_metacontacts.h"
 
-#ifdef _MSC_VER
-#include <delayimp.h>
-#endif
-
-/*
-#include "m_popup.h"
-*/
 static ULONG_PTR g_gdiplusToken = 0;
 static bool gdiPlusFail = false;
 
@@ -89,13 +81,13 @@ const TCHAR* GetImageExt(bkstring &fname)
 		if (bytes > 4)
 		{
 			if ( *(unsigned short*)buf == 0xd8ff )
-				ext = _T("jpg"); 
+				ext = _T("jpg");
 			else if ( *(unsigned short*)buf == 0x4d42 )
-				ext = _T("bmp"); 
+				ext = _T("bmp");
 			else if ( *(unsigned*)buf == 0x474e5089 )
-				ext = _T("png"); 
+				ext = _T("png");
 			else if ( *(unsigned*)buf == 0x38464947 )
-				ext = _T("gif"); 
+				ext = _T("gif");
 		}
 		_close(fileId);
 	}
@@ -150,7 +142,7 @@ HICON ImageList_GetIconFixed (HIMAGELIST himl, INT i, UINT fStyle)
 void pathToRelative(const bkstring& pSrc, bkstring& pOut)
 {
 	TCHAR szOutPath[MAX_PATH];
-	CallService(MS_UTILS_PATHTORELATIVET, (WPARAM)pSrc.c_str(), (LPARAM)szOutPath);
+	PathToRelativeT(pSrc.c_str(), szOutPath);
 	pOut = szOutPath;
 }
 
@@ -163,11 +155,11 @@ void pathToAbsolute(const bkstring& pSrc, bkstring& pOut)
 	{
 		TCHAR szExpPath[MAX_PATH];
 		ExpandEnvironmentStrings(pSrc.c_str(), szExpPath, SIZEOF(szExpPath));
-		CallService(MS_UTILS_PATHTOABSOLUTET, (WPARAM)szExpPath, (LPARAM)szOutPath);
+		PathToAbsoluteT(szExpPath, szOutPath);
 	}
 	else
 	{
-		CallService(MS_UTILS_PATHTOABSOLUTET, (WPARAM)szVarPath, (LPARAM)szOutPath);
+		PathToAbsoluteT(szVarPath, szOutPath);
 		mir_free(szVarPath);
 	}
 	pOut = szOutPath;
@@ -219,22 +211,18 @@ bool InitGdiPlus(void)
 	static const TCHAR errmsg[] = _T("GDI+ not installed.\n")
 		_T("GDI+ can be downloaded here: http://www.microsoft.com/downloads");
 
-#ifdef _MSC_VER
 	__try 
-#endif
 	{
 		if (g_gdiplusToken == 0 && !gdiPlusFail)
 		{
 			Gdiplus::GdiplusStartup(&g_gdiplusToken, &gdiplusStartupInput, NULL);
 		}
 	}
-#ifdef _MSC_VER
 	__except ( EXCEPTION_EXECUTE_HANDLER ) 
 	{
 		gdiPlusFail = true;
 		ReportError(errmsg);
 	}
-#endif
 
 	return !gdiPlusFail;
 }
@@ -244,13 +232,7 @@ void DestroyGdiPlus(void)
 	if (g_gdiplusToken != 0)
 	{
 		Gdiplus::GdiplusShutdown(g_gdiplusToken);
-#ifdef _MSC_VER
-#if 1200 < _MSC_VER  
 		__FUnloadDelayLoadedDLL2("gdiplus.dll");
-#else
-		__FUnloadDelayLoadedDLL("gdiplus.dll");
-#endif
-#endif
 		g_gdiplusToken = 0;
 	}
 }
@@ -274,26 +256,11 @@ bool IsSmileyProto(char* proto)
 void ReportError(const TCHAR* errmsg)
 {
 	static const TCHAR title[] = _T("Miranda SmileyAdd");
-/*
 
-	POPUPDATAW pd = {0};
-
-
+	POPUPDATAT pd = {0};
 	_tcscpy(pd.lpwzContactName, title);
 	_tcscpy(pd.lpwzText, errmsg);
-
 	pd.iSeconds = -1;
-
-
-	bool popupFail = PUAddPopUpW(&pd)  != CALLSERVICE_NOTFOUND;
-
-	if (popupFail)
-*/		
+	if (PUAddPopupT(&pd) == CALLSERVICE_NOTFOUND)
 		MessageBox(NULL, errmsg, title, MB_OK | MB_ICONWARNING | MB_TOPMOST);
 }
-
-#pragma warning( disable : 4786 )
-#undef _MT
-
-#include <wcpattern.cpp>
-#include <wcmatcher.cpp>

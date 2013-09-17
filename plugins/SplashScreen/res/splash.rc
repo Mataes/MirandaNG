@@ -13,21 +13,12 @@
 #undef APSTUDIO_READONLY_SYMBOLS
 
 /////////////////////////////////////////////////////////////////////////////
-// Neutral resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
-#ifdef _WIN32
-LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-#pragma code_page(1251)
-#endif //_WIN32
-
-/////////////////////////////////////////////////////////////////////////////
 //
 // DESIGNINFO
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO MOVEABLE PURE 
+GUIDELINES DESIGNINFO
 BEGIN
     IDD_SPLASH_OPT, DIALOG
     BEGIN
@@ -64,8 +55,6 @@ BEGIN
     PUSHBUTTON      "...",IDC_CHOOSESPLASH,222,40,22,11
     CONTROL         "Play sound",IDC_PLAYSND,"Button",BS_AUTO3STATE | 
                     WS_TABSTOP,58,55,64,10
-    CONTROL         "Loop sound",IDC_LOOPSOUND,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,130,55,137,10
     EDITTEXT        IDC_SNDPATH,69,67,145,13,ES_AUTOHSCROLL
     PUSHBUTTON      "...",IDC_CHOOSESND,222,68,22,11
     GROUPBOX        "Show Miranda Version",IDC_STATIC,20,90,275,42
@@ -79,7 +68,7 @@ BEGIN
     CONTROL         "",IDC_ST_SPIN,"msctls_updown32",UDS_SETBUDDYINT | 
                     UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | 
                     UDS_NOTHOUSANDS,171,149,10,10
-    LTEXT           "msec",IDC_STATIC,175,150,95,9
+    LTEXT           "ms",IDC_STATIC,175,150,95,9
     CONTROL         "Fade in:",IDC_FADEIN,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,39,169,80,8
     EDITTEXT        IDC_FISTEP,130,168,39,12,ES_AUTOHSCROLL
@@ -99,46 +88,29 @@ BEGIN
     PUSHBUTTON      "Preview...",IDC_PREVIEW,218,211,75,19
 END
 
-#endif    // Neutral resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-// Unknown language: 0x22, 0x1 resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_UKR)
-#ifdef _WIN32
-LANGUAGE 0x22, 0x1
-#pragma code_page(1251)
-#endif //_WIN32
-
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
 // TEXTINCLUDE
 //
 
-1 TEXTINCLUDE MOVEABLE PURE 
+1 TEXTINCLUDE
 BEGIN
     "..\\src\\resource.h\0"
 END
 
-3 TEXTINCLUDE MOVEABLE PURE 
-BEGIN
-    "\r\n"
-END
-
-2 TEXTINCLUDE MOVEABLE PURE 
+2 TEXTINCLUDE
 BEGIN
     "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE
+BEGIN
+    "\0"
 END
 
 #endif    // APSTUDIO_INVOKED
-
-#endif    // Unknown language: 0x22, 0x1 resources
-/////////////////////////////////////////////////////////////////////////////
-
-
 
 #ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////

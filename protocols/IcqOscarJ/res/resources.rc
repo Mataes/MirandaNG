@@ -27,10 +27,6 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_ICQ                 ICON                    "icq.ico"
-IDI_AUTH_ASK            ICON                    "auth_ask.ico"
-IDI_AUTH_GRANT          ICON                    "auth_grant.ico"
-IDI_AUTH_REVOKE         ICON                    "auth_revoke.ico"
-IDI_SERVLIST_ADD        ICON                    "srvlist_add.ico"
 IDI_EXPANDSTRINGEDIT    ICON                    "expandst.ico"
 
 /////////////////////////////////////////////////////////////////////////////
@@ -91,17 +87,19 @@ BEGIN
     LTEXT           "Login Server:",IDC_STATIC,12,108,55,8
     EDITTEXT        IDC_ICQSERVER,68,106,106,12,ES_AUTOHSCROLL
     LTEXT           "Port:",IDC_STATIC,182,108,25,8
-    EDITTEXT        IDC_ICQPORT,208,106,29,12,ES_AUTOHSCROLL
-    PUSHBUTTON      "Default",IDC_RESETSERVER,244,106,50,12
-    LTEXT           "Hint: Use port 0 to connect on a random port. Try port 80 or port 443 if you are having problems connecting through a http proxy server.",IDC_STATIC,12,123,286,19
-    CONTROL         "Secure Connection (SSL)",IDC_SSL,"Button",BS_AUTOCHECKBOX | BS_TOP | WS_TABSTOP,12,143,286,10
-    CONTROL         "Secure (MD5) login",IDC_MD5LOGIN,"Button",BS_AUTOCHECKBOX | BS_TOP | WS_TABSTOP,12,154,286,10
+    EDITTEXT        IDC_ICQPORT,208,106,29,12,ES_AUTOHSCROLL | ES_NUMBER
+    PUSHBUTTON      "Default",IDC_RESETSERVER,241,106,56,12
+    LTEXT           "Hint: Use port 0 to connect on a random port. Try port 80 or port 443 if you are having problems connecting through a http proxy server.",IDC_STATIC,12,120,286,18
+    CONTROL         "Secure Connection (SSL)",IDC_SSL,"Button",BS_AUTOCHECKBOX | BS_TOP | WS_TABSTOP,12,138,290,10
+    CONTROL         "Secure (MD5) login",IDC_MD5LOGIN,"Button",BS_AUTOCHECKBOX | BS_TOP | WS_TABSTOP,12,150,290,10
+    CONTROL         "Legacy fix (for ICQ Groupware or IServerD only)",IDC_LEGACY,
+                    "Button",BS_AUTOCHECKBOX | BS_TOP | WS_TABSTOP,12,162,290,10
     CONTROL         "Send 'Keep-alives' (enable this if you use a proxy server and frequently get disconnected)",IDC_KEEPALIVE,
-                    "Button",BS_AUTOCHECKBOX | BS_TOP | BS_MULTILINE | WS_TABSTOP,12,166,286,18
-    CONTROL         "Ignore concurrent error messages",IDC_NOERRMULTI,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,190,286,10
-    LTEXT           "Show connection error messages:",IDC_STATIC,12,204,238,8
-    CONTROL         "Slider1",IDC_LOGLEVEL,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,18,214,52,10
-    LTEXT           "",IDC_LEVELDESCR,72,214,226,8,SS_NOPREFIX
+                    "Button",BS_AUTOCHECKBOX | BS_TOP | BS_MULTILINE | WS_TABSTOP,12,174,290,18
+    CONTROL         "Ignore concurrent error messages",IDC_NOERRMULTI,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,12,192,290,10
+    LTEXT           "Show connection error messages:",IDC_STATIC,12,204,290,8
+    CONTROL         "Slider1",IDC_LOGLEVEL,"msctls_trackbar32",TBS_BOTH | TBS_NOTICKS | WS_TABSTOP,12,216,58,10
+    LTEXT           "",IDC_LEVELDESCR,72,216,230,10,SS_NOPREFIX
 END
 
 IDD_OPT_ICQCONTACTS DIALOGEX 0, 0, 310, 234
@@ -208,7 +206,7 @@ BEGIN
     GROUPBOX        "Look && Feel",IDC_STATIC,4,80,305,160
     LTEXT           "Back Color",IDC_STATIC,80,93,42,8
     LTEXT           "Text Color",IDC_STATIC,130,93,40,8
-    LTEXT           "Timeout (*)",IDC_STATIC,182,93,60,8
+    LTEXT           "Timeout",IDC_STATIC,182,93,60,8
     LTEXT           "Note",IDC_STATIC,12,105,60,8
     CONTROL         "",IDC_POPUP_LOG0_BACKCOLOR,"ColourPicker",WS_TABSTOP,80,104,39,10
     CONTROL         "",IDC_POPUP_LOG0_TEXTCOLOR,"ColourPicker",WS_TABSTOP,130,104,39,10
@@ -232,7 +230,6 @@ BEGIN
     CONTROL         "&Use Windows colors",IDC_USEWINCOLORS,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,12,183,220,8
     CONTROL         "Use system &icons",IDC_USESYSICONS,"Button",BS_AUTOCHECKBOX | BS_NOTIFY | WS_TABSTOP,12,211,220,8
     DEFPUSHBUTTON   "Previe&w",IDC_PREVIEW,247,192,52,12
-    LTEXT           "(*) Timeouts require Popup v. 1.0.1.9 or later",IDC_STATIC,12,225,232,8
     CONTROL         "Use default colours",IDC_USEDEFCOLORS,"Button",BS_AUTOCHECKBOX | WS_DISABLED | WS_TABSTOP,12,196,221,10
 END
 

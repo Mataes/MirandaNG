@@ -1,6 +1,7 @@
 /*
-Copyright 2000-2010 Miranda IM project, 
-all portions of this codebase are copyrighted to the people 
+
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -17,12 +18,13 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "commonheaders.h"
 
 int tcmdlist_append(SortedList *list, TCHAR *data)
 {
 	TCmdList *new_list;
-	
+
 	if (!data)
 		return list->realCount - 1;
 
@@ -42,12 +44,12 @@ int tcmdlist_append(SortedList *list, TCHAR *data)
 	return list->realCount - 1;
 }
 
-void tcmdlist_free(SortedList *list) 
+void tcmdlist_free(SortedList *list)
 {
 	int i;
 	TCmdList** n = (TCmdList**)list->items;
 
-	for (i = 0; i < list->realCount; ++i) 
+	for (i = 0; i < list->realCount; ++i)
 	{
 		mir_free(n[i]->szCmd);
 		mir_free(n[i]);
@@ -66,13 +68,13 @@ static VOID CALLBACK MsgTimer(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTi
 {
 	int i, ntl = 0;
 	TMsgQueue **tmlst = NULL;
-	
+
 	EnterCriticalSection(&csMsgQueue);
 
-	for (i = 0; i < msgQueue.realCount; ++i) 
+	for (i = 0; i < msgQueue.realCount; ++i)
 	{
 		TMsgQueue *item = (TMsgQueue*)msgQueue.items[i];
-		if (dwTime - item->ts > g_dat->msgTimeout)
+		if (dwTime - item->ts > g_dat.msgTimeout)
 		{
 			if (!ntl)
 				tmlst = (TMsgQueue**)alloca((msgQueue.realCount - i) * sizeof(TMsgQueue*));
@@ -83,11 +85,11 @@ static VOID CALLBACK MsgTimer(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTi
 	}
 	LeaveCriticalSection(&csMsgQueue);
 
-	for (i = 0; i < ntl; ++i) 
+	for (i = 0; i < ntl; ++i)
 		MessageFailureProcess(tmlst[i], LPGEN("The message send timed out."));
 }
 
-void msgQueue_add(HANDLE hContact, HANDLE id, const TCHAR* szMsg, HANDLE hDbEvent)
+void msgQueue_add(HANDLE hContact, int id, const TCHAR* szMsg, HANDLE hDbEvent)
 {
 	TMsgQueue *item = (TMsgQueue*)mir_alloc(sizeof(TMsgQueue));
 	item->hContact = hContact;
@@ -104,14 +106,14 @@ void msgQueue_add(HANDLE hContact, HANDLE id, const TCHAR* szMsg, HANDLE hDbEven
 
 }
 
-void msgQueue_processack(HANDLE hContact, HANDLE id, BOOL success, const char* szErr)
+void msgQueue_processack(HANDLE hContact, int id, BOOL success, const char* szErr)
 {
 	int i;
 	TMsgQueue* item = NULL;;
-	
+
 	EnterCriticalSection(&csMsgQueue);
 
-	for (i = 0; i < msgQueue.realCount; ++i) 
+	for (i = 0; i < msgQueue.realCount; ++i)
 	{
 		item = (TMsgQueue*)msgQueue.items[i];
 		if (item->hContact == hContact && item->id == id)
@@ -128,7 +130,7 @@ void msgQueue_processack(HANDLE hContact, HANDLE id, BOOL success, const char* s
 		item = NULL;
 	}
 	LeaveCriticalSection(&csMsgQueue);
-	
+
 	if (item)
 	{
 		if (success)
@@ -149,10 +151,10 @@ void msgQueue_init(void)
 void msgQueue_destroy(void)
 {
 	int i;
-	
+
 	EnterCriticalSection(&csMsgQueue);
 
-	for (i = 0; i < msgQueue.realCount; ++i) 
+	for (i = 0; i < msgQueue.realCount; ++i)
 	{
 		TMsgQueue* item = (TMsgQueue*)msgQueue.items[i];
 		mir_free(item->szMsg);

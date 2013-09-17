@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project, 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -24,9 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef MODULES_H_
 #define MODULES_H_
 
-#ifdef _MSC_VER
-	#pragma warning(disable:4201)
-#endif
+#pragma warning(disable:4201)
 
 /* MAXMODULELABELLENGTH
 The maximum allowed length of a 'name' parameter. Very likely to change with

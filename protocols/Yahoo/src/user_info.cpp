@@ -26,7 +26,7 @@ static INT_PTR CALLBACK YahooUserInfoDlgProc( HWND hwndDlg, UINT msg, WPARAM wPa
 	switch ( msg ) {
 	case WM_INITDIALOG:
 		// lParam is hContact
-		TranslateDialogDefault( hwndDlg );
+		TranslateDialogDefault(hwndDlg );
 
 		//SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)LoadSkinnedIcon(SKINICON_OTHER_USERDETAILS));
 
@@ -34,7 +34,7 @@ static INT_PTR CALLBACK YahooUserInfoDlgProc( HWND hwndDlg, UINT msg, WPARAM wPa
 		break;
 
 	case WM_NOTIFY:
-		if (( ( LPNMHDR )lParam )->idFrom == 0 ) {
+		if (( ( LPNMHDR )lParam )->idFrom == 0) {
 			switch (( ( LPNMHDR )lParam )->code ) {
 			case PSN_PARAMCHANGED:
 				SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (( PSHNOTIFY* )lParam )->lParam );
@@ -62,27 +62,27 @@ static INT_PTR CALLBACK YahooUserInfoDlgProc( HWND hwndDlg, UINT msg, WPARAM wPa
 						DBVARIANT dbv;
 						char z[128];
 						
-						if (ppro->GetString( hContact,  YAHOO_LOGINID, &dbv ) == 0) {
+						if (ppro->getString( hContact,  YAHOO_LOGINID, &dbv) == 0) {
 							strcpy(z, dbv.pszVal);
-							DBFreeVariant( &dbv );
+							db_free(&dbv);
 						} else {
 							strcpy(z, "???");
 						}
 						
 						SetDlgItemTextA(hwndDlg, IDC_SEARCH_ID, z);
 						
-						if (ppro->GetString( hContact,  "Transport", &dbv ) == 0) {
+						if (ppro->getString( hContact,  "Transport", &dbv) == 0) {
 							strcpy(z, dbv.pszVal);
-							DBFreeVariant( &dbv );
+							db_free(&dbv);
 						} else {
 							strcpy(z, "Yahoo");
 						}
 						
 						SetDlgItemTextA(hwndDlg, IDC_SEARCH_PROTOCOL, z);
 						
-						if (ppro->GetString( hContact,  "MirVer", &dbv ) == 0) {
+						if (ppro->getString( hContact,  "MirVer", &dbv) == 0) {
 							strcpy(z, dbv.pszVal);
-							DBFreeVariant( &dbv );
+							db_free(&dbv);
 						} else {
 							strcpy(z, "???");
 						}
@@ -113,20 +113,21 @@ static INT_PTR CALLBACK YahooUserInfoDlgProc( HWND hwndDlg, UINT msg, WPARAM wPa
 
 int __cdecl CYahooProto::OnUserInfoInit( WPARAM wParam, LPARAM lParam )
 {
-	//if ( !JCallService( MS_PROTO_ISPROTOCOLLOADED, 0, ( LPARAM )m_szModuleName ))
+	//if ( !JCallService( MS_PROTO_ISPROTOCOLLOADED, 0, (LPARAM)m_szModuleName ))
 	//	return 0;
 
 	OPTIONSDIALOGPAGE odp = {0};
 	odp.cbSize = sizeof( odp );
 	odp.hInstance = hInstance;
-	odp.dwInitParam = ( LPARAM )this;
+	odp.dwInitParam = (LPARAM)this;
+	odp.flags = ODPF_TCHAR | ODPF_DONTTRANSLATE;
 
 	HANDLE hContact = ( HANDLE )lParam;
 	if ( IsMyContact(hContact)) {
 		odp.pfnDlgProc = YahooUserInfoDlgProc;
 		odp.position = -1900000000;
 		odp.pszTemplate = MAKEINTRESOURCEA( IDD_USER_INFO );
-		odp.pszTitle = m_szModuleName;
+		odp.ptszTitle = m_tszUserName;
 		UserInfo_AddPage(wParam, &odp);
 	} 
 

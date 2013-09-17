@@ -1,8 +1,8 @@
 /*
 Chat module plugin for Miranda IM
 
-Copyright 2000-2010 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -34,12 +34,6 @@ extern BOOL			SmileyAddInstalled;
 extern TABLIST *	g_TabList;
 extern HIMAGELIST	hIconsList;
 
-static WNDPROC OldSplitterProc;
-static WNDPROC OldMessageProc;
-static WNDPROC OldNicklistProc;
-static WNDPROC OldTabProc;
-static WNDPROC OldFilterButtonProc;
-static WNDPROC OldLogProc;
 static HKL hkl = NULL;
 
 typedef struct
@@ -47,7 +41,6 @@ typedef struct
 	time_t lastEnterTime;
 	TCHAR  szTabSave[20];
 } MESSAGESUBDATA;
-
 
 static LRESULT CALLBACK SplitterSubclassProc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM lParam)
 {
@@ -78,7 +71,7 @@ static LRESULT CALLBACK SplitterSubclassProc(HWND hwnd,UINT msg,WPARAM wParam,LP
 		PostMessage(GetParent(hwnd),WM_SIZE, 0, 0);
 		return 0;
 	}
-	return CallWindowProc(OldSplitterProc,hwnd,msg,wParam,lParam);
+	return mir_callNextSubclass(hwnd, SplitterSubclassProc, msg, wParam, lParam);
 }
 
 static void	InitButtons(HWND hwndDlg, SESSION_INFO* si)
@@ -141,10 +134,10 @@ static int RoomWndResize(HWND hwndDlg,LPARAM lParam,UTILRESIZECONTROL *urc)
 	RECT rc, rcTabs;
 	SESSION_INFO* si = (SESSION_INFO*)lParam;
 	int			TabHeight;
-	BOOL		bControl = (BOOL)DBGetContactSettingByte(NULL, "Chat", "ShowTopButtons", 1);
-	BOOL		bFormat = (BOOL)DBGetContactSettingByte(NULL, "Chat", "ShowFormatButtons", 1);
+	BOOL		bControl = (BOOL)db_get_b(NULL, "Chat", "ShowTopButtons", 1);
+	BOOL		bFormat = (BOOL)db_get_b(NULL, "Chat", "ShowFormatButtons", 1);
 	BOOL		bToolbar = bFormat || bControl;
-	BOOL		bSend = (BOOL)DBGetContactSettingByte(NULL, "Chat", "ShowSend", 0);
+	BOOL		bSend = (BOOL)db_get_b(NULL, "Chat", "ShowSend", 0);
 	BOOL		bNick = si->iType!=GCW_SERVER && si->bNicklistEnabled;
 	BOOL		bTabs = g_Settings.TabsEnable;
 	BOOL		bTabBottom = g_Settings.TabsAtBottom;
@@ -305,11 +298,11 @@ static LRESULT CALLBACK MessageSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, 
 				return TRUE;
 
     		if (wParam == '\n' || wParam == '\r') {
-	       		if ((isCtrl != 0) ^ (0 != DBGetContactSettingByte(NULL, "Chat", "SendOnEnter", 1))) {
+	       		if ((isCtrl != 0) ^ (0 != db_get_b(NULL, "Chat", "SendOnEnter", 1))) {
 		      		PostMessage(GetParent(hwnd), WM_COMMAND, IDOK, 0);
 			     	return 0;
 			    }
-			    if (DBGetContactSettingByte(NULL, "Chat", "SendOnDblEnter", 0)) {
+			    if (db_get_b(NULL, "Chat", "SendOnDblEnter", 0)) {
 				    if (dat->lastEnterTime + 2 < time(NULL))
 					   dat->lastEnterTime = time(NULL);
 				    else {
@@ -337,10 +330,10 @@ static LRESULT CALLBACK MessageSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, 
 			BOOL isAlt = GetKeyState(VK_MENU) & 0x8000;
 			if (wParam == VK_RETURN) {
 				dat->szTabSave[0] = '\0';
-				if ((isCtrl != 0) ^ (0 != DBGetContactSettingByte(NULL, "Chat", "SendOnEnter", 1)))
+				if ((isCtrl != 0) ^ (0 != db_get_b(NULL, "Chat", "SendOnEnter", 1)))
 					return 0;
 
-				if (DBGetContactSettingByte(NULL, "Chat", "SendOnDblEnter", 0))
+				if (db_get_b(NULL, "Chat", "SendOnDblEnter", 0))
 					if (dat->lastEnterTime + 2 >= time(NULL))
 						return 0;
 
@@ -399,7 +392,7 @@ static LRESULT CALLBACK MessageSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, 
 					gt.cb = iLen+99;
 					gt.flags = GT_DEFAULT;
 					gt.codepage = 1200;
-					
+
 					SendMessage(hwnd, EM_GETTEXTEX, (WPARAM)&gt, (LPARAM)pszText);
 					while ( start >0 && pszText[start-1] != ' ' && pszText[start-1] != 13 && pszText[start-1] != VK_TAB)
 						start--;
@@ -688,7 +681,7 @@ static LRESULT CALLBACK MessageSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, 
 
 			if (MM_FindModule(Parentsi->pszModule) && MM_FindModule(Parentsi->pszModule)->bBkgColor) {
 				int index = GetColorIndex(Parentsi->pszModule, cf.crBackColor);
-				COLORREF crB = (COLORREF)DBGetContactSettingDword(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
+				COLORREF crB = (COLORREF)db_get_dw(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
 				u = IsDlgButtonChecked(GetParent(hwnd), IDC_BKGCOLOR);
 
 				if (index >= 0) {
@@ -737,7 +730,7 @@ static LRESULT CALLBACK MessageSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, 
 		return 0;
 	}
 
-	return CallWindowProc(OldMessageProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, MessageSubclassProc, msg, wParam, lParam);
 }
 
 static INT_PTR CALLBACK FilterWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
@@ -819,7 +812,7 @@ static LRESULT CALLBACK ButtonSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, L
 			HWND hColor = GetDlgItem(GetParent(hwnd), IDC_COLOR);
 			HWND hBGColor = GetDlgItem(GetParent(hwnd), IDC_BKGCOLOR);
 
-			if (DBGetContactSettingByte(NULL, "Chat", "RightClickFilter", 0) != 0) {
+			if (db_get_b(NULL, "Chat", "RightClickFilter", 0) != 0) {
 				if (hFilter == hwnd)
 					SendMessage(GetParent(hwnd), GC_SHOWFILTERMENU, 0, 0);
 				if (hColor == hwnd)
@@ -830,7 +823,7 @@ static LRESULT CALLBACK ButtonSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, L
 		break;
 	}
 
-	return CallWindowProc(OldFilterButtonProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, ButtonSubclassProc, msg, wParam, lParam);
 }
 
 static LRESULT CALLBACK LogSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -873,7 +866,7 @@ static LRESULT CALLBACK LogSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 		break;
 	}
 
-	return CallWindowProc(OldLogProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, LogSubclassProc, msg, wParam, lParam);
 }
 
 static LRESULT CALLBACK TabSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -901,7 +894,7 @@ static LRESULT CALLBACK TabSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 					s = (SESSION_INFO* ) tc.lParam;
 					if (s)
 					{
-						BOOL bOnline = DBGetContactSettingWord(s->hContact, s->pszModule, "Status", ID_STATUS_OFFLINE) == ID_STATUS_ONLINE?TRUE:FALSE;
+						BOOL bOnline = db_get_w(s->hContact, s->pszModule, "Status", ID_STATUS_OFFLINE) == ID_STATUS_ONLINE?TRUE:FALSE;
 						bDragging = TRUE;
 						iBeginIndex = i;
 						ImageList_BeginDrag(hIconsList, bOnline?(MM_FindModule(s->pszModule))->OnlineIconIndex:(MM_FindModule(s->pszModule))->OfflineIconIndex, 8, 8);
@@ -987,7 +980,7 @@ static LRESULT CALLBACK TabSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
 		break;
 	}
 
-	return CallWindowProc(OldTabProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, TabSubclassProc, msg, wParam, lParam);
 }
 
 static LRESULT CALLBACK NicklistSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -1103,13 +1096,11 @@ static LRESULT CALLBACK NicklistSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
 				POINT p;
 				GetCursorPos(&p);
 				SendMessage( parentdat->hwndTooltip,TTM_TRACKPOSITION,0,(LPARAM)MAKELPARAM(p.x + 15,p.y + 15));
-//				SendMessage( parentdat->hwndTooltip, TTM_ACTIVATE, TRUE, 0 );
 		}	}
 		break;
-
 	}
 
-	return CallWindowProc(OldNicklistProc, hwnd, msg, wParam, lParam);
+	return mir_callNextSubclass(hwnd, NicklistSubclassProc, msg, wParam, lParam);
 }
 
 static int RestoreWindowPosition(HWND hwnd, HANDLE hContact, char * szModule, char * szNamePrefix, UINT showCmd)
@@ -1120,14 +1111,14 @@ static int RestoreWindowPosition(HWND hwnd, HANDLE hContact, char * szModule, ch
 
 	wp.length=sizeof(wp);
 	GetWindowPlacement(hwnd,&wp);
-	wsprintfA(szSettingName,"%sx",szNamePrefix);
-	x=DBGetContactSettingDword(hContact,szModule,szSettingName,-1);
-	wsprintfA(szSettingName,"%sy",szNamePrefix);
-	y=(int)DBGetContactSettingDword(hContact,szModule,szSettingName,-1);
-	wsprintfA(szSettingName,"%swidth",szNamePrefix);
-	width=DBGetContactSettingDword(hContact,szModule,szSettingName,-1);
-	wsprintfA(szSettingName,"%sheight",szNamePrefix);
-	height=DBGetContactSettingDword(hContact,szModule,szSettingName,-1);
+	mir_snprintf(szSettingName, SIZEOF(szSettingName), "%sx", szNamePrefix);
+	x=db_get_dw(hContact,szModule,szSettingName,-1);
+	mir_snprintf(szSettingName, SIZEOF(szSettingName), "%sy", szNamePrefix);
+	y=(int)db_get_dw(hContact,szModule,szSettingName,-1);
+	mir_snprintf(szSettingName, SIZEOF(szSettingName), "%swidth", szNamePrefix);
+	width=db_get_dw(hContact,szModule,szSettingName,-1);
+	mir_snprintf(szSettingName, SIZEOF(szSettingName), "%sheight", szNamePrefix);
+	height=db_get_dw(hContact,szModule,szSettingName,-1);
 
 	if (x==-1)
 		return 0;
@@ -1171,7 +1162,7 @@ INT_PTR CALLBACK RoomWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
 	SESSION_INFO* si;
 
 	si = (SESSION_INFO*)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
-	
+
 	switch (uMsg) {
 	case WM_INITDIALOG:
 		{
@@ -1182,15 +1173,15 @@ INT_PTR CALLBACK RoomWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
 			CoCreateInstance(CLSID_AccPropServices, NULL, CLSCTX_SERVER, IID_IAccPropServices, (LPVOID *)si->pAccPropServicesForNickList);
 			TranslateDialogDefault(hwndDlg);
 			SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)si);
-			OldSplitterProc=(WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_SPLITTERX),GWLP_WNDPROC,(LONG_PTR)SplitterSubclassProc);
-			SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_SPLITTERY),GWLP_WNDPROC,(LONG_PTR)SplitterSubclassProc);
-			OldNicklistProc=(WNDPROC)SetWindowLongPtr(hNickList,GWLP_WNDPROC,(LONG_PTR)NicklistSubclassProc);
-			OldTabProc=(WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_TAB),GWLP_WNDPROC,(LONG_PTR)TabSubclassProc);
-			OldLogProc=(WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_LOG),GWLP_WNDPROC,(LONG_PTR)LogSubclassProc);
-			OldFilterButtonProc=(WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_FILTER),GWLP_WNDPROC,(LONG_PTR)ButtonSubclassProc);
-			SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_COLOR),GWLP_WNDPROC,(LONG_PTR)ButtonSubclassProc);
-			SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_BKGCOLOR),GWLP_WNDPROC,(LONG_PTR)ButtonSubclassProc);
-			OldMessageProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_MESSAGE), GWLP_WNDPROC,(LONG_PTR)MessageSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_SPLITTERX), SplitterSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_SPLITTERY), SplitterSubclassProc);
+			mir_subclassWindow( hNickList, NicklistSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_TAB), TabSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_LOG), LogSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_FILTER), ButtonSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_COLOR), ButtonSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg,IDC_BKGCOLOR), ButtonSubclassProc);
+			mir_subclassWindow( GetDlgItem(hwndDlg, IDC_MESSAGE), MessageSubclassProc);
 			SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_SUBCLASSED, 0, 0);
 			SendDlgItemMessage(hwndDlg, IDC_LOG, EM_AUTOURLDETECT, 1, 0);
 			mask = (int)SendDlgItemMessage(hwndDlg, IDC_LOG, EM_GETEVENTMASK, 0, 0);
@@ -1227,7 +1218,7 @@ INT_PTR CALLBACK RoomWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
 			}
 
 			// restore previous tabs
-			if (g_Settings.TabsEnable && DBGetContactSettingByte(NULL, "Chat", "TabRestore", 0)) {
+			if (g_Settings.TabsEnable && db_get_b(NULL, "Chat", "TabRestore", 0)) {
 				TABLIST * node = g_TabList;
 				while (node) {
 					SESSION_INFO* s = SM_FindSession(node->pszID, node->pszModule);
@@ -1288,8 +1279,8 @@ INT_PTR CALLBACK RoomWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
 				cf.dwMask = CFM_COLOR|CFM_BOLD|CFM_UNDERLINE|CFM_BACKCOLOR;
 				cf.dwEffects = 0;
 				cf.crTextColor = crFore;
-				cf.crBackColor = (COLORREF)DBGetContactSettingDword(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
-				SendMessage(GetDlgItem(hwndDlg, IDC_MESSAGE), EM_SETBKGNDCOLOR , 0, DBGetContactSettingDword(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW)));
+				cf.crBackColor = (COLORREF)db_get_dw(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
+				SendMessage(GetDlgItem(hwndDlg, IDC_MESSAGE), EM_SETBKGNDCOLOR , 0, db_get_dw(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW)));
 				SendDlgItemMessage(hwndDlg, IDC_MESSAGE, WM_SETFONT, (WPARAM) g_Settings.MessageBoxFont, MAKELPARAM(TRUE, 0));
 				SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_SETCHARFORMAT, (WPARAM)SCF_ALL , (LPARAM)&cf);
 			}
@@ -1301,7 +1292,7 @@ INT_PTR CALLBACK RoomWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
 
 				ih = GetTextPixelSize( _T("AQGglo"), g_Settings.UserListFont,FALSE);
 				ih2 = GetTextPixelSize( _T("AQGglo"), g_Settings.UserListHeadingsFont,FALSE);
-				height = DBGetContactSettingByte(NULL, "Chat", "NicklistRowDist", 12);
+				height = db_get_b(NULL, "Chat", "NicklistRowDist", 12);
 				font = ih > ih2?ih:ih2;
 
 				// make sure we have space for icon!
@@ -1374,7 +1365,7 @@ INT_PTR CALLBACK RoomWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
 			SESSION_INFO* pActive = GetActiveSession();
 			WINDOWPLACEMENT wp;
 			RECT screen;
-			int savePerContact = DBGetContactSettingByte(NULL, "Chat", "SavePosition", 0);
+			int savePerContact = db_get_b(NULL, "Chat", "SavePosition", 0);
 
 			wp.length=sizeof(wp);
 			GetWindowPlacement(hwndDlg,&wp);
@@ -1397,7 +1388,7 @@ INT_PTR CALLBACK RoomWndProc(HWND hwndDlg,UINT uMsg,WPARAM wParam,LPARAM lParam)
 			}
 			else SetWindowPos(hwndDlg, 0, (screen.right-screen.left)/2- (550)/2,(screen.bottom-screen.top)/2- (400)/2, (550), (400), SWP_NOZORDER |SWP_HIDEWINDOW|SWP_NOACTIVATE);
 
-			if (!g_Settings.TabsEnable && pActive && pActive->hWnd && DBGetContactSettingByte(NULL, "Chat", "CascadeWindows", 1)) {
+			if (!g_Settings.TabsEnable && pActive && pActive->hWnd && db_get_b(NULL, "Chat", "CascadeWindows", 1)) {
 				RECT rcThis, rcNew;
 				int dwFlag = SWP_NOZORDER|SWP_NOACTIVATE;
 				if (!IsWindowVisible ((HWND)wParam))
@@ -1607,7 +1598,7 @@ END_REMOVETAB:
 							indexfound = i;
 					}	}
 
-					w = DBGetContactSettingWord(s2->hContact, s2->pszModule, "TabPosition", 0);
+					w = db_get_w(s2->hContact, s2->pszModule, "TabPosition", 0);
 					if (w)
 						lastlocked = (int)w;
 			}	}
@@ -1627,7 +1618,7 @@ END_REMOVETAB:
 				tci.lParam = lParam;
 
 				// determine insert position
-				w = DBGetContactSettingWord(s1->hContact, s1->pszModule, "TabPosition", 0);
+				w = db_get_w(s1->hContact, s1->pszModule, "TabPosition", 0);
 				if (wParam == -1)
 					insertat = w == 0?tabId:(int)w-1;
 				else
@@ -1696,7 +1687,7 @@ END_REMOVETAB:
 						if (SM_FindSession(si->ptszID, si->pszModule) == s2)
 							si->wState = s2->wState;
 						SendMessage(hwndDlg, GC_FIXTABICONS, 0, (LPARAM)s2);
-						if (DBGetContactSettingByte(NULL, "Chat", "FlashWindowHighlight", 0) != 0 && GetActiveWindow() != hwndDlg && GetForegroundWindow() != hwndDlg)
+						if (db_get_b(NULL, "Chat", "FlashWindowHighlight", 0) != 0 && GetActiveWindow() != hwndDlg && GetForegroundWindow() != hwndDlg)
 							SetTimer(hwndDlg, TIMERID_FLASHWND, 900, NULL);
 						break;
 				}	}
@@ -1749,7 +1740,7 @@ END_REMOVETAB:
 				if (s) {
 					if (s->wState&STATE_TALK) {
 						s->wState &= ~STATE_TALK;
-						DBWriteContactSettingWord(s->hContact, s->pszModule ,"ApparentMode",(LPARAM) 0);
+						db_set_w(s->hContact, s->pszModule ,"ApparentMode",(LPARAM) 0);
 					}
 
 					if (s->wState&GC_EVENT_HIGHLIGHT) {
@@ -1789,8 +1780,8 @@ END_REMOVETAB:
 				for (i = 0; i< tabId ; i++) {
 					TabCtrl_GetItem(GetDlgItem(hwndDlg, IDC_TAB),i,  &tci);
 					s = (SESSION_INFO*)tci.lParam;
-					if (s && s->hContact && DBGetContactSettingWord(s->hContact, s->pszModule, "TabPosition", 0) != 0)
-						DBWriteContactSettingWord(s->hContact, s->pszModule, "TabPosition", (WORD)(i + 1));
+					if (s && s->hContact && db_get_w(s->hContact, s->pszModule, "TabPosition", 0) != 0)
+						db_set_w(s->hContact, s->pszModule, "TabPosition", (WORD)(i + 1));
 		}	}	}
 		break;
 
@@ -1836,7 +1827,7 @@ END_REMOVETAB:
 				int ih = GetTextPixelSize( _T("AQGgl'"), g_Settings.UserListFont,FALSE);
 				int ih2 = GetTextPixelSize( _T("AQGg'"), g_Settings.UserListHeadingsFont,FALSE);
 				int font = ih > ih2?ih:ih2;
-				int height = DBGetContactSettingByte(NULL, "Chat", "NicklistRowDist", 12);
+				int height = db_get_b(NULL, "Chat", "NicklistRowDist", 12);
 
 				// make sure we have space for icon!
 				if (g_Settings.ShowContactStatus)
@@ -1899,7 +1890,7 @@ END_REMOVETAB:
 					TextOut(dis->hDC, dis->rcItem.left+x_offset, dis->rcItem.top, ui->pszNick, lstrlen(ui->pszNick));
 					SelectObject(dis->hDC, hOldFont);
 
-					if (si->pAccPropServicesForNickList) 
+					if (si->pAccPropServicesForNickList)
 					{
 						wchar_t *nick = mir_t2u(ui->pszNick);
 						si->pAccPropServicesForNickList->SetHwndPropStr(GetDlgItem(hwndDlg,IDC_LIST), OBJID_CLIENT, dis->itemID+1, PROPID_ACC_NAME, nick);
@@ -1940,16 +1931,16 @@ END_REMOVETAB:
 
 			case SESSION_TERMINATE:
 				SendMessage(hwndDlg,GC_SAVEWNDPOS,0,0);
-				if (DBGetContactSettingByte(NULL, "Chat", "SavePosition", 0)) {
-					DBWriteContactSettingDword(si->hContact, "Chat", "roomx", si->iX);
-					DBWriteContactSettingDword(si->hContact, "Chat", "roomy", si->iY);
-					DBWriteContactSettingDword(si->hContact, "Chat", "roomwidth" , si->iWidth);
-					DBWriteContactSettingDword(si->hContact, "Chat", "roomheight", si->iHeight);
+				if (db_get_b(NULL, "Chat", "SavePosition", 0)) {
+					db_set_dw(si->hContact, "Chat", "roomx", si->iX);
+					db_set_dw(si->hContact, "Chat", "roomy", si->iY);
+					db_set_dw(si->hContact, "Chat", "roomwidth" , si->iWidth);
+					db_set_dw(si->hContact, "Chat", "roomheight", si->iHeight);
 				}
 				if (CallService(MS_CLIST_GETEVENT, (WPARAM)si->hContact, 0))
 					CallService(MS_CLIST_REMOVEEVENT, (WPARAM)si->hContact, (LPARAM)"chaticon");
 				si->wState &= ~STATE_TALK;
-				DBWriteContactSettingWord(si->hContact, si->pszModule ,"ApparentMode",(LPARAM) 0);
+				db_set_w(si->hContact, si->pszModule ,"ApparentMode",(LPARAM) 0);
 				SendMessage(hwndDlg, GC_CLOSEWINDOW, 0, 0);
 				return TRUE;
 
@@ -1962,7 +1953,7 @@ END_REMOVETAB:
 				goto LABEL_SHOWWINDOW;
 
 			case SESSION_INITDONE:
-				if (DBGetContactSettingByte(NULL, "Chat", "PopupOnJoin", 0)!=0)
+				if (db_get_b(NULL, "Chat", "PopupOnJoin", 0)!=0)
 					return TRUE;
 				// fall through
 			case WINDOW_VISIBLE:
@@ -2133,8 +2124,8 @@ LABEL_SHOWWINDOW:
 
 			if (KillTimer(hwndDlg, TIMERID_FLASHWND))
 				FlashWindow(hwndDlg, FALSE);
-			if (DBGetContactSettingWord(si->hContact, si->pszModule ,"ApparentMode", 0) != 0)
-				DBWriteContactSettingWord(si->hContact, si->pszModule ,"ApparentMode",(LPARAM) 0);
+			if (db_get_w(si->hContact, si->pszModule ,"ApparentMode", 0) != 0)
+				db_set_w(si->hContact, si->pszModule ,"ApparentMode",(LPARAM) 0);
 			if (CallService(MS_CLIST_GETEVENT, (WPARAM)si->hContact, 0))
 				CallService(MS_CLIST_REMOVEEVENT, (WPARAM)si->hContact, (LPARAM)"chaticon");
 		}
@@ -2172,7 +2163,7 @@ LABEL_SHOWWINDOW:
 							hSubMenu = GetSubMenu(g_hMenu, 5);
 							TranslateMenu(hSubMenu);
 							if (s) {
-								WORD w = DBGetContactSettingWord(s->hContact, s->pszModule, "TabPosition", 0);
+								WORD w = db_get_w(s->hContact, s->pszModule, "TabPosition", 0);
 								if ( w == 0)
 									CheckMenuItem(hSubMenu, ID_LOCKPOSITION, MF_BYCOMMAND|MF_UNCHECKED);
 								else
@@ -2208,9 +2199,9 @@ LABEL_SHOWWINDOW:
 								TabCtrl_GetItem(GetDlgItem(hwndDlg, IDC_TAB), i, &id);
 								if (!(GetMenuState(hSubMenu, ID_LOCKPOSITION, MF_BYCOMMAND)&MF_CHECKED)) {
 									if (s->hContact)
-										DBWriteContactSettingWord(s->hContact, s->pszModule, "TabPosition", (WORD)(i + 1));
+										db_set_w(s->hContact, s->pszModule, "TabPosition", (WORD)(i + 1));
 								}
-								else DBDeleteContactSetting(s->hContact, s->pszModule, "TabPosition");
+								else db_unset(s->hContact, s->pszModule, "TabPosition");
 								break;
 				}	}	}	}
 				break;
@@ -2558,7 +2549,7 @@ LABEL_SHOWWINDOW:
 
 			si->bFilterEnabled = !si->bFilterEnabled;
 			SendDlgItemMessage(hwndDlg,IDC_FILTER,BM_SETIMAGE,IMAGE_ICON,(LPARAM)LoadIconEx( si->bFilterEnabled ? "filter" : "filter2", FALSE ));
-			if (si->bFilterEnabled && DBGetContactSettingByte(NULL, "Chat", "RightClickFilter", 0) == 0) {
+			if (si->bFilterEnabled && db_get_b(NULL, "Chat", "RightClickFilter", 0) == 0) {
 				SendMessage(hwndDlg, GC_SHOWFILTERMENU, 0, 0);
 				break;
 			}
@@ -2576,7 +2567,7 @@ LABEL_SHOWWINDOW:
 					break;
 
 				if (IsDlgButtonChecked(hwndDlg, IDC_BKGCOLOR )) {
-					if (DBGetContactSettingByte(NULL, "Chat", "RightClickFilter", 0) == 0)
+					if (db_get_b(NULL, "Chat", "RightClickFilter", 0) == 0)
 						SendMessage(hwndDlg, GC_SHOWCOLORCHOOSER, 0, (LPARAM)IDC_BKGCOLOR);
 					else if (si->bBGSet) {
 						cf.dwMask = CFM_BACKCOLOR;
@@ -2585,7 +2576,7 @@ LABEL_SHOWWINDOW:
 				}	}
 				else {
 					cf.dwMask = CFM_BACKCOLOR;
-					cf.crBackColor = (COLORREF)DBGetContactSettingDword(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
+					cf.crBackColor = (COLORREF)db_get_dw(NULL, "Chat", "ColorMessageBG", GetSysColor(COLOR_WINDOW));
 					SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
 			}	}
 			break;
@@ -2600,7 +2591,7 @@ LABEL_SHOWWINDOW:
 					break;
 
 				if (IsDlgButtonChecked(hwndDlg, IDC_COLOR )) {
-					if (DBGetContactSettingByte(NULL, "Chat", "RightClickFilter", 0) == 0)
+					if (db_get_b(NULL, "Chat", "RightClickFilter", 0) == 0)
 						SendMessage(hwndDlg, GC_SHOWCOLORCHOOSER, 0, (LPARAM)IDC_COLOR);
 					else if (si->bFGSet) {
 						cf.dwMask = CFM_COLOR;
@@ -2709,17 +2700,8 @@ LABEL_SHOWWINDOW:
 		si->hwndTooltip = NULL;
 		if (si->pAccPropServicesForNickList) si->pAccPropServicesForNickList->Release();
 		SetWindowLongPtr(hwndDlg,GWLP_USERDATA,0);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_SPLITTERX),GWLP_WNDPROC,(LONG_PTR)OldSplitterProc);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_SPLITTERY),GWLP_WNDPROC,(LONG_PTR)OldSplitterProc);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_LIST),GWLP_WNDPROC,(LONG_PTR)OldNicklistProc);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_TAB),GWLP_WNDPROC,(LONG_PTR)OldTabProc);
 		SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_UNSUBCLASSED, 0, 0);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_MESSAGE),GWLP_WNDPROC,(LONG_PTR)OldMessageProc);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_LOG),GWLP_WNDPROC,(LONG_PTR)OldLogProc);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_FILTER),GWLP_WNDPROC,(LONG_PTR)OldFilterButtonProc);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_COLOR),GWLP_WNDPROC,(LONG_PTR)OldFilterButtonProc);
-		SetWindowLongPtr(GetDlgItem(hwndDlg,IDC_BKGCOLOR),GWLP_WNDPROC,(LONG_PTR)OldFilterButtonProc);
 		break;
 	}
-	return(FALSE);
+	return FALSE;
 }

@@ -1,6 +1,6 @@
 /*
-Weather Protocol plugin for Miranda IM
-Copyright (c) 2012 Miranda NG Team
+Weather Protocol plugin for Miranda NG
+Copyright (c) 2012-2013 Miranda NG Team
 Copyright (c) 2005-2011 Boris Krasnovskiy All Rights Reserved
 Copyright (c) 2002-2005 Calvin Che
 
@@ -25,36 +25,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //============  THE INCLUDES  ===========
 
 #define _CRT_SECURE_NO_WARNINGS
-#include <m_stdhdr.h>
 
-#include <stdio.h>
-#include <io.h>
 #include <share.h>
-#include <direct.h>
-#include <process.h>
 #include <time.h>
-
 #include <windows.h>
 #include <commctrl.h>
 #include <richedit.h>
-
-#include <win2k.h>
-
-#define MIRANDA_VER 0x0A00
+#include <malloc.h>
 
 #include <newpluginapi.h>
-#include <m_system.h>
-#include <m_system_cpp.h>
 #include <m_protomod.h>
-#include <m_protosvc.h>
-#include <m_clist.h>
 #include <m_icolib.h>
 #include <m_options.h>
 #include <m_langpack.h>
 #include <m_skin.h>
 #include <m_database.h>
 #include <m_history.h>
-#include <m_utils.h>
 #include <m_userinfo.h>
 #include <m_netlib.h>
 #include <m_ignore.h>
@@ -66,10 +52,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <m_fontservice.h>
 #include <m_skin_eng.h>
 #include <m_cluiframes.h>
-
 #include <m_popup.h>
+#include <win2k.h>
+#include <m_acc.h>
 
-#include "m_weather.h"
+#include <m_weather.h>
+#include <m_toptoolbar.h>
+
 #include "resource.h"
 #include "version.h"
 
@@ -79,8 +68,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define NOSTATUSDATA	1
 
 // limits
-#define MAX_TEXT_SIZE	4096
-#define MAX_DATA_LEN	1024
+#define MAX_TEXT_SIZE   4096
+#define MAX_DATA_LEN    1024
 
 // db info mangement mode
 #define WDBM_REMOVE			1
@@ -372,9 +361,11 @@ extern HANDLE hNetlibUser, hNetlibHttp;
 extern HANDLE hHookWeatherUpdated;
 extern HANDLE hHookWeatherError;
 extern HANDLE hWindowList;
-extern HANDLE hMwinMenu;
-
+extern HANDLE hTBButton;
 extern UINT_PTR timerId;
+extern HANDLE hUpdateMutex;
+
+extern HGENMENU hMwinMenu;
 
 // check if weather is currently updating
 extern BOOL ThreadRunning;
@@ -458,10 +449,10 @@ void NetlibHttpDisconnect(void);
 void WIListAdd(WIDATA Data);
 WIDATA* GetWIData(TCHAR *pszServ);
 
-BOOL IsContainedInCondList(const TCHAR *pszStr, WICONDLIST *List);
+bool IsContainedInCondList(const TCHAR *pszStr, WICONDLIST *List);
 
 void DestroyWIList();
-BOOL LoadWIData(BOOL dial);
+bool LoadWIData(bool dial);
 void FreeWIData(WIDATA *Data);
 
 INT_PTR CALLBACK DlgProcSetup(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -485,7 +476,7 @@ void RemoveIconSettings();
 BOOL CALLBACK TextOptionsProc(HWND hdlg,UINT msg,WPARAM wparam,LPARAM lparam);
 BOOL CALLBACK AdvOptionsProc(HWND hdlg,UINT msg,WPARAM wparam,LPARAM lparam);
 INT_PTR CALLBACK DlgProcText(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-INT_PTR CALLBACK DlgPopUpOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK DlgPopupOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // functions in weather_popup.c
 int WeatherPopup(WPARAM wParam, LPARAM lParam);
@@ -538,6 +529,7 @@ void removeWindow(HANDLE hContact);
 int UserInfoInit(WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK DlgProcUIPage(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK DlgProcMoreData(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK DlgProcINIPage(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
 #define WM_UPDATEDATA WM_USER + 2687
 

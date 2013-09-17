@@ -21,8 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "import.h"
-#include "version.h"
-#include "resource.h"
 
 int nImportOption;
 int nCustomOptions;
@@ -39,19 +37,19 @@ int hLangpack;
 PLUGININFOEX pluginInfo =
 {
 	sizeof(PLUGININFOEX),
-	"Import contacts and messages",
-	__VERSION_DWORD,
-	"Imports contacts and messages from another Miranda profile or from an external program.",
-	"Miranda team",
-	"info@miranda-im.org",
-	"© 2000-2010 Martin Öberg, Richard Hughes, Dmitry Kuzkin, George Hazan",
-	"http://miranda-ng.org/",
+	__PLUGIN_NAME,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
+	__DESCRIPTION,
+	__AUTHOR,
+	__AUTHOREMAIL,
+	__COPYRIGHT,
+	__AUTHORWEB,
 	UNICODE_AWARE,
 	//{2D77A746-00A6-4343-BFC5-F808CDD772EA}
-	{0x2d77a746, 0xa6, 0x4343, { 0xbf, 0xc5, 0xf8, 0x8, 0xcd, 0xd7, 0x72, 0xea }}
+	{0x2d77a746, 0xa6, 0x4343, {0xbf, 0xc5, 0xf8, 0x8, 0xcd, 0xd7, 0x72, 0xea}}
 };
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	hInst = hinstDLL;
 	return TRUE;
@@ -86,7 +84,7 @@ extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_IMPORT,
 
 static int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 {
-	if (DBGetContactSettingByte(NULL, IMPORT_MODULE, IMP_KEY_FR, 0))
+	if (db_get_b(NULL, IMPORT_MODULE, IMP_KEY_FR, 0))
 		return 0;
 
 	// Only autorun import wizard if at least one protocol is installed
@@ -95,14 +93,14 @@ static int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	ProtoEnumAccounts(&nProtocols, &ppProtos);
 	if (nProtocols > 0) {
 		CallService(IMPORT_SERVICE, 0, 0);
-		DBWriteContactSettingByte(NULL, IMPORT_MODULE, IMP_KEY_FR, 1);
+		db_set_b(NULL, IMPORT_MODULE, IMP_KEY_FR, 1);
 	}
 	return 0;
 }
 
 static int OnExit(WPARAM wParam, LPARAM lParam)
 {
-	if ( hwndWizard )
+	if (hwndWizard)
 		SendMessage(hwndWizard, WM_CLOSE, 0, 0);
 	return 0;
 }
@@ -126,7 +124,6 @@ extern "C" __declspec(dllexport) int Load(void)
 	mi.pszName = LPGEN("&Import...");
 	mi.position = 500050000;
 	mi.pszService = IMPORT_SERVICE;
-	mi.flags = CMIF_ICONFROMICOLIB;
 	Menu_AddMainMenuItem(&mi);
 
 	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);

@@ -26,50 +26,30 @@
  *
  * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
  *
- * $Id: globals.cpp 13447 2011-03-14 19:55:07Z george.hazan $
- *
  * Plugin configuration variables and functions. Implemented as a class
  * though there will always be only a single instance.
  *
  */
 
 #include "commonheaders.h"
-extern PLUGININFOEX pluginInfo;
 
 CGlobals 	PluginConfig;
 CGlobals*	pConfig = &PluginConfig;
 
-static TContainerSettings _cnt_default = {
-		false,
-		CNT_FLAGS_DEFAULT,
-		CNT_FLAGSEX_DEFAULT,
-		255,
-		CInfoPanel::DEGRADE_THRESHOLD,
-		60,
-		_T("%n - %s  %x"),
-		2,
-		1
-};
+static TContainerSettings _cnt_default = { false, CNT_FLAGS_DEFAULT, CNT_FLAGSEX_DEFAULT, 255, CInfoPanel::DEGRADE_THRESHOLD, 60, _T("%n - %s %x"), 2, 1 };
 
-HANDLE		CGlobals::m_event_ModulesLoaded = 0, CGlobals::m_event_PrebuildMenu = 0, CGlobals::m_event_SettingChanged = 0;
-HANDLE		CGlobals::m_event_ContactDeleted = 0, CGlobals::m_event_Dispatch = 0, CGlobals::m_event_EventAdded = 0;
-HANDLE		CGlobals::m_event_IconsChanged = 0, CGlobals::m_event_TypingEvent = 0, CGlobals::m_event_ProtoAck = 0;
-HANDLE		CGlobals::m_event_PreShutdown = 0, CGlobals::m_event_OkToExit = 0;
-HANDLE		CGlobals::m_event_IcoLibChanged = 0, CGlobals::m_event_AvatarChanged = 0, CGlobals::m_event_MyAvatarChanged = 0, CGlobals::m_event_FontsChanged = 0;
-HANDLE		CGlobals::m_event_SmileyAdd = 0, CGlobals::m_event_IEView = 0, CGlobals::m_event_FoldersChanged = 0;
-HANDLE 		CGlobals::m_event_ME_MC_SUBCONTACTSCHANGED = 0, CGlobals::m_event_ME_MC_FORCESEND = 0, CGlobals::m_event_ME_MC_UNFORCESEND = 0;
-TCHAR*		CGlobals::m_default_container_name = _T("default");
+TCHAR* CGlobals::m_default_container_name = _T("default");
 
-extern 		HANDLE 	hHookButtonPressedEvt;
-extern		HANDLE 	hHookToolBarLoadedEvt;
+extern HANDLE 	hHookButtonPressedEvt;
+extern HANDLE 	hHookToolBarLoadedEvt;
 
 EXCEPTION_RECORD CGlobals::m_exRecord = {0};
-CONTEXT		 	 CGlobals::m_exCtx = {0};
-LRESULT			 CGlobals::m_exLastResult = 0;
-char			 CGlobals::m_exSzFile[MAX_PATH] = "\0";
-wchar_t			 CGlobals::m_exReason[256] = L"\0";
-int				 CGlobals::m_exLine = 0;
-bool			 CGlobals::m_exAllowContinue = false;
+CONTEXT          CGlobals::m_exCtx = {0};
+LRESULT          CGlobals::m_exLastResult = 0;
+char             CGlobals::m_exSzFile[MAX_PATH] = "\0";
+wchar_t          CGlobals::m_exReason[256] = L"\0";
+int              CGlobals::m_exLine = 0;
+bool             CGlobals::m_exAllowContinue = false;
 
 #if defined(_WIN64)
 	static char szCurrentVersion[30];
@@ -84,23 +64,6 @@ bool			 CGlobals::m_exAllowContinue = false;
 	static char *szFLVersionUrl = "http://miranda-ng.org/";
 	static char *szFLUpdateurl =  "http://miranda-ng.org/";
 #endif
-	static char *szPrefix = "tabsrmm ";
-
-
-CRTException::CRTException(const char *szMsg, const TCHAR *szParam) : std::runtime_error(std::string(szMsg))
-{
-	mir_sntprintf(m_szParam, MAX_PATH, szParam);
-}
-
-void CRTException::display() const
-{
-	TCHAR*	tszMsg = mir_a2t(what());
-	TCHAR  	tszBoxMsg[500];
-
-	mir_sntprintf(tszBoxMsg, 500, _T("%s\n\n(%s)"), tszMsg, m_szParam);
-	::MessageBox(0, tszBoxMsg, _T("TabSRMM runtime error"), MB_OK | MB_ICONERROR);
-	mir_free(tszMsg);
-}
 
 /**
  * reload system values. These are read ONCE and are not allowed to change
@@ -117,7 +80,6 @@ void CGlobals::reloadSystemStartup()
 	m_bIsVista = IsWinVerVistaPlus();
 	m_bIsWin7 = IsWinVer7Plus();
 
-	::LoadTSButtonModule();
 	::RegisterTabCtrlClass();
 	CTip::registerClass();
 
@@ -156,8 +118,6 @@ void CGlobals::reloadSystemStartup()
  */
 void CGlobals::reloadSystemModulesChanged()
 {
-	BOOL bIEView = FALSE;
-
 	m_MathModAvail = ServiceExists(MATH_RTF_REPLACE_FORMULAE);
 
 	/*
@@ -165,10 +125,8 @@ void CGlobals::reloadSystemModulesChanged()
 	 */
 	if (ServiceExists(MS_SMILEYADD_REPLACESMILEYS)) {
 		PluginConfig.g_SmileyAddAvail = 1;
-		m_event_SmileyAdd = HookEvent(ME_SMILEYADD_OPTIONSCHANGED, ::SmileyAddOptionsChanged);
+		HookEvent(ME_SMILEYADD_OPTIONSCHANGED, ::SmileyAddOptionsChanged);
 	}
-	else
-		m_event_SmileyAdd = 0;
 
 	/*
 	 * Flashavatars
@@ -180,25 +138,23 @@ void CGlobals::reloadSystemModulesChanged()
 	 * ieView
 	 */
 
-	bIEView = ServiceExists(MS_IEVIEW_WINDOW);
+	BOOL bIEView = ServiceExists(MS_IEVIEW_WINDOW);
 	if (bIEView) {
-		BOOL bOldIEView = M->GetByte("ieview_installed", 0);
+		BOOL bOldIEView = M.GetByte("ieview_installed", 0);
 		if (bOldIEView != bIEView)
-			M->WriteByte(SRMSGMOD_T, "default_ieview", 1);
-		M->WriteByte(SRMSGMOD_T, "ieview_installed", 1);
-		m_event_IEView = HookEvent(ME_IEVIEW_OPTIONSCHANGED, ::IEViewOptionsChanged);
-	} else {
-		M->WriteByte(SRMSGMOD_T, "ieview_installed", 0);
-		m_event_IEView = 0;
+			db_set_b(0, SRMSGMOD_T, "default_ieview", 1);
+		db_set_b(0, SRMSGMOD_T, "ieview_installed", 1);
+		HookEvent(ME_IEVIEW_OPTIONSCHANGED, ::IEViewOptionsChanged);
 	}
+	else db_set_b(0, SRMSGMOD_T, "ieview_installed", 0);
 
-	g_iButtonsBarGap = 							M->GetByte("ButtonsBarGap", 1);
-	m_hwndClist = 								(HWND)CallService(MS_CLUI_GETHWND, 0, 0);
-	m_MathModAvail = 							(ServiceExists(MATH_RTF_REPLACE_FORMULAE) ? 1 : 0);
+	g_iButtonsBarGap = M.GetByte("ButtonsBarGap", 1);
+	m_hwndClist = (HWND)CallService(MS_CLUI_GETHWND, 0, 0);
+	m_MathModAvail = (ServiceExists(MATH_RTF_REPLACE_FORMULAE) ? 1 : 0);
 	if (m_MathModAvail) {
 		char *szDelim = (char *)CallService(MATH_GET_STARTDELIMITER, 0, 0);
 		if (szDelim) {
-			MultiByteToWideChar(CP_ACP, 0, szDelim, -1, PluginConfig.m_MathModStartDelimiter, safe_sizeof(PluginConfig.m_MathModStartDelimiter));
+			MultiByteToWideChar(CP_ACP, 0, szDelim, -1, PluginConfig.m_MathModStartDelimiter, SIZEOF(PluginConfig.m_MathModStartDelimiter));
 			CallService(MTH_FREE_MATH_BUFFER, 0, (LPARAM)szDelim);
 		}
 	}
@@ -208,25 +164,24 @@ void CGlobals::reloadSystemModulesChanged()
 
 	if (g_MetaContactsAvail) {
 		mir_snprintf(szMetaName, 256, "%s", (char *)CallService(MS_MC_GETPROTOCOLNAME, 0, 0));
-		bMetaEnabled = abs(M->GetByte(0, szMetaName, "Enabled", -1));
+		bMetaEnabled = abs(M.GetByte(szMetaName, "Enabled", -1));
 	}
 	else {
 		szMetaName[0] = 0;
 		bMetaEnabled = 0;
 	}
 
-	g_PopupAvail = (ServiceExists(MS_POPUP_ADDPOPUPEX) ? 1 : 0);
-	g_PopupWAvail = (ServiceExists(MS_POPUP_ADDPOPUPW) ? 1 : 0);
+	g_PopupAvail = ServiceExists(MS_POPUP_ADDPOPUP);
 
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.position = -2000090000;
-	mi.flags = CMIF_ICONFROMICOLIB | CMIF_DEFAULT;
+	mi.flags = CMIF_DEFAULT;
 	mi.icolibItem = LoadSkinnedIconHandle(SKINICON_EVENT_MESSAGE);
 	mi.pszName = LPGEN("&Message");
 	mi.pszService = MS_MSG_SENDMESSAGE;
 	PluginConfig.m_hMenuItem = Menu_AddContactMenuItem(&mi);
 
-	m_useAeroPeek = M->GetByte("useAeroPeek", 1);
+	m_useAeroPeek = M.GetByte("useAeroPeek", 1);
 }
 
 /**
@@ -238,69 +193,69 @@ void CGlobals::reloadSettings(bool fReloadSkins)
 	m_ncm.cbSize = sizeof(NONCLIENTMETRICS);
 	SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(NONCLIENTMETRICS), &m_ncm, 0);
 
-	DWORD dwFlags = 					M->GetDword("mwflags", MWF_LOG_DEFAULT);
+	DWORD dwFlags = M.GetDword("mwflags", MWF_LOG_DEFAULT);
 
-	m_SendOnShiftEnter = 				(int)M->GetByte("sendonshiftenter", 0);
-	m_SendOnEnter = 					(int)M->GetByte(SRMSGSET_SENDONENTER, SRMSGDEFSET_SENDONENTER);
-	m_SendOnDblEnter = 					(int)M->GetByte("SendOnDblEnter", 0);
-	m_AutoLocaleSupport = 				(int)M->GetByte("al", 0);
-	m_AutoSwitchTabs = 					(int)M->GetByte("autoswitchtabs", 1);
-	m_CutContactNameTo = 				(int) DBGetContactSettingWord(NULL, SRMSGMOD_T, "cut_at", 15);
-	m_CutContactNameOnTabs = 			(int)M->GetByte("cuttitle", 0);
-	m_StatusOnTabs = 					(int)M->GetByte("tabstatus", 0);
-	m_LogStatusChanges = 				(int)dwFlags & MWF_LOG_STATUSCHANGES;
-	m_UseDividers = 					(int)M->GetByte("usedividers", 0);
-	m_DividersUsePopupConfig = 			(int)M->GetByte("div_popupconfig", 0);
-	m_MsgTimeout = 						(int)M->GetDword(SRMSGMOD, SRMSGSET_MSGTIMEOUT, SRMSGDEFSET_MSGTIMEOUT);
+	m_SendOnShiftEnter = M.GetByte("sendonshiftenter", 0);
+	m_SendOnEnter = M.GetByte(SRMSGSET_SENDONENTER, SRMSGDEFSET_SENDONENTER);
+	m_SendOnDblEnter = M.GetByte("SendOnDblEnter", 0);
+	m_AutoLocaleSupport = M.GetByte("al", 0);
+	m_AutoSwitchTabs = M.GetByte("autoswitchtabs", 1);
+	m_CutContactNameTo = db_get_w(NULL, SRMSGMOD_T, "cut_at", 15);
+	m_CutContactNameOnTabs = M.GetByte("cuttitle", 0);
+	m_StatusOnTabs = M.GetByte("tabstatus", 0);
+	m_LogStatusChanges = M.GetByte("logstatuschanges", 0);
+	m_UseDividers = M.GetByte("usedividers", 0);
+	m_DividersUsePopupConfig = M.GetByte("div_popupconfig", 0);
+	m_MsgTimeout = M.GetDword(SRMSGMOD, SRMSGSET_MSGTIMEOUT, SRMSGDEFSET_MSGTIMEOUT);
 
 	if (m_MsgTimeout < SRMSGSET_MSGTIMEOUT_MIN)
 		m_MsgTimeout = SRMSGSET_MSGTIMEOUT_MIN;
 
-	m_EscapeCloses = 					(int)M->GetByte("escmode", 0);
+	m_EscapeCloses = M.GetByte("escmode", 0);
 
-	m_HideOnClose =						(int) M->GetByte("hideonclose", 1);
-	m_AllowTab =						(int) M->GetByte("tabmode", 0);
+	m_HideOnClose = M.GetByte("hideonclose", 1);
+	m_AllowTab = M.GetByte("tabmode", 0);
 
-	m_FlashOnClist = 					(int)M->GetByte("flashcl", 1);
-	m_AlwaysFullToolbarWidth = 			(int)M->GetByte("alwaysfulltoolbar", 1);
-	m_LimitStaticAvatarHeight = 		(int)M->GetDword("avatarheight", 128);
-	m_SendFormat = 						(int)M->GetByte("sendformat", 1);
+	m_FlashOnClist = M.GetByte("flashcl", 1);
+	m_AlwaysFullToolbarWidth = M.GetByte("alwaysfulltoolbar", 1);
+	m_LimitStaticAvatarHeight = M.GetDword("avatarheight", 128);
+	m_SendFormat = M.GetByte("sendformat", 1);
 	m_FormatWholeWordsOnly = 1;
-	m_RTLDefault = 						(int)M->GetByte("rtldefault", 0);
-	m_TabAppearance = 					(int)M->GetDword("tabconfig", TCF_FLASHICON | TCF_SINGLEROWTABCONTROL);
-	m_panelHeight = 					(DWORD)M->GetDword("panelheight", CInfoPanel::DEGRADE_THRESHOLD);
-	m_MUCpanelHeight = 					M->GetDword("Chat", "panelheight", CInfoPanel::DEGRADE_THRESHOLD);
-	m_IdleDetect = 						(int)M->GetByte("dimIconsForIdleContacts", 1);
+	m_RTLDefault = M.GetByte("rtldefault", 0);
+	m_TabAppearance = M.GetDword("tabconfig", TCF_FLASHICON | TCF_SINGLEROWTABCONTROL);
+	m_panelHeight = (DWORD)M.GetDword("panelheight", CInfoPanel::DEGRADE_THRESHOLD);
+	m_MUCpanelHeight = M.GetDword("Chat", "panelheight", CInfoPanel::DEGRADE_THRESHOLD);
+	m_IdleDetect = M.GetByte("dimIconsForIdleContacts", 1);
 	m_smcxicon = 16;
 	m_smcyicon = 16;
-	m_PasteAndSend = 					(int)M->GetByte("pasteandsend", 1);
-	m_szNoStatus = 						TranslateT("No status message");
-	m_LangPackCP = 						ServiceExists(MS_LANGPACK_GETCODEPAGE) ? CallService(MS_LANGPACK_GETCODEPAGE, 0, 0) : CP_ACP;
-	m_visualMessageSizeIndicator = 		M->GetByte("msgsizebar", 1);
-	m_autoSplit = 						M->GetByte("autosplit", 1);
-	m_FlashOnMTN = 						M->GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINFLASH, SRMSGDEFSET_SHOWTYPINGWINFLASH);
+	m_PasteAndSend = M.GetByte("pasteandsend", 1);
+	m_szNoStatus = TranslateT("No status message");
+	m_LangPackCP = ServiceExists(MS_LANGPACK_GETCODEPAGE) ? CallService(MS_LANGPACK_GETCODEPAGE, 0, 0) : CP_ACP;
+	m_visualMessageSizeIndicator = M.GetByte("msgsizebar", 1);
+	m_autoSplit = M.GetByte("autosplit", 1);
+	m_FlashOnMTN = M.GetByte(SRMSGMOD, SRMSGSET_SHOWTYPINGWINFLASH, SRMSGDEFSET_SHOWTYPINGWINFLASH);
 	if (m_MenuBar == 0) {
 		m_MenuBar = ::LoadMenu(g_hInst, MAKEINTRESOURCE(IDR_MENUBAR));
 		TranslateMenu(m_MenuBar);
 	}
 
-	m_ipBackgroundGradient = 			M->GetDword(FONTMODULE, "ipfieldsbg", 0x62caff);
+	m_ipBackgroundGradient = M.GetDword(FONTMODULE, "ipfieldsbg", 0x62caff);
 	if (0 == m_ipBackgroundGradient)
 		m_ipBackgroundGradient = 0x62caff;
 
-	m_ipBackgroundGradientHigh = 		M->GetDword(FONTMODULE, "ipfieldsbgHigh", 0xf0f0f0);
+	m_ipBackgroundGradientHigh = M.GetDword(FONTMODULE, "ipfieldsbgHigh", 0xf0f0f0);
 	if (0 == m_ipBackgroundGradientHigh)
 		m_ipBackgroundGradientHigh = 0xf0f0f0;
 
-	m_tbBackgroundHigh = 				M->GetDword(FONTMODULE, "tbBgHigh", 0);
-	m_tbBackgroundLow = 				M->GetDword(FONTMODULE, "tbBgLow", 0);
-	m_fillColor =						M->GetDword(FONTMODULE, "fillColor", 0);
+	m_tbBackgroundHigh = M.GetDword(FONTMODULE, "tbBgHigh", 0);
+	m_tbBackgroundLow = M.GetDword(FONTMODULE, "tbBgLow", 0);
+	m_fillColor = M.GetDword(FONTMODULE, "fillColor", 0);
 	if (CSkin::m_BrushFill) {
 		::DeleteObject(CSkin::m_BrushFill);
 		CSkin::m_BrushFill = 0;
 	}
-	m_genericTxtColor = 				M->GetDword(FONTMODULE, "genericTxtClr", GetSysColor(COLOR_BTNTEXT));
-	m_cRichBorders =					M->GetDword(FONTMODULE, "cRichBorders", 0);
+	m_genericTxtColor = M.GetDword(FONTMODULE, "genericTxtClr", GetSysColor(COLOR_BTNTEXT));
+	m_cRichBorders = M.GetDword(FONTMODULE, "cRichBorders", 0);
 
 	::CopyMemory(&globalContainerSettings, &_cnt_default, sizeof(TContainerSettings));
 	Utils::ReadContainerSettingsFromDB(0, &globalContainerSettings);
@@ -314,16 +269,15 @@ void CGlobals::reloadSettings(bool fReloadSkins)
  */
 void CGlobals::reloadAdv()
 {
-	g_bDisableAniAvatars = M->GetByte("adv_DisableAniAvatars", 0);
-	g_bSoundOnTyping = M->GetByte("adv_soundontyping", 1);
-	m_dontUseDefaultKbd = M->GetByte("adv_leaveKeyboardAlone", 1);
-	g_bClientInStatusBar = M->GetByte("adv_ClientIconInStatusBar", 0);
+	g_bDisableAniAvatars = M.GetByte("adv_DisableAniAvatars", 0);
+	g_bSoundOnTyping = M.GetByte("adv_soundontyping", 1);
+	m_dontUseDefaultKbd = M.GetByte("adv_leaveKeyboardAlone", 1);
 
 	if (g_bSoundOnTyping && m_TypingSoundAdded == false) {
-		SkinAddNewSoundEx("SoundOnTyping", LPGEN("Other"), LPGEN("TABSRMM: Typing"));
+		SkinAddNewSoundEx("SoundOnTyping", LPGEN("Other"), LPGEN("TabSRMM: Typing"));
 		m_TypingSoundAdded = true;
 	}
-	m_AllowOfflineMultisend = M->GetByte("AllowOfflineMultisend", 1);
+	m_AllowOfflineMultisend = M.GetByte("AllowOfflineMultisend", 1);
 }
 
 const HMENU CGlobals::getMenuBar()
@@ -341,18 +295,38 @@ const HMENU CGlobals::getMenuBar()
  */
 void CGlobals::hookSystemEvents()
 {
-	m_event_ModulesLoaded 	= 	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
-	m_event_IconsChanged 	= 	HookEvent(ME_SKIN_ICONSCHANGED, ::IconsChanged);
-	m_event_TypingEvent 	= 	HookEvent(ME_PROTO_CONTACTISTYPING, CMimAPI::TypingMessage);
-	m_event_ProtoAck 		= 	HookEvent(ME_PROTO_ACK, CMimAPI::ProtoAck);
-	m_event_PreShutdown 	= 	HookEvent(ME_SYSTEM_PRESHUTDOWN, PreshutdownSendRecv);
-	m_event_OkToExit 		= 	HookEvent(ME_SYSTEM_OKTOEXIT, OkToExit);
+	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
+	HookEvent(ME_SKIN_ICONSCHANGED, ::IconsChanged);
+	HookEvent(ME_PROTO_CONTACTISTYPING, CMimAPI::TypingMessage);
+	HookEvent(ME_PROTO_ACK, CMimAPI::ProtoAck);
+	HookEvent(ME_SYSTEM_PRESHUTDOWN, PreshutdownSendRecv);
+	HookEvent(ME_SYSTEM_OKTOEXIT, OkToExit);
 
-	m_event_PrebuildMenu 	= 	HookEvent(ME_CLIST_PREBUILDCONTACTMENU, CMimAPI::PrebuildContactMenu);
+	HookEvent(ME_CLIST_PREBUILDCONTACTMENU, CMimAPI::PrebuildContactMenu);
 
-	m_event_IcoLibChanged 	= 	HookEvent(ME_SKIN2_ICONSCHANGED, ::IcoLibIconsChanged);
-	m_event_AvatarChanged 	= 	HookEvent(ME_AV_AVATARCHANGED, ::AvatarChanged);
-	m_event_MyAvatarChanged = 	HookEvent(ME_AV_MYAVATARCHANGED, ::MyAvatarChanged);
+	HookEvent(ME_SKIN2_ICONSCHANGED, ::IcoLibIconsChanged);
+	HookEvent(ME_AV_AVATARCHANGED, ::AvatarChanged);
+	HookEvent(ME_AV_MYAVATARCHANGED, ::MyAvatarChanged);
+}
+
+int CGlobals::TopToolbarLoaded(WPARAM,LPARAM)
+{
+	TTBButton ttb = {0};
+	ttb.cbSize = sizeof(ttb);
+	ttb.dwFlags = TTBBF_SHOWTOOLTIP | TTBBF_VISIBLE;
+	ttb.pszService = MS_TABMSG_TRAYSUPPORT;
+	ttb.name = "TabSRMM session list";
+	ttb.pszTooltipUp = LPGEN("TabSRMM session list");
+	ttb.hIconHandleUp = Skin_GetIcon("tabSRMM_sb_slist");
+	TopToolbar_AddButton(&ttb);
+	
+	ttb.name = "TabSRMM Menu";
+	ttb.pszTooltipUp = LPGEN("TabSRMM Menu");
+	ttb.lParamUp = ttb.lParamDown = 1;
+	ttb.hIconHandleUp = Skin_GetIcon("tabSRMM_container");
+	TopToolbar_AddButton(&ttb);
+
+	return 0;
 }
 
 /**
@@ -361,9 +335,7 @@ void CGlobals::hookSystemEvents()
 
 int CGlobals::ModulesLoaded(WPARAM wParam, LPARAM lParam)
 {
-	::UnhookEvent(m_event_ModulesLoaded);
-
-	M->configureCustomFolders();
+	M.configureCustomFolders();
 
 	Skin->Init(true);
 	CSkin::initAeroEffect();
@@ -389,8 +361,8 @@ int CGlobals::ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	::ModPlus_Init(wParam, lParam);
 	::NotifyEventHooks(hHookToolBarLoadedEvt, 0, 0);
 
-	if (M->GetByte("avatarmode", -1) == -1)
-		M->WriteByte(SRMSGMOD_T, "avatarmode", 2);
+	if (M.GetByte("avatarmode", -1) == -1)
+		db_set_b(0, SRMSGMOD_T, "avatarmode", 2);
 
 	PluginConfig.g_hwndHotkeyHandler = CreateWindowEx(0, _T("TSHK"), _T(""), WS_POPUP,
 								  0, 0, 40, 40, 0, 0, g_hInst, NULL);
@@ -420,20 +392,21 @@ int CGlobals::ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	::RegisterFontServiceFonts();
 	::CacheLogFonts();
 	::Chat_ModulesLoaded(wParam, lParam);
-	if (PluginConfig.g_PopupWAvail||PluginConfig.g_PopupAvail)
+	if (PluginConfig.g_PopupAvail)
 		TN_ModuleInit();
 
-	m_event_SettingChanged 	= HookEvent(ME_DB_CONTACT_SETTINGCHANGED, DBSettingChanged);
-	m_event_ContactDeleted 	= HookEvent(ME_DB_CONTACT_DELETED, DBContactDeleted);
+	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, DBSettingChanged);
+	HookEvent(ME_DB_CONTACT_DELETED, DBContactDeleted);
 
-	m_event_Dispatch 		= HookEvent(ME_DB_EVENT_ADDED, CMimAPI::DispatchNewEvent);
-	m_event_EventAdded 		= HookEvent(ME_DB_EVENT_ADDED, CMimAPI::MessageEventAdded);
+	HookEvent(ME_DB_EVENT_ADDED, CMimAPI::DispatchNewEvent);
+	HookEvent(ME_DB_EVENT_ADDED, CMimAPI::MessageEventAdded);
 	if (PluginConfig.g_MetaContactsAvail) {
-		m_event_ME_MC_SUBCONTACTSCHANGED = HookEvent(ME_MC_SUBCONTACTSCHANGED, MetaContactEvent);
-		m_event_ME_MC_FORCESEND			 = HookEvent(ME_MC_FORCESEND, MetaContactEvent);
-		m_event_ME_MC_UNFORCESEND		 = HookEvent(ME_MC_UNFORCESEND, MetaContactEvent);
+		HookEvent(ME_MC_SUBCONTACTSCHANGED, MetaContactEvent);
+		HookEvent(ME_MC_FORCESEND, MetaContactEvent);
+		HookEvent(ME_MC_UNFORCESEND, MetaContactEvent);
 	}
-	m_event_FontsChanged 	= 	HookEvent(ME_FONT_RELOAD, ::FontServiceFontsChanged);
+	HookEvent(ME_FONT_RELOAD, ::FontServiceFontsChanged);
+	HookEvent(ME_TTB_MODULELOADED, TopToolbarLoaded);
 	return 0;
 }
 
@@ -452,7 +425,7 @@ int CGlobals::DBSettingChanged(WPARAM wParam, LPARAM lParam)
 	CContactCache* c = 0;
 	bool		fChanged = false, fNickChanged = false, fExtendedStatusChange = false;
 
-	hwnd = M->FindWindow((HANDLE)wParam);
+	hwnd = M.FindWindow((HANDLE)wParam);
 
 	if (hwnd == 0 && wParam != 0) {     // we are not interested in this event if there is no open message window/tab
 		if (!strcmp(setting, "Status") || !strcmp(setting, "MyHandle") || !strcmp(setting, "Nick") || !strcmp(cws->szModule, SRMSGMOD_T)) {
@@ -469,7 +442,7 @@ int CGlobals::DBSettingChanged(WPARAM wParam, LPARAM lParam)
 	}
 
 	if (wParam == 0 && !strcmp("Nick", setting)) {
-		M->BroadcastMessage(DM_OWNNICKCHANGED, 0, (LPARAM)cws->szModule);
+		M.BroadcastMessage(DM_OWNNICKCHANGED, 0, (LPARAM)cws->szModule);
 		return 0;
 	}
 
@@ -486,8 +459,8 @@ int CGlobals::DBSettingChanged(WPARAM wParam, LPARAM lParam)
 
 	if (wParam == 0 && !lstrcmpA(setting, "Enabled")) {
 		if (PluginConfig.g_MetaContactsAvail && !lstrcmpA(cws->szModule, PluginConfig.szMetaName)) { 		// catch the disabled meta contacts
-			PluginConfig.bMetaEnabled = abs(M->GetByte(0, PluginConfig.szMetaName, "Enabled", -1));
-			cacheUpdateMetaChanged();
+			PluginConfig.bMetaEnabled = abs(M.GetByte(PluginConfig.szMetaName, "Enabled", -1));
+			CContactCache::cacheUpdateMetaChanged();
 		}
 	}
 
@@ -529,7 +502,7 @@ int CGlobals::DBSettingChanged(WPARAM wParam, LPARAM lParam)
 			PostMessage(hwnd, DM_UPDATESTATUSMSG, 0, 0);
 		if (fChanged) {
 			if (c && c->getStatus() == ID_STATUS_OFFLINE) {			// clear typing notification in the status bar when contact goes offline
-				TWindowData* dat = c->getDat();
+				TWindowData *dat = c->getDat();
 				if (dat) {
 					dat->nTypeSecs = 0;
 					dat->showTyping = 0;
@@ -580,108 +553,52 @@ int CGlobals::MetaContactEvent(WPARAM wParam, LPARAM lParam)
 
 int CGlobals::PreshutdownSendRecv(WPARAM wParam, LPARAM lParam)
 {
-	HANDLE 	hContact;
-	int		i;
+	if (PluginConfig.m_chat_enabled)
+		::Chat_PreShutdown();
 
-#if defined(__USE_EX_HANDLERS)
-	__try {
-#endif
-		if (PluginConfig.m_chat_enabled)
-			::Chat_PreShutdown();
+	::TN_ModuleDeInit();
 
-		::TN_ModuleDeInit();
-
-		while(pFirstContainer){
-			if (PluginConfig.m_HideOnClose)
-				PluginConfig.m_HideOnClose = FALSE;
-			::SendMessage(pFirstContainer->hwnd, WM_CLOSE, 0, 1);
-		}
-
-		hContact = db_find_first();
-		while (hContact) {
-			M->WriteDword(hContact, SRMSGMOD_T, "messagecount", 0);
-			hContact = db_find_next(hContact);
-		}
-
-		for (i=0; i < SERVICE_LAST; i++) {
-			if (PluginConfig.hSvc[i])
-				DestroyServiceFunction(PluginConfig.hSvc[i]);
-		}
-
-		::SI_DeinitStatusIcons();
-		::CB_DeInitCustomButtons();
-		/*
-		 * the event API
-		 */
-
-		DestroyHookableEvent(PluginConfig.m_event_MsgWin);
-		DestroyHookableEvent(PluginConfig.m_event_MsgPopup);
-
-		::NEN_WriteOptions(&nen_options);
-		::DestroyWindow(PluginConfig.g_hwndHotkeyHandler);
-
-		::UnregisterClass(_T("TSStatusBarClass"), g_hInst);
-		::UnregisterClass(_T("SideBarClass"), g_hInst);
-		::UnregisterClassA("TSTabCtrlClass", g_hInst);
-		::UnregisterClass(_T("RichEditTipClass"), g_hInst);
-		::UnregisterClass(_T("TSHK"), g_hInst);
-#if defined(__USE_EX_HANDLERS)
+	while(pFirstContainer){
+		if (PluginConfig.m_HideOnClose)
+			PluginConfig.m_HideOnClose = FALSE;
+		::SendMessage(pFirstContainer->hwnd, WM_CLOSE, 0, 1);
 	}
-	__except(CGlobals::Ex_ShowDialog(GetExceptionInformation(), __FILE__, __LINE__, L"SHUTDOWN_STAGE2", false)) {
-		return 0;
-	}
-#endif
+
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
+		db_set_dw(hContact, SRMSGMOD_T, "messagecount", 0);
+
+	::SI_DeinitStatusIcons();
+	::CB_DeInitCustomButtons();
+	/*
+	 * the event API
+	 */
+
+	DestroyHookableEvent(PluginConfig.m_event_MsgWin);
+	DestroyHookableEvent(PluginConfig.m_event_MsgPopup);
+	DestroyHookableEvent(PluginConfig.m_event_WriteEvent);
+
+	::NEN_WriteOptions(&nen_options);
+	::DestroyWindow(PluginConfig.g_hwndHotkeyHandler);
+
+	::UnregisterClass(_T("TSStatusBarClass"), g_hInst);
+	::UnregisterClass(_T("SideBarClass"), g_hInst);
+	::UnregisterClassA("TSTabCtrlClass", g_hInst);
+	::UnregisterClass(_T("RichEditTipClass"), g_hInst);
+	::UnregisterClass(_T("TSHK"), g_hInst);
 	return 0;
 }
 
 int CGlobals::OkToExit(WPARAM wParam, LPARAM lParam)
 {
-	UnhookEvent(m_event_OkToExit);
-#if defined(__USE_EX_HANDLERS)
-	__try {
-#endif
-		::CreateSystrayIcon(0);
-		::CreateTrayMenus(0);
+	::CreateSystrayIcon(0);
+	::CreateTrayMenus(0);
 
-		CWarning::destroyAll();
+	CWarning::destroyAll();
 
-		CMimAPI::m_shutDown = true;
-		UnhookEvent(m_event_EventAdded);
-		UnhookEvent(m_event_Dispatch);
-		UnhookEvent(m_event_PrebuildMenu);
-		UnhookEvent(m_event_SettingChanged);
-		UnhookEvent(m_event_ContactDeleted);
-		UnhookEvent(m_event_AvatarChanged);
-		UnhookEvent(m_event_MyAvatarChanged);
-		UnhookEvent(m_event_ProtoAck);
-		UnhookEvent(m_event_TypingEvent);
-		UnhookEvent(m_event_FontsChanged);
-		UnhookEvent(m_event_IcoLibChanged);
-		UnhookEvent(m_event_IconsChanged);
+	CMimAPI::m_shutDown = true;
 
-		if (m_event_SmileyAdd)
-			UnhookEvent(m_event_SmileyAdd);
-
-		if (m_event_IEView)
-			UnhookEvent(m_event_IEView);
-
-		if (m_event_FoldersChanged)
-			UnhookEvent(m_event_FoldersChanged);
-
-		if (m_event_ME_MC_FORCESEND) {
-			UnhookEvent(m_event_ME_MC_FORCESEND);
-			UnhookEvent(m_event_ME_MC_SUBCONTACTSCHANGED);
-			UnhookEvent(m_event_ME_MC_UNFORCESEND);
-		}
-		::ModPlus_PreShutdown(wParam, lParam);
-		PluginConfig.globalContainerSettings.fPrivate = false;
-		::DBWriteContactSettingBlob(0, SRMSGMOD_T, CNT_KEYNAME, &PluginConfig.globalContainerSettings, sizeof(TContainerSettings));
-#if defined(__USE_EX_HANDLERS)
-	}
-	__except(CGlobals::Ex_ShowDialog(GetExceptionInformation(), __FILE__, __LINE__, L"SHUTDOWN_STAGE1", false)) {
-		return 0;
-	}
-#endif
+	PluginConfig.globalContainerSettings.fPrivate = false;
+	::db_set_blob(0, SRMSGMOD_T, CNT_KEYNAME, &PluginConfig.globalContainerSettings, sizeof(TContainerSettings));
 	return 0;
 }
 
@@ -692,46 +609,33 @@ int CGlobals::OkToExit(WPARAM wParam, LPARAM lParam)
 
 void CGlobals::RestoreUnreadMessageAlerts(void)
 {
-	CLISTEVENT 	cle = { 0 };
-	DBEVENTINFO dbei = { 0 };
-	TCHAR		toolTip[256];
-	int 		windowAlreadyExists;
-	int 		usingReadNext = 0;
-
-	int autoPopup = M->GetByte(SRMSGMOD, SRMSGSET_AUTOPOPUP, SRMSGDEFSET_AUTOPOPUP);
-	HANDLE hDbEvent, hContact;
-
-	dbei.cbSize = sizeof(dbei);
-	cle.cbSize = sizeof(cle);
+	CLISTEVENT 	cle = { sizeof(cle) };
 	cle.hIcon = LoadSkinnedIcon(SKINICON_EVENT_MESSAGE);
 	cle.pszService = "SRMsg/ReadMessage";
 	cle.flags = CLEF_TCHAR;
 
-	hContact = db_find_first();
-	while (hContact) {
+	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+		if (db_get_dw(hContact, "SendLater", "count", 0))
+			sendLater->addContact(hContact);
 
-		if (M->GetDword(hContact, "SendLater", "count", 0))
-		   sendLater->addContact(hContact);
-
-		hDbEvent = (HANDLE) CallService(MS_DB_EVENT_FINDFIRSTUNREAD, (WPARAM) hContact, 0);
+		HANDLE hDbEvent = db_event_firstUnread(hContact);
 		while (hDbEvent) {
-			dbei.cbBlob = 0;
-			CallService(MS_DB_EVENT_GET, (WPARAM) hDbEvent, (LPARAM) & dbei);
+			DBEVENTINFO dbei = { sizeof(dbei) };
+			db_event_get(hDbEvent, &dbei);
 			if (!(dbei.flags & (DBEF_SENT | DBEF_READ)) && dbei.eventType == EVENTTYPE_MESSAGE) {
-				windowAlreadyExists = M->FindWindow(hContact) != NULL;
-				if (!usingReadNext && windowAlreadyExists)
+				if (M.FindWindow(hContact) != NULL)
 					continue;
 
 				cle.hContact = hContact;
 				cle.hDbEvent = hDbEvent;
-				mir_sntprintf(toolTip, safe_sizeof(toolTip), TranslateT("Message from %s"),
-							  (TCHAR *)CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM) hContact, GCDNF_TCHAR));
+
+				TCHAR toolTip[256];
+				mir_sntprintf(toolTip, SIZEOF(toolTip), TranslateT("Message from %s"), pcli->pfnGetContactDisplayName(hContact, 0));
 				cle.ptszTooltip = toolTip;
-				CallService(MS_CLIST_ADDEVENT, 0, (LPARAM) & cle);
+				CallService(MS_CLIST_ADDEVENT, 0, (LPARAM)&cle);
 			}
-			hDbEvent = (HANDLE) CallService(MS_DB_EVENT_FINDNEXT, (WPARAM) hDbEvent, 0);
+			hDbEvent = db_event_next(hDbEvent);
 		}
-		hContact = db_find_next(hContact);
 	}
 }
 
@@ -743,10 +647,10 @@ void CGlobals::logStatusChange(WPARAM wParam, const CContactCache *c)
 	HANDLE	hContact = c->getContact();
 
 	bool	fGlobal = PluginConfig.m_LogStatusChanges ? true : false;
-	DWORD	dwMask = M->GetDword(hContact, SRMSGMOD_T, "mwmask", 0);
-	DWORD	dwFlags = M->GetDword(hContact, SRMSGMOD_T, "mwflags", 0);
+	DWORD	dwMask = db_get_dw(hContact, SRMSGMOD_T, "mwmask", 0);
+	DWORD	dwFlags = db_get_dw(hContact, SRMSGMOD_T, "mwflags", 0);
 
-	bool	fLocal = ((dwMask & MWF_LOG_STATUSCHANGES) ? (dwFlags & MWF_LOG_STATUSCHANGES ? true : false) : false);
+	BYTE	fLocal = M.GetByte(hContact, "logstatuschanges", 0);
 
 	if (fGlobal || fLocal) {
 		/*
@@ -755,77 +659,36 @@ void CGlobals::logStatusChange(WPARAM wParam, const CContactCache *c)
 		if (CallProtoService(c->getProto(), PS_GETSTATUS, 0, 0) == ID_STATUS_OFFLINE)
 			return;
 
-		WORD	wStatus, wOldStatus;
-
-		wStatus = LOWORD(wParam);
-		wOldStatus = HIWORD(wParam);
-
+		WORD wStatus = LOWORD(wParam);
+		WORD wOldStatus = HIWORD(wParam);
 		if (wStatus == wOldStatus)
 			return;
 
-		DBEVENTINFO 	dbei;
-		TCHAR 			buffer[450];
-		HANDLE 			hNewEvent;
+		TCHAR buffer[450];
 
-		TCHAR*	szOldStatus = (TCHAR *)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)wOldStatus, GSMDF_TCHAR);
-		TCHAR*	szNewStatus = (TCHAR *)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)wStatus, GSMDF_TCHAR);
-
+		TCHAR *szOldStatus = (TCHAR*)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)wOldStatus, GSMDF_TCHAR);
+		TCHAR *szNewStatus = (TCHAR*)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)wStatus, GSMDF_TCHAR);
 		if (szOldStatus == 0 || szNewStatus == 0)
 			return;
 
 		if (c->isValid()) {
 			if (wStatus == ID_STATUS_OFFLINE)
-				mir_sntprintf(buffer, safe_sizeof(buffer), TranslateT("signed off."));
+				mir_sntprintf(buffer, SIZEOF(buffer), TranslateT("signed off."));
 			else if (wOldStatus == ID_STATUS_OFFLINE)
-				mir_sntprintf(buffer, safe_sizeof(buffer), TranslateT("signed on and is now %s."), szNewStatus);
+				mir_sntprintf(buffer, SIZEOF(buffer), TranslateT("signed on and is now %s."), szNewStatus);
 			else
-				mir_sntprintf(buffer, safe_sizeof(buffer), TranslateT("changed status from %s to %s."), szOldStatus, szNewStatus);
+				mir_sntprintf(buffer, SIZEOF(buffer), TranslateT("changed status from %s to %s."), szOldStatus, szNewStatus);
 		}
 
-		char *szMsg = mir_utf8encodeT(buffer);
-
-		dbei.pBlob = (PBYTE)szMsg;
+		ptrA szMsg( mir_utf8encodeT(buffer));
+		DBEVENTINFO dbei = { sizeof(dbei) };
+		dbei.pBlob = (PBYTE)(char*)szMsg;
 		dbei.cbBlob = lstrlenA(szMsg) + 1;
 		dbei.flags = DBEF_UTF | DBEF_READ;
-		dbei.cbSize = sizeof(dbei);
 		dbei.eventType = EVENTTYPE_STATUSCHANGE;
 		dbei.timestamp = time(NULL);
 		dbei.szModule = const_cast<char *>(c->getProto());
-		hNewEvent = (HANDLE) CallService(MS_DB_EVENT_ADD, (WPARAM) hContact, (LPARAM) & dbei);
-
-		mir_free(szMsg);
-	}
-}
-
-/**
- * when the state of the meta contacts protocol changes from enabled to disabled
- * (or vice versa), this updates the contact cache
- *
- * it is ONLY called from the DBSettingChanged() event handler when the relevant
- * database value is touched.
- */
-void CGlobals::cacheUpdateMetaChanged()
-{
-	CContactCache* 	c = CContactCache::m_cCache;
-	bool			fMetaActive = (PluginConfig.g_MetaContactsAvail && PluginConfig.bMetaEnabled) ? true : false;
-
-	while(c) {
-		if (c->isMeta() && PluginConfig.bMetaEnabled == false) {
-			c->closeWindow();
-			c->resetMeta();
-		}
-
-		// meta contacts are enabled, but current contact is a subcontact - > close window
-
-		if (fMetaActive && c->isSubContact())
-			c->closeWindow();
-
-		// reset meta contact information, if metacontacts protocol became avail
-
-		if (fMetaActive && !strcmp(c->getProto(), PluginConfig.szMetaName))
-			c->resetMeta();
-
-		c = c->m_next;
+		db_event_add(hContact, &dbei);
 	}
 }
 
@@ -839,7 +702,7 @@ bool CGlobals::haveAutoSwitch()
 {
 	if (m_bIsWin7) {
 		if (m_useAeroPeek && !CSkin::m_skinEnabled)
-			return(false);
+			return false;
 	}
 	return(m_AutoSwitchTabs ? true : false);
 }
@@ -862,13 +725,13 @@ INT_PTR CALLBACK CGlobals::Ex_DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 		case WM_INITDIALOG: {
 				char szBuffer[2048];
 #ifdef _WIN64
-				sprintf(szBuffer,
+				mir_snprintf(szBuffer, SIZEOF(szBuffer),
 						"Exception %16.16X at address %16.16X occured in %s at line %d.\r\n\r\nEAX=%16.16X EBX=%16.16X ECX=%16.16X\r\nEDX=%16.16X ESI=%16.16X EDI=%16.16X\r\nEBP=%16.16X ESP=%16.16X EIP=%16.16X",
 						m_exRecord.ExceptionCode, m_exRecord.ExceptionAddress, m_exSzFile, m_exLine,
 						m_exCtx.Rax,m_exCtx.Rbx, m_exCtx.Rcx, m_exCtx.Rdx,
 						m_exCtx.Rsi, m_exCtx.Rdi, m_exCtx.Rbp, m_exCtx.Rsp, m_exCtx.Rip);
 #else
-				sprintf(szBuffer,
+				mir_snprintf(szBuffer, SIZEOF(szBuffer),
 						"Exception %8.8X at address %8.8X occured in %s at line %d.\r\n\r\nEAX=%8.8X EBX=%8.8X ECX=%8.8X\r\nEDX=%8.8X ESI=%8.8X EDI=%8.8X\r\nEBP=%8.8X ESP=%8.8X EIP=%8.8X",
 						m_exRecord.ExceptionCode, m_exRecord.ExceptionAddress, m_exSzFile, m_exLine,
 						m_exCtx.Eax,m_exCtx.Ebx, m_exCtx.Ecx, m_exCtx.Edx,
@@ -913,7 +776,7 @@ int CGlobals::Ex_ShowDialog(EXCEPTION_POINTERS *ep, const char *szFile, int line
 	memcpy(&m_exRecord, ep->ExceptionRecord, sizeof(EXCEPTION_RECORD));
 	memcpy(&m_exCtx, ep->ContextRecord, sizeof(CONTEXT));
 
-	_snprintf(m_exSzFile, MAX_PATH, "%s%s", szName, szExt);
+	mir_snprintf(m_exSzFile, MAX_PATH, "%s%s", szName, szExt);
 	mir_sntprintf(m_exReason, 256, L"An application error has occured: %s", szReason);
 	m_exLine = line;
 	m_exLastResult = DialogBoxParam(g_hInst, MAKEINTRESOURCE(IDD_EXCEPTION), 0, CGlobals::Ex_DlgProc, 0);

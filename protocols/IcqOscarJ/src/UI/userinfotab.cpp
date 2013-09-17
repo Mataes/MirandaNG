@@ -37,10 +37,7 @@
 #define SVS_TIMESTAMP     9
 #define SVS_STATUSID      10
 
-char* MirandaVersionToString(char* szStr, int bUnicode, int v, int m);
-
 extern const char *nameXStatus[];
-
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -100,7 +97,7 @@ static void SetValue(CIcqProto* ppro, HWND hwndDlg, int idCtrl, HANDLE hContact,
 				{
 					char szExtra[80];
 
-					null_snprintf(str, 250, "%d", dbv.wVal);
+					mir_snprintf(str, 250, "%d", dbv.wVal);
 					pstr = str;
 
 					if (hContact && ppro->IsDirectConnectionOpen(hContact, DIRECTCONN_STANDARD, 1))
@@ -126,11 +123,11 @@ static void SetValue(CIcqProto* ppro, HWND hwndDlg, int idCtrl, HANDLE hContact,
 					{ // give default name
 						pXName = ICQTranslateUtf(nameXStatus[bXStatus-1]);
 					}
-					null_snprintf(str, sizeof(str), "%s (%s)", pszStatus, pXName);
+					mir_snprintf(str, sizeof(str), "%s (%s)", pszStatus, pXName);
 					SAFE_FREE((void**)&pXName);
 				}
 				else
-					null_snprintf(str, sizeof(str), pszStatus);
+					mir_snprintf(str, sizeof(str), pszStatus);
 
 				bUtf = 1;
 				SAFE_FREE(&pszStatus);
@@ -245,18 +242,21 @@ static INT_PTR CALLBACK IcqDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 						SetValue(ppro, hwndDlg, IDC_PORT, hContact, szProto, "UserPort", SVS_ZEROISUNSPEC);
 						SetValue(ppro, hwndDlg, IDC_VERSION, hContact, szProto, "Version", SVS_ICQVERSION);
 						SetValue(ppro, hwndDlg, IDC_MIRVER, hContact, szProto, "MirVer", SVS_ZEROISUNSPEC);
-						if (ppro->getSettingByte(hContact, "ClientID", 0))
-							ppro->setSettingDword(hContact, "TickTS", 0);
+						if (ppro->getByte(hContact, "ClientID", 0))
+							ppro->setDword(hContact, "TickTS", 0);
 						SetValue(ppro, hwndDlg, IDC_SYSTEMUPTIME, hContact, szProto, "TickTS", SVS_TIMESTAMP);
 						SetValue(ppro, hwndDlg, IDC_STATUS, hContact, szProto, "Status", SVS_STATUSID);
 					}
 					else
 					{
 						char str[MAX_PATH];
+						WORD v[4];
+						CallService(MS_SYSTEM_GETFILEVERSION, 0, (LPARAM)&v);
+						mir_snprintf(str, SIZEOF(str), "Miranda NG %d.%d.%d.%d (ICQ %s)", v[0], v[1], v[2], v[3], __VERSION_STRING);
 
 						SetValue(ppro, hwndDlg, IDC_PORT, hContact, (char*)DBVT_WORD, (char*)ppro->wListenPort, SVS_ZEROISUNSPEC);
 						SetValue(ppro, hwndDlg, IDC_VERSION, hContact, (char*)DBVT_WORD, (char*)ICQ_VERSION, SVS_ICQVERSION);
-						SetValue(ppro, hwndDlg, IDC_MIRVER, hContact, (char*)DBVT_ASCIIZ, MirandaVersionToString(str, TRUE, ICQ_PLUG_VERSION, CallService(MS_SYSTEM_GETVERSION,0,0)), SVS_ZEROISUNSPEC);
+						SetValue(ppro, hwndDlg, IDC_MIRVER, hContact, (char*)DBVT_ASCIIZ, str, SVS_ZEROISUNSPEC);
 						SetDlgItemTextUtf(hwndDlg, IDC_SUPTIME, ICQTranslateUtfStatic(LPGEN("Member since:"), str, MAX_PATH));
 						SetValue(ppro, hwndDlg, IDC_SYSTEMUPTIME, hContact, szProto, "MemberTS", SVS_TIMESTAMP);
 						SetValue(ppro, hwndDlg, IDC_STATUS, hContact, (char*)DBVT_WORD, (char*)ppro->m_iStatus, SVS_STATUSID);
@@ -301,7 +301,7 @@ int CIcqProto::OnUserInfoInit(WPARAM wParam, LPARAM lParam)
 	if (!lParam)
 	{
 		TCHAR buf[200];
-		null_snprintf(buf, SIZEOF(buf), TranslateT("%s Details"), m_tszUserName);
+		mir_sntprintf(buf, SIZEOF(buf), TranslateT("%s Details"), m_tszUserName);
 		odp.ptszTitle = buf;
 
 		odp.position = -1899999999;

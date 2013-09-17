@@ -19,7 +19,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "commonheaders.h"
-#include "date_utils.h"
 
 time_t Today()
 {
@@ -29,7 +28,7 @@ time_t Today()
 	return mktime(date);
 }
 
-int IsDOBValid(int year, int month, int day)
+bool IsDOBValid(int year, int month, int day)
 {
 	return (year != 0 && month != 0 && day != 0);
 }
@@ -41,12 +40,6 @@ int GetContactDOB(HANDLE hContact, int &year, int &month, int &day)
 	day = db_get_b(hContact, "UserInfo", "DOBd", 0);
 	if ( IsDOBValid(year, month, day))
 		return DOB_USERINFO;
-
-	year = db_get_w(hContact, "mBirthday", "BirthYear", 0);
-	month = db_get_b(hContact, "mBirthday", "BirthMonth", 0);
-	day = db_get_b(hContact, "mBirthday", "BirthDay", 0);
-	if ( IsDOBValid(year, month, day))
-		return DOB_MBIRTHDAY;
 
 	char *szProto = GetContactProto(hContact);
 	year = db_get_w(hContact, szProto, "BirthYear", 0);
@@ -60,6 +53,12 @@ int GetContactDOB(HANDLE hContact, int &year, int &month, int &day)
 	day = db_get_b(hContact, "BirthDay", "BirthDay", 0);
 	if ( IsDOBValid(year, month, day))
 		return DOB_BIRTHDAYREMINDER;
+
+	year = db_get_w(hContact, "mBirthday", "BirthYear", 0);
+	month = db_get_b(hContact, "mBirthday", "BirthMonth", 0);
+	day = db_get_b(hContact, "mBirthday", "BirthDay", 0);
+	if ( IsDOBValid(year, month, day))
+		return DOB_MBIRTHDAY;
 
 	year = db_get_dw(hContact, "micqBirthday", "BirthYear", 0);
 	month = db_get_dw(hContact, "micqBirthday", "BirthMonth", 0);
@@ -89,7 +88,7 @@ char GetContactGender(HANDLE hContact)
 	return gender;
 }
 
-int IsLeapYear(int year)
+bool IsLeapYear(int year)
 {
 	return ((year % 400 == 0) || ((year % 4 == 0) && (year % 100 != 0)));
 }

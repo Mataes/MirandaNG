@@ -31,9 +31,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  
 
 #include "hdr/modern_commonheaders.h"
-#include "m_clui.h"
 #include "hdr/modern_clist.h"
-#include "m_clc.h"
 
 #define EMPTY_PLACE 255
 #define COLUMNS_PLACE 254
@@ -56,11 +54,11 @@ NodeList * AddNode(NodeList * Parent)
 	if ( !Parent) 
 	{
 		res = (NodeList *)mir_alloc(sizeof(NodeList));
-		memset(res,0,sizeof(NodeList));
+		memset(res, 0, sizeof(NodeList));
 		return res;
 	}
 	Parent->childNodes = (NodeList*) mir_realloc(Parent->childNodes,sizeof(NodeList)*(Parent->AllocatedChilds+1));
-	memset(&(Parent->childNodes[Parent->AllocatedChilds]),0,sizeof(NodeList));
+	memset(&(Parent->childNodes[Parent->AllocatedChilds]), 0, sizeof(NodeList));
 	Parent->childNodes[Parent->AllocatedChilds].itemParent = Parent;
 	Parent->AllocatedChilds++;
 	return &(Parent->childNodes[Parent->AllocatedChilds-1]);
@@ -173,7 +171,7 @@ BOOL CALLBACK DlgProcItemNewRowOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 			if (RemoveNode(res1)) res1 = 0;
 			TRACE("*********** Nodes DUMP 2 ***********\n");
 			TraceTreeLevel(RootNode);
-			//CheckDlgButton(hwndDlg, IDC_HIDE_ICON_ON_AVATAR, DBGetContactSettingByte(NULL,"CList","IconHideOnAvatar",SETTING_HIDEICONONAVATAR_DEFAULT) == 1 ? BST_CHECKED : BST_UNCHECKED );
+			//CheckDlgButton(hwndDlg, IDC_HIDE_ICON_ON_AVATAR, db_get_b(NULL,"CList","IconHideOnAvatar",SETTING_HIDEICONONAVATAR_DEFAULT) == 1 ? BST_CHECKED : BST_UNCHECKED );
 			MessageBox(hwndDlg,_T("Init NewRow Dialog"),_T("Notify"),MB_OK);
 			break;
 		}

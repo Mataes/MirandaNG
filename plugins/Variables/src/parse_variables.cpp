@@ -16,8 +16,8 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+
 #include "variables.h"
-#include "parse_variables.h"
 
 // this is for get and put(s)
 static CRITICAL_SECTION csVarRegister;
@@ -159,9 +159,9 @@ static TCHAR *parseGet(ARGUMENTSINFO *ai) {
 
 int registerVariablesTokens()
 {
-	registerIntToken(_T(GET), parseGet, TRF_FUNCTION, "Variables\t(x)\tvariable set by put(s) with name x");
-	registerIntToken(_T(PUT), parsePut, TRF_FUNCTION, "Variables\t(x,y)\tx, and stores y as variable named x");//TRF_UNPARSEDARGS);
-	registerIntToken(_T(PUTS), parsePuts, TRF_FUNCTION, "Variables\t(x,y)\tonly stores y as variables x");//TRF_UNPARSEDARGS);
+	registerIntToken(_T(GET), parseGet, TRF_FUNCTION, LPGEN("Variables")"\t(x)\t"LPGEN("variable set by put(s) with name x"));
+	registerIntToken(_T(PUT), parsePut, TRF_FUNCTION, LPGEN("Variables")"\t(x,y)\t"LPGEN("x, and stores y as variable named x"));//TRF_UNPARSEDARGS);
+	registerIntToken(_T(PUTS), parsePuts, TRF_FUNCTION, LPGEN("Variables")"\t(x,y)\t"LPGEN("only stores y as variables x"));//TRF_UNPARSEDARGS);
 	InitializeCriticalSection(&csVarRegister);
 
 	return 0;

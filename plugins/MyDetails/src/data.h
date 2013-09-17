@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.
 
 //#include "protocol_config.h"
 
-class Protocol
+class Protocol : public MZeroedObject
 {
 	// Attributes ////////////
 protected:
@@ -54,7 +54,6 @@ public:
 	int avatar_max_height;
 
 	bool data_changed;
-
 
 	// Methods ///////////////
 

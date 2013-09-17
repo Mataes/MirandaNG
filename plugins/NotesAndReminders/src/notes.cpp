@@ -174,11 +174,9 @@ static void InitStickyNoteLogFont(STICKYNOTEFONT *pCustomFont, LOGFONT *lf)
 {
 	if (!pCustomFont->size)
 	{
-		HDC hdc;
-
 		SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, FALSE);
 		lf->lfHeight = 10;
-		hdc = GetDC(0);
+		HDC hdc = GetDC(0);
 		lf->lfHeight = -MulDiv(lf->lfHeight,GetDeviceCaps(hdc, LOGPIXELSY), 72);
 		ReleaseDC(0, hdc);
 	}
@@ -377,13 +375,13 @@ void LoadNotes(BOOL bIsStartup)
 
 	g_Stickies = NULL;
 
-	NotesCount = ReadSettingInt(0,MODULENAME,"NotesData",0);
+	NotesCount = db_get_dw(0,MODULENAME,"NotesData",0);
 
 	for (I = 0; I < NotesCount; I++)
 	{
 		char *DelPos;
 
-		sprintf(ValueName, "NotesData%d", I);
+		mir_snprintf(ValueName, SIZEOF(ValueName), "NotesData%d", I);
 
 		if (Value)
 		{
@@ -693,19 +691,20 @@ void PurgeNotes(void)
 	int NotesCount, I;
 	char ValueName[16];
 
-	NotesCount = ReadSettingInt(0,MODULENAME,"NotesData",0);
+	NotesCount = db_get_dw(0,MODULENAME,"NotesData",0);
 	for(I = 0; I < NotesCount; I++)
 	{
-		sprintf(ValueName, "NotesData%d", I);
-		DBDeleteContactSetting(0,MODULENAME,ValueName);
+		mir_snprintf(ValueName, SIZEOF(ValueName), "NotesData%d", I);
+		db_unset(0,MODULENAME,ValueName);
 	}
 }
 
 void OnDeleteNote(HWND hdlg, STICKYNOTE *SN)
 {
-	if (MessageBox(hdlg, TranslateT("Are you sure you want to delete this note?"), _T(SECTIONNAME), MB_OKCANCEL) == IDOK)
+	if (MessageBox(hdlg, TranslateT("Are you sure you want to delete this note?"), TranslateT(SECTIONNAME), MB_OKCANCEL) == IDOK)
 	{
-		DestroyWindow(hdlg);
+		if (SN->SNHwnd)
+			DestroyWindow(SN->SNHwnd);
 		TreeDelete(&g_Stickies,SN);
 		SAFE_FREE((void**)&SN->data);
 		if (SN->pCustomFont)
@@ -715,21 +714,20 @@ void OnDeleteNote(HWND hdlg, STICKYNOTE *SN)
 		}
 		SAFE_FREE((void**)&SN);
 		JustSaveNotes();
+		NOTIFY_LIST();
 	}
 }
 
 void DeleteNotes(void)
 {
 	PurgeNotes();
-	WriteSettingInt(0, MODULENAME, "NotesData", 0);
+	db_set_dw(0, MODULENAME, "NotesData", 0);
 	PurgeNotesTree();
+	NOTIFY_LIST();
 }
 
 void ShowHideNotes(void)
 {
-	TREEELEMENT *TTE;
-	int bShow;
-	UINT nHideCount, nVisCount;
 	BOOL Visible;
 
 	if (!g_Stickies)
@@ -738,8 +736,8 @@ void ShowHideNotes(void)
 	// if some notes are hidden but others visible then first make all visible
 	// only toggle vis state if all are hidden or all are visible
 
-	nHideCount = nVisCount = 0;
-	TTE = g_Stickies;
+	UINT nHideCount  = 0, nVisCount = 0;
+	TREEELEMENT *TTE = g_Stickies;
 	while (TTE)
 	{
 		if (((STICKYNOTE*)TTE->ptrdata)->Visible)
@@ -757,7 +755,7 @@ void ShowHideNotes(void)
 	else
 		Visible = TRUE;
 
-	bShow = Visible ? SW_SHOWNA : SW_HIDE;
+	int bShow = Visible ? SW_SHOWNA : SW_HIDE;
 
 	TTE = g_Stickies;
 	while (TTE)
@@ -826,9 +824,9 @@ static void JustSaveNotesEx(STICKYNOTE *pModified)
 	int scrollV;
 	char *tData, *Value;
 
-	const int OldNotesCount = ReadSettingInt(0, MODULENAME, "NotesData", 0);
+	const int OldNotesCount = db_get_dw(0, MODULENAME, "NotesData", 0);
 
-	WriteSettingInt(0, MODULENAME, "NotesData", NotesCount);
+	db_set_dw(0, MODULENAME, "NotesData", NotesCount);
 
 	for (TTE = g_Stickies, I = 0; TTE; TTE = (TREEELEMENT*)TTE->next, I++)
 	{
@@ -888,27 +886,27 @@ static void JustSaveNotesEx(STICKYNOTE *pModified)
 		n = 0;
 
 		// data header
-		l = sprintf(Value, "X%I64x:%d:%d:%d:%d:%x", pNote->ID.QuadPart, TX, TY, TW, TH, flags);
+		l = sprintf(Value, "X%I64x:%d:%d:%d:%d:%x", pNote->ID.QuadPart, TX, TY, TW, TH, flags); //!!!!!!!!!!!!
 		if (l > 0) n += l;
 
 		// scroll pos
 		if (scrollV > 0)
 		{
-			l = sprintf(Value+n, "\033""%u:%u", DATATAG_SCROLLPOS, (UINT)scrollV);
+			l = sprintf(Value+n, "\033""%u:%u", DATATAG_SCROLLPOS, (UINT)scrollV); //!!!!!!!!!!
 			if (l > 0) n += l;
 		}
 
 		// custom bg color
 		if (pNote->BgColor)
 		{
-			l = sprintf(Value+n, "\033""%u:%x", DATATAG_BGCOL, (UINT)(pNote->BgColor&0xffffff));
+			l = sprintf(Value+n, "\033""%u:%x", DATATAG_BGCOL, (UINT)(pNote->BgColor&0xffffff)); //!!!!!!!!!!!!!
 			if (l > 0) n += l;
 		}
 
 		// custom fg color
 		if (pNote->FgColor)
 		{
-			l = sprintf(Value+n, "\033""%u:%x", DATATAG_FGCOL, (UINT)(pNote->FgColor&0xffffff));
+			l = sprintf(Value+n, "\033""%u:%x", DATATAG_FGCOL, (UINT)(pNote->FgColor&0xffffff)); //!!!!!!!!!!!!!
 			if (l > 0) n += l;
 		}
 
@@ -916,21 +914,21 @@ static void JustSaveNotesEx(STICKYNOTE *pModified)
 		{
 			l = sprintf(Value+n, "\033""%u:%d:%u:%u:%s", DATATAG_FONT,
 				(int)pNote->pCustomFont->size, (UINT)pNote->pCustomFont->style, (UINT)pNote->pCustomFont->charset,
-				pNote->pCustomFont->szFace);
+				pNote->pCustomFont->szFace); //!!!!!!!!!!!!!!!
 			if (l > 0) n += l;
 		}
 
 		// custom title
 		if (pNote->CustomTitle && pNote->title)
 		{
-			l = sprintf(Value+n, "\033""%u:%s", DATATAG_TITLE, pNote->title);
+			l = sprintf(Value+n, "\033""%u:%s", DATATAG_TITLE, pNote->title); //!!!!!!!!!!!!!
 			if (l > 0) n += l;
 		}
 
 		// note text (ALWAYS PUT THIS PARAM LAST)
 		if (tData)
 		{
-			l = sprintf(Value+n, "\033""%u:%s", DATATAG_TEXT, tData);
+			l = sprintf(Value+n, "\033""%u:%s", DATATAG_TEXT, tData); //!!!!!!!!!!!!
 			if (l > 0) n += l;
 		}
 
@@ -942,9 +940,9 @@ static void JustSaveNotesEx(STICKYNOTE *pModified)
 			Value[0xffff] = 0;
 		}
 
-		sprintf(ValueName, "NotesData%d", NotesCount - I - 1); // we do not reverse notes in DB
+		mir_snprintf(ValueName, SIZEOF(ValueName), "NotesData%d", NotesCount - I - 1); // we do not reverse notes in DB
 
-		WriteSettingBlob(0, MODULENAME, ValueName, (WORD)(n+1), Value);
+		db_set_blob(0, MODULENAME, ValueName, Value, n+1);
 
 		SAFE_FREE((void**)&Value);
 		if (bDeleteTData)
@@ -958,8 +956,8 @@ static void JustSaveNotesEx(STICKYNOTE *pModified)
 	// delete any left over DB note entries
 	for(; I < OldNotesCount; I++)
 	{
-		sprintf(ValueName, "NotesData%d", I);
-		DBDeleteContactSetting(0,MODULENAME,ValueName);
+		mir_snprintf(ValueName, SIZEOF(ValueName), "NotesData%d", I);
+		db_unset(0,MODULENAME,ValueName);
 	}
 
 	NOTIFY_LIST();
@@ -1004,10 +1002,10 @@ static int FindMenuItem(HMENU h, LPTSTR lpszName)
 static BOOL DoContextMenu(HWND AhWnd,WPARAM wParam,LPARAM lParam)
 {
 	int n, i;
-	STICKYNOTE *SN = (STICKYNOTE*)GetProp(AhWnd,_T("ctrldata"));
+	STICKYNOTE *SN = (STICKYNOTE*)GetProp(AhWnd, _T("ctrldata"));
 
 	HMENU hMenuLoad, FhMenu, hSub;
-	hMenuLoad = LoadMenu(hinstance,_T("MNU_NOTEPOPUP"));
+	hMenuLoad = LoadMenu(hinstance, _T("MNU_NOTEPOPUP"));
 	FhMenu = GetSubMenu(hMenuLoad,0);
 
 	if (SN->OnTop)
@@ -1373,11 +1371,11 @@ INT_PTR CALLBACK StickyNoteWndProc(HWND hdlg,UINT message,WPARAM wParam,LPARAM l
 				Buff = (char*)malloc(PEnLnk->chrg.cpMax - PEnLnk->chrg.cpMin + 1);
 				SendDlgItemMessage(hdlg,1,EM_GETSELTEXT,0,(LPARAM)Buff);
 				if ((GetAsyncKeyState(VK_CONTROL) >> 15) != 0)
-					ShellExecute(hdlg,_T("open"),_T("iexplore"),Buff,_T(""),SW_SHOWNORMAL);
+					ShellExecute(hdlg, _T("open"), _T("iexplore"), Buff, _T("") ,SW_SHOWNORMAL);
 				else if (g_lpszAltBrowser && *g_lpszAltBrowser)
-					ShellExecute(hdlg,_T("open"),g_lpszAltBrowser,Buff,_T(""),SW_SHOWNORMAL);
+					ShellExecute(hdlg,_T("open"), g_lpszAltBrowser, Buff, _T("") ,SW_SHOWNORMAL);
 				else
-					ShellExecute(hdlg,_T("open"),Buff,_T(""),_T(""),SW_SHOWNORMAL);
+					ShellExecute(hdlg, _T("open"), Buff, _T(""), _T(""), SW_SHOWNORMAL);
 				SAFE_FREE((void**)&Buff);
 				return TRUE;
 			}
@@ -1469,7 +1467,7 @@ INT_PTR CALLBACK StickyNoteWndProc(HWND hdlg,UINT message,WPARAM wParam,LPARAM l
 		break;
 	case WM_COMMAND:
 		{
-			STICKYNOTE *SN = (STICKYNOTE*)GetProp(hdlg,_T("ctrldata"));
+			STICKYNOTE *SN = (STICKYNOTE*)GetProp(hdlg, _T("ctrldata"));
 
 			HWND H;
 			UINT id;
@@ -1965,11 +1963,11 @@ INT_PTR CALLBACK DlgProcViewNotes(HWND Dialog,UINT Message,WPARAM wParam,LPARAM 
 			hIcon = Skin_GetIconByHandle(iconList[13].hIcolib, ICON_BIG);
 			SendMessage(Dialog, WM_SETICON, (WPARAM)ICON_BIG, (LPARAM)hIcon);
 
-			SetWindowText(Dialog, _T("Notes"));
+			SetWindowText(Dialog, LPGENT("Notes"));
 
 			TranslateDialogDefault(Dialog);
 
-			SetDlgItemText(Dialog,IDC_REMINDERDATA,_T(""));
+			SetDlgItemText(Dialog,IDC_REMINDERDATA, _T(""));
 
 			H = GetDlgItem(Dialog,IDC_LISTREMINDERS);
 			lvCol.mask = LVCF_TEXT | LVCF_WIDTH;

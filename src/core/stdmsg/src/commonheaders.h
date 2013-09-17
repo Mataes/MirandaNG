@@ -1,5 +1,6 @@
 /*
-Copyright 2000-2012 Miranda IM project,
+
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -18,16 +19,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-#define MIRANDA_VER 0x0A00
-
 #define _WIN32_WINNT 0x0501
 #define _WIN32_IE 0x0501
 
 #define WIN32_LEAN_AND_MEAN
 
 #define _CRT_SECURE_NO_WARNINGS
-
-#include <m_stdhdr.h>
 
 #include <windows.h>
 #include <windowsx.h>
@@ -37,6 +34,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <commctrl.h>
 #include <vssym32.h>
 
+#include <malloc.h>
 #include <time.h>
 
 #include "resource.h"
@@ -49,6 +47,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <m_langpack.h>
 #include <m_button.h>
 #include <m_clist.h>
+#include <m_clistint.h>
 #include <m_clc.h>
 #include <m_clui.h>
 #include <m_options.h>

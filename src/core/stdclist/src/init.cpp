@@ -2,7 +2,7 @@
 
 Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2005 Miranda ICQ/IM project,
+Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -134,16 +134,9 @@ static INT_PTR GetStatusMode(WPARAM wParam, LPARAM lParam)
 extern "C" __declspec(dllexport) int CListInitialise()
 {
 	mir_getLP( &pluginInfo );
+	mir_getCLI();
 
-	pcli = ( CLIST_INTERFACE* )CallService(MS_CLIST_RETRIEVE_INTERFACE, 0, (LPARAM)g_hInst);
-	if ( (INT_PTR)pcli == CALLSERVICE_NOTFOUND ) {
-LBL_Error:
-		MessageBoxA( NULL, "This version of plugin requires Miranda IM 0.8.0.9 or later", "Fatal error", MB_OK );
-		return 1;
-	}
-	if ( pcli->version < 6 )
-		goto LBL_Error;
-
+	pcli->hInst = g_hInst;
 	pcli->pfnPaintClc = PaintClc;
 
 	MySetLayeredWindowAttributes = (BOOL(WINAPI *) (HWND, COLORREF, BYTE, DWORD)) GetProcAddress(

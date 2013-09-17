@@ -63,6 +63,7 @@
 #define IDI_SENDEMAIL                   193
 #define IDD_FILERECV                    194
 #define IDD_PROFILEMANAGER              197
+#define IDI_MAINMENU                    198
 #define IDR_CLISTMENU                   199
 #define IDI_BLANK                       200
 #define IDD_FINDADD                     201
@@ -145,6 +146,11 @@
 #define IDI_MOVETOGROUP                 319
 #define IDI_ON                          320
 #define IDI_OFF                         322
+#define IDI_FRAME                       323
+#define IDI_AUTH_ADD                    324
+#define IDI_AUTH_GRANT                  325
+#define IDI_AUTH_REQUEST                326
+#define IDI_AUTH_REVOKE                 327
 #define IDC_SAVE                        1001
 #define IDI_ONTHEPHONE                  1002
 #define IDC_MESSAGE                     1002
@@ -404,6 +410,7 @@
 #define IDC_GROUP                       1541
 #define IDC_ADDED                       1542
 #define IDC_AUTH                        1543
+#define IDC_OPEN_WINDOW                 1544
 #define IDC_DELETEHISTORY               1560
 #define IDC_AUTHREQ                     1577
 #define IDC_AUTHGB                      1578
@@ -532,10 +539,10 @@
 #define ID_UNGROUP                      40067
 
 // Next default values for new objects
-//
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        323
+#define _APS_NEXT_RESOURCE_VALUE        328
 #define _APS_NEXT_COMMAND_VALUE         40018
 #define _APS_NEXT_CONTROL_VALUE         1746
 #define _APS_NEXT_SYMED_VALUE           101

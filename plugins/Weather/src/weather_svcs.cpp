@@ -148,12 +148,12 @@ INT_PTR WeatherGetAvatarInfo(WPARAM wParam, LPARAM lParam)
 		return GAIR_NOAVATAR;
 
 	ai->format = PA_FORMAT_PNG;
-	wsprintf(ai->filename, _T("%s\\Plugins\\Weather\\%s.png"), szSearchPath, statusStr[i]);
+	mir_sntprintf(ai->filename, SIZEOF(ai->filename), _T("%s\\Plugins\\Weather\\%s.png"), szSearchPath, statusStr[i]);
 	if ( _taccess(ai->filename, 4) == 0)
 		return GAIR_SUCCESS;
 
 	ai->format = PA_FORMAT_GIF;
-	wsprintf(ai->filename, _T("%s\\Plugins\\Weather\\%s.gif"), szSearchPath, statusStr[i]);
+	mir_sntprintf(ai->filename, SIZEOF(ai->filename), _T("%s\\Plugins\\Weather\\%s.gif"), szSearchPath, statusStr[i]);
 	if ( _taccess(ai->filename, 4) == 0)
 		return GAIR_SUCCESS;
 
@@ -225,28 +225,32 @@ void UpdateMenu(BOOL State)
 {
 	// update option setting
 	opt.CAutoUpdate = State;
-	db_set_b(NULL, WEATHERPROTONAME, "AutoUpdate", (BYTE)opt.AutoUpdate);
+	db_set_b(NULL, WEATHERPROTONAME, "AutoUpdate", (BYTE)State);
 
 	CLISTMENUITEM mi = { sizeof(mi) };
 
 	if (State) { // to enable auto-update
 		mi.pszName = LPGEN("Auto Update Enabled");
 		mi.icolibItem = GetIconHandle("main");
+		opt.AutoUpdate = 1;
 	}
 	else { // to disable auto-update
 		mi.pszName = LPGEN("Auto Update Disabled");
 		mi.icolibItem = GetIconHandle("disabled");
+		opt.AutoUpdate = 0;
 	}
 
-	mi.flags = CMIM_ICON | CMIM_NAME | CMIF_ICONFROMICOLIB;
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hEnableDisableMenu, (LPARAM)&mi);
+	mi.flags = CMIM_ICON | CMIM_NAME;
+	Menu_ModifyItem(hEnableDisableMenu, &mi);
+	CallService(MS_TTB_SETBUTTONSTATE, (WPARAM)hTBButton, !State ? TTBST_PUSHED : TTBST_RELEASED);
+
 }
 
 void UpdatePopupMenu(BOOL State)
 {
 	// update option setting
 	opt.UsePopup = State;
-	db_set_b(NULL, WEATHERPROTONAME, "UsePopUp", (BYTE)opt.UsePopup);
+	db_set_b(NULL, WEATHERPROTONAME, "UsePopup", (BYTE)opt.UsePopup);
 
 	CLISTMENUITEM mi = { sizeof(mi) };
 	if (State)
@@ -260,8 +264,8 @@ void UpdatePopupMenu(BOOL State)
 		mi.icolibItem = GetIconHandle("nopopup");
 	}
 
-	mi.flags = CMIM_ICON | CMIM_NAME | CMIF_ICONFROMICOLIB;
-	CallService(MS_CLIST_MODIFYMENUITEM, (WPARAM)hEnableDisablePopupMenu, (LPARAM)&mi);
+	mi.flags = CMIM_ICON | CMIM_NAME;
+	Menu_ModifyItem(hEnableDisablePopupMenu, &mi);
 }
 
 // update the weather auto-update menu item when click on it
@@ -284,7 +288,6 @@ void AddMenuItems(void)
 {
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.pszContactOwner = WEATHERPROTONAME;
-	mi.flags = CMIF_ICONFROMICOLIB;
 
 	// contact menu
 	CreateServiceFunction(MS_WEATHER_UPDATE, UpdateSingleStation);
@@ -368,7 +371,7 @@ void AddMenuItems(void)
 		mi.pszName = LPGEN("Weather Notification");
 		mi.icolibItem = GetIconHandle("popup");
 		mi.position = 0;
-		mi.pszPopupName = LPGEN("PopUps");
+		mi.pszPopupName = LPGEN("Popups");
 		mi.pszService = WEATHERPROTONAME "/PopupMenu";
 		hEnableDisablePopupMenu = Menu_AddMainMenuItem(&mi);
 		UpdatePopupMenu(opt.UsePopup);

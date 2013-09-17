@@ -2,10 +2,9 @@
 // Microsoft Developer Studio generated include file.
 // Used by resources.rc
 //
-#define IDI_MAINMENU                    100
 #define IDI_STATUSMENU	                105
-#define IDI_HIDEOFFLINE                 110
-#define IDI_SHOWOFFLINE                 111
+#define IDI_SHOWOFFLINE                 110
+#define IDI_HIDEOFFLINE                 111
 #define IDI_BOOKMARKS                   120
 #define IDI_DBEDITOR                    130
 #define IDI_FINDUSER                    140
@@ -21,7 +20,7 @@
 
 #define IDS_IDENTIFY					10
 // Next default values for new objects
-// 
+//
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        190
