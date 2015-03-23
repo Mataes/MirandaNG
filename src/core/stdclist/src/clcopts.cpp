@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
-all portions of this codebase are copyrighted to the people 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -114,12 +115,11 @@ static DWORD MakeCheckBoxTreeFlags(HWND hwndTree)
 	return flags;
 }
 
-static LONG CalcMinRowHeight() 
+static LONG CalcMinRowHeight()
 {
-	int i;
 	LONG minHeight = 16;
 	HDC hdc = GetDC(NULL);
-	for (i = 0; i < FONTID_LAST; i++) {
+	for (int i = 0; i < FONTID_LAST; i++) {
 		HFONT hFont;
 		LOGFONT lf;
 		COLORREF color;
@@ -129,7 +129,7 @@ static LONG CalcMinRowHeight()
 		hFont = CreateFontIndirect(&lf);
 		hFont = ( HFONT )SelectObject(hdc, hFont);
 		GetTextExtentPoint32(hdc, _T("x"), 1, &fontSize);
-		if (fontSize.cy > minHeight) 
+		if (fontSize.cy > minHeight)
 			minHeight = fontSize.cy;
 		hFont = ( HFONT )SelectObject(hdc,hFont);
 		DeleteObject(hFont);
@@ -182,7 +182,7 @@ static INT_PTR CALLBACK DlgProcClcMainOpts(HWND hwndDlg, UINT msg, WPARAM wParam
 		{
 			LONG minHeight = CalcMinRowHeight();
 			LONG rowHeight = db_get_b(NULL, "CLC", "RowHeight", CLCDEFAULT_ROWHEIGHT);
-			if (rowHeight < minHeight) { 
+			if (rowHeight < minHeight) {
 				rowHeight = minHeight;
 			}
 			SendDlgItemMessage(hwndDlg, IDC_ROWHEIGHTSPIN, UDM_SETRANGE, 0, MAKELONG(255, minHeight));
@@ -193,7 +193,7 @@ static INT_PTR CALLBACK DlgProcClcMainOpts(HWND hwndDlg, UINT msg, WPARAM wParam
 		{
 			LONG minHeight = CalcMinRowHeight();
 			LONG rowHeight = SendDlgItemMessage(hwndDlg, IDC_ROWHEIGHTSPIN, UDM_GETPOS, 0, 0);
-			if (rowHeight < minHeight) { 
+			if (rowHeight < minHeight) {
 				rowHeight = minHeight;
 				SendDlgItemMessage(hwndDlg, IDC_ROWHEIGHTSPIN, UDM_SETPOS, 0, MAKELONG(rowHeight, 0));
 			}
@@ -208,7 +208,7 @@ static INT_PTR CALLBACK DlgProcClcMainOpts(HWND hwndDlg, UINT msg, WPARAM wParam
 			EnableWindow(GetDlgItem(hwndDlg, IDC_SMOOTHTIME), IsDlgButtonChecked(hwndDlg, IDC_NOTNOSMOOTHSCROLLING));
 		if (LOWORD(wParam) == IDC_GREYOUT)
 			EnableWindow(GetDlgItem(hwndDlg, IDC_GREYOUTOPTS), IsDlgButtonChecked(hwndDlg, IDC_GREYOUT));
-		if ((LOWORD(wParam) == IDC_LEFTMARGIN || LOWORD(wParam) == IDC_SMOOTHTIME || LOWORD(wParam) == IDC_GROUPINDENT 
+		if ((LOWORD(wParam) == IDC_LEFTMARGIN || LOWORD(wParam) == IDC_SMOOTHTIME || LOWORD(wParam) == IDC_GROUPINDENT
 			|| LOWORD(wParam) == IDC_ROWHEIGHT)
 			&& (HIWORD(wParam) != EN_CHANGE || (HWND) lParam != GetFocus()))
 			return 0;
@@ -289,7 +289,7 @@ static INT_PTR CALLBACK DlgProcClcBkgOpts(HWND hwndDlg, UINT msg, WPARAM wParam,
 		SendDlgItemMessage(hwndDlg, IDC_SELCOLOUR, CPM_SETDEFAULTCOLOUR, 0, CLCDEFAULT_SELBKCOLOUR);
 		SendDlgItemMessage(hwndDlg, IDC_SELCOLOUR, CPM_SETCOLOUR, 0,
 			db_get_dw(NULL, "CLC", "SelBkColour", CLCDEFAULT_SELBKCOLOUR));
-		CheckDlgButton(hwndDlg, IDC_WINCOLOUR, db_get_b(NULL, "CLC", "UseWinColours", 0));
+		CheckDlgButton(hwndDlg, IDC_WINCOLOUR, db_get_b(NULL, "CLC", "UseWinColours", 0) ? BST_CHECKED : BST_UNCHECKED);
 		SendMessage(hwndDlg, WM_USER + 11, 0, 0);
 		{
 			DBVARIANT dbv;
@@ -312,12 +312,8 @@ static INT_PTR CALLBACK DlgProcClcBkgOpts(HWND hwndDlg, UINT msg, WPARAM wParam,
 			CheckDlgButton(hwndDlg, IDC_SCROLL, bmpUse & CLBF_SCROLL ? BST_CHECKED : BST_UNCHECKED);
 			CheckDlgButton(hwndDlg, IDC_PROPORTIONAL, bmpUse & CLBF_PROPORTIONAL ? BST_CHECKED : BST_UNCHECKED);
 		}
-		{
-			HRESULT(STDAPICALLTYPE * MySHAutoComplete) (HWND, DWORD);
-			MySHAutoComplete = (HRESULT(STDAPICALLTYPE *) (HWND, DWORD)) GetProcAddress(GetModuleHandleA("shlwapi"), "SHAutoComplete");
-			if (MySHAutoComplete)
-				MySHAutoComplete(GetDlgItem(hwndDlg, IDC_FILENAME), 1);
-		}
+
+		SHAutoComplete(GetDlgItem(hwndDlg, IDC_FILENAME), 1);
 		return TRUE;
 	case WM_USER + 10:
 		EnableWindow(GetDlgItem(hwndDlg, IDC_FILENAME), IsDlgButtonChecked(hwndDlg, IDC_BITMAP));
@@ -425,13 +421,9 @@ static INT_PTR CALLBACK DlgProcClcBkgOpts(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 int ClcOptInit(WPARAM wParam, LPARAM lParam)
 {
-	OPTIONSDIALOGPAGE odp;
-
-	ZeroMemory(&odp, sizeof(odp));
-	odp.cbSize = sizeof(odp);
-	odp.position = 0;
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = g_hInst;
-	odp.pszGroup = LPGEN("Contact List");
+	odp.pszGroup = LPGEN("Contact list");
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_CLC);
 	odp.pszTitle = LPGEN("List");
 	odp.pfnDlgProc = DlgProcClcMainOpts;
@@ -439,11 +431,10 @@ int ClcOptInit(WPARAM wParam, LPARAM lParam)
 	Options_AddPage(wParam, &odp);
 
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_CLCBKG);
-	odp.pszTitle = LPGEN("List Background");
+	odp.pszTitle = LPGEN("List background");
 	odp.pfnDlgProc = DlgProcClcBkgOpts;
 	odp.flags = ODPF_BOLDGROUPS;
 	Options_AddPage(wParam, &odp);
-
 	return 0;
 }
 
@@ -463,9 +454,9 @@ int ClcModernOptInit(WPARAM wParam, LPARAM lParam)
 	obj.hInstance = g_hInst;
 	obj.iSection = MODERNOPT_PAGE_SKINS;
 	obj.iType = MODERNOPT_TYPE_SUBSECTIONPAGE;
-	obj.lptzSubsection = LPGENT("Contact List");
+	obj.lptzSubsection = LPGENT("Contact list");
 	obj.iBoldControls = iBoldControls;
-	obj.lpzHelpUrl = "http://wiki.miranda-im.org/";
+	obj.lpzHelpUrl = "http://wiki.miranda-ng.org/";
 
 	obj.lpzTemplate = MAKEINTRESOURCEA(IDD_MODERNOPT_CLCBKG);
 	obj.pfnDlgProc = DlgProcClcBkgOpts;

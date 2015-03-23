@@ -63,46 +63,50 @@ Source: "Files\Icons\Proto_GG.dll"; DestDir: "{app}\Icons"; Components: protocol
 Source: "Files\Icons\Proto_ICQ.dll"; DestDir: "{app}\Icons"; Components: protocols\icq; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Icons\Proto_IRC.dll"; DestDir: "{app}\Icons"; Components: protocols\irc; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Icons\Proto_Jabber.dll"; DestDir: "{app}\Icons"; Components: protocols\jabber; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Icons\Proto_MetaContacts.dll"; DestDir: "{app}\Icons"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Icons\Proto_MSN.dll"; DestDir: "{app}\Icons"; Components: protocols\msn; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Icons\Proto_Yahoo.dll"; DestDir: "{app}\Icons"; Components: protocols\yahoo; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Icons\xstatus_icq.dll"; DestDir: "{app}\Icons"; Components: protocols\icq; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Icons\xstatus_jabber.dll"; DestDir: "{app}\Icons"; Components: protocols\jabber; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Icons\tabsrmm_icons.dll"; DestDir: "{app}\Icons"; Components: messagewin\tabsrmm; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Icons\toolbar_icons.dll"; DestDir: "{app}\Icons"; Components: clicts\modern; Flags: ignoreversion; AfterInstall: ShowPercent()
+Source: "Files\Icons\xStatus_ICQ.dll"; DestDir: "{app}\Icons"; Components: protocols\icq; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Icons\xStatus_Jabber.dll"; DestDir: "{app}\Icons"; Components: protocols\jabber; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Icons\TabSRMM_icons.dll"; DestDir: "{app}\Icons"; Components: messagewin\tabsrmm; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Icons\Toolbar_icons.dll"; DestDir: "{app}\Icons"; Components: clicts\modern; Flags: ignoreversion; AfterInstall: ShowPercent() 
 
 ; Core and core modules
 Source: "Files\{#MirName}"; DestDir: "{app}"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\mir_core.dll"; DestDir: "{app}"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\zlib.dll"; DestDir: "{app}"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Pcre16.dll"; DestDir: "{app}"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Zlib.dll"; DestDir: "{app}"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\DbChecker.bat"; DestDir: "{app}"; Components: program; Check: IsPortable(); Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\msvcp100.dll"; DestDir: "{app}"; Components: program; Check: IsPortable(); Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\msvcr100.dll"; DestDir: "{app}"; Components: program; Check: IsPortable(); Flags: ignoreversion; AfterInstall: ShowPercent()
-Source: "Files\Core\stdauth.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdautoaway.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdaway.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdchat.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdclist.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdcrypt.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdemail.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdfile.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdhelp.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdidle.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdmsg.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stduihist.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stdurl.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stduserinfo.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Core\stduseronline.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdAuth.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdAutoAway.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdAway.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdChat.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdClist.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdCrypt.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdEmail.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdFile.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdHelp.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdIdle.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdMsg.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdSSL.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdUIHist.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdUrl.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdUserInfo.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Core\StdUserOnline.dll"; DestDir: "{app}\Core"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 
 ; LangPacks
-Source: "Files\langpack_czech.txt"; DestDir: "{app}"; Components: lang\czech; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\langpack_german.txt"; DestDir: "{app}"; Components: lang\german; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\langpack_polish.txt"; DestDir: "{app}"; Components: lang\polish; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\langpack_russian.txt"; DestDir: "{app}"; Components: lang\russian; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Languages\langpack_czech.txt"; DestDir: "{app}\Languages"; Components: lang\czech; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Languages\langpack_german.txt"; DestDir: "{app}\Languages"; Components: lang\german; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Languages\langpack_polish.txt"; DestDir: "{app}\Languages"; Components: lang\polish; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Languages\langpack_russian.txt"; DestDir: "{app}\Languages"; Components: lang\russian; Flags: ignoreversion; AfterInstall: ShowPercent() 
 
 ;Plugins - not selectable
 Source: "Files\Plugins\AdvaImg.dll"; DestDir: "{app}\Plugins"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Plugins\AVS.dll"; DestDir: "{app}\Plugins"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Plugins\DbChecker.dll"; DestDir: "{app}\Plugins"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Plugins\CrashDumper.dll"; DestDir: "{app}\Plugins"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Plugins\Import.dll"; DestDir: "{app}\Plugins"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\Plugins\PluginUpdater.dll"; DestDir: "{app}\Plugins"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 Source: "Files\pu_stub.exe"; DestDir: "{app}"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
@@ -129,14 +133,12 @@ Source: "Files\Plugins\TabSRMM.dll"; DestDir: "{app}\Plugins"; Components: messa
 Source: "Files\Plugins\Scriver.dll"; DestDir: "{app}\Plugins"; Components: messagewin\scriver; Flags: ignoreversion; AfterInstall: ShowPercent() 
 
 ; DB drivers
-Source: "Files\Plugins\Dbx_mmap.dll"; DestDir: "{app}\Plugins"; Components: dbx\mmap; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\Plugins\Dbx_3x.dll"; DestDir: "{app}\Plugins"; Components: dbx\3x; Flags: ignoreversion; AfterInstall: ShowPercent() 
+Source: "Files\Plugins\Dbx_mmap.dll"; DestDir: "{app}\Plugins"; Components: dbx_mmap; Flags: ignoreversion; AfterInstall: ShowPercent() 
 
 ; Config files
 Source: "Files\Settings\mirandaboot_default.ini"; DestDir: "{app}"; Components: program; DestName: "mirandaboot.ini"; Check: IsDefault(); Flags: ignoreversion onlyifdoesntexist; AfterInstall: ShowPercent() 
 Source: "Files\Settings\mirandaboot_portable.ini"; DestDir: "{app}"; Components: program; DestName: "mirandaboot.ini"; Check: IsPortable(); Flags: ignoreversion onlyifdoesntexist; AfterInstall: ShowPercent() 
 Source: "Files\Settings\autoexec_sounds.ini"; DestDir: "{app}"; Components: sounds; Flags: ignoreversion; AfterInstall: ShowPercent() 
-Source: "Files\autoexec_nightly_pu.ini"; DestDir: "{app}"; Components: program; Flags: ignoreversion; AfterInstall: ShowPercent() 
 
 ; Installer add-ons
 Source: "Installer\ISWin7.dll"; Flags: dontcopy 
@@ -164,9 +166,7 @@ Name: "messagewin"; Description: "{cm:MessageWin}"; Types: extended regular mini
 Name: "messagewin\stdmsg"; Description: "{cm:StdMsg}"; Types: minimal; Flags: exclusive 
 Name: "messagewin\scriver"; Description: "{cm:Scriver}"; Types: custom; Flags: exclusive 
 Name: "messagewin\tabsrmm"; Description: "{cm:Tabsrmm}"; Types: extended regular; Flags: exclusive 
-Name: "dbx"; Description: "{cm:Dbx}"; Types: extended regular minimal custom ; Flags: fixed 
-Name: "dbx\3x"; Description: "{cm:Dbx_3x}"; Types: custom; Flags: exclusive 
-Name: "dbx\mmap"; Description: "{cm:Mmap}"; Types: extended regular minimal; Flags: exclusive 
+Name: "dbx_mmap"; Description: "{cm:Dbx_Mmap}"; Types: extended regular minimal
 Name: "lang"; Description: "{cm:Lang}"; Types: extended regular custom minimal; Flags: fixed 
 Name: "lang\russian"; Description: "{cm:LangRussian}"; Flags: exclusive 
 Name: "lang\czech"; Description: "{cm:LangCzech}"; Flags: exclusive 
@@ -210,7 +210,7 @@ en.PortTypeInstLabel=Profiles and user data files are stored in program folder.%
 en.ProfileUninst=WARNING!!!%nYou are about to delete profile folder containing all your settings, contacts and message history!%nAre you sure you want to remove profile?%n(You may need it later)
 
 en.FolderExists1=Folder
-en.FolderExists2=already exists. This installer is for a first time install only! Please select another folder for a new installation.%nIf you wish to upgrade your current program, please use PluginUpdater%n("Check for plugin updates" item in Miranda's main menu).
+en.FolderExists2=already exists. This installer is for a first time install only! Please select another folder for a new installation.%nIf you wish to upgrade your current program, please use PluginUpdater ("Check for plugin updates" item in Miranda's main menu).
 
 en.PercentDone=% done
 
@@ -231,17 +231,15 @@ en.Jabber=Jabber protocol
 en.Msn=MSN protocol
 en.Yahoo=Yahoo protocol
 en.Clists=Contact lists
-en.StdClist=Classic contact list
+en.StdClist=StdClist contact list
 en.BlindClist=Contact list for blind folks
 en.NicerClist=Nicer contact list
 en.ModernClist=Modern contact list
 en.MessageWin=Message session
-en.StdMsg=SRMM and Chat plugins
+en.StdMsg=StdMsg and StdChat plugins
 en.Scriver=Scriver message plugin
 en.Tabsrmm=TabSRMM message plugin
-en.Dbx=Database drivers
-en.Mmap=Dbx_mmap database driver (recommended)
-en.Dbx_3x=Dbx_3x database driver
+en.Dbx_Mmap=Dbx_mmap database driver
 en.Lang=Localization files
 en.LangRussian=Russian langpack
 en.LangCzech=Czech langpack
@@ -271,9 +269,7 @@ en.MessageWinDescription=Message session plugins.
 en.StdMsgDescription=Basic messaging and group chats core modules. No tabs support.
 en.ScriverDescription=Easy and lightweight messaging plugin.
 en.TabsrmmDescription=Advanced IM and group chat module for Miranda NG. Supports skins.
-en.DBXDescription=Various database drivers.
 en.MMAPDescription=Provides Miranda database support: global settings, contacts, history, settings per contact.(Recommended)
-en.DBX_3xDescription=Provides Miranda database support: global settings, contacts, history, settings per contact.
 en.LangDescription=Localization files for Miranda NG.
 en.LangRussianDescription=Translation of Miranda NG user interface to Russian.
 en.LangCzechDescription=Translation of Miranda NG user interface to Czech.
@@ -292,7 +288,7 @@ ru.PortTypeInstLabel=Профиль и файлы пользователя на�
 ru.ProfileUninst=ПРЕДУПРЕЖДЕНИЕ!!!%nВы можете удалить папку профиля, включающую в себя настройки, контакты и историю переписки!%nВы действительно хотите удалить файлы профиля?%n(Может понадобиться в дальнейшем)
 
 ru.FolderExists1=Выбранная папка
-ru.FolderExists2=включает в себя предыдущую установку! Установщик не предназначен для обновления.%nПожалуйста, выберите иную папку для новой установки.%nДля обновления уже установленной программы воспользуйтесь плагином PluginUpdater%n(Пункт "Проверить обновления плагинов" в главном меню).
+ru.FolderExists2=включает в себя предыдущую установку! Установщик не предназначен для обновления. Пожалуйста, выберите иную папку для новой установки.%nДля обновления уже установленной программы воспользуйтесь плагином PluginUpdater (Пункт "Проверить обновления плагинов" в главном меню).
 
 ru.PercentDone=% выполнено
 
@@ -313,17 +309,15 @@ ru.Jabber=Протокол Jabber
 ru.Msn=Протокол MSN
 ru.Yahoo=Протокол Yahoo
 ru.Clists=Списки контактов
-ru.StdClist=Список контактов Classic
+ru.StdClist=Список контактов StdClist
 ru.BlindClist=Список контактов для слабовидящих
 ru.NicerClist=Список контактов Nicer
 ru.ModernClist=Список контактов Modern
 ru.MessageWin=Диалоговые окна
-ru.StdMsg=Плагины SRMM и Chat
+ru.StdMsg=Плагины StdMsg и StdChat
 ru.Scriver=Диалоговое окно Scriver
 ru.Tabsrmm=Диалоговое окно TabSRMM
-ru.Dbx=Драйверы базы данных
-ru.Mmap=Драйвер Dbx_mmap (рекомендуется)
-ru.Dbx_3x=Драйвер Dbx_3x
+ru.Dbx_Mmap=Драйвер Dbx_mmap
 ru.Lang=Языковые пакеты
 ru.LangRussian=Русский
 ru.LangCzech=Чешский
@@ -353,9 +347,7 @@ ru.MessageWinDescription=Плагины диалоговых окон.
 ru.StdMsgDescription=Модули ядра, обеспечивающие базовый функционал переписки и чатов. Нет поддержки табов.
 ru.ScriverDescription=Простой плагин диалоговых окон с поддержкой вкладок. Не поддерживает скины.
 ru.TabsrmmDescription=Продвинутый плагин диалоговых окон с поддержкой вкладок и скинов.
-ru.DBXDescription=Выбор драйвера базы данных Miranda NG.
 ru.MMAPDescription=Поддержка базы Miranda NG: глобальные настройки, контакты, история, настройки контактов и т. п. Отличается меньшим количеством обращений к базе данных в процессе работы.(Рекомендуется).
-ru.DBX_3xDescription=Поддержка базы Miranda NG: глобальные настройки, контакты, история, настройки контактов и т. п.
 ru.LangDescription=Файлы перевода для Miranda NG.
 ru.LangRussianDescription=Перевод интерфейса Miranda NG на русский язык.
 ru.LangCzechDescription=Перевод интерфейса Miranda NG на чешский язык.
@@ -374,7 +366,7 @@ cz.PortTypeInstLabel=Profily a uživatelská data jsou uložena ve složce spolu
 cz.ProfileUninst=VAROVÁNÍ!!!%nChystáte se odstranit složku s profily, která obsahuje všechno vaše nastavení, kontakty a historii komunikace!%nOpravdu si přejete odstranit vaše data?%n(V budoucnu se vám ještě mohou hodit.)
 
 cz.FolderExists1=Složka
-cz.FolderExists2=již existuje. Pokračovat v instalaci?
+cz.FolderExists2=již existuje. Tento instalátor slouží pouze pro prvotní instalaci! Zvolte prosím jinou složku, pokud si přejete provést novou instalaci.%nPokud si přejete aktualizovat vaši stávající verzi, použijte doplněk PluginUpdater (položka "Zkontrolovat aktualizace" v hlavní nabídce Mirandy).
 
 cz.PercentDone=% dokončeno
 
@@ -395,17 +387,15 @@ cz.Jabber=Jabber protokol
 cz.Msn=MSN protokol
 cz.Yahoo=Yahoo protokol
 cz.Clists=Seznamy kontaktů
-cz.StdClist=Clist_classic
+cz.StdClist=StdClist
 cz.BlindClist=Clist_blind (pro nevidomé)
 cz.NicerClist=Clist_nicer
 cz.ModernClist=Clist_modern
 cz.MessageWin=Komunikační okna
-cz.StdMsg=SRMM a Chat
+cz.StdMsg=StdMsg a StdChat
 cz.Scriver=Scriver
 cz.Tabsrmm=TabSRMM
-cz.Dbx=Ovladače databáze
-cz.Mmap=Dbx_mmap (doporučeno)
-cz.Dbx_3x=Dbx_3x
+cz.Dbx_Mmap=Dbx_mmap
 cz.Lang=Jazykové rozhraní
 cz.LangRussian=Ruština
 cz.LangCzech=Čeština
@@ -435,9 +425,7 @@ cz.MessageWinDescription=Doplňky pro komunikační okna.
 cz.StdMsgDescription=Základní integrovaný modul pro komunikaci a skupinové chaty. Bez podpory více záložek v jednom okně.
 cz.ScriverDescription=Jednoduchý a rychlý modul pro komunikaci a skupinové chaty. S podporou více záložek v jednom okně.
 cz.TabsrmmDescription=Pokročilý modul pro komunikaci a skupinové chaty. Podporuje skiny a více záložek v jednom okně.
-cz.DBXDescription=Různé ovladače databáze.
-cz.MMAPDescription=Podpora pro databáze Mirandy: globální nastavení, kontakty, historie, nastavení pro jednotlivé kontakty. (doporučeno)
-cz.DBX_3xDescription=Podpora pro databáze Mirandy: globální nastavení, kontakty, historie, nastavení pro jednotlivé kontakty.
+cz.MMAPDescription=Podpora pro databáze Mirandy: globální nastavení, kontakty, historie, nastavení pro jednotlivé kontakty.
 cz.LangDescription=Jazykové balíčky pro Mirandu NG.
 cz.LangRussianDescription=Překlad rozhraní Mirandy NG do ruštiny.
 cz.LangCzechDescription=Překlad rozhraní Mirandy NG do češtiny.
@@ -456,7 +444,7 @@ de.PortTypeInstLabel=Profil- und Benutzerdaten werden im Programmverzeichnis ges
 de.ProfileUninst=WARNUNG!%nSie sind dabei, Ihr Profil mitsamt all Ihren Einstellungen, Kontakten und Nachrichten zu löschen!%nSind Sie sich sicher, dass Sie das Profil löschen möchten?%n(Sie könnten es später brauchen.)
 
 de.FolderExists1=Verzeichnis
-de.FolderExists2=existiert bereits. Installation fortsetzen?
+de.FolderExists2=ist bereits vorhanden. Dieses Installationsprogramm ist nur für die erstmalige Installation geeignet! Bitte wählen Sie ein anderes Verzeichnis für eine Neuinstallation aus.%nFalls Sie Ihre aktuelle Installation aktualisieren möchten, verwenden Sie bitte den Plugin-Updater ("Auf Plugin-Aktualisierungen prüfen" im Miranda-Hauptmenü).
 
 de.PercentDone=% erledigt
 
@@ -482,12 +470,10 @@ de.BlindClist=Kontaktliste für Blinde
 de.NicerClist=Nicer-Kontaktliste
 de.ModernClist=Moderne Kontaktliste
 de.MessageWin=Nachrichtensitzungen
-de.StdMsg=SRMM- und Chat-Plugins
+de.StdMsg=StdMsg- und StdChat-Plugins
 de.Scriver=Scriver-Nachrichtenplugin
 de.Tabsrmm=TabSRMM-Nachrichtenplugin
-de.Dbx=Datenbanktreiber
-de.Mmap=Dbx_mmap-Datenbanktreiber (empfohlen)
-de.Dbx_3x=Dbx_3x-Datenbanktreiber
+de.Dbx_Mmap=Dbx_mmap-Datenbanktreiber
 de.Lang=Sprachdateien
 de.LangRussian=Russische Sprachdatei
 de.LangCzech=Tschechische Sprachdatei
@@ -517,15 +503,91 @@ de.MessageWinDescription=Nachrichtensitzungsplugins.
 de.StdMsgDescription=Grundlegende Nachrichten- und Gruppenchat-Kernmodule. Keine Tabunterstützung.
 de.ScriverDescription=Einfaches und leichtgewichtiges Nachrichtenplugin.
 de.TabsrmmDescription=Erweitertes Nachrichten- und Gruppenchatmodul für Miranda NG. Unterstützt Skins.
-de.DBXDescription=Verschiedene Datenbanktreiber.
-de.MMAPDescription=Stellt Miranda-Datenbankunterstützung bereit: globale Einstellungen, Kontakte, Verlauf, Per-Kontakt-Einstellungen. (Empfohlen.)
-de.DBX_3xDescription=Stellt Miranda-Datenbankunterstützung bereit: globale Einstellungen, Kontakte, Verlauf, Per-Kontakt-Einstellungen.
+de.MMAPDescription=Stellt Miranda-Datenbankunterstützung bereit: globale Einstellungen, Kontakte, Verlauf, Per-Kontakt-Einstellungen.
 de.LangDescription=Sprachdateien für Miranda NG.
 de.LangRussianDescription=Übersetzung der Miranda-NG-Benutzeroberfläche ins Russische.
 de.LangCzechDescription=Übersetzung der Miranda-NG-Benutzeroberfläche ins Tschechische.
 de.LangPolishDescription=Übersetzung der Miranda-NG-Benutzeroberfläche ins Polnische.
 de.LangGermanDescription=Übersetzung der Miranda-NG-Benutzeroberfläche ins Deutsche.
 de.LangEnglishDescription=Original-Miranda-NG-Benutzeroberfläche auf Englisch.
+
+; Polish
+pl.InstTypeHeader=Typ instalacji
+pl.InstTypeText=Wybierz typ instalacji
+pl.DefTypeInstRadio=Normalna (zalecana)
+pl.PortTypeInstRadio=Przenośna
+pl.DefTypeInstLabel=Profile i pliki danych użytkownika są przechowywane w folderze Dane aplikacji.%nZgodne z Kontrolą konta uzytkownika (Windows Vista/7/8)
+pl.PortTypeInstLabel=Profile i pliki danych użytkownika są przechowywane w folderze programu.%nWersja do instalowania na urządzeniach przenośnych (takich jak pamięć przenośna)%n(Nie instaluj w Program files/Pliki programów z włączoną Kontrolą konta użytkownika!!!)
+
+pl.ProfileUninst=UWAGA!!!%nZamierzasz usunąć folder z profilami, zawierający wszystkie Twoje ustawienia, kontakty i historię rozmów.%nCzy na pewno chcesz go usunąć?%n(Możesz go później potrzebować)
+
+pl.FolderExists1=Folder
+pl.FolderExists2=już istnieje. Ten instalator służy tylko do czystej instalacji! Wybierz inny folder aby zainstalować program.%nJeżeli chcesz zaktualizować Mirandę, użyj do tego celu wtyczki PluginUpdater (wybierając "Sprawdź aktualizacje" z menu głównego Mirandy).
+
+pl.PercentDone=% ukończono
+
+pl.TypeRegular=Typowa instalacja
+pl.TypeMinimal=Minimalna instalacja
+pl.TypeExtended=Rozszerzona instalacja
+pl.TypeCustom=Własna instalacja
+
+pl.Program=Pliki rdzenia
+pl.Sounds=Dźwięki
+pl.Protocols=Protokoły
+pl.Aim=AIM
+pl.Facebook=Facebook
+pl.GG=GG
+pl.Icq=ICQ
+pl.Irc=IRC
+pl.Jabber=Jabber
+pl.Msn=MSN
+pl.Yahoo=Yahoo
+pl.Clists=Lista kontaktów
+pl.StdClist=Lista klasyczna (StdClist)
+pl.BlindClist=Dla niewidomych (Blind)
+pl.NicerClist=Lista Nicer
+pl.ModernClist=Lista Modern
+pl.MessageWin=Okno wiadomości
+pl.StdMsg=StdMsg i StdChat
+pl.Scriver=Scriver
+pl.Tabsrmm=TabSRMM
+pl.Dbx_Mmap=Dbx_mmap
+pl.Lang=Język interfejsu
+pl.LangRussian=rosyjski
+pl.LangCzech=czeski
+pl.LangPolish=polski
+pl.LangGerman=niemiecki
+pl.LangEnglish=angielski
+
+pl.DescriptionTitle=Opis
+pl.InfoCaption=Najedź na element w celu dodatkowych informacji
+pl.CoreFilesDescription=Pliki konieczne do uruchomienia Mirandy.
+pl.SoundsDescription=Paczka predefiniowanych dźwięków dla różnych zdarzeń.
+pl.ProtocolsDescription=Wtyczki zapewniające wspracie dla różnych protokołów.
+pl.ProtocolsAIMDescription=Zapewnia obsługę protokołu AOL Instant Messenger (AIM).
+pl.ProtocolsFbDescription=Zapewnia obsługę protokołu Facebook. Dostarcza więcej niż czat facebooka przez XMPP. Wspiera ustawianie statusu, zatwierdzanie znajomości, wyszukiwanie kontaktów i wiele inncyh.
+pl.ProtocolsGGDescription=Zapewnia obsługę protokołu Gadu-Gadu.
+pl.ProtocolsICQDescription=Zapewnia obsługę protokołu ICQ (OSCAR).
+pl.ProtocolsIRCDescription=Zapewnia obsługę protokołu Internet Relay Chat (IRC).
+pl.ProtocolsJabberDescription=Zapewnia obsługę protokołu Jabber/XMPP.
+pl.ProtocolsMSNDescription=Zapewnia obsługę protokołu Microsoft Network (MSN).
+pl.ProtocolsYahooDescription=Zapewnia obsługę protokołu Yahoo.
+pl.ClistsDescription=Wtyczki listy kontaktów.
+pl.StdClistDescription=Podstawowy moduł listy kontaktów zawarty w rdzeniu.
+pl.BlindClistDescription=Jest to lista kontaktów dla ludzi niewidomych. Używa kontrolki listy, aby pokazać wszystkie kontakty, dzięki temu czytnik ekranu może "czytać" listę użtkownikowi.
+pl.ModernClistDescription=Wspiera skórki. Wyświetla kontakty, powiadomienia zdarzeń, statusy protokołów z dobrymi modyfikacjami wizualnymi. Wspierane zmiany z MW, rozszerzona współpraca z metakontaktami.
+pl.NicerClistDescription=Wyświetla kontakty, powiadomienia zdarzeń, statusy protokołów.
+pl.MessageWinDescription=Wtyczki okna wiadomości.
+pl.StdMsgDescription=Podstawowe moduły rdzenia do wiadomości i czatu. Brak wsparcia zakładek.
+pl.ScriverDescription=Łatwa i lekka wtyczka rozmów.
+pl.TabsrmmDescription=Zaawansowana wtyczka rozmów z modułem czatu. Wspiera skórki.
+pl.MMAPDescription=Zapewnia wsparcie profilu Mirandy: ustawień globalnych, kontaktów, historii, ustawień dla każdego kontaktu z osobna.
+pl.LangDescription=Pakiety językowe dla Mirandy NG.
+pl.LangRussianDescription=Tłumaczy interfejs Mirandy na język rosyjski.
+pl.LangCzechDescription=Tłumaczy interfejs Mirandy na język czeski.
+pl.LangPolishDescription=Tłumaczy interfejs Mirandy na język polski.
+pl.LangGermanDescription=Tłumaczy interfejs Mirandy na język niemiecki.
+pl.LangEnglishDescription=Domyślny (angielski) język interfejsu.
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
@@ -535,7 +597,7 @@ Name: "pl"; MessagesFile: "compiler:Languages\Polish.isl"
 Name: "de"; MessagesFile: "compiler:Languages\German.isl"
 
 [Code]
-//глобальные переменные
+// Global variables
 var
   DefTypeInstLabel, PortTypeInstLabel, ProgressLabel: TLabel;
   DefTypeInstRadio, PortTypeInstRadio: TRadioButton;
@@ -543,9 +605,9 @@ var
   ComponentInfo: TNewStaticText;
   ComponentList: TStringList;
 
-//--Функции из внешних длл--
+//--Functions called from external DLLs--
 
-//Aero эффект
+// Aero effects
 procedure iswin7_add_glass(Handle:HWND; Left, Top, Right, Bottom : Integer; GDIPLoadMode: boolean);
 external 'iswin7_add_glass@files:iswin7.dll stdcall';
 procedure iswin7_add_button(Handle:HWND);
@@ -553,21 +615,21 @@ external 'iswin7_add_button@files:iswin7.dll stdcall';
 procedure iswin7_free;
 external 'iswin7_free@files:iswin7.dll stdcall';
 
-//Описание компонентов
+// Components description
 function EnableDescription(ComponentsListHandle: HWND; DescLabelHandle: HWND; DescStrings: PAnsiChar): BOOL;
 external 'enabledesc@files:descctrl.dll stdcall';
 function DisableDescription: BOOL;
 external 'disabledesc@files:descctrl.dll stdcall';
 
-//Получение всех логических дисков
+// Getting a list of all logical disk drives
 function GetLogicalDriveStrings(nLenDrives: LongInt; lpDrives: ansistring): integer;
 external 'GetLogicalDriveStringsA@kernel32.dll stdcall';
 
-//Получение типа диска
+// Determine disk drive type (removable, fixed, CD-ROM, RAM disk, or network)
 function GetDriveType(lpDisk: ansistring): integer;
 external 'GetDriveTypeA@kernel32.dll stdcall';
 
-//константы типов дисков
+// Drive type constants
 const
   DRIVE_UNKNOWN = 0;     // The drive type cannot be determined.
   DRIVE_NO_ROOT_DIR = 1; // The root path is invalid. For example, no volume is mounted at the path.
@@ -577,27 +639,27 @@ const
   DRIVE_CDROM = 5;       // The drive is a CD-ROM drive.
   DRIVE_RAMDISK = 6;     // The drive is a RAM disk.
 
-//проверка версии установки по дефолту
+// Default installation check
 function IsDefault: Boolean;
 begin
   if (DefTypeInstRadio.Checked) then
     Result:= True;
 end;
 
-//проверка версии установки портативной
+// Portable installation check
 function IsPortable: Boolean;
 begin
   if (PortTypeInstRadio.Checked) then
     Result:= True;
 end;
 
-//vc redist installation check
+// Visual C++ redistributable package installation check
 function RedistIsNotInstalled: Boolean;
 begin
    Result := not RegKeyExists{#RedistRegChk};
 end;
 
-//создание страницы установки с типами установки (обычная или портативная)
+// Installation type page creation (default or portable)
 procedure CreateInstallTypePage();
 begin
   InstallTypePage:=CreateCustomPage(wpLicense, ExpandConstant('{cm:InstTypeHeader}'), ExpandConstant('{cm:InstTypeText}'));
@@ -639,7 +701,7 @@ begin
   end;
 end;
 
-// Панель информации о компонентах
+// Components info-panel 
 procedure CreateComponentsInfoPanel();
 var
   InfoCaption: TNewStaticText;
@@ -675,7 +737,7 @@ begin
   ComponentInfo.WordWrap := true;
 end;
 
-//выбор папки установки
+// Choosing installation folder
 procedure CheckFolder();
 var
   drivesletters, drive: ansistring;
@@ -687,22 +749,22 @@ begin
 
   if (PortTypeInstRadio.Checked) then
   begin
-    //получаем все диски системы
+    // Getting all the disk drives
     drivesletters := StringOfChar(' ', 64);
     lenletters := GetLogicalDriveStrings(63, drivesletters);
     SetLength(drivesletters , lenletters);
     drive := '';
     n := 0;
-    //перебираем все диски в цикле
+    // Checking all disks in cycle
     while ((Length(drivesletters) > 0)) do
     begin
       posnull := Pos(#0, drivesletters);
         if posnull > 0 then
         begin
         drive:= UpperCase(Copy(drivesletters, 1, posnull - 1));
-        // получаем тип диска
+        // Getting disk drive type
         disktype := GetDriveType(drive);
-        //если съемный, то проверяем совбодное место и предлагаем поставить на него
+        // If removable, checking available space and suggesting to install on it
         if  (disktype = DRIVE_REMOVABLE) then
         begin
           GetSpaceOnDisk(drive, True, FreeMB, TotalMB);
@@ -721,7 +783,7 @@ begin
   end;
 end;
 
-//выбор группы меню
+// Start Menu group
 procedure CheckGroup();
 begin
   if DefTypeInstRadio.Checked then
@@ -731,7 +793,7 @@ begin
     WizardForm.NoIconsCheck.Checked := True;
 end;
 
-// Проверка выбора протоколов
+// Checking if at least one protocol selected to be installed
 procedure ComponentOnClick(Sender: TObject);
 begin
   if (Pos(ExpandConstant('{cm:Protocols}'), ' ' + WizardSelectedComponents(True)) = 0) then
@@ -742,7 +804,7 @@ begin
     WizardForm.NextButton.Enabled := True;
 end;
 
-// Проверка выбора протоколов
+// Checking if at least one protocol selected to be installed
 procedure ComponentOnKeyPress(Sender: TObject; var Key: Char);
 begin
   if Key = ' ' then
@@ -754,19 +816,19 @@ begin
       WizardForm.NextButton.Enabled := True;
 end;
 
-//рассчет и вывод процентов установки в лейбл
+// Calculation and output of installation process in percents to progress label
 procedure ShowPercent();
 begin
   with WizardForm.ProgressGauge do
     ProgressLabel.Caption:= IntToStr((Position-Min)/((Max - Min)/100)) + ExpandConstant('{cm:PercentDone}');
 end;
 
-//начальная инициализация
+// Initialization beginning
 procedure InitializeWizard();
 var
   Version: TWindowsVersion;
 begin
-  // Для более красивого отображения уменьшаем нижнюю границу
+  // Shrinking bottom border (looks nicer this way)
   WizardForm.Bevel.Height := 1;
 
   GetWindowsVersionEx(Version);
@@ -774,15 +836,15 @@ begin
      (Version.Major <= 6) and
      (Version.Minor < 2) then
   begin
-    // Инициализируем библиотеку
+    // Initializing library
     iswin7_add_button(WizardForm.BackButton.Handle);
     iswin7_add_button(WizardForm.NextButton.Handle);
     iswin7_add_button(WizardForm.CancelButton.Handle);
-    // Параметр True не трогать он для htuos ))
+    //Do not touch 'True' parameter, it's for htuos ))
     iswin7_add_glass(WizardForm.Handle, 0, 0, 0, 47, True);
   end;
 
-  // Компоненты
+  // Component list
   ComponentList := TStringList.Create();
   with ComponentList do
   begin
@@ -806,9 +868,7 @@ begin
     ComponentList.Add('messagewin\stdmsg');
     ComponentList.Add('messagewin\scriver');
     ComponentList.Add('messagewin\tabsrmm');
-    ComponentList.Add('dbx');
-    ComponentList.Add('dbx\3x');
-    ComponentList.Add('dbx\mmap');
+    ComponentList.Add('dbx_mmap');
     ComponentList.Add('lang');
     ComponentList.Add('lang\russian');
     ComponentList.Add('lang\czech');
@@ -818,17 +878,17 @@ begin
   end;
 
   WizardForm.NoIconsCheck.Visible:=True;
-  // Создание страниц
+  // Pages creation
   CreateInstallTypePage(); //страница выбора типа установки (обычная или портативная)
 
-  //добавление описаний к компонентам установки
+  // Adding component descriptions
   CreateComponentsInfoPanel();
 
-  //обработчики проверки выбора хотя бы 1 протокола
+  // 'At least 1 protocol selected' event handlers
   WizardForm.ComponentsList.OnClick := @ComponentOnClick;
   WizardForm.ComponentsList.OnKeyPress := @ComponentOnKeyPress;
 
-  //создание лейбла для вывода процентов установки
+  // Creating label for displaying percents of installation progress
   ProgressLabel := TLabel.Create(WizardForm);
   with WizardForm.ProgressGauge do
   begin
@@ -840,7 +900,7 @@ begin
   end;
 end;
 
-//пропуск неиспользуемых страниц
+// Skipping unused pages
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
   if ((PageID = wpSelectProgramGroup) or (PageID = wpSelectTasks)) and (PortTypeInstRadio.Checked) then
@@ -849,26 +909,26 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
-  //кастыль, чтобы обойти создание тасков
+  // Tasks creation preventing clutch
   if CurPageID = wpSelectTasks then
     WizardForm.TasksList.CheckItem(1, coCheck);
-  //langpack selection
+  // Langpack selection
   if CurPageID = wpSelectComponents then
   begin
     if ActiveLanguage = 'en' then
-      WizardForm.ComponentsList.Checked[28]:= True
-    else if ActiveLanguage = 'ru' then
-      WizardForm.ComponentsList.Checked[24]:= True
-    else if ActiveLanguage = 'cz' then
-      WizardForm.ComponentsList.Checked[25]:= True
-    else if ActiveLanguage = 'pl' then
       WizardForm.ComponentsList.Checked[26]:= True
+    else if ActiveLanguage = 'ru' then
+      WizardForm.ComponentsList.Checked[22]:= True
+    else if ActiveLanguage = 'cz' then
+      WizardForm.ComponentsList.Checked[23]:= True
+    else if ActiveLanguage = 'pl' then
+      WizardForm.ComponentsList.Checked[24]:= True
     else if ActiveLanguage = 'de' then
-      WizardForm.ComponentsList.Checked[27]:= True;
+      WizardForm.ComponentsList.Checked[25]:= True;
   end;
 end;
 
-//обработчик нажатия кнопки Далее
+// Next button click handler
 function NextButtonClick(CurPage: Integer): Boolean;
 begin
   Result:=true;
@@ -898,8 +958,6 @@ begin
     ExpandConstant('{cm:StdMsgDescription}') + ';' +
     ExpandConstant('{cm:ScriverDescription}') + ';' +
     ExpandConstant('{cm:TabsrmmDescription}') + ';' +
-    ExpandConstant('{cm:DBXDescription}') + ';' +
-    ExpandConstant('{cm:DBX_3xDescription}') + ';' +
     ExpandConstant('{cm:MMAPDescription}') + ';' +
     ExpandConstant('{cm:LangDescription}') + ';' +
     ExpandConstant('{cm:LangRussianDescription}') + ';' +
@@ -911,7 +969,7 @@ begin
 
     if DirExists(WizardForm.DirEdit.Text) and (FileExists(WizardForm.DirEdit.Text+'\{#MirName}') or FileExists(WizardForm.DirEdit.Text+'\mir_core.dll'))  then
     begin
-      MsgBox(ExpandConstant('{cm:FolderExists1}')+#10+#10+WizardForm.DirEdit.Text+#10+#10+ExpandConstant('{cm:FolderExists2}'), mbError, MB_OK);
+      SuppressibleMsgBox(ExpandConstant('{cm:FolderExists1}')+#10+#10+WizardForm.DirEdit.Text+#10+#10+ExpandConstant('{cm:FolderExists2}'), mbError, MB_OK, MB_OK);
       Result := False;
       exit;
     end;
@@ -929,20 +987,20 @@ begin
   end;
 end;
 
-//Деинсталляция
+// Uninstall
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep=usPostUninstall then
   begin
     if DirExists(AddBackslash(ExpandConstant('{userappdata}\Miranda NG'))) then
-      if MsgBox(ExpandConstant('{cm:ProfileUninst}'), mbError, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+      if SuppressibleMsgBox(ExpandConstant('{cm:ProfileUninst}'), mbError, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
       begin
         DelTree(AddBackslash(ExpandConstant('{userappdata}\Miranda NG')), True, True, True);
       end;
   end;
 end;
 
-//Деинициализация установки
+// Setup deinitialization
 procedure DeinitializeSetup();
 var
   Version: TWindowsVersion;
@@ -952,7 +1010,7 @@ begin
      (Version.Major <= 6) and
      (Version.Minor < 2) then
   begin
-    // Отключаем библиотеку
+    // Deinitializing library
     iswin7_free;
   end;
   DisableDescription();

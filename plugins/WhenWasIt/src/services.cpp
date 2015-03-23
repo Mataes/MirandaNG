@@ -87,7 +87,7 @@ int DestroyServices()
 returns -1 if notify is not necesarry
 returns daysToBirthday if it should notify
 */
-int NotifyContactBirthday(HANDLE hContact, time_t now, int daysInAdvance)
+int NotifyContactBirthday(MCONTACT hContact, time_t now, int daysInAdvance)
 {
 	int year, month, day;
 	GetContactDOB(hContact, year, month, day);
@@ -100,7 +100,7 @@ int NotifyContactBirthday(HANDLE hContact, time_t now, int daysInAdvance)
 
 // returns -1 if notify is not necessary
 // returns daysAfterBirthday if it should notify
-int NotifyMissedContactBirthday(HANDLE hContact, time_t now, int daysAfter)
+int NotifyMissedContactBirthday(MCONTACT hContact, time_t now, int daysAfter)
 {
 	if (daysAfter > 0)
 	{
@@ -167,13 +167,12 @@ INT_PTR ShowListService(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-INT_PTR AddBirthdayService(WPARAM wParam, LPARAM lParam)
+INT_PTR AddBirthdayService(WPARAM hContact, LPARAM lParam)
 {
-	HANDLE hContact = (HANDLE) wParam;
 	HWND hWnd = WindowList_Find(hAddBirthdayWndsList, hContact);
-	if ( !hWnd) {
+	if (!hWnd)
 		hWnd = CreateDialogParam(hInstance, MAKEINTRESOURCE(IDD_ADD_BIRTHDAY), NULL, DlgProcAddBirthday, (LPARAM) hContact);
-	}
+
 	return ShowWindow(hWnd, SW_SHOW);
 }
 
@@ -181,8 +180,8 @@ void ShowPopupMessage(TCHAR *title, TCHAR *message, HANDLE icon)
 {
 	POPUPDATAT pd = {0};
 	pd.lchIcon = Skin_GetIconByHandle(icon);
-	_tcscpy(pd.lptzContactName, title);
-	_tcscpy(pd.lptzText, message);
+	_tcsncpy(pd.lptzContactName, title, MAX_CONTACTNAME - 1);
+	_tcsncpy(pd.lptzText, message, MAX_SECONDLINE - 1);
 	pd.colorText = commonData.foreground;
 	pd.colorBack = commonData.background;
 	PUAddPopupT(&pd);
@@ -194,7 +193,7 @@ DWORD WINAPI RefreshUserDetailsWorkerThread(LPVOID param)
 	int delay = db_get_w(NULL, ModuleName, "UpdateDelay", REFRESH_DETAILS_DELAY);
 	int res;
 
-	HANDLE hContact = db_find_first();
+	MCONTACT hContact = db_find_first();
 	while (hContact != NULL) {
 		res = CallContactService(hContact, PSS_GETINFO, 0, 0);
 		hContact = db_find_next(hContact);
@@ -231,8 +230,8 @@ INT_PTR ImportBirthdaysService(WPARAM wParam, LPARAM lParam)
 	mir_sntprintf(filter, SIZEOF(filter), _T("%s (*") _T(BIRTHDAY_EXTENSION) _T(")%c*") _T(BIRTHDAY_EXTENSION) _T("%c"), TranslateT("Birthdays files"), 0, 0);
 	of.lpstrFilter = filter;
 	of.lpstrFile = fileName;
-	of.nMaxFile = 1024;
-	of.lpstrTitle = TranslateT("Please select a file to import birthdays from ...");
+	of.nMaxFile = SIZEOF(fileName);
+	of.lpstrTitle = TranslateT("Please select a file to import birthdays from...");
 	of.Flags = OFN_FILEMUSTEXIST;
 
 	if ( GetOpenFileName(&of)) {
@@ -256,8 +255,8 @@ INT_PTR ExportBirthdaysService(WPARAM wParam, LPARAM lParam)
 	mir_sntprintf(filter, SIZEOF(filter), _T("%s (*") _T(BIRTHDAY_EXTENSION) _T(")%c*") _T(BIRTHDAY_EXTENSION) _T("%c%s (*.*)%c*.*%c"), TranslateT("Birthdays files"), 0, 0, TranslateT("All Files"), 0, 0);
 	of.lpstrFilter = filter;
 	of.lpstrFile = fileName;
-	of.nMaxFile = 1024;
-	of.lpstrTitle = TranslateT("Please select a file to export birthdays to ...");
+	of.nMaxFile = SIZEOF(fileName);
+	of.lpstrTitle = TranslateT("Please select a file to export birthdays to...");
 
 	if ( GetSaveFileName(&of)) {
 		TCHAR buffer[2048];
@@ -301,7 +300,7 @@ int DoImport(TCHAR *fileName)
 
 				TCHAR *szHandle = buffer;
 				TCHAR *szProto = delProto + 1;
-				HANDLE hContact = GetContactFromID(szHandle, szProto);
+				MCONTACT hContact = GetContactFromID(szHandle, szProto);
 				if (hContact) {
 					delProto[0] = tmp;
 					delAccount[0] = tmp;
@@ -334,7 +333,7 @@ int DoExport(TCHAR *fileName)
 	_ftprintf(fout, _T("%c%s"), _T(COMMENT_CHAR), TranslateT("Warning! Please do not mix Unicode and Ansi exported birthday files. You should use the same version (Ansi/Unicode) of WhenWasIt that was used to export the info.\n"));
 	_ftprintf(fout, _T("%c%s"), _T(COMMENT_CHAR), TranslateT("This file was exported with a Unicode version of WhenWasIt. Please only use a Unicode version of the plugin to import the birthdays.\n"));
 
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		int year, month, day;
 		GetContactDOB(hContact, year, month, day);
 		if ( IsDOBValid(year, month, day)) {

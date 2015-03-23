@@ -1,4 +1,8 @@
 {Visual part}
+var
+  hCMenuItemRec,
+  hCMenuItemPlay:THANDLE;
+
 function OnContactMenu(hContact:WPARAM;lParam:LPARAM):int;cdecl;
 var
   mi:TCListMenuItem;
@@ -98,6 +102,12 @@ begin
   sid.hDefaultIcon   :=LoadImage(hInstance,MAKEINTRESOURCE(IDI_OFF),IMAGE_ICON,16,16,0);
   sid.pszName        :=IcoBtnOff;
   sid.szDescription.a:='Broadcast OFF';
+  Skin_AddIcon(@sid);
+  DestroyIcon(sid.hDefaultIcon);
+
+  sid.hDefaultIcon   :=LoadImage(hInstance,MAKEINTRESOURCE(IDI_OPEN),IMAGE_ICON,16,16,0);
+  sid.pszName        :=IcoBtnOpen;
+  sid.szDescription.a:='Quick Open';
   Skin_AddIcon(@sid);
   DestroyIcon(sid.hDefaultIcon);
 

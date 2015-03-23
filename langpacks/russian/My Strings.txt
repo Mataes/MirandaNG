@@ -31,23 +31,11 @@
 Схема Notepad
 [ETA]
 Осталось дней
-[Support page]
-Страница поддержки сборки
-[Manage your Miranda NG profile]
-Управление профилем пользователя
-[Import from database]
+[Import from database...]
 Импорт из профиля
-[Hi!]
-Привет!
-[How are you?]
-Как дела?
-[What are you doing?]
-Что делаешь?
-[Bye!]
-Пока!
-[See you again!]
-До встречи!
 [Current = %r\\nPrevious = %p]
 Текущий = %r\\nПредыдущий = %p
-[Reload langpack]
-Перезагрузить языковой пакет
+[Messages received]
+Принято сообщений
+[Messages sent]
+Отправлено сообщений

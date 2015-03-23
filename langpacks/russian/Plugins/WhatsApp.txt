@@ -1,0 +1,119 @@
+﻿#muuid {4f1ff7fa-4d75-44b9-93b0-2ced2e4f9e3e}
+;============================================================
+;  File: WhatsApp.dll
+;  Plugin: WhatsApp protocol
+;  Version: 0.1.2.12
+;  Authors: Uli Hecht
+;============================================================
+[WhatsApp protocol support for Miranda NG.]
+Поддержка протокола WhatsApp в Miranda NG.
+[Phone number]
+Номер телефона
+[Nickname]
+Ник
+[Default group:]
+Группа:
+[Use SSL connection (port 443)]
+Подключение по SSL (порт 443)
+[Automatically open group chats]
+Автоматически открывать комнаты чата
+[Registration]
+Регистрация
+[SMS code]
+Код SMS
+[Request code]
+Код запроса
+[Register code]
+Код регистрации
+[Including country code, without '+' or '00']
+Включая код страны, без '+' или '00'
+[Invite users]
+Приглашение пользователей
+[Choose a user]
+Выберите пользователя
+[Other user:]
+Другой пользователь:
+[&Invite]
+&Пригласить
+[Cancel]
+Отмена
+[Members]
+Участники
+[Owners]
+Владельцы
+[&Invite a user]
+&Пригласить пользователя
+[&Room options]
+Настройки &комнаты чата
+[View/change &topic]
+Просмотр/смена &темы
+[&Leave chat session]
+&Покинуть чат
+[Set &avatar]
+Настройки &аватара
+[Copy room &JID]
+Копировать &JID комнаты чата
+[Copy room topic]
+Копировать тему
+[Set new subject for %s]
+Установить новую тему для %s
+[&Add to roster]
+&Добавить в ростер
+[&Kick]
+&Выкинуть
+[Copy &nickname]
+Копировать &ник
+[Copy real &JID]
+Копировать &JID
+[Unknown user]
+Неизвестный пользователь
+[Please enter a country code.]
+Введите код страны.
+[Please enter a phone number without country code.]
+Введите номер телефона без кода страны.
+[Please enter a nickname.]
+Введите ник.
+[Please enter a password.]
+Введите пароль.
+[is now known as '%s']
+теперь известен как '%s'
+[Last seen on %x at %X]
+Последнее появление %x в %X
+[An SMS with registration code will be sent to your mobile phone.\nNotice that you are not able to use the real WhatsApp and this plugin simultaneously!\nContinue?]
+Код регистрации придет на ваш телефон в SMS.\nУчтите, что одновременное использование этого плагина и настоящего WhatsApp невозможно!\nПродолжить?
+[Your password has been set automatically. You can proceed with login now]
+Ваш пароль был установлен автоматически. Теперь вы можете подключиться.
+[Please correctly specify your registration code received by SMS]
+Пожалуйста, верно укажите свой код регистрации, полученный в SMS
+[Changes will be applied after protocol restart]
+Изменения будут применены после перезапуска протокола
+[server]
+Сервер
+[Message received: %s by %s]
+Сообщение принято в: %s пользователем %s
+[%s server connection]
+%s подключение к серверу
+[Unable to get Netlib connection for WhatsApp]
+Невозможно создать подключение Netlib для WhatsApp
+[Network connection error.]
+Ошибка соединения.
+[Registration failed. Invalid server response.]
+Неудачная регистрация. Неверный ответ сервера.
+[Registration failed due to stale code. Please request a new code]
+Неудачная регистрация вследствие устаревшего кода. Пожалуйста, запросите новый код
+[Registration failed.]
+Неудачная регистрация.
+[Please try again in %i seconds]
+Пожалуйста, попробуйте ещё раз через %i секунд
+[Registration code has been sent to your phone.]
+Код регистрации был выслан на ваш телефон.
+[Network]
+Сеть
+[Account]
+Учётная запись
+[WhatsApp icon]
+Значок WhatsApp
+[Create chat group]
+Создать чат-группу
+[Create group]
+Создать группу

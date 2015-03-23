@@ -17,7 +17,7 @@
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+	*/
 
 #ifndef POPUP_H
 #define POPUP_H
@@ -35,7 +35,16 @@
 #define PCA_OPENHISTORY        4   // open contact history
 #define PCA_DONOTHING          5   // do nothing
 
-#define STRING_SHOWPREVIOUSSTATUS _T("(was %s)")
+#define STRING_SHOWPREVIOUSSTATUS LPGENT("(was %s)")
+
+typedef struct tagPLUGINDATA
+{
+	WORD newStatus;
+	WORD oldStatus;
+	HWND hWnd;
+	HANDLE hAwayMsgProcess;
+	HANDLE hAwayMsgHook;
+} PLUGINDATA;
 
 static struct {
 	TCHAR *Text;
@@ -49,6 +58,7 @@ static struct {
 	LPGENT("Do nothing"), PCA_DONOTHING
 };
 
+void ShowChangePopup(MCONTACT hContact, HICON hIcon, WORD newStatus, const TCHAR *stzText, PLUGINDATA *pdp = NULL);
 LRESULT CALLBACK PopupDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
 #endif

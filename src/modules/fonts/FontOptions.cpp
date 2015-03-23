@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -133,107 +134,100 @@ void WriteLine(HANDLE fhand, char *line)
 
 BOOL ExportSettings(HWND hwndDlg, TCHAR *filename, OBJLIST<FontInternal>& flist, OBJLIST<ColourInternal>& clist, OBJLIST<EffectInternal>& elist)
 {
-	int i;
-	char header[512], buff[1024], abuff[1024];
-
 	HANDLE fhand = CreateFile(filename, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
 	if (fhand == INVALID_HANDLE_VALUE) {
 		MessageBox(hwndDlg, filename, TranslateT("Failed to create file"), MB_ICONWARNING | MB_OK);
 		return FALSE;
 	}
 
+	char header[512], buff[1024], abuff[1024];
 	header[0] = 0;
 
-	strcpy(buff, "SETTINGS:\r\n");
+	strncpy(buff, "SETTINGS:\r\n", SIZEOF(buff));
 	WriteLine(fhand, buff);
 
-	for (i=0; i < flist.getCount(); i++) {
+	for (int i=0; i < flist.getCount(); i++) {
 		FontInternal& F = flist[i];
 
 		mir_snprintf(buff, SIZEOF(buff), "\r\n[%s]", F.dbSettingsGroup);
 		if (strcmp(buff, header) != 0) {
-			strcpy(header, buff);
+			strncpy(header, buff, SIZEOF(header));
 			WriteLine(fhand, buff);
 		}
 
-		if (F.flags & FIDF_APPENDNAME)
-			mir_snprintf(buff, SIZEOF(buff), "%sName = s", F.prefix);
-		else
-			mir_snprintf(buff, SIZEOF(buff), "%s = s", F.prefix);
+		mir_snprintf(buff, SIZEOF(buff),(F.flags & FIDF_APPENDNAME) ? "%sName=s" : "%s=s", F.prefix);
 
 		WideCharToMultiByte(code_page, 0, F.value.szFace, -1, abuff, 1024, 0, 0);
 		abuff[1023] = 0;
-		strcat(buff, abuff);
+		strncat(buff, abuff, SIZEOF(buff));
 		WriteLine(fhand, buff);
 
-		mir_snprintf(buff, SIZEOF(buff), "%sSize = b", F.prefix);
+		mir_snprintf(buff, SIZEOF(buff), "%sSize=b", F.prefix);
 		if (F.flags & FIDF_SAVEACTUALHEIGHT) {
-			HDC hdc;
 			SIZE size;
-			HFONT hFont, hOldFont;
 			LOGFONT lf;
 			CreateFromFontSettings(&F.value, &lf);
-			hFont = CreateFontIndirect(&lf);
+			HFONT hFont = CreateFontIndirect(&lf);
 
-			hdc = GetDC(hwndDlg);
-			hOldFont = (HFONT)SelectObject(hdc, hFont);
+			HDC hdc = GetDC(hwndDlg);
+			HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
 			GetTextExtentPoint32(hdc, _T("_W"), 2, &size);
 			ReleaseDC(hwndDlg, hdc);
 			SelectObject(hdc, hOldFont);
 			DeleteObject(hFont);
 
-			strcat(buff, _itoa((BYTE)size.cy, abuff, 10));
+			strncat(buff, _itoa((BYTE)size.cy, abuff, 10), sizeof(buff));
 		}
 		else if (F.flags & FIDF_SAVEPOINTSIZE) {
 			HDC hdc = GetDC(hwndDlg);
-			strcat(buff, _itoa((BYTE)-MulDiv(F.value.size, 72, GetDeviceCaps(hdc, LOGPIXELSY)), abuff, 10));
+			strncat(buff, _itoa((BYTE)-MulDiv(F.value.size, 72, GetDeviceCaps(hdc, LOGPIXELSY)), abuff, 10), sizeof(buff));
 			ReleaseDC(hwndDlg, hdc);
 		}
-		else strcat(buff, _itoa((BYTE)F.value.size, abuff, 10));
+		else strncat(buff, _itoa((BYTE)F.value.size, abuff, 10), sizeof(buff));
 
 		WriteLine(fhand, buff);
 
-		mir_snprintf(buff, SIZEOF(buff), "%sSty = b%d", F.prefix, (BYTE)F.value.style);
+		mir_snprintf(buff, SIZEOF(buff), "%sSty=b%d", F.prefix, (BYTE)F.value.style);
 		WriteLine(fhand, buff);
-		mir_snprintf(buff, SIZEOF(buff), "%sSet = b%d", F.prefix, (BYTE)F.value.charset);
+		mir_snprintf(buff, SIZEOF(buff), "%sSet=b%d", F.prefix, (BYTE)F.value.charset);
 		WriteLine(fhand, buff);
-		mir_snprintf(buff, SIZEOF(buff), "%sCol = d%d", F.prefix, (DWORD)F.value.colour);
+		mir_snprintf(buff, SIZEOF(buff), "%sCol=d%d", F.prefix, (DWORD)F.value.colour);
 		WriteLine(fhand, buff);
 		if (F.flags & FIDF_NOAS) {
-			mir_snprintf(buff, SIZEOF(buff), "%sAs = w%d", F.prefix, (WORD)0x00FF);
+			mir_snprintf(buff, SIZEOF(buff), "%sAs=w%d", F.prefix, (WORD)0x00FF);
 			WriteLine(fhand, buff);
 		}
-		mir_snprintf(buff, SIZEOF(buff), "%sFlags = w%d", F.prefix, (WORD)F.flags);
+		mir_snprintf(buff, SIZEOF(buff), "%sFlags=w%d", F.prefix, (WORD)F.flags);
 		WriteLine(fhand, buff);
 	}
 
 	header[0] = 0;
-	for (i=0; i < clist.getCount(); i++) {
+	for (int i=0; i < clist.getCount(); i++) {
 		ColourInternal& C = clist[i];
 
 		mir_snprintf(buff, SIZEOF(buff), "\r\n[%s]", C.dbSettingsGroup);
 		if (strcmp(buff, header) != 0) {
-			strcpy(header, buff);
+			strncpy(header, buff, SIZEOF(header));
 			WriteLine(fhand, buff);
 		}
-		mir_snprintf(buff, SIZEOF(buff), "%s = d%d", C.setting, (DWORD)C.value);
+		mir_snprintf(buff, SIZEOF(buff), "%s=d%d", C.setting, (DWORD)C.value);
 		WriteLine(fhand, buff);
 	}
 
 	header[0] = 0;
-	for (i=0; i < elist.getCount(); i++) {
+	for (int i=0; i < elist.getCount(); i++) {
 		EffectInternal& E = elist[i];
 
 		mir_snprintf(buff, SIZEOF(buff), "\r\n[%s]", E.dbSettingsGroup);
 		if (strcmp(buff, header) != 0) {
-			strcpy(header, buff);
+			strncpy(header, buff, SIZEOF(header));
 			WriteLine(fhand, buff);
 		}
-		mir_snprintf(buff, SIZEOF(buff), "%sEffect = b%d", E.setting, E.value.effectIndex);
+		mir_snprintf(buff, SIZEOF(buff), "%sEffect=b%d", E.setting, E.value.effectIndex);
 		WriteLine(fhand, buff);
-		mir_snprintf(buff, SIZEOF(buff), "%sEffectCol1 = d%d", E.setting, E.value.baseColour);
+		mir_snprintf(buff, SIZEOF(buff), "%sEffectCol1=d%d", E.setting, E.value.baseColour);
 		WriteLine(fhand, buff);
-		mir_snprintf(buff, SIZEOF(buff), "%sEffectCol2 = d%d", E.setting, E.value.secondaryColour);
+		mir_snprintf(buff, SIZEOF(buff), "%sEffectCol2=d%d", E.setting, E.value.secondaryColour);
 		WriteLine(fhand, buff);
 	}
 
@@ -250,19 +244,21 @@ void OptionsChanged()
 TOOLINFO ti;
 int x, y;
 
-UINT_PTR CALLBACK CFHookProc(HWND hdlg, UINT uiMsg, WPARAM wParam, LPARAM lParam) {
-	switch(uiMsg) {
-		case WM_INITDIALOG: {
-			CHOOSEFONT* cf = (CHOOSEFONT *)lParam;
-
-			TranslateDialogDefault(hdlg);
-			ShowWindow( GetDlgItem(hdlg, 1095), SW_HIDE);
-			if (cf && (cf->lCustData & FIDF_DISABLESTYLES)) {
-				EnableWindow( GetDlgItem(hdlg, 1137), FALSE);
-				ShowWindow( GetDlgItem(hdlg, 1137), SW_HIDE);
-				ShowWindow( GetDlgItem(hdlg, 1095), SW_SHOW);
+UINT_PTR CALLBACK CFHookProc(HWND hdlg, UINT uiMsg, WPARAM wParam, LPARAM lParam)
+{
+	if (uiMsg == WM_INITDIALOG) {
+		CHOOSEFONT* cf = (CHOOSEFONT *)lParam;
+		if (cf != NULL) {
+			if (cf->lCustData & FIDF_DISABLESTYLES) {
+				EnableWindow(GetDlgItem(hdlg, 1137), FALSE);
+				ShowWindow(GetDlgItem(hdlg, 1137), SW_HIDE);
+				ShowWindow(GetDlgItem(hdlg, 1095), SW_SHOW);
 			}
-			return 0;
+			else if (cf->lCustData & FIDF_ALLOWEFFECTS) {
+				EnableWindow(GetDlgItem(hdlg, 1139), FALSE);
+				ShowWindow(GetDlgItem(hdlg, 1139), SW_HIDE);
+				ShowWindow(GetDlgItem(hdlg, 1091), SW_HIDE);
+			}
 		}
 	}
 
@@ -278,9 +274,8 @@ struct FSUIListItemData
 
 static BOOL sttFsuiBindColourIdToFonts(HWND hwndList, const TCHAR *name, const TCHAR *backgroundGroup, const TCHAR *backgroundName, int colourId)
 {
-	int i;
 	BOOL res = FALSE;
-	for (i = SendMessage(hwndList, LB_GETCOUNT, 0, 0); i--;)
+	for (int i = SendMessage(hwndList, LB_GETCOUNT, 0, 0); i--;)
 	{
 		FSUIListItemData *itemData = (FSUIListItemData *)SendMessage(hwndList, LB_GETITEMDATA, i, 0);
 		if (itemData && itemData->font_id >= 0) {
@@ -328,18 +323,18 @@ static HTREEITEM sttFindNamedTreeItemAt(HWND hwndTree, HTREEITEM hItem, const TC
 	else
 		tvi.hItem = TreeView_GetRoot(hwndTree);
 
-	if ( !name)
+	if (!name)
 		return tvi.hItem;
 
 	tvi.mask = TVIF_TEXT;
 	tvi.pszText = str;
-	tvi.cchTextMax = MAX_PATH;
+	tvi.cchTextMax = SIZEOF(str);
 
 	while (tvi.hItem)
 	{
 		TreeView_GetItem(hwndTree, &tvi);
 
-		if ( !lstrcmp(tvi.pszText, name))
+		if (!mir_tstrcmp(tvi.pszText, name))
 			return tvi.hItem;
 
 		tvi.hItem = TreeView_GetNextSibling(hwndTree, tvi.hItem);
@@ -354,7 +349,7 @@ static void sttFsuiCreateSettingsTreeNode(HWND hwndTree, const TCHAR *groupName,
 	int sectionLevel = 0;
 
 	HTREEITEM hSection = NULL;
-	lstrcpy(itemName, groupName);
+	mir_tstrcpy(itemName, groupName);
 	sectionName = itemName;
 
 	while (sectionName) {
@@ -369,8 +364,8 @@ static void sttFsuiCreateSettingsTreeNode(HWND hwndTree, const TCHAR *groupName,
 		pItemName = TranslateTH(hLangpack, pItemName);
 
 		hItem = sttFindNamedTreeItemAt(hwndTree, hSection, pItemName);
-		if ( !sectionName || !hItem) {
-			if ( !hItem) {
+		if (!sectionName || !hItem) {
+			if (!hItem) {
 				TVINSERTSTRUCT tvis = {0};
 				TreeItem *treeItem = (TreeItem *)mir_alloc(sizeof(TreeItem));
 				treeItem->groupName = sectionName ? NULL : mir_tstrdup(groupName);
@@ -384,7 +379,7 @@ static void sttFsuiCreateSettingsTreeNode(HWND hwndTree, const TCHAR *groupName,
 
 				hItem = TreeView_InsertItem(hwndTree, &tvis);
 
-				ZeroMemory(&tvis.item, sizeof(tvis.item));
+				memset(&tvis.item, 0, sizeof(tvis.item));
 				tvis.item.hItem = hItem;
 				tvis.item.mask = TVIF_HANDLE|TVIF_STATE;
 				tvis.item.state = tvis.item.stateMask = db_get_b(NULL, "FontServiceUI", treeItem->paramName, TVIS_EXPANDED);
@@ -473,15 +468,14 @@ static INT_PTR CALLBACK ChooseEffectDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
 		TranslateDialogDefault(hwndDlg);
 		pEffect = (FONTEFFECT*) lParam;
 		{
-			int i;
-			for (i=0; i < SIZEOF(ModernEffectNames); i++) {
+			for (int i=0; i < SIZEOF(ModernEffectNames); i++) {
 				int itemid = SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_ADDSTRING, 0, (LPARAM)TranslateTS(ModernEffectNames[i]));
 				SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_SETITEMDATA, itemid, i);
 				SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_SETCURSEL, 0, 0);
 			}
 
 			int cnt = SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_GETCOUNT, 0, 0);
-			for (i=0; i < cnt; i++) {
+			for (int i=0; i < cnt; i++) {
 				if (SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_GETITEMDATA, i, 0) == pEffect->effectIndex) {
 					SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_SETCURSEL, i, 0);
 					break;
@@ -505,7 +499,7 @@ static INT_PTR CALLBACK ChooseEffectDlgProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
 				int i = SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_GETCURSEL, 0, 0);
 				pEffect->effectIndex = (BYTE)SendDlgItemMessage(hwndDlg, IDC_EFFECT_COMBO, CB_GETITEMDATA, i, 0);
 				pEffect->baseColour = SendDlgItemMessage(hwndDlg, IDC_EFFECT_COLOUR1, CPM_GETCOLOUR, 0, 0)|((~(BYTE)SendDlgItemMessage(hwndDlg, IDC_EFFECT_COLOUR_SPIN1, UDM_GETPOS, 0, 0))<<24);
-				pEffect->secondaryColour = SendDlgItemMessage(hwndDlg, IDC_EFFECT_COLOUR2, CPM_GETCOLOUR, 0, 0)|((~(BYTE)SendDlgItemMessage(hwndDlg, IDC_EFFECT_COLOUR_SPIN2, UDM_GETPOS, 0, 0))<<24);;
+				pEffect->secondaryColour = SendDlgItemMessage(hwndDlg, IDC_EFFECT_COLOUR2, CPM_GETCOLOUR, 0, 0)|((~(BYTE)SendDlgItemMessage(hwndDlg, IDC_EFFECT_COLOUR_SPIN2, UDM_GETPOS, 0, 0))<<24);
 			}
 			EndDialog(hwndDlg, IDOK);
 			return TRUE;
@@ -530,7 +524,7 @@ static void sttSaveFontData(HWND hwndDlg, FontInternal &F)
 	if (F.flags & FIDF_APPENDNAME)
 		mir_snprintf(str, SIZEOF(str), "%sName", F.prefix);
 	else
-		mir_snprintf(str, SIZEOF(str), "%s", F.prefix);
+		strncpy_s(str, F.prefix, _TRUNCATE);
 
 	if (db_set_ts(NULL, F.dbSettingsGroup, str, F.value.szFace)) {
 		char buff[1024];
@@ -620,110 +614,89 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 		return TRUE;
 
 	case UM_SETFONTGROUP:
-	{
 		TreeItem *treeItem;
-		TCHAR *group_buff = NULL;
-		TVITEM tvi = {0};
-		tvi.hItem = TreeView_GetSelection( GetDlgItem(hwndDlg, IDC_FONTGROUP));
-		tvi.mask = TVIF_HANDLE|TVIF_PARAM;
-		TreeView_GetItem( GetDlgItem(hwndDlg, IDC_FONTGROUP), &tvi);
-		treeItem = (TreeItem *)tvi.lParam;
-		group_buff = treeItem->groupName;
+		{
+			TVITEM tvi = {0};
+			tvi.hItem = TreeView_GetSelection( GetDlgItem(hwndDlg, IDC_FONTGROUP));
+			tvi.mask = TVIF_HANDLE|TVIF_PARAM;
+			TreeView_GetItem( GetDlgItem(hwndDlg, IDC_FONTGROUP), &tvi);
+			treeItem = (TreeItem *)tvi.lParam;
+			TCHAR *group_buff = treeItem->groupName;
 
-		sttFreeListItems( GetDlgItem(hwndDlg, IDC_FONTLIST));
-		SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_RESETCONTENT, 0, 0);
+			sttFreeListItems( GetDlgItem(hwndDlg, IDC_FONTLIST));
+			SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_RESETCONTENT, 0, 0);
 
-		if (group_buff) {
-			BOOL need_restart = FALSE;
-			int fontId = 0, itemId;
-			int first_font_index = -1;
-			int colourId = 0;
-			int first_colour_index = -1;
-			int effectId = 0;
-			int first_effect_index = -1;
+			if (group_buff) {
+				BOOL need_restart = FALSE;
 
-			SendDlgItemMessage(hwndDlg, IDC_FONTLIST, WM_SETREDRAW, FALSE, 0);
+				SendDlgItemMessage(hwndDlg, IDC_FONTLIST, WM_SETREDRAW, FALSE, 0);
 
-			for (fontId = 0; fontId < font_id_list_w2.getCount(); fontId++) {
-				FontInternal& F = font_id_list_w2[fontId];
-				if (_tcsncmp(F.group, group_buff, 64) == 0) {
-					FSUIListItemData *itemData = (FSUIListItemData*)mir_alloc(sizeof(FSUIListItemData));
-					itemData->colour_id = -1;
-					itemData->effect_id = -1;
-					itemData->font_id = fontId;
-
-					if (first_font_index == -1)
-						first_font_index = fontId;
-
-					itemId = SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_ADDSTRING, (WPARAM)-1, (LPARAM)itemData);
-					need_restart |= (F.flags & FIDF_NEEDRESTART);
-				}
-			}
-
-//			ShowWindow( GetDlgItem(hwndDlg, IDC_STAT_RESTART), (need_restart ? SW_SHOW : SW_HIDE));
-
-			if (hBkgColourBrush) {
-				DeleteObject(hBkgColourBrush);
-				hBkgColourBrush = 0;
-			}
-
-			for (colourId = 0; colourId < colour_id_list_w2.getCount(); colourId++) {
-				ColourInternal& C = colour_id_list_w2[colourId];
-				if (_tcsncmp(C.group, group_buff, 64) == 0) {
-					FSUIListItemData *itemData = NULL;
-					if (first_colour_index == -1)
-						first_colour_index = colourId;
-
-					if ( !sttFsuiBindColourIdToFonts( GetDlgItem(hwndDlg, IDC_FONTLIST), C.name, C.group, C.name, colourId)) {
-						itemData = (FSUIListItemData*)mir_alloc(sizeof(FSUIListItemData));
-						itemData->colour_id = colourId;
-						itemData->font_id = -1;
-						itemData->effect_id = -1;
-
-						itemId = SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_ADDSTRING, (WPARAM)-1, (LPARAM)itemData);
-					}
-
-					if (_tcscmp(C.name, _T("Background")) == 0)
-						hBkgColourBrush = CreateSolidBrush(C.value);
-				}
-			}
-
-			if ( !hBkgColourBrush)
-				hBkgColourBrush = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
-
-			for (effectId = 0; effectId < effect_id_list_w2.getCount(); effectId++) {
-				EffectInternal& E = effect_id_list_w2[effectId];
-				if (_tcsncmp(E.group, group_buff, 64) == 0) {
-					FSUIListItemData *itemData = NULL;
-					if (first_effect_index == -1)
-						first_effect_index = effectId;
-
-					if ( !sttFsuiBindEffectIdToFonts( GetDlgItem(hwndDlg, IDC_FONTLIST), E.name, effectId)) {
-						itemData = (FSUIListItemData*)mir_alloc(sizeof(FSUIListItemData));
-						itemData->effect_id = effectId;
-						itemData->font_id = -1;
+				for (int fontId = 0; fontId < font_id_list_w2.getCount(); fontId++) {
+					FontInternal &F = font_id_list_w2[fontId];
+					if (!_tcsncmp(F.group, group_buff, 64)) {
+						FSUIListItemData *itemData = (FSUIListItemData*)mir_alloc(sizeof(FSUIListItemData));
 						itemData->colour_id = -1;
-
-						itemId = SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_ADDSTRING, (WPARAM)-1, (LPARAM)itemData);
+						itemData->effect_id = -1;
+						itemData->font_id = fontId;
+						SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_ADDSTRING, (WPARAM)-1, (LPARAM)itemData);
+						need_restart |= (F.flags & FIDF_NEEDRESTART);
 					}
 				}
+
+				if (hBkgColourBrush) {
+					DeleteObject(hBkgColourBrush);
+					hBkgColourBrush = 0;
+				}
+
+				for (int colourId = 0; colourId < colour_id_list_w2.getCount(); colourId++) {
+					ColourInternal &C = colour_id_list_w2[colourId];
+					if (!_tcsncmp(C.group, group_buff, 64)) {
+						if (!sttFsuiBindColourIdToFonts( GetDlgItem(hwndDlg, IDC_FONTLIST), C.name, C.group, C.name, colourId)) {
+							FSUIListItemData *itemData = (FSUIListItemData*)mir_alloc(sizeof(FSUIListItemData));
+							itemData->colour_id = colourId;
+							itemData->font_id = -1;
+							itemData->effect_id = -1;
+
+							SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_ADDSTRING, (WPARAM)-1, (LPARAM)itemData);
+						}
+
+						if (_tcscmp(C.name, _T("Background")) == 0)
+							hBkgColourBrush = CreateSolidBrush(C.value);
+					}
+				}
+
+				if (!hBkgColourBrush)
+					hBkgColourBrush = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
+
+				for (int effectId = 0; effectId < effect_id_list_w2.getCount(); effectId++) {
+					EffectInternal& E = effect_id_list_w2[effectId];
+					if (!_tcsncmp(E.group, group_buff, 64)) {
+						if (!sttFsuiBindEffectIdToFonts( GetDlgItem(hwndDlg, IDC_FONTLIST), E.name, effectId)) {
+							FSUIListItemData *itemData = (FSUIListItemData*)mir_alloc(sizeof(FSUIListItemData));
+							itemData->effect_id = effectId;
+							itemData->font_id = -1;
+							itemData->colour_id = -1;
+
+							SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_ADDSTRING, (WPARAM)-1, (LPARAM)itemData);
+						}
+					}
+				}
+
+				SendDlgItemMessage(hwndDlg, IDC_FONTLIST, WM_SETREDRAW, TRUE, 0);
+				UpdateWindow( GetDlgItem(hwndDlg, IDC_FONTLIST));
+
+				SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_SETSEL, TRUE, 0);
+				SendMessage(hwndDlg, WM_COMMAND, MAKEWPARAM(IDC_FONTLIST, LBN_SELCHANGE), 0);
 			}
-
-			SendDlgItemMessage(hwndDlg, IDC_FONTLIST, WM_SETREDRAW, TRUE, 0);
-			UpdateWindow( GetDlgItem(hwndDlg, IDC_FONTLIST));
-
-			SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_SETSEL, TRUE, 0);
-			SendMessage(hwndDlg, WM_COMMAND, MAKEWPARAM(IDC_FONTLIST, LBN_SELCHANGE), 0);
-		}
-		else {
-			EnableWindow( GetDlgItem(hwndDlg, IDC_BKGCOLOUR), FALSE);
-			EnableWindow( GetDlgItem(hwndDlg, IDC_FONTCOLOUR), FALSE);
-			EnableWindow( GetDlgItem(hwndDlg, IDC_CHOOSEFONT), FALSE);
-			EnableWindow( GetDlgItem(hwndDlg, IDC_BTN_RESET), FALSE);
-			ShowEffectButton(hwndDlg, FALSE);
+			else {
+				EnableWindow( GetDlgItem(hwndDlg, IDC_BKGCOLOUR), FALSE);
+				EnableWindow( GetDlgItem(hwndDlg, IDC_FONTCOLOUR), FALSE);
+				EnableWindow( GetDlgItem(hwndDlg, IDC_CHOOSEFONT), FALSE);
+				EnableWindow( GetDlgItem(hwndDlg, IDC_BTN_RESET), FALSE);
+				ShowEffectButton(hwndDlg, FALSE);
+			}
 		}
 		return TRUE;
-	}
 
 	case WM_MEASUREITEM:
 		{
@@ -748,29 +721,30 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 			if (itemData->colour_id >= 0) {
 				int iItem = itemData->colour_id;
-				if ( !itemName)
+				if (!itemName)
 					itemName = colour_id_list_w2[iItem].getName();
 			}
 
-			HDC hdc = GetDC( GetDlgItem(hwndDlg, mis->CtlID));
+			HDC hdc = GetDC(GetDlgItem(hwndDlg, mis->CtlID));
 			if (hFont)
-				hoFont = (HFONT) SelectObject(hdc, hFont);
+				hoFont = (HFONT)SelectObject(hdc, hFont);
 			else
-				hoFont = (HFONT) SelectObject(hdc, (HFONT)SendDlgItemMessage(hwndDlg, mis->CtlID, WM_GETFONT, 0, 0));
+				hoFont = (HFONT)SelectObject(hdc, (HFONT)SendDlgItemMessage(hwndDlg, mis->CtlID, WM_GETFONT, 0, 0));
 
 			SIZE fontSize;
-			GetTextExtentPoint32(hdc, itemName, lstrlen(itemName), &fontSize);
+			GetTextExtentPoint32(hdc, itemName, (int)mir_tstrlen(itemName), &fontSize);
 			if (hoFont) SelectObject(hdc, hoFont);
 			if (hFont) DeleteObject(hFont);
-			ReleaseDC( GetDlgItem(hwndDlg, mis->CtlID), hdc);
-			mis->itemWidth = fontSize.cx + 2*FSUI_FONTFRAMEHORZ + 4;
-			mis->itemHeight = fontSize.cy + 2*FSUI_FONTFRAMEVERT + 4;
-			return TRUE;
+			ReleaseDC(GetDlgItem(hwndDlg, mis->CtlID), hdc);
+			mis->itemWidth = fontSize.cx + 2 * FSUI_FONTFRAMEHORZ + 4;
+			mis->itemHeight = fontSize.cy + 2 * FSUI_FONTFRAMEVERT + 4;
 		}
+		return TRUE;
 
 	case WM_DRAWITEM:
+		FONTEFFECT Effect;
 		{
-			DRAWITEMSTRUCT *dis = (DRAWITEMSTRUCT *) lParam;
+			DRAWITEMSTRUCT *dis = (DRAWITEMSTRUCT *)lParam;
 			HFONT hFont = NULL, hoFont = NULL;
 			COLORREF clBack = (COLORREF)-1;
 			COLORREF clText = GetSysColor(COLOR_WINDOWTEXT);
@@ -778,14 +752,12 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 			TCHAR *itemName = NULL;
 
 			FSUIListItemData *itemData = (FSUIListItemData *)dis->itemData;
-
-			FONTEFFECT Effect;
 			FONTEFFECT * pEffect = NULL;
 
 			if (dis->CtlID != IDC_FONTLIST)
 				break;
 
-			if ( !itemData) return FALSE;
+			if (!itemData) return FALSE;
 
 			if (itemData->font_id >= 0) {
 				int iItem = itemData->font_id;
@@ -819,9 +791,9 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 			}
 
 			if (hFont)
-				hoFont = (HFONT) SelectObject(dis->hDC, hFont);
+				hoFont = (HFONT)SelectObject(dis->hDC, hFont);
 			else
-				hoFont = (HFONT) SelectObject(dis->hDC, (HFONT)SendDlgItemMessage(hwndDlg, dis->CtlID, WM_GETFONT, 0, 0));
+				hoFont = (HFONT)SelectObject(dis->hDC, (HFONT)SendDlgItemMessage(hwndDlg, dis->CtlID, WM_GETFONT, 0, 0));
 
 			SetBkMode(dis->hDC, TRANSPARENT);
 
@@ -830,7 +802,7 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 				FillRect(dis->hDC, &dis->rcItem, GetSysColorBrush(COLOR_HIGHLIGHT));
 			}
 			else {
-				SetTextColor(dis->hDC, bIsFont?clText:GetSysColor(COLOR_WINDOWTEXT));
+				SetTextColor(dis->hDC, bIsFont ? clText : GetSysColor(COLOR_WINDOWTEXT));
 				if (bIsFont && (clBack != (COLORREF)-1)) {
 					HBRUSH hbrTmp = CreateSolidBrush(clBack);
 					FillRect(dis->hDC, &dis->rcItem, hbrTmp);
@@ -851,11 +823,11 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 					hbrBack = CreateBrushIndirect(&lb);
 				}
 
-				SetRect(&rc, 
-					dis->rcItem.left+FSUI_COLORBOXLEFT, 
-					dis->rcItem.top+FSUI_FONTFRAMEVERT, 
-					dis->rcItem.left+FSUI_COLORBOXLEFT+FSUI_COLORBOXWIDTH, 
-					dis->rcItem.bottom-FSUI_FONTFRAMEVERT);
+				SetRect(&rc,
+					dis->rcItem.left + FSUI_COLORBOXLEFT,
+					dis->rcItem.top + FSUI_FONTFRAMEVERT,
+					dis->rcItem.left + FSUI_COLORBOXLEFT + FSUI_COLORBOXWIDTH,
+					dis->rcItem.bottom - FSUI_FONTFRAMEVERT);
 
 				FillRect(dis->hDC, &rc, hbrBack);
 				DeleteObject(hbrBack);
@@ -869,24 +841,24 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 				SetTextColor(dis->hDC, clText);
 
-				DrawTextWithEffect(dis->hDC, _T("abc"), 3, &rc, DT_CENTER|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_WORD_ELLIPSIS, pEffect);
+				DrawTextWithEffect(dis->hDC, _T("abc"), 3, &rc, DT_CENTER | DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_WORD_ELLIPSIS, pEffect);
 
-				if (dis->itemState & ODS_SELECTED)  {
+				if (dis->itemState & ODS_SELECTED) {
 					SetTextColor(dis->hDC, GetSysColor(COLOR_HIGHLIGHTTEXT));
 					pEffect = NULL; // Do not draw effect on selected item name text
 				}
 				rc = dis->rcItem;
 				rc.left += FSUI_FONTLEFT;
-				DrawTextWithEffect(dis->hDC, itemName, (int)_tcslen(itemName), &rc, DT_LEFT|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_WORD_ELLIPSIS, pEffect);
+				DrawTextWithEffect(dis->hDC, itemName, (int)_tcslen(itemName), &rc, DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_WORD_ELLIPSIS, pEffect);
 			}
 			else {
 				RECT rc;
 				HBRUSH hbrTmp;
-				SetRect(&rc, 
-					dis->rcItem.left+FSUI_COLORBOXLEFT, 
-					dis->rcItem.top+FSUI_FONTFRAMEVERT, 
-					dis->rcItem.left+FSUI_COLORBOXLEFT+FSUI_COLORBOXWIDTH, 
-					dis->rcItem.bottom-FSUI_FONTFRAMEVERT);
+				SetRect(&rc,
+					dis->rcItem.left + FSUI_COLORBOXLEFT,
+					dis->rcItem.top + FSUI_FONTFRAMEVERT,
+					dis->rcItem.left + FSUI_COLORBOXLEFT + FSUI_COLORBOXWIDTH,
+					dis->rcItem.bottom - FSUI_FONTFRAMEVERT);
 
 				hbrTmp = CreateSolidBrush(clText);
 				FillRect(dis->hDC, &rc, hbrTmp);
@@ -902,12 +874,12 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 				rc = dis->rcItem;
 				rc.left += FSUI_FONTLEFT;
 
-				DrawTextWithEffect(dis->hDC, itemName, (int)_tcslen(itemName), &rc, DT_LEFT|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_WORD_ELLIPSIS, pEffect);
+				DrawTextWithEffect(dis->hDC, itemName, (int)_tcslen(itemName), &rc, DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_WORD_ELLIPSIS, pEffect);
 			}
 			if (hoFont) SelectObject(dis->hDC, hoFont);
 			if (hFont) DeleteObject(hFont);
-			return TRUE;
 		}
+		return TRUE;
 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
@@ -935,7 +907,7 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 							bEnableEffect = 0;
 						if (bEnableFont && (itemData->font_id < 0))
 							bEnableFont = 0;
-						if ( !bEnableFont || bEnableClText && (itemData->font_id < 0))
+						if (!bEnableFont || bEnableClText && (itemData->font_id < 0))
 							bEnableClText = 0;
 						if (bEnableReset && (itemData->font_id >= 0) && !(font_id_list_w2[itemData->font_id].flags&FIDF_DEFAULTVALID))
 							bEnableReset = 0;
@@ -947,13 +919,7 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 					}
 					mir_free(selItems);
 				}
-				else {
-					bEnableFont = 0;
-					bEnableClText = 0;
-					bEnableClBack = 0;
-					bEnableReset = 0;
-					bEnableEffect = 0;
-				}
+				else bEnableFont = bEnableClText = bEnableClBack = bEnableReset = bEnableEffect = 0;
 
 				EnableWindow( GetDlgItem(hwndDlg, IDC_BKGCOLOUR), bEnableClBack);
 				ShowEffectButton(hwndDlg, bEnableEffect && !bEnableClBack);
@@ -987,32 +953,23 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 				}
 
 				FontInternal& F = font_id_list_w2[itemData->font_id];
-
 				CreateFromFontSettings(&F.value, &lf);
 
 				CHOOSEFONT cf = { 0 };
 				cf.lStructSize = sizeof(cf);
 				cf.hwndOwner = hwndDlg;
 				cf.lpLogFont = &lf;
-				cf.lCustData = 0;
+				cf.lCustData = F.flags;
+				cf.Flags = CF_FORCEFONTEXIST | CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS | CF_ENABLEHOOK;
+				cf.lpfnHook = CFHookProc;
 
-				if (F.flags & FIDF_ALLOWEFFECTS) {
-					cf.Flags = CF_FORCEFONTEXIST | CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS | CF_EFFECTS | CF_ENABLETEMPLATE | CF_ENABLEHOOK;
-					// use custom font dialog to disable colour selection
-					cf.hInstance = hInst;
-					cf.lpTemplateName = MAKEINTRESOURCE(IDD_CUSTOM_FONT);
-					cf.lpfnHook = CFHookProc;
-				}
-				else if (F.flags & FIDF_DISABLESTYLES) {		// no style selection, mutually exclusive with FIDF_ALLOWEFFECTS
-					cf.Flags = CF_FORCEFONTEXIST | CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS | CF_ENABLETEMPLATE | CF_ENABLEHOOK | CF_TTONLY | CF_NOOEMFONTS;
-					cf.lCustData = F.flags;
-					cf.hInstance = hInst;
-					cf.lpTemplateName = MAKEINTRESOURCE(IDD_CUSTOM_FONT);
-					cf.lpfnHook = CFHookProc;
+				if (F.flags & FIDF_ALLOWEFFECTS) // enable effects section
+					cf.Flags |= CF_EFFECTS;
+				else if (F.flags & FIDF_DISABLESTYLES) { // mutually exclusive with FIDF_ALLOWEFFECTS
+					cf.Flags |= CF_TTONLY | CF_NOOEMFONTS;
 					lf.lfWeight = FW_NORMAL;
 					lf.lfItalic = lf.lfUnderline = lf.lfStrikeOut = FALSE;
 				}
-				else cf.Flags = CF_FORCEFONTEXIST | CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS;
 
 				if (ChooseFont(&cf)) {
 					for (i=0; i < selCount; i++) {
@@ -1049,8 +1006,7 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 				FSUIListItemData *itemData = (FSUIListItemData *)SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_GETITEMDATA, selItems[0], 0);
 				EffectInternal& E = effect_id_list_w2[itemData->effect_id];
 
-				FONTEFFECT es = { 0 };
-				es = E.value;
+				FONTEFFECT es = E.value;
 				if (IDOK == DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_CHOOSE_FONT_EFFECT), hwndDlg, ChooseEffectDlgProc, (LPARAM)&es)) {
 					for (int i=0; i < selCount; i++) {
 						FSUIListItemData *itemData = (FSUIListItemData *)SendDlgItemMessage(hwndDlg, IDC_FONTLIST, LB_GETITEMDATA, selItems[i], 0);
@@ -1140,7 +1096,7 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 		case IDC_BTN_EXPORT:
 			{
 				TCHAR fname_buff[MAX_PATH], filter[MAX_PATH];
-				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.ini)%c*.ini%c%s (*.txt)%c*.TXT%c%s (*.*)%c*.*%c"), TranslateT("Configuration Files"), 0, 0, TranslateT("Text Files"), 0, 0, TranslateT("All Files"), 0, 0);
+				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.ini)%c*.ini%c%s (*.txt)%c*.TXT%c%s (*.*)%c*.*%c"), TranslateT("Configuration files"), 0, 0, TranslateT("Text files"), 0, 0, TranslateT("All files"), 0, 0);
 
 				OPENFILENAME ofn = {0};
 				ofn.lStructSize = sizeof(ofn);
@@ -1155,7 +1111,7 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 				ofn.lpstrDefExt = _T("ini");
 
 				if (GetSaveFileName(&ofn) == TRUE)
-					if ( !ExportSettings(hwndDlg, ofn.lpstrFile, font_id_list, colour_id_list, effect_id_list))
+					if (!ExportSettings(hwndDlg, ofn.lpstrFile, font_id_list, colour_id_list, effect_id_list))
 						MessageBox(hwndDlg, TranslateT("Error writing file"), TranslateT("Error"), MB_ICONWARNING | MB_OK);
 			}
 			return TRUE;
@@ -1194,7 +1150,7 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 			for (i=0; i < colour_id_list_w2.getCount(); i++) {
 				ColourInternal& C = colour_id_list_w2[i];
 
-				mir_snprintf(str, SIZEOF(str), "%s", C.setting);
+				strncpy_s(str, C.setting, _TRUNCATE);
 				db_set_dw(NULL, C.dbSettingsGroup, str, C.value);
 			}
 
@@ -1255,12 +1211,11 @@ static INT_PTR CALLBACK DlgProcLogOptions(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 int OptInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = {0};
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.position = -790000000;
-	odp.hInstance = hInst;;
+	odp.hInstance = hInst;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_FONTS);
-	odp.pszTitle = LPGEN("Fonts & Colors");
+	odp.pszTitle = LPGEN("Fonts and colors");
 	odp.pszGroup = LPGEN("Customize");
 	odp.flags = ODPF_BOLDGROUPS;
 	odp.pfnDlgProc = DlgProcLogOptions;
@@ -1275,7 +1230,7 @@ static FontInternal *sttFindFont(OBJLIST<FontInternal> &fonts, char *module, cha
 	for (int i=0; i < fonts.getCount(); i++)
 	{
 		FontInternal& F = fonts[i];
-		if ( !lstrcmpA(F.dbSettingsGroup, module) && !lstrcmpA(F.prefix, prefix))
+		if (!mir_strcmp(F.dbSettingsGroup, module) && !mir_strcmp(F.prefix, prefix))
 			return &F;
 	}
 
@@ -1318,7 +1273,7 @@ static INT_PTR CALLBACK DlgProcModernOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 				break;
 			}
 
-			if ( !pf)
+			if (!pf)
 				break;
 
 			HFONT hFont = NULL, hoFont = NULL;
@@ -1329,7 +1284,7 @@ static INT_PTR CALLBACK DlgProcModernOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 			SetBkMode(dis->hDC, TRANSPARENT);
 			SetTextColor(dis->hDC, GetSysColor(COLOR_BTNTEXT));
 			FillRect(dis->hDC, &dis->rcItem, GetSysColorBrush(COLOR_BTNFACE));
-			DrawText(dis->hDC, TranslateT("Sample Text"), (int)_tcslen(TranslateT("Sample Text")), &dis->rcItem, DT_LEFT|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_WORD_ELLIPSIS|DT_CENTER);
+			DrawText(dis->hDC, TranslateT("Sample text"), -1, &dis->rcItem, DT_LEFT|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_WORD_ELLIPSIS|DT_CENTER);
 			if (hoFont)
 				SelectObject(dis->hDC, hoFont);
 			return TRUE;
@@ -1341,7 +1296,6 @@ static INT_PTR CALLBACK DlgProcModernOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 		case IDC_CHOOSEFONTGENERAL:
 		case IDC_CHOOSEFONTSMALL:
 			{
-				CHOOSEFONT cf = { 0 };
 				FontInternal *pf = NULL;
 				switch (LOWORD(wParam)) {
 				case IDC_CHOOSEFONTHEADER:
@@ -1357,15 +1311,14 @@ static INT_PTR CALLBACK DlgProcModernOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 
 				CreateFromFontSettings(&pf->value, &lf);
 
+				CHOOSEFONT cf = { 0 };
 				cf.lStructSize = sizeof(cf);
 				cf.hwndOwner = hwndDlg;
 				cf.lpLogFont = &lf;
+				cf.lCustData = pf->flags;
 				cf.Flags = CF_FORCEFONTEXIST | CF_INITTOLOGFONTSTRUCT | CF_SCREENFONTS;
 				if (pf->flags & FIDF_ALLOWEFFECTS) {
-					cf.Flags |= CF_EFFECTS | CF_ENABLETEMPLATE | CF_ENABLEHOOK;
-					// use custom font dialog to disable colour selection
-					cf.hInstance = hInst;
-					cf.lpTemplateName = MAKEINTRESOURCE(IDD_CUSTOM_FONT);
+					cf.Flags |= CF_EFFECTS | CF_ENABLEHOOK;
 					cf.lpfnHook = CFHookProc;
 				}
 
@@ -1380,8 +1333,8 @@ static INT_PTR CALLBACK DlgProcModernOptions(HWND hwndDlg, UINT msg, WPARAM wPar
 					InvalidateRect( GetDlgItem(hwndDlg, IDC_PREVIEWSMALL), NULL, TRUE);
 					SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 				}
-				return TRUE;
 			}
+			return TRUE;
 		}
 		break;
 
@@ -1416,9 +1369,9 @@ INT_PTR CALLBACK DlgPluginOpt(HWND, UINT, WPARAM, LPARAM);
 
 int FontsModernOptInit(WPARAM wParam, LPARAM lParam)
 {
-	static int iBoldControls[] = 
+	static int iBoldControls[] =
 	{
-		IDC_TXT_TITLE1, IDC_TXT_TITLE2, IDC_TXT_TITLE3, 
+		IDC_TXT_TITLE1, IDC_TXT_TITLE2, IDC_TXT_TITLE3,
 		MODERNOPT_CTRL_LAST
 	};
 
@@ -1433,7 +1386,7 @@ int FontsModernOptInit(WPARAM wParam, LPARAM lParam)
 	obj.lptzSubsection = LPGENT("Fonts");
 	obj.lpzClassicGroup = "Customize";
 	obj.lpzClassicPage = "Fonts";
-	obj.lpzHelpUrl = "http://wiki.miranda-im.org/";
+	obj.lpzHelpUrl = "http://wiki.miranda-ng.org/";
 
 	obj.lpzTemplate = MAKEINTRESOURCEA(IDD_MODERNOPT_FONTS);
 	obj.pfnDlgProc = DlgProcModernOptions;
@@ -1445,7 +1398,7 @@ int FontsModernOptInit(WPARAM wParam, LPARAM lParam)
 	obj.pfnDlgProc = AccMgrDlgProc;
 	obj.lpzClassicGroup = NULL;
 	obj.lpzClassicPage = "Network";
-	obj.lpzHelpUrl = "http://wiki.miranda-im.org/";
+	obj.lpzHelpUrl = "http://wiki.miranda-ng.org/";
 	CallService(MS_MODERNOPT_ADDOBJECT, wParam, (LPARAM)&obj);
 
 	obj.iSection = MODERNOPT_PAGE_MODULES;
@@ -1456,7 +1409,7 @@ int FontsModernOptInit(WPARAM wParam, LPARAM lParam)
 	obj.iBoldControls = iBoldControls;
 	obj.lpzClassicGroup = NULL;
 	obj.lpzClassicPage = NULL;
-	obj.lpzHelpUrl = "http://wiki.miranda-im.org/";
+	obj.lpzHelpUrl = "http://wiki.miranda-ng.org/";
 	CallService(MS_MODERNOPT_ADDOBJECT, wParam, (LPARAM)&obj);
 	return 0;
 }

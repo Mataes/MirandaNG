@@ -1,7 +1,7 @@
 /*
 Miranda Database Tool
-Copyright 2000-2011 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright 2000-2011 Miranda ICQ/IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -18,12 +18,13 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "dbchecker.h"
 
 static HFONT hBoldFont = NULL;
 static HENHMETAFILE hEmfHeaderLogo = NULL;
 
-static BOOL CALLBACK MyControlsEnumChildren(HWND hwnd, LPARAM lParam)
+static BOOL CALLBACK MyControlsEnumChildren(HWND hwnd, LPARAM)
 {
 	DWORD style = GetWindowLongPtr(hwnd, GWL_STYLE);
 	DWORD exstyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
@@ -49,14 +50,14 @@ static BOOL CALLBACK MyControlsEnumChildren(HWND hwnd, LPARAM lParam)
 		}
 		SendMessage(hwnd, WM_SETFONT, (WPARAM)hBoldFont, 0);
 		SetWindowLongPtr(hwnd, GWL_EXSTYLE, exstyle&~WS_EX_CLIENTEDGE);
-		SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_FRAMECHANGED);
+		SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
 	}
 	return TRUE;
 }
 
 int DoMyControlProcessing(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam, INT_PTR *bReturn)
 {
-	switch(message) {
+	switch (message) {
 	case WM_INITDIALOG:
 		EnumChildWindows(hdlg, MyControlsEnumChildren, 0);
 		if (hEmfHeaderLogo == NULL) {
@@ -68,9 +69,9 @@ int DoMyControlProcessing(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam,
 		break;
 
 	case WM_CTLCOLORSTATIC:
-		if ((GetWindowLongPtr((HWND)lParam, GWL_STYLE)&0xFFFF) == 0) {
+		if ((GetWindowLongPtr((HWND)lParam, GWL_STYLE) & 0xFFFF) == 0) {
 			char szText[256];
-			GetWindowTextA((HWND)lParam, szText, sizeof(szText));
+			GetWindowTextA((HWND)lParam, szText, SIZEOF(szText));
 			if (!strcmp(szText, "whiterect")) {
 				SetTextColor((HDC)wParam, RGB(255, 255, 255));
 				SetBkColor((HDC)wParam, RGB(255, 255, 255));
@@ -93,11 +94,10 @@ INT_PTR CALLBACK WizardDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lP
 {
 	static HWND hdlgPage;
 
-	switch(message) {
+	switch (message) {
 	case WM_INITDIALOG:
 		SendMessage(hdlg, WM_SETICON, ICON_SMALL, (LPARAM)LoadIcon(hInst, MAKEINTRESOURCE(IDI_DBTOOL)));
 		hdlgPage = NULL;
-		bLaunchMiranda = false;
 		if (bShortMode)
 			SendMessage(hdlg, WZM_GOTOPAGE, IDD_SELECTDB, (LPARAM)SelectDbDlgProc);
 		else
@@ -113,21 +113,23 @@ INT_PTR CALLBACK WizardDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lP
 		SetDlgItemText(hdlg, IDCANCEL, TranslateT("Cancel"));
 		hdlgPage = CreateDialog(hInst, MAKEINTRESOURCE(wParam), hdlg, (DLGPROC)lParam);
 		TranslateDialogDefault(hdlgPage);
-		SetWindowPos(hdlgPage, 0, 0, 0, 0, 0, SWP_NOZORDER|SWP_NOSIZE);
+		SetWindowPos(hdlgPage, 0, 0, 0, 0, 0, SWP_NOZORDER | SWP_NOSIZE);
 		ShowWindow(hdlgPage, SW_SHOW);
 		break;
 
 	case WM_COMMAND:
-		switch(LOWORD(wParam)) {
-			case IDC_BACK:
-			case IDOK:
-				SendMessage(hdlgPage, WZN_PAGECHANGING, wParam, 0);
-				SendMessage(hdlgPage, message, wParam, lParam);
-				break;
-			case IDCANCEL:
-				if (SendMessage(hdlgPage, WZN_CANCELCLICKED, 0, 0)) break;
-				EndDialog(hdlg, 0);
-				break;
+		switch (LOWORD(wParam)) {
+		case IDC_BACK:
+		case IDOK:
+			SendMessage(hdlgPage, WZN_PAGECHANGING, wParam, 0);
+			SendMessage(hdlgPage, message, wParam, lParam);
+			break;
+
+		case IDCANCEL:
+			wizardResult = 0;
+			SendMessage(hdlgPage, WZN_CANCELCLICKED, 0, 0);
+			EndDialog(hdlg, wizardResult);
+			break;
 		}
 		break;
 

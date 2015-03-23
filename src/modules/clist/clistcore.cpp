@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -126,6 +127,7 @@ static INT_PTR srvRetrieveInterface(WPARAM, LPARAM)
 		cli.pfnLoadClcOptions                  = fnLoadClcOptions;
 		cli.pfnRecalculateGroupCheckboxes	   = fnRecalculateGroupCheckboxes;
 		cli.pfnSetGroupChildCheckboxes		   = fnSetGroupChildCheckboxes;
+		cli.pfnSetContactCheckboxes            = fnSetContactCheckboxes;
 		cli.pfnInvalidateItem                  = fnInvalidateItem;
 		cli.pfnGetRowBottomY                   = fnGetRowBottomY;
 		cli.pfnGetRowHeight                    = fnGetRowHeight;
@@ -152,8 +154,6 @@ static INT_PTR srvRetrieveInterface(WPARAM, LPARAM)
 		cli.szTip                              = szTip;
 		cli.pfnInitTray                        = fnInitTray;
 		cli.pfnUninitTray                      = fnUninitTray;
-		cli.pfnLockTray                        = fnLockTray;
-		cli.pfnUnlockTray                      = fnUnlockTray;
 
 		cli.pfnTrayCycleTimerProc              = fnTrayCycleTimerProc;
 		cli.pfnTrayIconAdd                     = fnTrayIconAdd;
@@ -213,6 +213,8 @@ static INT_PTR srvRetrieveInterface(WPARAM, LPARAM)
 		cli.pfnSetAllExtraIcons                = fnSetAllExtraIcons;
 
 		cli.pfnGetContactIcon                  = fnGetContactIcon;
+		cli.pfnGetAverageMode                  = fnGetAverageMode;
+		cli.pfnInitAutoRebuild                 = fnInitAutoRebuild;
 
 		rc = LoadContactListModule2();
 		if (rc == 0)

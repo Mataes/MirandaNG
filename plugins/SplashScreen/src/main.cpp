@@ -113,27 +113,22 @@ void SplashMain()
 			}
 		}
 
-		//for 9x "alfa" testing
 		DBVARIANT dbv = {0};
-		db_get_ts(NULL, MODNAME, "VersionPrefix", &dbv);
-		if (lstrcmp(dbv.ptszVal, NULL) == 0)
+		if (!db_get_ts(NULL, MODNAME, "VersionPrefix", &dbv))
 		{
-			_tcscpy_s(szPrefix, _T(""));
-			db_free(&dbv);
-		}
-		else
 			_tcscpy_s(szPrefix, dbv.ptszVal);
-		dbv.ptszVal = NULL;
-
-		db_get_ts(NULL, MODNAME, "Path", &dbv);
-		if (lstrcmp(dbv.ptszVal, NULL) == 0)
-		{
-			_tcscpy_s(inBuf, _T("splash\\splash.png"));
 			db_free(&dbv);
 		}
 		else
+			_tcscpy_s(szPrefix, _T(""));
+
+		if (!db_get_ts(NULL, MODNAME, "Path", &dbv))
+		{
 			_tcscpy_s(inBuf, dbv.ptszVal);
-		dbv.ptszVal = NULL;
+			db_free(&dbv);
+		}
+		else
+			_tcscpy_s(inBuf, _T("splash\\splash.png"));
 
 		TCHAR szExpandedSplashFile[MAX_PATH];
 		ExpandEnvironmentStrings(inBuf, szExpandedSplashFile, SIZEOF(szExpandedSplashFile));
@@ -146,14 +141,13 @@ void SplashMain()
 		else
 			_tcscpy_s(szSplashFile, inBuf);
 
-		db_get_ts(NULL, MODNAME, "Sound", &dbv);
-		if (lstrcmp(dbv.ptszVal, NULL) == 0)
+		if (!db_get_ts(NULL, MODNAME, "Sound", &dbv))
 		{
-			_tcscpy_s(inBuf, _T("sounds\\startup.wav"));
+			_tcscpy_s(inBuf, dbv.ptszVal);
 			db_free(&dbv);
 		}
 		else
-			_tcscpy_s(inBuf, dbv.ptszVal);
+			_tcscpy_s(inBuf, _T("sounds\\startup.wav"));
 
 		TCHAR szExpandedSoundFile[MAX_PATH];
 		ExpandEnvironmentStrings(inBuf, szExpandedSoundFile, SIZEOF(szExpandedSoundFile));
@@ -208,7 +202,7 @@ void SplashMain()
 							logMessage(_T("Extention"), ext);
 						#endif
 
-						if (lstrcmpi(ext, _T(".png")) & lstrcmpi(ext, _T(".bmp")))
+						if (mir_tstrcmpi(ext, _T(".png")) & mir_tstrcmpi(ext, _T(".bmp")))
 							continue;
 
 						#ifdef _DEBUG
@@ -246,7 +240,7 @@ int PlugDisableHook(WPARAM wParam, LPARAM lParam)
 	TCHAR * tszModule= mir_a2t(cws->szModule), *tszSetting = mir_a2t(cws->szSetting);
 	if(options.inheritGS)
 	{
-		if (!lstrcmp(tszModule, _T("Skin")) & !lstrcmp(tszSetting, _T("UseSound")))
+		if (!mir_tstrcmp(tszModule, _T("Skin")) & !mir_tstrcmp(tszSetting, _T("UseSound")))
 		{
 			db_set_b(NULL, MODNAME, "PlaySound", cws->value.bVal);
 			#ifdef _DEBUG
@@ -256,7 +250,7 @@ int PlugDisableHook(WPARAM wParam, LPARAM lParam)
 				logMessage(_T("Value"), _itot(cws->value.bVal, buf, 10));
 			#endif
 		}
-		if (!lstrcmp(tszModule, _T("PluginDisable")) & (!lstrcmp(tszSetting, szDllName)))
+		if (!mir_tstrcmp(tszModule, _T("PluginDisable")) & (!mir_tstrcmp(tszSetting, szDllName)))
 		{
 			db_set_b(NULL, MODNAME, "Active", cws->value.bVal);
 			#ifdef _DEBUG
@@ -294,19 +288,6 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 
 	// Service to call splash
 	CreateServiceFunction(MS_SHOWSPLASH, ShowSplashService);
-
-	#ifdef _DEBUG
-		CreateServiceFunction("Splash/Test", TestService);
-
-		CLISTMENUITEM mi = { sizeof(mi) };
-		mi.flags = CMIF_TCHAR;
-		mi.hIcon = LoadSkinnedIcon(SKINICON_OTHER_MIRANDA);
-		mi.hotKey = 0;
-		mi.position = -0x7FFFFFFF;
-		mi.ptszName = LPGENT("Call Splash Service");
-		mi.pszService = "Splash/Test";
-		Menu_AddMainMenuItem(&mi);
-	#endif
 
 	#ifdef _DEBUG
 		logMessage(_T("Loading modules"), _T("done"));

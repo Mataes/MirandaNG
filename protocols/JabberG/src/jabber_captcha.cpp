@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -51,7 +52,7 @@ INT_PTR CALLBACK JabberCaptchaFormDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 		if (hint == NULL)
 			hint = TranslateT("Enter the text you see");
 		SetDlgItemText(hwndDlg, IDC_INSTRUCTION, TranslateTS(hint));
-		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG)params);
+		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)params);
 
 		return TRUE;
 	}
@@ -109,7 +110,7 @@ INT_PTR CALLBACK JabberCaptchaFormDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 	return FALSE;
 }
 
-bool CJabberProto::ProcessCaptcha(HXML node, HXML parentNode, ThreadData* info)
+bool CJabberProto::ProcessCaptcha(HXML node, HXML parentNode, ThreadData *info)
 {
 	HXML x = xmlGetChildByTag(node, "x", "xmlns", JABBER_FEAT_DATA_FORMS);
 	if (x == NULL)
@@ -158,14 +159,14 @@ bool CJabberProto::ProcessCaptcha(HXML node, HXML parentNode, ThreadData* info)
 	param.w = bmp.bmWidth;
 	param.h = bmp.bmHeight;
 	int res = DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_CAPTCHAFORM), NULL, JabberCaptchaFormDlgProc, (LPARAM)&param);
-	if (lstrcmp(param.Result, _T("")) == 0 || !res)
+	if (mir_tstrcmp(param.Result, _T("")) == 0 || !res)
 		sendCaptchaError(info, param.from, param.to, param.challenge);
 	else
 		sendCaptchaResult(param.Result, info, param.from, param.challenge, param.fromjid, param.sid);
 	return true;
 }
 
-void CJabberProto::sendCaptchaResult(TCHAR* buf, ThreadData* info, LPCTSTR from, LPCTSTR challenge, LPCTSTR fromjid,  LPCTSTR sid)
+void CJabberProto::sendCaptchaResult(TCHAR* buf, ThreadData *info, LPCTSTR from, LPCTSTR challenge, LPCTSTR fromjid,  LPCTSTR sid)
 {
 	XmlNodeIq iq(_T("set"), SerialNext());
 	HXML query= iq <<XATTR(_T("to"), from) << XCHILD(_T("captcha")) << XATTR(_T("xmlns"), _T("urn:xmpp:captcha")) << XCHILD (_T("x")) << XATTR(_T("xmlns"), JABBER_FEAT_DATA_FORMS) << XATTR(_T("type"), _T("submit"));
@@ -177,11 +178,11 @@ void CJabberProto::sendCaptchaResult(TCHAR* buf, ThreadData* info, LPCTSTR from,
 	info -> send (iq);
 }
 
-void CJabberProto::sendCaptchaError(ThreadData* info, LPCTSTR from, LPCTSTR to, LPCTSTR challenge)
+void CJabberProto::sendCaptchaError(ThreadData *info, LPCTSTR from, LPCTSTR to, LPCTSTR challenge)
 {
 	XmlNode message(_T("message"));
-	HXML query= message << XATTR(_T("type"), _T("error")) << XATTR(_T("to"), from) << XATTR(_T("id"), challenge) << XATTR(_T("from"), to)
-		  << XCHILD(_T("error")) << XATTR(_T("type"), _T("modify"))
-	      << XCHILD(_T("not-acceptable")) << XATTR(_T("xmlns"), _T("urn:ietf:params:xml:ns:xmpp-stanzas"));
-	info -> send (message);
+	message << XATTR(_T("type"), _T("error")) << XATTR(_T("to"), from) << XATTR(_T("id"), challenge) << XATTR(_T("from"), to)
+		<< XCHILD(_T("error")) << XATTR(_T("type"), _T("modify"))
+			<< XCHILD(_T("not-acceptable")) << XATTR(_T("xmlns"), _T("urn:ietf:params:xml:ns:xmpp-stanzas"));
+	info->send(message);
 }

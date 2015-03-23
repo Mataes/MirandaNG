@@ -6,6 +6,7 @@
 // Copyright © 2001,2002 Jon Keating, Richard Hughes
 // Copyright © 2002,2003,2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004,2005,2006 Joe Kucera
+// Copyright © 2012-2014 Miranda NG Team
 // 
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,19 +21,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
 //  DESCRIPTION:
 //
 //  HTTP Gateway Handling routines
-//
 // -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
-int icq_httpGatewayInit(HANDLE hConn, NETLIBOPENCONNECTION *nloc, NETLIBHTTPREQUEST *nlhr)
+int icq_httpGatewayInit(HANDLE hConn, NETLIBOPENCONNECTION*, NETLIBHTTPREQUEST *nlhr)
 {
 	// initial response from ICQ http gateway
-	WORD wLen, wVersion, wType;
+	size_t wLen, wVersion, wType;
 	WORD wIpLen;
 	DWORD dwSid1, dwSid2, dwSid3, dwSid4;
 	BYTE *buf;
@@ -54,7 +54,7 @@ int icq_httpGatewayInit(HANDLE hConn, NETLIBOPENCONNECTION *nloc, NETLIBHTTPREQU
 	unpackDWord(&buf, &dwSid2);
 	unpackDWord(&buf, &dwSid3);
 	unpackDWord(&buf, &dwSid4);
-	mir_snprintf(szSid, 33, "%08x%08x%08x%08x", dwSid1, dwSid2, dwSid3, dwSid4);
+	mir_snprintf(szSid, SIZEOF(szSid), "%08x%08x%08x%08x", dwSid1, dwSid2, dwSid3, dwSid4);
 	unpackWord(&buf, &wIpLen);
 
 	if(nlhr->dataLength < 30 + wIpLen || wIpLen == 0 || wIpLen > sizeof(szHttpServer) - 1)
@@ -73,8 +73,8 @@ int icq_httpGatewayInit(HANDLE hConn, NETLIBOPENCONNECTION *nloc, NETLIBHTTPREQU
 	nlhpi.szHttpGetUrl = szHttpGetUrl;
 	nlhpi.szHttpPostUrl = szHttpPostUrl;
 	nlhpi.firstPostSequence = 1;
-	mir_snprintf(szHttpGetUrl, 300, "http://%s/monitor?sid=%s", szHttpServer, szSid);
-	mir_snprintf(szHttpPostUrl, 300, "http://%s/data?sid=%s&seq=", szHttpServer, szSid);
+	mir_snprintf(szHttpGetUrl, SIZEOF(szHttpGetUrl), "http://%s/monitor?sid=%s", szHttpServer, szSid);
+	mir_snprintf(szHttpPostUrl, SIZEOF(szHttpPostUrl), "http://%s/data?sid=%s&seq=", szHttpServer, szSid);
 
 	return CallService(MS_NETLIB_SETHTTPPROXYINFO, (WPARAM)hConn, (LPARAM)&nlhpi);
 }
@@ -86,12 +86,12 @@ int icq_httpGatewayBegin(HANDLE hConn, NETLIBOPENCONNECTION* nloc)
 	icq_packet packet;
 	size_t serverNameLen;
 
-	serverNameLen = strlennull(nloc->szHost);
+	serverNameLen = mir_strlen(nloc->szHost);
 
 	packet.wLen = (WORD)(serverNameLen + 4);
 	write_httphdr(&packet, HTTP_PACKETTYPE_LOGIN, GetGatewayIndex(hConn));
 	packWord(&packet, (WORD)serverNameLen);
-	packBuffer(&packet, (LPBYTE)nloc->szHost, (WORD)serverNameLen);
+	packBuffer(&packet, (LPBYTE)nloc->szHost, serverNameLen);
 	packWord(&packet, nloc->wPort);
 	INT_PTR res = Netlib_Send(hConn, (char*)packet.pData, packet.wLen, MSG_DUMPPROXY|MSG_NOHTTPGATEWAYWRAP);
 	SAFE_FREE((void**)&packet.pData);
@@ -117,7 +117,7 @@ int icq_httpGatewayWrapSend(HANDLE hConn, PBYTE buf, int len, int flags, MIRANDA
 		// send wrapped data
 		packet.wLen = curLen;
 		write_httphdr(&packet, HTTP_PACKETTYPE_FLAP, GetGatewayIndex(hConn));
-		packBuffer(&packet, sendBuf, (WORD)curLen);
+		packBuffer(&packet, sendBuf, curLen);
 
 		NETLIBBUFFER nlb={ (char*)packet.pData, packet.wLen, flags };
 		curResult = pfnNetlibSend((WPARAM)hConn, (LPARAM)&nlb);
@@ -139,23 +139,22 @@ int icq_httpGatewayWrapSend(HANDLE hConn, PBYTE buf, int len, int flags, MIRANDA
 
 
 
-PBYTE icq_httpGatewayUnwrapRecv(NETLIBHTTPREQUEST* nlhr, PBYTE buf, int len, int* outBufLen, void *(*NetlibRealloc)(void *, size_t))
+PBYTE icq_httpGatewayUnwrapRecv(NETLIBHTTPREQUEST*, PBYTE buf, int len, int* outBufLen, void *(*)(void *, size_t))
 {
-	WORD wLen, wType;
+	size_t wLen, wType;
 	DWORD dwPackSeq;
 	PBYTE tbuf;
-	int i, copyBytes;
-
+	size_t i = 0;
 
 	tbuf = buf;
-	for(i = 0;;)
+	for(;;)
 	{
 		if (tbuf - buf + 2 > len)
 			break;
 		unpackWord(&tbuf, &wLen);
 		if (wLen < 12)
 			break;
-		if (tbuf - buf + wLen > len)
+		if (tbuf - buf + wLen > (size_t)len)
 			break;
 		tbuf += 2;    /* version */
 		unpackWord(&tbuf, &wType);
@@ -163,7 +162,7 @@ PBYTE icq_httpGatewayUnwrapRecv(NETLIBHTTPREQUEST* nlhr, PBYTE buf, int len, int
 		unpackDWord(&tbuf, &dwPackSeq);
 		if (wType == HTTP_PACKETTYPE_FLAP)
 		{ // it is normal data packet
-			copyBytes = wLen - 12;
+			size_t copyBytes = wLen - 12;
 			if (copyBytes > len - i)
 			{
 				/* invalid data - do our best to get something out of it */
@@ -189,7 +188,7 @@ PBYTE icq_httpGatewayUnwrapRecv(NETLIBHTTPREQUEST* nlhr, PBYTE buf, int len, int
 		}
 		tbuf += wLen - 12;
 	}
-	*outBufLen = i;
+	*outBufLen = (int)i;
 
 	return buf;
 }

@@ -1,6 +1,6 @@
 /*
 Weather Protocol plugin for Miranda NG
-Copyright (c) 2012-2013 Miranda NG Team
+Copyright (c) 2012-2014 Miranda NG Team
 Copyright (c) 2005-2011 Boris Krasnovskiy All Rights Reserved
 Copyright (c) 2002-2005 Calvin Che
 
@@ -148,15 +148,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // 505 HTTP Version Not Supported
 
 // defaults constants
-#define C_DEFAULT TranslateT("%n  [%t, %c]")
-#define N_DEFAULT TranslateT("%c\nTemperature: %t\nFeel-Like: %f\nPressure: %p\nWind: %i  %w\nHumidity: %m\nDew Point: %e\nVisibility: %v\n\nSun Rise: %r\nSun Set: %y\n\n5 Days Forecast:\n%[Forecast Day 1]\n%[Forecast Day 2]\n%[Forecast Day 3]\n%[Forecast Day 4]\n%[Forecast Day 5]")
-#define B_DEFAULT TranslateT("Feel-Like: %f\nPressure: %p\nWind: %i  %w\nHumidity: %m\nDew Point: %e\nVisibility: %v\n\nSun Rise: %r\nSun Set: %y\n\n5 Days Forecast:\n%[Forecast Day 1]\n%[Forecast Day 2]\n%[Forecast Day 3]\n%[Forecast Day 4]\n%[Forecast Day 5]")
+#define C_DEFAULT _T("%n  [%t, %c]")
+#define N_DEFAULT TranslateT("%c\\nTemperature: %t\\nFeel-Like: %f\\nPressure: %p\\nWind: %i  %w\\nHumidity: %m\\nDew Point: %e\\nVisibility: %v\\n\\nSun Rise: %r\\nSun Set: %y\\n\\n5 Days Forecast:\\n%[Forecast Day 1]\\n%[Forecast Day 2]\\n%[Forecast Day 3]\\n%[Forecast Day 4]\\n%[Forecast Day 5]")
+#define B_DEFAULT TranslateT("Feel-Like: %f\\nPressure: %p\\nWind: %i  %w\\nHumidity: %m\\nDew Point: %e\\nVisibility: %v\\n\\nSun Rise: %r\\nSun Set: %y\\n\\n5 Days Forecast:\\n%[Forecast Day 1]\\n%[Forecast Day 2]\\n%[Forecast Day 3]\\n%[Forecast Day 4]\\n%[Forecast Day 5]")
 #define b_DEFAULT TranslateT("Weather Condition for %n as of %u")
 #define X_DEFAULT N_DEFAULT
 #define H_DEFAULT TranslateT("%c, %t (feel-like %f)	Wind: %i %w	Humidity: %m")
 #define E_DEFAULT TranslateT("%n at %u:	%c, %t (feel-like %f)	Wind: %i %w	Humidity: %m")
 #define P_DEFAULT TranslateT("%n   (%u)")
-#define p_DEFAULT TranslateT("%c, %t\nToday:  High %h, Low %l")
+#define p_DEFAULT TranslateT("%c, %t\\nToday:  High %h, Low %l")
 #define s_DEFAULT TranslateT("Temperature: %[Temperature]")
 
 
@@ -226,7 +226,7 @@ struct MYOPTIONS
 
 	// other misc stuff
 	TCHAR Default[64];
-	HANDLE DefStn;
+	MCONTACT DefStn;
 };
 
 void DestroyOptions(void);
@@ -234,7 +234,7 @@ void DestroyOptions(void);
 //============  STRUCT USED TO MAKE AN UPDATE LIST  ============
 
 struct WCONTACTLIST {
-	HANDLE hContact;
+	MCONTACT hContact;
 	struct WCONTACTLIST *next;
 };
 
@@ -323,7 +323,8 @@ typedef struct {
 	char  *UpdateURL2;
 	char  *UpdateURL3;
 	char  *UpdateURL4;
-	char *Cookie;
+	char  *Cookie;
+	char  *UserAgent;
 // items
 	int UpdateDataCount;
 	WIDATAITEMLIST *UpdateData;
@@ -395,7 +396,7 @@ INT_PTR CALLBACK DlgProcChange(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPa
 
 int ContactDeleted(WPARAM wParam,LPARAM lParam);
 
-BOOL IsMyContact(HANDLE hContact);
+BOOL IsMyContact(MCONTACT hContact);
 
 // functions in weather_conv.c
 BOOL is_number(char *s);
@@ -422,10 +423,10 @@ void GetID(TCHAR *pszID);
 TCHAR *GetError(int code);
 
 // functions in weather_data.c
-void GetStationID(HANDLE hContact, TCHAR* id, size_t idlen);
-WEATHERINFO LoadWeatherInfo(HANDLE Change);
-int DBGetData(HANDLE hContact, char *setting, DBVARIANT *dbv);
-int DBGetStaticString(HANDLE hContact, const char *szModule, const char *valueName, TCHAR *dest, size_t dest_len);
+void GetStationID(MCONTACT hContact, TCHAR* id, size_t idlen);
+WEATHERINFO LoadWeatherInfo(MCONTACT Change);
+int DBGetData(MCONTACT hContact, char *setting, DBVARIANT *dbv);
+int DBGetStaticString(MCONTACT hContact, const char *szModule, const char *valueName, TCHAR *dest, size_t dest_len);
 
 void EraseAllInfo(void);
 
@@ -438,10 +439,10 @@ void wSetData(WCHAR **Data, const WCHAR *Value);
 void wfree(char **Data);
 void wfree(WCHAR **Data);
 
-void DBDataManage(HANDLE hContact, WORD Mode, WPARAM wParam, LPARAM lParam);
+void DBDataManage(MCONTACT hContact, WORD Mode, WPARAM wParam, LPARAM lParam);
 
 // functions in weather_http.c
-int InternetDownloadFile (char *szUrl, char *cookie, TCHAR** szData);
+int InternetDownloadFile (char *szUrl, char *cookie, char *userAgent, TCHAR** szData);
 void NetlibInit();
 void NetlibHttpDisconnect(void);
 
@@ -498,12 +499,12 @@ INT_PTR WeatherLoadIcon(WPARAM wParam, LPARAM lParam);
 void UpdateMenu(BOOL State);
 void UpdatePopupMenu(BOOL State);
 void AddMenuItems();
-void AvatarDownloaded(HANDLE hContact);
+void AvatarDownloaded(MCONTACT hContact);
 
 // functions in weather_update.c
-int UpdateWeather(HANDLE hContact);
+int UpdateWeather(MCONTACT hContact);
 
-int RetrieveWeather(HANDLE hContact, WEATHERINFO *winfo);
+int RetrieveWeather(MCONTACT hContact, WEATHERINFO *winfo);
 
 void UpdateAll(BOOL AutoUpdate, BOOL RemoveOld);
 void UpdateThreadProc(LPVOID hWnd);
@@ -512,7 +513,7 @@ INT_PTR UpdateAllInfo(WPARAM wParam,LPARAM lParam);
 INT_PTR UpdateSingleRemove(WPARAM wParam,LPARAM lParam);
 INT_PTR UpdateAllRemove(WPARAM wParam,LPARAM lParam);
 
-int GetWeatherData(HANDLE hContact);
+int GetWeatherData(MCONTACT hContact);
 
 void CALLBACK timerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 void CALLBACK timerProc2(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
@@ -522,8 +523,8 @@ void InitMwin(void);
 void DestroyMwin(void);
 INT_PTR Mwin_MenuClicked(WPARAM wParam, LPARAM lParam);
 int BuildContactMenu(WPARAM wparam, LPARAM lparam);
-void UpdateMwinData(HANDLE hContact);
-void removeWindow(HANDLE hContact);
+void UpdateMwinData(MCONTACT hContact);
+void removeWindow(MCONTACT hContact);
 
 // functions in weather_userinfo.c
 int UserInfoInit(WPARAM wParam, LPARAM lParam);
@@ -535,7 +536,7 @@ INT_PTR CALLBACK DlgProcINIPage(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 int BriefInfo(WPARAM wParam, LPARAM lParam);
 INT_PTR BriefInfoSvc(WPARAM wParam, LPARAM lParam);
-void LoadBriefInfoText(HWND hwndDlg, HANDLE hContact);
+void LoadBriefInfoText(HWND hwndDlg, MCONTACT hContact);
 INT_PTR CALLBACK DlgProcBrief(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 
 void InitIcons(void);

@@ -1,200 +1,211 @@
 ﻿#muuid {ed39af7c-becd-404e-9499-4d04f711b9cb}
 ;============================================================
-;  File: sendss.dll
-;  Module: Send ScreenShot
-;  Versions: 0.2.2.3, 0.2.9.5, 0.2.6.3 - 0.2.6.5
+;  File: SendSS.dll
+;  Plugin: Send ScreenShot+
+;  Version: 0.8.9.1
+;  Authors: Merlin
 ;============================================================
 [Take a screenshot and send it to a contact.]
-Создание и отсылка снимков экрана контакту.
-[SendSS]
+Создание и отправка снимков экрана контакту.
+[Dialog]
+Диалог
+[All]
+Все
+[None]
+Нет
+[Cancel]
+Отмена
+[Send screenshot]
 Отправить скриншот
-[Send using:]
-Способ отправки:
-[Miranda's File Transfer.]
-Передача файлов Miranda NG
-[Send to default email client.]
-Отправить через e-mail клиент
-[Method for capturing the screenshot:]
-Метод получения скриншота:
-[Internal function.]
-Внутренняя функция
-[PrintScreen Emulation. (waste clipboard content)]
-Эмуляция PrintScreen (содержимое буфера обмена)
-[Take a screenshot]
-Сделать скриншот
-[Send Screenshot]
-Отправить скриншот
-[Send desktop screenshot]
-Отправить скриншот экрана
+[Send screenshot to\n<unknown>]
+Отправить снимок экрана для\n<Неизвестный контакт>
+[Ti&med capture]
+За&держка захвата
+[Time (secs):]
+Секунд:
+[&Format:]
+&Формат:
+[Send b&y:]
+Че&рез:
+[E&xplore]
+Об&зор
+[&Fill description textbox.]
+&Заполнить строки описания.
+[Delete &after send]
+Удалить &после отправки
+[Open editor before sending]
+Редактировать перед отправкой
 [Open again]
 Откр. снова
-[&Emulate Send button click.]
-Посылать автоматически
-[Send B&y :]
-Через:
-[Single &Window]
-Одно окно
-[Time (secs) :]
-Секунд :
-[&Desktop]
-Рабочий стол
-[Size (HxW) :]
-Размер (ВxШ) :
-[Caption :]
-Заголовок :
-[E&xplore]
-Обзор
 [&Capture]
-Захват
-[<Unknown Contact>]
-<Неизвестный контакт>
-[Drag&&Drop the target on the desired window.]
-Перетащите прицел на нужное окно.
-[Use Edit&or]
-Редактор
-[&Fill description textbox.]
-Заполнить строки описания.
-[&Format :]
-Формат :
-[Delete &after send]
-Удалить после отправки
-[Send screenshot to <Unknow Contact> - Capture Options]
-Отправить скриншот: <Неизвестный контакт> - Настройки захвата
-[Ti&med capture]
-Задержка захвата
-[JPG &Quality :]
-Качество JPG :
-[C&lient Area]
-Содержимое
-[&Just save it]
-Только сохр.
-[Area]
-Область
+&Захват
+[About]
+Информация
+[Copyright]
+Права
+[&Close]
+&Закрыть
+[Edit]
+Изменить
+[Caption:]
+Заголовок:
+[Size (HxW):]
+Размер (ВxШ):
+[C&lient area]
+Сод&ержимое
+[Indirect capture]
+косвенный захват
+[Target tool]
+Прицел
+[File:]
+Файл:
+[Description:]
+Описание:
+[Result]
+Результат
+[Thumbnail]
+Миниатюра
+[&Copy]
+&Копировать
+[Close]
+Закрыть
+[Copy]
+Копировать
+[Error]
+Ошибка
+[GCHAT error]
+Ошибка GCHAT
+[An unknown error has occurred.]
+Неизвестная ошибка.
+[Unable to initiate %s.]
+Не удалось инициировать %s.
+[MAPI error (%i):\n%s.]
+Ошибка MAPI (%i):\n%s.
+[Unknown response from %s (%i)]
+Неизвестный ответ от %s (%i)
+[Got no response from %s (%i)]
+Нет ответа от %s (%i)
+[The specified attachment was not found]
+Вложение не найдено
+[The specified attachment could not be opened]
+Невозможно открыть вложение
+[One or more unspecified errors occurred]
+Одна или несколько неизвестных ошибок
+[There was insufficient memory to proceed]
+Недостаточно памяти для продолжения
+[The text in the message was too large]
+Сообщение слишком длинное
+[There were too many file attachments]
+Слишком много вложенных файлов
+[There were too many recipients]
+Слишком много получателей
+[Unknown Error]
+Неизвестная ошибка
+[File transfer]
+Передача файла
 [Could not start the HTTP Server plugin.]
 Не могу запустить плагин HTTP Сервер.
-[FTP File is not loaded!]
-FTP File не загружен!
-[HTTP Server is not loaded!]
-HTTP Server не загружен!
-[New width?]
-Новая ширина?
-[Select a target window.]
-Выберите окно для отправки.
-[Send the screenshot?]
-Послать скриншот?
-[Set &Width]
-Ширина
-[Set C&olor]
-Цвет
-[Set Width]
-Ширина
-[Type the text to be draw:]
-Наберите текст:
-[Upload completed!]
-Загрузка завершена!
-[&Crop tool]
-Обрезать
-[&Ellipse tool]
-Эллипс
-[&Line tool]
-Линия
-[&Pen tool]
-Ручка
-[&Rectangle tool]
-Прямоугольник
-[&Set Width]
-Ширина
-[&Text tool]
-Текст
-[&Tools]
-Инструменты
-[A&bout]
-О программе
-[C&hoose]
-Выбор
-[Clo&se]
-Закрыть
-[Close&&S&end]
-Закрыть&&Послать
-[Close&&Sa&ve]
-Закрыть&&Сохранить
-[Des&tination Folder :]
-Папка назначения:
-[Destination for the image file(s):]
-Назначение изображений:
-[Fille&d]
-Заполнять
-[Transparent &Background]
-Прозрачный фон
-[Miranda is exiting]
-Miranda NG выходит
-[Could not create main dialog.]
-Невозможно создать главный диалог.
-[Close all capture dialogs and edit windows now, after that press OK.]
-Закрыть все диалоги захвата и окна редактора, после нажатия OK.
-[Not a supported file type.]
-Тип файла не поддерживается.
-[Could not register miranda service MS_SENDSS_SENDDESKTOP.]
-Невозможно связать службу Miranda NG MS_SENDSS_SENDDESKTOP.
-[Starting upload!]
-Начало закачки!
-[Send screenshot to <unknown> - Capture Options]
-Послать снимок <unknown> - Настройки захвата
-[Could not add a share to the FTP File plugin.]
-Невозможно добавить ресурс в плагин FTP File.
-[Could not add a share to the HTTP Server plugin.]
-Невозможно добавить ресурс в плагин HTTP Server.
-[C&olor]
-Цвет
-[Selection Tool]
-Выделение
-[Tool &Options]
-Опции
-[&Capture Again]
-Захватить снова
-[&Crop]
-Обрезать
-[&Ellipse]
-Овал
-[&Line]
-Строка
-[&Pen]
-Ручка
-[&Text]
-Текст
-[<unknow>]
-<неизвестно>
-[JPG Quality]
-JPG качество
-[Print&Screen Emulation]
-Эмуляция скриншота
-[(Unknow Contact)]
-(Неизвестный контакт)
-[<Unknow Contact>]
-(Неизвестный контакт)
-[overlays]
-Оверлеи
-[Screenshot Icon1]
-Значок снимка 1
-[Screenshot Icon2]
-Значок снимка 2
+[Retry]
+Ещё раз
+[Yes]
+Да
+[No]
+Нет
+[Abort]
+Отмена
+[Ignore]
+Игнорировать
+[SendScreenshot - Error]
+SendScreenshot - Ошибка
+[Main Icon]
+Главный значок
 [Target Cursor]
 Курсор цель
 [Target Desktop]
 Курсор рабочий стол
-[overlay on]
-Оверлей вкл
-[overlay off]
-Оверлей выкл
-[description off]
+[Help]
+Справка
+[Open Folder]
+Открыть папку
+[Description off]
 Описание выкл
-[description on]
+[Description on]
 Описание вкл
-[delete off]
+[Delete off]
 Удаление выкл
-[delete on]
+[Delete on]
 Удаление вкл
-[Screenshots]
-Снимки экрана
+[Prev]
+Назад
+[Next]
+Вперёд
+[Update]
+Обновить
+[Down arrow]
+Вниз
+[Could not create screenshot folder (error code: %d):\n%s\nDo you have write permissions?]
+Не удалось создать папку для скриншотов (код ошибки: %d):\n%s\nУ вас точно есть права на запись?
+[Could not create main dialog.]
+Невозможно создать главный диалог.
 [SendSS HTTP connections]
 HTTP подключение SendSS
+[SendSS]
+Отправить скриншот
+[Screenshots]
+Снимки экрана
+[Image services (AdvaImg) not found.\nSendSS disabled.]
+Не найдена служба изображений (AdvaImg).\nПлагин SendSS будет отключен.
+[Buttons]
+Кнопки
+[Take a screenshot]
+Сделать скриншот
+[Send desktop screenshot]
+Отправить скриншот экрана
+[Open SendSS+]
+Открыть SendSS+
+[Credits]
+Кредиты
+[Drag&Drop the target on the desired window.]
+Перетащите прицел на нужное окно.
+[Send screenshot to\n]
+Отправить снимок экрана для
+[Window]
+Окно
+[Desktop]
+Рабочий стол
+[<Entire Desktop>]
+<Весь Рабочий стол>
+[Monitor]
+Монитор
+[ (primary)]
+ (основной)
+[File]
+Файл
+[<Only save>]
+<Только сохранить>
+[File Transfer]
+Передача файла
+[E-mail]
+Почта
+[FTP File]
+Файл на FTP
+[Upload Pie (30m)]
+Upload Pie (30 мин)
+[Upload Pie (1d)]
+Upload Pie (1 дн)
+[Upload Pie (1w)]
+Upload Pie (1 нед)
+[Information]
+Информация
+[Delete after send]
+Удалить после отправки
+[Capture]
+Создать скриншот
+[Couldn't take a screenshot]
+Не удалось создать снимок экрана
+[Select a file]
+Выберите файл
+[Select a target window.]
+Выберите окно для отправки.
+[Screenshot ]
+Снимок экрана\s

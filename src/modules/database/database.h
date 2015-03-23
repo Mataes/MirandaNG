@@ -2,7 +2,7 @@
 
 Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2012-13 Miranda NG project,
+Copyright 2012-15 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -25,8 +25,9 @@ class MDatabaseCache : public MIDatabaseCache
 {
 	HANDLE m_hCacheHeap;
 	char* m_lastSetting;
+	size_t m_contactSize;
 	DBCachedContact *m_lastVL;
-	CRITICAL_SECTION m_cs;
+	mir_cs m_cs;
 
 	LIST<DBCachedContact> m_lContacts;
 	LIST<DBCachedGlobalValue> m_lGlobalSettings;
@@ -35,16 +36,18 @@ class MDatabaseCache : public MIDatabaseCache
 	void FreeCachedVariant(DBVARIANT* V);
 
 public:
-	MDatabaseCache();
+	MDatabaseCache(size_t);
 	~MDatabaseCache();
 
 protected:
-	STDMETHODIMP_(DBCachedContact*) AddContactToCache(HANDLE hContact);
-	STDMETHODIMP_(DBCachedContact*) GetCachedContact(HANDLE hContact);
-	STDMETHODIMP_(void) FreeCachedContact(HANDLE hContact);
+	STDMETHODIMP_(DBCachedContact*) AddContactToCache(MCONTACT contactID);
+	STDMETHODIMP_(DBCachedContact*) GetCachedContact(MCONTACT contactID);
+	STDMETHODIMP_(DBCachedContact*) GetFirstContact(void);
+	STDMETHODIMP_(DBCachedContact*) GetNextContact(MCONTACT contactID);
+	STDMETHODIMP_(void) FreeCachedContact(MCONTACT contactID);
 
 	STDMETHODIMP_(char*) InsertCachedSetting(const char *szName, int);
 	STDMETHODIMP_(char*) GetCachedSetting(const char *szModuleName, const char *szSettingName, int, int);
 	STDMETHODIMP_(void)  SetCachedVariant(DBVARIANT *s, DBVARIANT *d);
-	STDMETHODIMP_(DBVARIANT*) GetCachedValuePtr(HANDLE hContact, char *szSetting, int bAllocate);
+	STDMETHODIMP_(DBVARIANT*) GetCachedValuePtr(MCONTACT contactID, char *szSetting, int bAllocate);
 };

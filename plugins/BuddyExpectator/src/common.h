@@ -17,7 +17,7 @@
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+	*/
 
 #define _CRT_SECURE_NO_WARNINGS
 #ifndef _COMMON_INC
@@ -41,8 +41,6 @@
 #include <m_icolib.h>
 #include <m_popup.h>
 #include <m_extraicons.h>
-
-#include "m_popup2.h"
 
 #include "resource.h"
 #include "options.h"

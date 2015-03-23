@@ -19,14 +19,16 @@ Boston, MA 02111-1307, USA.
 
 #include "common.h"
 
+static HWND hwndDialog;
+HANDLE hListThread;
+
 static void SelectAll(HWND hDlg, bool bEnable)
 {
 	OBJLIST<FILEINFO> &todo = *(OBJLIST<FILEINFO> *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
 	HWND hwndList = GetDlgItem(hDlg, IDC_LIST_UPDATES);
 
 	for (int i=0; i < todo.getCount(); i++) {
-		ListView_SetCheckState(hwndList, i, bEnable);
-		todo[i].bEnabled = bEnable;
+		ListView_SetCheckState(hwndList, i, todo[i].bEnabled = bEnable);
 	}
 }
 
@@ -37,17 +39,19 @@ static void ApplyDownloads(void *param)
 	//////////////////////////////////////////////////////////////////////////////////////
 	// if we need to escalate priviledges, launch a atub
 
-	if ( !PrepareEscalation()) {
-		EndDialog(hDlg, 0);
+	if (!PrepareEscalation()) {
+		PostMessage(hDlg, WM_CLOSE, 0, 0);
 		return;
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	// ok, let's unpack all zips
 
+	AutoHandle pipe(hPipe);
 	HWND hwndList = GetDlgItem(hDlg, IDC_LIST_UPDATES);
 	OBJLIST<FILEINFO> &todo = *(OBJLIST<FILEINFO> *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-	TCHAR tszBuff[2048], tszFileTemp[MAX_PATH], tszFileBack[MAX_PATH];
+	//create needed folders after escalating priviledges. Folders creates when we actually install updates
+	TCHAR tszFileTemp[MAX_PATH], tszFileBack[MAX_PATH];
 
 	mir_sntprintf(tszFileBack, SIZEOF(tszFileBack), _T("%s\\Backups"), tszRoot);
 	SafeCreateDirectory(tszFileBack);
@@ -55,72 +59,35 @@ static void ApplyDownloads(void *param)
 	mir_sntprintf(tszFileTemp, SIZEOF(tszFileTemp), _T("%s\\Temp"), tszRoot);
 	SafeCreateDirectory(tszFileTemp);
 
+	VARST tszMirandaPath(_T("%miranda_path%"));
+
 	HANDLE nlc = NULL;
 	for (int i=0; i < todo.getCount(); ++i) {
 		ListView_EnsureVisible(hwndList, i, FALSE);
-		if ( !todo[i].bEnabled) {
-			ListView_SetItemText(hwndList, i, 2, TranslateT("Skipped."));
-			continue;
-		}
+		if (todo[i].bEnabled) {
+			// download update
+			ListView_SetItemText(hwndList, i, 1, TranslateT("Downloading..."));
 
-		// download update
-		ListView_SetItemText(hwndList, i, 2, TranslateT("Downloading..."));
-
-		FILEURL *pFileUrl = &todo[i].File;
-		if ( !DownloadFile(pFileUrl->tszDownloadURL, pFileUrl->tszDiskPath, pFileUrl->CRCsum, nlc)){
-			ListView_SetItemText(hwndList, i, 2, TranslateT("Failed!"));
+			if (DownloadFile(&todo[i].File, nlc)) {
+				ListView_SetItemText(hwndList, i, 1, TranslateT("Succeeded."));
+				if (unzip(todo[i].File.tszDiskPath, tszMirandaPath, tszFileBack,false))
+					SafeDeleteFile(todo[i].File.tszDiskPath);  // remove .zip after successful update
+			}
+			else
+				ListView_SetItemText(hwndList, i, 1, TranslateT("Failed!"));
 		}
 		else
-			ListView_SetItemText(hwndList, i, 2, TranslateT("Succeeded."));
+			ListView_SetItemText(hwndList, i, 1, TranslateT("Skipped."));
 	}
 	Netlib_CloseHandle(nlc);
 
-	if (todo.getCount() > 0) {
-		ShowPopup(0, LPGENT("Plugin Updater"), TranslateT("Download complete"), 2, 0);
+	ShowPopup(TranslateT("Plugin Updater"), TranslateT("Download complete"), POPUP_TYPE_INFO);
 
-		TCHAR *tszMirandaPath = Utils_ReplaceVarsT(_T("%miranda_path%"));
-
-		for (int i = 0; i < todo.getCount(); i++) {
-			if ( !todo[i].bEnabled)
-				continue;
-
-			TCHAR tszBackFile[MAX_PATH];
-			FILEINFO& p = todo[i];
-			if (p.bDeleteOnly) { // we need only to backup the old file
-				TCHAR *ptszRelPath = p.tszNewName + _tcslen(tszMirandaPath) + 1;
-				mir_sntprintf(tszBackFile, SIZEOF(tszBackFile), _T("%s\\%s"), tszFileBack, ptszRelPath);
-				BackupFile(p.tszNewName, tszBackFile);
-				continue;
-			}
-
-			// if file name differs, we also need to backup the old file here
-			// otherwise it would be replaced by unzip
-			if ( _tcsicmp(p.tszOldName, p.tszNewName)) {
-				TCHAR tszSrcPath[MAX_PATH];
-				mir_sntprintf(tszSrcPath, SIZEOF(tszSrcPath), _T("%s\\%s"), tszMirandaPath, p.tszOldName);
-				mir_sntprintf(tszBackFile, SIZEOF(tszBackFile), _T("%s\\%s"), tszFileBack, p.tszOldName);
-				BackupFile(tszSrcPath, tszBackFile);
-			}
-
-			if ( unzip(p.File.tszDiskPath, tszMirandaPath, tszFileBack))
-				SafeDeleteFile(p.File.tszDiskPath);  // remove .zip after successful update
-		}
-	}
-
-	PopupDataText temp;
-	temp.Title = TranslateT("Plugin Updater");
-	temp.Text = tszBuff;
-	lstrcpyn(tszBuff, TranslateT("Download complete. Do you want go to plugins option page?"), SIZEOF(tszBuff));
-	int rc = MessageBox(hDlg, temp.Text, temp.Title, MB_YESNO | MB_ICONQUESTION);
+	int rc = MessageBox(hDlg, TranslateT("Download complete. Do you want to go to plugins option page?"), TranslateT("Plugin Updater"), MB_YESNO | MB_ICONQUESTION);
 	if (rc == IDYES)
 		CallFunctionAsync(OpenPluginOptions, 0);
 
-	if (hPipe)
-		CloseHandle(hPipe);
-	CloseWindow(hDlg);
-	EndDialog(hDlg, 0);
-	hwndDialog = NULL;
-	return;
+	PostMessage(hDlg, WM_CLOSE, 0, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +100,7 @@ static LRESULT CALLBACK PluginListWndProc(HWND hwnd, UINT msg, WPARAM wParam, LP
 		LVHITTESTINFO hi;
 		hi.pt.x = LOWORD(lParam); hi.pt.y = HIWORD(lParam);
 		ListView_SubItemHitTest(hwnd, &hi);
-		if (hi.iSubItem == 1) {
+		if ((hi.iSubItem == 0) && (hi.flags & LVHT_ONITEMICON)) {
 			LVITEM lvi = {0};
 			lvi.mask = LVIF_IMAGE | LVIF_PARAM | LVIF_GROUPID;
 			lvi.stateMask = -1;
@@ -146,7 +113,7 @@ static LRESULT CALLBACK PluginListWndProc(HWND hwnd, UINT msg, WPARAM wParam, LP
 				TCHAR *p = _tcschr(tszFileName, L'.'); *p = 0;
 
 				TCHAR link[MAX_PATH];
-				mir_sntprintf(link, MAX_PATH, _T("http://miranda-ng.org/p/%s"), tszFileName);
+				mir_sntprintf(link, SIZEOF(link), _T("http://miranda-ng.org/p/%s"), tszFileName);
 				CallService(MS_UTILS_OPENURL, OUF_TCHAR, (LPARAM) link);
 			}
 		}
@@ -159,8 +126,6 @@ static int ListDlg_Resize(HWND, LPARAM, UTILRESIZECONTROL *urc)
 {
 	switch (urc->wId) {
 	case IDC_SELNONE:
-		return RD_ANCHORX_LEFT | RD_ANCHORY_BOTTOM;
-
 	case IDOK:
 		return RD_ANCHORX_RIGHT | RD_ANCHORY_BOTTOM;
 
@@ -176,7 +141,6 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 	switch (message) {
 	case WM_INITDIALOG:
-		hwndDialog = hDlg;
 		TranslateDialogDefault( hDlg );
 		oldWndProc = (WNDPROC)SetWindowLongPtr(hwndList, GWLP_WNDPROC, (LONG_PTR)PluginListWndProc);
 
@@ -216,13 +180,9 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			lvc.cx = 220; // width of column in pixels
 			ListView_InsertColumn(hwndList, 0, &lvc);
 
-			lvc.pszText = L"";
-			lvc.cx = 32 - GetSystemMetrics(SM_CXVSCROLL); // width of column in pixels
-			ListView_InsertColumn(hwndList, 1, &lvc);
-
 			lvc.pszText = TranslateT("State");
-			lvc.cx = 100 - GetSystemMetrics(SM_CXVSCROLL); // width of column in pixels
-			ListView_InsertColumn(hwndList, 2, &lvc);
+			lvc.cx = 100; // width of column in pixels
+			ListView_InsertColumn(hwndList, 1, &lvc);
 
 			///
 			LVGROUP lvg;
@@ -236,9 +196,13 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			lvg.pszHeader = TranslateT("Icons");
 			lvg.iGroupId = 2;
 			ListView_InsertGroup(hwndList, 0, &lvg);
+			
+			lvg.pszHeader = TranslateT("Languages");
+			lvg.iGroupId = 3;
+			ListView_InsertGroup(hwndList, 0, &lvg);
 
 			lvg.pszHeader = TranslateT("Other");
-			lvg.iGroupId = 3;
+			lvg.iGroupId = 4;
 			ListView_InsertGroup(hwndList, 0, &lvg);
 
 			ListView_EnableGroupView(hwndList, TRUE);
@@ -250,33 +214,20 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			///
 			OBJLIST<FILEINFO> &todo = *(OBJLIST<FILEINFO> *)lParam;
 			for (int i = 0; i < todo.getCount(); ++i) {
-				int groupId = 3;
 				LVITEM lvi = {0};
 				lvi.mask = LVIF_PARAM | LVIF_GROUPID | LVIF_TEXT | LVIF_IMAGE;
 				
+				int groupId = 4;
 				if (_tcschr(todo[i].tszOldName, L'\\') != NULL)
-					groupId = _tcsstr(todo[i].tszOldName, L"Plugins") != NULL ? 1 : 2;
+					groupId = (_tcsstr(todo[i].tszOldName, _T("Plugins")) != NULL) ? 1 : ((_tcsstr(todo[i].tszOldName, _T("Languages")) != NULL) ? 3 : 2);
 
 				lvi.iItem = i;
 				lvi.lParam = (LPARAM)&todo[i];
 				lvi.iGroupId = groupId;
-				lvi.iImage = -1;
+				lvi.iImage = ((groupId ==1) ? 0 : -1);
 				lvi.pszText = todo[i].tszOldName;
-				int iRow = ListView_InsertItem(hwndList, &lvi);
-
-				if (iRow != -1) {
-					lvi.iItem = iRow;
-					if (groupId == 1) {
-						lvi.mask = LVIF_IMAGE;
-						lvi.iSubItem = 1;
-						lvi.iImage = 0;
-						ListView_SetItem(hwndList, &lvi);
-					}
-				}
-				todo[i].bEnabled = false;
+				ListView_InsertItem(hwndList, &lvi);
 			}
-			HWND hwOk = GetDlgItem(hDlg, IDOK);
-			EnableWindow(hwOk, false);
 		}
 
 		// do this after filling list - enables 'ITEMCHANGED' below
@@ -290,16 +241,16 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			case LVN_ITEMCHANGED:
 				if (GetWindowLongPtr(hDlg, GWLP_USERDATA)) {
 					NMLISTVIEW *nmlv = (NMLISTVIEW *)lParam;
-
-					LVITEM lvI = {0};
-					lvI.iItem = nmlv->iItem;
-					lvI.iSubItem = 0;
-					lvI.mask = LVIF_PARAM;
-					ListView_GetItem(hwndList, &lvI);
-
-					OBJLIST<FILEINFO> &todo = *(OBJLIST<FILEINFO> *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
 					if ((nmlv->uNewState ^ nmlv->uOldState) & LVIS_STATEIMAGEMASK) {
-						todo[lvI.iItem].bEnabled = ListView_GetCheckState(hwndList, nmlv->iItem);
+						LVITEM lvI = {0};
+						lvI.iItem = nmlv->iItem;
+						lvI.iSubItem = 0;
+						lvI.mask = LVIF_PARAM;
+						ListView_GetItem(hwndList, &lvI);
+
+						OBJLIST<FILEINFO> &todo = *(OBJLIST<FILEINFO> *)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+						FILEINFO *p = (FILEINFO*)lvI.lParam;
+						p->bEnabled = ListView_GetCheckState(hwndList, nmlv->iItem);
 
 						bool enableOk = false;
 						for (int i=0; i < todo.getCount(); ++i) {
@@ -308,8 +259,7 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 								break;
 							}
 						}
-						HWND hwOk = GetDlgItem(hDlg, IDOK);
-						EnableWindow(hwOk, enableOk ? TRUE : FALSE);
+						EnableWindow(GetDlgItem(hDlg, IDOK), enableOk ? TRUE : FALSE);
 					}
 				}
 				break;
@@ -339,7 +289,7 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		break;
 
 	case WM_SIZE: // make the dlg resizeable
-		if ( !IsIconic(hDlg)) {
+		if (!IsIconic(hDlg)) {
 			UTILRESIZEDIALOG urd = { sizeof(urd) };
 			urd.hInstance = hInst;
 			urd.hwndDlg = hDlg;
@@ -347,6 +297,21 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			urd.pfnResizer = ListDlg_Resize;
 			CallService(MS_UTILS_RESIZEDIALOG, 0, (LPARAM)&urd);
 		}
+		break;
+
+	case WM_GETMINMAXINFO: 
+		{
+			LPMINMAXINFO mmi = (LPMINMAXINFO)lParam;
+
+			// The minimum width in points
+			mmi->ptMinTrackSize.x = 370;
+			// The minimum height in points
+			mmi->ptMinTrackSize.y = 300;
+		}
+		break;
+
+	case WM_CLOSE:
+		DestroyWindow(hDlg);
 		break;
 
 	case WM_DESTROY:
@@ -364,7 +329,7 @@ INT_PTR CALLBACK DlgList(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 static void __stdcall LaunchListDialog(void *param)
 {
-	CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_LIST), GetDesktopWindow(), DlgList, (LPARAM)param);
+	hwndDialog = CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_LIST), GetDesktopWindow(), DlgList, (LPARAM)param);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -372,8 +337,6 @@ static void __stdcall LaunchListDialog(void *param)
 
 static void GetList(void *)
 {
-	char szKey[64] = {0};
-	
 	TCHAR tszTempPath[MAX_PATH];
 	DWORD dwLen = GetTempPath(SIZEOF(tszTempPath), tszTempPath);
 	if (tszTempPath[dwLen-1] == '\\')
@@ -381,13 +344,13 @@ static void GetList(void *)
 
 	ptrT updateUrl( GetDefaultUrl()), baseUrl;
 	SERVLIST hashes(50, CompareHashes);
-	if ( !ParseHashes(updateUrl, baseUrl, hashes)) {
+	if (!ParseHashes(updateUrl, baseUrl, hashes)) {
 		hListThread = NULL;
 		return;
 	}
 
 	FILELIST *UpdateFiles = new FILELIST(20);
-	TCHAR *dirname = Utils_ReplaceVarsT(_T("%miranda_path%"));
+	VARST dirname(_T("%miranda_path%"));
 
 	for (int i=0; i < hashes.getCount(); i++) {
 		ServListEntry &hash = hashes[i];
@@ -395,38 +358,37 @@ static void GetList(void *)
 		TCHAR tszPath[MAX_PATH];
 		mir_sntprintf(tszPath, SIZEOF(tszPath), _T("%s\\%s"), dirname, hash.m_name);
 
-		if (GetFileAttributes(tszPath) != DWORD(-1))
-			continue;
+		if (GetFileAttributes(tszPath) == INVALID_FILE_ATTRIBUTES) {
+			FILEINFO *FileInfo = new FILEINFO;
+			FileInfo->bDeleteOnly = FALSE;
+			// copy the relative old name
+			_tcsncpy(FileInfo->tszOldName, hash.m_name, SIZEOF(FileInfo->tszOldName));
+			_tcsncpy(FileInfo->tszNewName, hash.m_name, SIZEOF(FileInfo->tszNewName));
 
-		FILEINFO *FileInfo = new FILEINFO;
-		FileInfo->bDeleteOnly = FALSE;
-		_tcscpy(FileInfo->tszOldName, hash.m_name); // copy the relative old name
-		_tcscpy(FileInfo->tszNewName, hash.m_name);
+			TCHAR tszFileName[MAX_PATH];
+			_tcsncpy(tszFileName, _tcsrchr(tszPath, L'\\') + 1, SIZEOF(tszFileName));
+			TCHAR *tp = _tcschr(tszFileName, L'.'); *tp = 0;
 
-		TCHAR tszFileName[MAX_PATH];
-		_tcscpy(tszFileName, _tcsrchr(tszPath, L'\\') + 1);
-		TCHAR *tp = _tcschr(tszFileName, L'.'); *tp = 0;
+			TCHAR tszRelFileName[MAX_PATH];
+			_tcsncpy(tszRelFileName, hash.m_name, MAX_PATH);
+			tp = _tcsrchr(tszRelFileName, L'.'); if (tp) *tp = 0;
+			tp = _tcschr(tszRelFileName, L'\\'); if (tp) tp++; else tp = tszRelFileName;
+			_tcslwr(tp);
 
-		TCHAR tszRelFileName[MAX_PATH];
-		_tcscpy(tszRelFileName, hash.m_name);
-		tp = _tcsrchr(tszRelFileName, L'.'); if (tp) *tp = 0;
-		tp = _tcschr(tszRelFileName, L'\\'); if (tp) tp++; else tp = tszRelFileName;
-		_tcslwr(tp);
-
-		mir_sntprintf(FileInfo->File.tszDiskPath, SIZEOF(FileInfo->File.tszDiskPath), _T("%s\\Temp\\%s.zip"), tszRoot, tszFileName);
-		mir_sntprintf(FileInfo->File.tszDownloadURL, SIZEOF(FileInfo->File.tszDownloadURL), _T("%s/%s.zip"), baseUrl, tszRelFileName);
-		for (tp = _tcschr(FileInfo->File.tszDownloadURL, '\\'); tp != 0; tp = _tcschr(tp, '\\'))
-			*tp++ = '/';
-		FileInfo->File.CRCsum = hash.m_crc;
-		UpdateFiles->insert(FileInfo);
+			mir_sntprintf(FileInfo->File.tszDiskPath, SIZEOF(FileInfo->File.tszDiskPath), _T("%s\\Temp\\%s.zip"), tszRoot, tszFileName);
+			mir_sntprintf(FileInfo->File.tszDownloadURL, SIZEOF(FileInfo->File.tszDownloadURL), _T("%s/%s.zip"), baseUrl, tszRelFileName);
+			for (tp = _tcschr(FileInfo->File.tszDownloadURL, '\\'); tp != 0; tp = _tcschr(tp, '\\'))
+				*tp++ = '/';
+			FileInfo->File.CRCsum = hash.m_crc;
+			// Deselect all plugins by default
+			FileInfo->bEnabled = false;
+			UpdateFiles->insert(FileInfo);
+		}
 	}
-
-	mir_free(dirname);
 
 	// Show dialog
 	if (UpdateFiles->getCount() == 0) {
-		if ( !opts.bSilent)
-			ShowPopup(0, LPGENT("Plugin Updater"), LPGENT("List is empty."), 2, 0);
+		ShowPopup(TranslateT("Plugin Updater"), TranslateT("List is empty."), POPUP_TYPE_INFO);
 		delete UpdateFiles;
 	}
 	else CallFunctionAsync(LaunchListDialog, UpdateFiles);
@@ -434,15 +396,38 @@ static void GetList(void *)
 	hListThread = NULL;
 }
 
-void DoGetList(int iFlag)
+void DoGetList()
 {
 	if (hListThread)
-		ShowPopup(0, LPGENT("Plugin Updater"), LPGENT("List loading already started!"), 2, 0);
+		ShowPopup(TranslateT("Plugin Updater"), TranslateT("List loading already started!"), POPUP_TYPE_INFO);
 	else if (hwndDialog) {
 		ShowWindow(hwndDialog, SW_SHOW);
 		SetForegroundWindow(hwndDialog);
 		SetFocus(hwndDialog);
 	}
-	else if (iFlag)
+	else
 		hListThread = mir_forkthread(GetList, 0);
+}
+
+void UninitListNew()
+{
+	if (hwndDialog != NULL)
+		DestroyWindow(hwndDialog);
+}
+
+INT_PTR ShowListCommand(WPARAM,LPARAM)
+{
+	DoGetList();
+	return 0;
+}
+
+void InitListNew()
+{
+	CreateServiceFunction(MODNAME"/ShowList", ShowListCommand);
+}
+
+void UnloadListNew()
+{
+	if (hListThread)
+		hListThread = NULL;
 }

@@ -23,7 +23,6 @@ class HTMLBuilder;
 #ifndef HTMLBUILDER_INCLUDED
 #define HTMLBUILDER_INCLUDED
 
-#define EVENTTYPE_STATUSCHANGE 25368
 #define EVENTTYPE_JABBER_CHATSTATES     2000
 
 #include "IEView.h"
@@ -50,41 +49,41 @@ protected:
 		ENF_ALL = 255,
 		ENF_CHAT_FORMATTING = 256
 	};
-//	virtual char *encode(const char *text, const char *proto, bool replaceSmiley);
-	virtual char *encodeUTF8(HANDLE hContact, const char *proto, const wchar_t *text, int flags, bool isSent);
-	virtual char *encodeUTF8(HANDLE hContact, const char *proto, const char *text, int flags, bool isSent);
-	virtual char *encodeUTF8(HANDLE hContact, const char *proto, const char *text, int cp, int flags, bool isSent);
-	virtual wchar_t *encode(HANDLE hContact, const char *proto, const wchar_t *text, int flags, bool isSent);
-	virtual bool encode(HANDLE hContact, const char *proto, const wchar_t *text, wchar_t **output, int *outputSize,  int level, int flags, bool isSent);
-	virtual char* getProto(HANDLE hContact);
-	virtual char* getProto(const char *proto, HANDLE hContact);
-	virtual char* getRealProto(HANDLE hContact);
-	virtual char* getRealProto(HANDLE hContact, const char *proto);
-	virtual wchar_t *getContactName(HANDLE hContact, const char* szProto);
-	virtual char *getEncodedContactName(HANDLE hContact, const char *szProto, const char *szSmileyProto);
-	virtual void getUINs(HANDLE hContact, char *&uinIn, char *&uinOut);
-	virtual HANDLE getRealContact(HANDLE hContact);
+	//	virtual char *encode(const char *text, const char *proto, bool replaceSmiley);
+	virtual char *encodeUTF8(MCONTACT hContact, const char *proto, const wchar_t *text, int flags, bool isSent);
+	virtual char *encodeUTF8(MCONTACT hContact, const char *proto, const char *text, int flags, bool isSent);
+	virtual char *encodeUTF8(MCONTACT hContact, const char *proto, const char *text, int cp, int flags, bool isSent);
+	virtual wchar_t *encode(MCONTACT hContact, const char *proto, const wchar_t *text, int flags, bool isSent);
+	virtual bool encode(MCONTACT hContact, const char *proto, const wchar_t *text, wchar_t **output, int *outputSize, int level, int flags, bool isSent);
+	virtual char* getProto(MCONTACT hContact);
+	virtual char* getProto(const char *proto, MCONTACT hContact);
+	virtual char* getRealProto(MCONTACT hContact);
+	virtual char* getRealProto(MCONTACT hContact, const char *proto);
+	virtual wchar_t *getContactName(MCONTACT hContact, const char* szProto);
+	virtual char *getEncodedContactName(MCONTACT hContact, const char *szProto, const char *szSmileyProto);
+	virtual void getUINs(MCONTACT hContact, char *&uinIn, char *&uinOut);
+	virtual MCONTACT getRealContact(MCONTACT hContact);
 	virtual DWORD getLastEventTime();
 	virtual void setLastEventTime(DWORD);
 	virtual int getLastEventType();
 	virtual void setLastEventType(int);
 	virtual bool isSameDate(time_t time1, time_t time2);
-	virtual bool isDbEventShown(DBEVENTINFO * dbei)=0;
+	virtual bool isDbEventShown(DBEVENTINFO * dbei) = 0;
 	virtual ProtocolSettings *getSRMMProtocolSettings(const char *protocolName);
-	virtual ProtocolSettings *getSRMMProtocolSettings(HANDLE hContact);
+	virtual ProtocolSettings *getSRMMProtocolSettings(MCONTACT hContact);
 	virtual ProtocolSettings *getHistoryProtocolSettings(const char *protocolName);
-	virtual ProtocolSettings *getHistoryProtocolSettings(HANDLE hContact);
+	virtual ProtocolSettings *getHistoryProtocolSettings(MCONTACT hContact);
 	virtual ProtocolSettings *getChatProtocolSettings(const char *protocolName);
-	virtual ProtocolSettings *getChatProtocolSettings(HANDLE hContact);
+	virtual ProtocolSettings *getChatProtocolSettings(MCONTACT hContact);
 	void	setLastIEViewEvent(IEVIEWEVENT *event);
-	virtual void buildHead(IEView *, IEVIEWEVENT *event)=0;
+	virtual void buildHead(IEView *, IEVIEWEVENT *event) = 0;
 public:
 	HTMLBuilder();
 	virtual ~HTMLBuilder();
 	void appendEventOld(IEView *, IEVIEWEVENT *event);
 	void appendEventNew(IEView *, IEVIEWEVENT *event);
 	void clear(IEView *, IEVIEWEVENT *event);
-	virtual void appendEvent(IEView *, IEVIEWEVENT *event)=0;
+	virtual void appendEvent(IEView *, IEVIEWEVENT *event) = 0;
 };
 
 #endif

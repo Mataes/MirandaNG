@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,24 +21,16 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #pragma once
 
 #ifndef _CLIST_H_
 #define _CLIST_H_
 
 void LoadContactTree(void);
-HTREEITEM GetTreeItemByHContact(HANDLE hContact);
-void cli_ChangeContactIcon(HANDLE hContact,int iIcon,int add);
-int GetContactInfosForSort(HANDLE hContact,char **Proto,TCHAR **Name,int *Status);
-
-typedef HMONITOR ( WINAPI *pfnMyMonitorFromPoint )(POINT,DWORD);
-extern pfnMyMonitorFromPoint MyMonitorFromPoint;
-
-typedef HMONITOR( WINAPI *pfnMyMonitorFromWindow) (HWND, DWORD);
-extern pfnMyMonitorFromWindow MyMonitorFromWindow;
-
-typedef BOOL(WINAPI *pfnMyGetMonitorInfo) (HMONITOR, LPMONITORINFO);
-extern pfnMyGetMonitorInfo MyGetMonitorInfo;
+HTREEITEM GetTreeItemByHContact(MCONTACT hContact);
+void cli_ChangeContactIcon(MCONTACT hContact, int iIcon, int add);
+int GetContactInfosForSort(MCONTACT hContact, char **Proto, TCHAR **Name, int *Status);
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -47,17 +40,17 @@ public:
 	SortedList*	plText;
 	int			iMaxSmileyHeight;
 
-	CSmileyString()   : plText( NULL ), iMaxSmileyHeight( 0 ) {};
-	CSmileyString( const CSmileyString& ssIn )
+	CSmileyString() : plText(NULL), iMaxSmileyHeight(0) {};
+	CSmileyString(const CSmileyString& ssIn)
 	{
-		_CopySmileyList( ssIn.plText );
+		_CopySmileyList(ssIn.plText);
 		iMaxSmileyHeight = ssIn.iMaxSmileyHeight;
 	}
 
-	CSmileyString& operator= ( const CSmileyString& ssIn )
+	CSmileyString& operator= (const CSmileyString& ssIn)
 	{
 		DestroySmileyList();
-		_CopySmileyList( ssIn.plText );
+		_CopySmileyList(ssIn.plText);
 		iMaxSmileyHeight = ssIn.iMaxSmileyHeight;
 		return *this;
 	}
@@ -67,13 +60,13 @@ public:
 		DestroySmileyList();
 	}
 
-	void ReplaceSmileys(struct SHORTDATA *dat, struct ClcCacheEntry *pdnce, TCHAR *szText, BOOL replace_smileys);
+	void ReplaceSmileys(struct SHORTDATA *dat, ClcCacheEntry *pdnce, TCHAR *szText, BOOL replace_smileys);
 
 	/**	Destroy smiley list */
 	void DestroySmileyList();
 	/**  Copy Smiley List */
-	void _CopySmileyList( SortedList *plInput );
-	void AddListeningToIcon(struct SHORTDATA *dat, struct ClcCacheEntry *pdnce, TCHAR *szText, BOOL replace_smileys);
+	void _CopySmileyList(SortedList *plInput);
+	void AddListeningToIcon(SHORTDATA *dat, TCHAR *szText);
 
 };
 
@@ -83,18 +76,16 @@ struct ClcCacheEntry : public ClcCacheEntryBase
 {
 	int      m_cache_nNoHiddenOffline;
 
-	char*    m_cache_cszProto;
-	bool     m_cache_bProtoNotExists;
 	int      m_cache_nStatus;
-	int      m_cache_nHiddenSubcontact;
+	char*    m_cache_cszProto;
+	bool     m_bProtoNotExists, m_bIsSub;
+	bool     isUnknown;
 
-	int      i;
 	int      ApparentMode;
 	int      NotOnList;
 	int      IdleTS;
 	void*    ClcContact;
 	BYTE     IsExpanded;
-	bool     isUnknown;
 
 	TCHAR*   szSecondLineText;
 	CSmileyString ssSecondLine;

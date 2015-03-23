@@ -1,9 +1,9 @@
-﻿/*
+/*
 
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright � 2009-11 Michal Zelinka, 2011-15 Robert P�sel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,8 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "common.h"
 
-FacebookProto::FacebookProto(const char* proto_name,const TCHAR* username) :
-	PROTO<FacebookProto>(proto_name, username)
+FacebookProto::FacebookProto(const char* proto_name, const TCHAR* username) :
+	PROTO<FacebookProto>(proto_name, username),
+	m_tszDefaultGroup(getTStringA(FACEBOOK_KEY_DEF_GROUP))
 {
 	facy.parent = this;
 
@@ -34,23 +35,54 @@ FacebookProto::FacebookProto(const char* proto_name,const TCHAR* username) :
 	facy.buddies_lock_ = CreateMutex(NULL, FALSE, NULL);
 	facy.send_message_lock_ = CreateMutex(NULL, FALSE, NULL);
 	facy.fcb_conn_lock_ = CreateMutex(NULL, FALSE, NULL);
+	facy.notifications_lock_ = CreateMutex(NULL, FALSE, NULL);
+	facy.cookies_lock_ = CreateMutex(NULL, FALSE, NULL);
+
+	// Initialize random seed for this client
+	facy.random_ = ::time(NULL) + PtrToUint(&facy);
+
+	m_hMenuRoot = m_hMenuServicesRoot = m_hStatusMind = NULL;
+
+	m_invisible = false;
+	m_signingOut = false;
+	m_enableChat = DEFAULT_ENABLE_CHATS;
+	m_idleTS = 0;
+	m_pingTS = 0;
+
+	// Load custom locale, if set
+	ptrA locale(getStringA(FACEBOOK_KEY_LOCALE));
+	if (locale != NULL)
+		m_locale = locale;
+
+	if (m_tszDefaultGroup == NULL)
+		m_tszDefaultGroup = mir_tstrdup(_T("Facebook"));
 
 	CreateProtoService(PS_CREATEACCMGRUI, &FacebookProto::SvcCreateAccMgrUI);
-	CreateProtoService(PS_GETMYAWAYMSG,   &FacebookProto::GetMyAwayMsg);
-	CreateProtoService(PS_GETMYAVATART,   &FacebookProto::GetMyAvatar);
+	CreateProtoService(PS_GETMYAWAYMSG, &FacebookProto::GetMyAwayMsg);
+	CreateProtoService(PS_GETMYAVATART, &FacebookProto::GetMyAvatar);
 	CreateProtoService(PS_GETAVATARINFOT, &FacebookProto::GetAvatarInfo);
-	CreateProtoService(PS_GETAVATARCAPS,  &FacebookProto::GetAvatarCaps);
+	CreateProtoService(PS_GETAVATARCAPS, &FacebookProto::GetAvatarCaps);
+	CreateProtoService(PS_GETUNREADEMAILCOUNT, &FacebookProto::GetNotificationsCount);
 
-	CreateProtoService(PS_JOINCHAT,  &FacebookProto::OnJoinChat);
+	CreateProtoService(PS_JOINCHAT, &FacebookProto::OnJoinChat);
 	CreateProtoService(PS_LEAVECHAT, &FacebookProto::OnLeaveChat);
 
 	CreateProtoService("/Mind", &FacebookProto::OnMind);
+	CreateProtoService("/VisitProfile", &FacebookProto::VisitProfile);
+	CreateProtoService("/VisitNotifications", &FacebookProto::VisitNotifications);
 
 	HookProtoEvent(ME_CLIST_PREBUILDSTATUSMENU, &FacebookProto::OnBuildStatusMenu);
-	HookProtoEvent(ME_OPT_INITIALISE,           &FacebookProto::OnOptionsInit);
-	HookProtoEvent(ME_GC_EVENT,                 &FacebookProto::OnChatOutgoing);
-	HookProtoEvent(ME_IDLE_CHANGED,             &FacebookProto::OnIdleChanged);
-	HookProtoEvent(ME_TTB_MODULELOADED,         &FacebookProto::OnToolbarInit);
+	HookProtoEvent(ME_OPT_INITIALISE, &FacebookProto::OnOptionsInit);
+	HookProtoEvent(ME_IDLE_CHANGED, &FacebookProto::OnIdleChanged);
+	HookProtoEvent(ME_TTB_MODULELOADED, &FacebookProto::OnToolbarInit);
+	HookProtoEvent(ME_GC_EVENT, &FacebookProto::OnGCEvent);
+	HookProtoEvent(ME_GC_BUILDMENU, &FacebookProto::OnGCMenuHook);
+	HookProtoEvent(ME_DB_EVENT_MARKED_READ, &FacebookProto::OnDbEventRead);
+
+	db_set_resident(m_szModuleName, "Status");
+	db_set_resident(m_szModuleName, "IdleTS");
+	db_set_resident(m_szModuleName, FACEBOOK_KEY_MESSAGE_READ);
+	db_set_resident(m_szModuleName, FACEBOOK_KEY_MESSAGE_READERS);
 
 	InitHotkeys();
 	InitPopups();
@@ -58,25 +90,30 @@ FacebookProto::FacebookProto(const char* proto_name,const TCHAR* username) :
 
 	// Create standard network connection
 	TCHAR descr[512];
-	char module[512];
-	NETLIBUSER nlu = {sizeof(nlu)};
+	NETLIBUSER nlu = { sizeof(nlu) };
 	nlu.flags = NUF_INCOMING | NUF_OUTGOING | NUF_HTTPCONNS | NUF_TCHAR;
 	nlu.szSettingsModule = m_szModuleName;
-	mir_snprintf(module, SIZEOF(module), "%s", m_szModuleName);
-	nlu.szSettingsModule = module;
 	mir_sntprintf(descr, SIZEOF(descr), TranslateT("%s server connection"), m_tszUserName);
 	nlu.ptszDescriptiveName = descr;
 	m_hNetlibUser = (HANDLE)CallService(MS_NETLIB_REGISTERUSER, 0, (LPARAM)&nlu);
 	if (m_hNetlibUser == NULL)
 		MessageBox(NULL, TranslateT("Unable to get Netlib connection for Facebook"), m_tszUserName, MB_OK);
 
-	facy.set_handle(m_hNetlibUser);	
-
-	mir_sntprintf(descr, SIZEOF(descr), _T("%%miranda_avatarcache%%\\%s"), m_tszUserName);
-	hAvatarFolder_ = FoldersRegisterCustomPathT(LPGEN("Avatars"), m_szModuleName, descr, m_tszUserName);
+	facy.set_handle(m_hNetlibUser);
 
 	// Set all contacts offline -- in case we crashed
-	SetAllContactStatuses(ID_STATUS_OFFLINE, true);
+	SetAllContactStatuses(ID_STATUS_OFFLINE);
+
+	// register special type of event
+	// there's no need to declare the special service for getting text
+	// because a blob contains only text
+	DBEVENTTYPEDESCR evtype = { sizeof(evtype) };
+	evtype.module = m_szModuleName;
+	evtype.eventType = FACEBOOK_EVENTTYPE_CALL;
+	evtype.descr = LPGEN("Video call");
+	evtype.eventIcon = GetIconHandle("facebook");
+	evtype.flags = DETF_HISTORY | DETF_MSGWINDOW;
+	CallService(MS_DB_EVENT_REGISTERTYPE, 0, (LPARAM)&evtype);
 }
 
 FacebookProto::~FacebookProto()
@@ -84,8 +121,8 @@ FacebookProto::~FacebookProto()
 	// Uninit popup classes
 	for (std::vector<HANDLE>::size_type i = 0; i < popupClasses.size(); i++)
 		Popup_UnregisterClass(popupClasses[i]);
-	popupClasses.clear();	
-	
+	popupClasses.clear();
+
 	Netlib_CloseHandle(m_hNetlibUser);
 
 	WaitForSingleObject(signon_lock_, IGNORE);
@@ -93,6 +130,8 @@ FacebookProto::~FacebookProto()
 	WaitForSingleObject(log_lock_, IGNORE);
 	WaitForSingleObject(facy.buddies_lock_, IGNORE);
 	WaitForSingleObject(facy.send_message_lock_, IGNORE);
+	WaitForSingleObject(facy.notifications_lock_, IGNORE);
+	WaitForSingleObject(facy.cookies_lock_, IGNORE);
 
 	CloseHandle(signon_lock_);
 	CloseHandle(avatar_lock_);
@@ -101,13 +140,15 @@ FacebookProto::~FacebookProto()
 	CloseHandle(facy.buddies_lock_);
 	CloseHandle(facy.send_message_lock_);
 	CloseHandle(facy.fcb_conn_lock_);
+	CloseHandle(facy.notifications_lock_);
+	CloseHandle(facy.cookies_lock_);
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
-DWORD_PTR FacebookProto::GetCaps(int type, HANDLE hContact)
+DWORD_PTR FacebookProto::GetCaps(int type, MCONTACT)
 {
-	switch(type)
+	switch (type)
 	{
 	case PFLAGNUM_1:
 	{
@@ -134,7 +175,7 @@ DWORD_PTR FacebookProto::GetCaps(int type, HANDLE hContact)
 	case PFLAG_UNIQUEIDTEXT:
 		return (DWORD_PTR) "Facebook ID";
 	case PFLAG_UNIQUEIDSETTING:
-		return (DWORD_PTR) FACEBOOK_KEY_ID;
+		return (DWORD_PTR)FACEBOOK_KEY_ID;
 	}
 	return 0;
 }
@@ -143,7 +184,7 @@ DWORD_PTR FacebookProto::GetCaps(int type, HANDLE hContact)
 
 int FacebookProto::SetStatus(int new_status)
 {
-	LOG("===== Beginning SetStatus process");
+	debugLogA("=== Beginning SetStatus process");
 
 	// Routing statuses not supported by Facebook
 	switch (new_status)
@@ -153,7 +194,6 @@ int FacebookProto::SetStatus(int new_status)
 		m_iDesiredStatus = new_status;
 		break;
 
-	case ID_STATUS_IDLE:
 	default:
 		m_iDesiredStatus = ID_STATUS_INVISIBLE;
 		if (getByte(FACEBOOK_KEY_MAP_STATUSES, DEFAULT_MAP_STATUSES))
@@ -165,22 +205,22 @@ int FacebookProto::SetStatus(int new_status)
 	}
 
 	if (new_status != ID_STATUS_OFFLINE && m_iStatus == ID_STATUS_CONNECTING) {
-		LOG("===== Status is already connecting, no change");
+		debugLogA("=== Status is already connecting, no change");
 		return 0;
 	}
 
 	if (m_iStatus == m_iDesiredStatus) {
-		LOG("===== Statuses are same, no change");
+		debugLogA("=== Statuses are same, no change");
 		return 0;
 	}
 
-	facy.invisible_ = (new_status == ID_STATUS_INVISIBLE);
+	m_invisible = (new_status == ID_STATUS_INVISIBLE);
 
 	ForkThread(&FacebookProto::ChangeStatus, this);
 	return 0;
 }
 
-int FacebookProto::SetAwayMsg(int status, const PROTOCHAR *msg)
+int FacebookProto::SetAwayMsg(int, const PROTOCHAR *msg)
 {
 	if (!msg) {
 		last_status_msg_.clear();
@@ -204,7 +244,8 @@ void FacebookProto::SetAwayMsgWorker(void *p)
 		status_data *data = static_cast<status_data*>(p);
 		facy.post_status(data);
 		delete data;
-	} else if (!last_status_msg_.empty()) {
+	}
+	else if (!last_status_msg_.empty()) {
 		status_data data;
 		data.text = last_status_msg_;
 		data.privacy = facy.get_privacy_type();
@@ -235,15 +276,15 @@ HANDLE FacebookProto::SearchByEmail(const PROTOCHAR* email)
 HANDLE FacebookProto::SearchByName(const PROTOCHAR* nick, const PROTOCHAR* firstName, const PROTOCHAR* lastName)
 {
 	TCHAR arg[200];
-	mir_sntprintf (arg, SIZEOF(arg), _T("%s %s %s"), nick, firstName, lastName);
+	mir_sntprintf(arg, SIZEOF(arg), _T("%s %s %s"), nick, firstName, lastName);
 	return SearchByEmail(arg); // Facebook is using one search method for everything (except IDs)
 }
 
-HANDLE FacebookProto::AddToList(int flags, PROTOSEARCHRESULT* psr)
+MCONTACT FacebookProto::AddToList(int flags, PROTOSEARCHRESULT* psr)
 {
-	ptrA id = mir_t2a_cp(psr->id, CP_UTF8);
-	ptrA name = mir_t2a_cp(psr->firstName, CP_UTF8);
-	ptrA surname = mir_t2a_cp(psr->lastName, CP_UTF8);
+	ptrA id(mir_t2a_cp(psr->id, CP_UTF8));
+	ptrA name(mir_t2a_cp(psr->firstName, CP_UTF8));
+	ptrA surname(mir_t2a_cp(psr->lastName, CP_UTF8));
 
 	if (id == NULL)
 		return NULL;
@@ -262,110 +303,154 @@ HANDLE FacebookProto::AddToList(int flags, PROTOSEARCHRESULT* psr)
 		return NULL;
 	}
 
-	HANDLE hContact = AddToContactList(&fbu, CONTACT_NONE);
-	if (hContact) {
-		if (flags & PALF_TEMPORARY) {
-			db_set_b(hContact, "Clist", "Hidden", 1);
-			db_set_b(hContact, "Clist", "NotOnList", 1);
-		}
-		else if (db_get_b(hContact, "CList", "NotOnList", 0)) {
-			db_unset(hContact, "CList", "Hidden");
-			db_unset(hContact, "CList", "NotOnList");
-		}
+	bool add_temporarily = (flags & PALF_TEMPORARY);
+	MCONTACT hContact = AddToContactList(&fbu, CONTACT_NONE, false, add_temporarily);
+
+	// Reset NotOnList flag if present and we're adding this contact not temporarily
+	if (hContact && !add_temporarily && db_get_b(hContact, "CList", "NotOnList", 0)) {
+		db_unset(hContact, "CList", "Hidden");
+		db_unset(hContact, "CList", "NotOnList");
 	}
 
 	return hContact;
 }
 
-int FacebookProto::AuthRequest(HANDLE hContact,const PROTOCHAR *message)
+int FacebookProto::AuthRequest(MCONTACT hContact, const PROTOCHAR *)
 {
-	return RequestFriendship((WPARAM)hContact, NULL);
+	return RequestFriendship(hContact, NULL);
 }
 
-int FacebookProto::Authorize(HANDLE hDbEvent)
+int FacebookProto::Authorize(MEVENT hDbEvent)
 {
 	if (!hDbEvent || isOffline())
 		return 1;
 
-	HANDLE hContact = HContactFromAuthEvent(hDbEvent);
-	if (hContact == INVALID_HANDLE_VALUE)
+	MCONTACT hContact = HContactFromAuthEvent(hDbEvent);
+	if (hContact == INVALID_CONTACT_ID)
 		return 1;
 
-	return ApproveFriendship((WPARAM)hContact, NULL);
+	return ApproveFriendship(hContact, NULL);
 }
 
-int FacebookProto::AuthDeny(HANDLE hDbEvent, const PROTOCHAR *reason)
+int FacebookProto::AuthDeny(MEVENT hDbEvent, const PROTOCHAR *)
 {
 	if (!hDbEvent || isOffline())
 		return 1;
 
-	HANDLE hContact = HContactFromAuthEvent(hDbEvent);
-	if (hContact == INVALID_HANDLE_VALUE)
+	MCONTACT hContact = HContactFromAuthEvent(hDbEvent);
+	if (hContact == INVALID_CONTACT_ID)
 		return 1;
 
-	// TODO: hide from facebook requests list
+	return DenyFriendship(hContact, NULL);
+}
 
-	if (db_get_b(hContact, "CList", "NotOnList", 0))
-		CallService(MS_DB_CONTACT_DELETE, (WPARAM)hContact, 0);
+int FacebookProto::GetInfo(MCONTACT hContact, int)
+{
+	ptrA user_id(getStringA(hContact, FACEBOOK_KEY_ID));
+	if (user_id == NULL)
+		return 1;
 
-	return 0;
+	facebook_user fbu;
+	fbu.user_id = user_id;
+
+	LoadContactInfo(&fbu);
+
+	// TODO: don't duplicate code this way, refactor all this userInfo loading
+	// TODO: load more info about user (authorization state,...)
+
+	std::string homepage = FACEBOOK_URL_PROFILE + fbu.user_id;
+	setString(hContact, "Homepage", homepage.c_str());
+
+	if (!fbu.real_name.empty()) {
+		SaveName(hContact, &fbu);
+	}
+
+	if (fbu.gender)
+		setByte(hContact, "Gender", fbu.gender);
+
+	CheckAvatarChange(hContact, fbu.image_url);
+
+	return 1;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 // SERVICES
 
-INT_PTR FacebookProto::GetMyAwayMsg(WPARAM wParam, LPARAM lParam)
+INT_PTR FacebookProto::GetMyAwayMsg(WPARAM, LPARAM lParam)
 {
-	DBVARIANT dbv = { DBVT_TCHAR };
-	if (!getTString("StatusMsg", &dbv) && lstrlen(dbv.ptszVal) != 0)
-	{
-		int res = (lParam & SGMA_UNICODE) ? (INT_PTR)mir_t2u(dbv.ptszVal) : (INT_PTR)mir_t2a(dbv.ptszVal);
-		db_free(&dbv);
-		return res;
-	} else {
+	ptrT statusMsg(getTStringA("StatusMsg"));
+	if (statusMsg == NULL || statusMsg[0] == '\0')
 		return 0;
-	}
+
+	return (lParam & SGMA_UNICODE) ? (INT_PTR)mir_t2u(statusMsg) : (INT_PTR)mir_t2a(statusMsg);
 }
 
-int FacebookProto::OnIdleChanged(WPARAM wParam, LPARAM lParam)
+int FacebookProto::OnIdleChanged(WPARAM, LPARAM lParam)
 {
-	if (m_iStatus == ID_STATUS_INVISIBLE || m_iStatus <= ID_STATUS_OFFLINE)
+	bool idle = (lParam & IDF_ISIDLE) != 0;
+	bool privacy = (lParam & IDF_PRIVACY) != 0;
+
+	// Respect user choice about (not) notifying idle to protocols
+	if (privacy) {
+		// Reset it to 0 if there is some time already
+		if (m_idleTS)
+		{
+			m_idleTS = 0;
+			delSetting("IdleTS");
+		}
+
+		return 0;
+	}
+
+	// We don't want to reset idle time when we're already in idle state
+	if (idle && m_idleTS > 0)
 		return 0;
 
-	bool bIdle = (lParam & IDF_ISIDLE) != 0;
-	bool bPrivacy = (lParam & IDF_PRIVACY) != 0;
+	if (idle) {
+		// User started being idle
+		MIRANDA_IDLE_INFO mii = { sizeof(mii) };
+		CallService(MS_IDLE_GETIDLEINFO, 0, (LPARAM)&mii);
 
-	if (facy.is_idle_ && !bIdle)
-	{
-		facy.is_idle_ = false;
-		SetStatus(m_iDesiredStatus);
-	}
-	else if (!facy.is_idle_ && bIdle && !bPrivacy && m_iDesiredStatus != ID_STATUS_INVISIBLE)
-	{
-		facy.is_idle_ = true;
-		SetStatus(ID_STATUS_IDLE);
+		// Compute time when user really became idle
+		m_idleTS = time(0) - mii.idleTime * 60;
+		setDword("IdleTS", m_idleTS);
+	} else {
+		// User stopped being idle
+		m_idleTS = 0;
+		delSetting("IdleTS");
+
+		// Set sending activity_ping at next channel request (because I don't want to create new thread here for such small thing)
+		m_pingTS = 0;
 	}
 
 	return 0;
+}
+
+INT_PTR FacebookProto::GetNotificationsCount(WPARAM, LPARAM)
+{
+	if (isOffline())
+		return 0;
+
+	return facy.notifications.size();
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
 int FacebookProto::OnEvent(PROTOEVENTTYPE event, WPARAM wParam, LPARAM lParam)
 {
-	switch(event)
+	switch (event)
 	{
 	case EV_PROTO_ONLOAD:
-		return OnModulesLoaded(wParam,lParam);
+		return OnModulesLoaded(wParam, lParam);
 
 	case EV_PROTO_ONEXIT:
-		return OnPreShutdown(wParam,lParam);
+		return OnPreShutdown(wParam, lParam);
 
 	case EV_PROTO_ONOPTIONS:
-		return OnOptionsInit(wParam,lParam);
+		return OnOptionsInit(wParam, lParam);
 
 	case EV_PROTO_ONCONTACTDELETED:
- 		return OnContactDeleted(wParam,lParam);
+		return OnContactDeleted(wParam, lParam);
 	}
 
 	return 1;
@@ -374,60 +459,68 @@ int FacebookProto::OnEvent(PROTOEVENTTYPE event, WPARAM wParam, LPARAM lParam)
 //////////////////////////////////////////////////////////////////////////////
 // EVENTS
 
-INT_PTR FacebookProto::SvcCreateAccMgrUI(WPARAM wParam, LPARAM lParam)
+INT_PTR FacebookProto::SvcCreateAccMgrUI(WPARAM, LPARAM lParam)
 {
-	return (int)CreateDialogParam(g_hInstance,MAKEINTRESOURCE(IDD_FACEBOOKACCOUNT),
-		 (HWND)lParam, FBAccountProc, (LPARAM)this);
+	return (INT_PTR)CreateDialogParam(g_hInstance, MAKEINTRESOURCE(IDD_FACEBOOKACCOUNT),
+		(HWND)lParam, FBAccountProc, (LPARAM)this);
 }
 
-int FacebookProto::OnModulesLoaded(WPARAM wParam, LPARAM lParam)
+int FacebookProto::OnModulesLoaded(WPARAM, LPARAM)
 {
+	HookProtoEvent(ME_MSG_WINDOWEVENT, &FacebookProto::OnProcessSrmmEvent);
+	HookProtoEvent(ME_MSG_PRECREATEEVENT, &FacebookProto::OnPreCreateEvent);
+
 	// Register group chat
-	GCREGISTER gcr = {sizeof(gcr)};
+	GCREGISTER gcr = { sizeof(gcr) };
 	gcr.dwFlags = 0; //GC_ACKMSG;
 	gcr.pszModule = m_szModuleName;
-	gcr.pszModuleDispName = m_szModuleName;
+	gcr.ptszDispName = m_tszUserName;
 	gcr.iMaxText = FACEBOOK_MESSAGE_LIMIT;
 	gcr.nColors = 0;
 	gcr.pColors = NULL;
-	CallService(MS_GC_REGISTER,0,reinterpret_cast<LPARAM>(&gcr));
+	CallService(MS_GC_REGISTER, 0, reinterpret_cast<LPARAM>(&gcr));
 
 	return 0;
 }
 
-int FacebookProto::OnPreShutdown(WPARAM wParam, LPARAM lParam)
+int FacebookProto::OnPreShutdown(WPARAM, LPARAM)
 {
 	SetStatus(ID_STATUS_OFFLINE);
 	return 0;
 }
 
-int FacebookProto::OnOptionsInit(WPARAM wParam, LPARAM lParam)
+int FacebookProto::OnOptionsInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = {sizeof(odp)};
-	odp.hInstance   = g_hInstance;
-	odp.ptszTitle   = m_tszUserName;
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
+	odp.hInstance = g_hInstance;
+	odp.ptszTitle = m_tszUserName;
 	odp.dwInitParam = LPARAM(this);
-	odp.flags       = ODPF_BOLDGROUPS | ODPF_TCHAR | ODPF_DONTTRANSLATE;
+	odp.flags = ODPF_BOLDGROUPS | ODPF_TCHAR | ODPF_DONTTRANSLATE;
 
-	odp.position    = 271828;
-	odp.ptszGroup   = LPGENT("Network");
-	odp.ptszTab     = LPGENT("Account");
+	odp.position = 271828;
+	odp.ptszGroup = LPGENT("Network");
+	odp.ptszTab = LPGENT("Account");
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPTIONS);
-	odp.pfnDlgProc  = FBOptionsProc;
+	odp.pfnDlgProc = FBOptionsProc;
 	Options_AddPage(wParam, &odp);
 
-	odp.position    = 271829;
-	odp.ptszTab     = LPGENT("Events");
+	odp.position = 271829;
+	odp.ptszTab = LPGENT("Events");
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPTIONS_EVENTS);
-	odp.pfnDlgProc  = FBEventsProc;
+	odp.pfnDlgProc = FBOptionsEventsProc;
 	Options_AddPage(wParam, &odp);
 
-	odp.position    = 271830;
-	odp.ptszTab     = LPGENT("Advanced");
-	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPTIONS_ADVANCED);
-	odp.pfnDlgProc  = FBOptionsAdvancedProc;
+	odp.position = 271830;
+	odp.ptszTab = LPGENT("Statuses");
+	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPTIONS_STATUSES);
+	odp.pfnDlgProc = FBOptionsStatusesProc;
 	Options_AddPage(wParam, &odp);
 
+	odp.position = 271831;
+	odp.ptszTab = LPGENT("Messaging");
+	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPTIONS_MESSAGING);
+	odp.pfnDlgProc = FBOptionsMessagingProc;
+	Options_AddPage(wParam, &odp);
 	return 0;
 }
 
@@ -437,7 +530,7 @@ int FacebookProto::OnToolbarInit(WPARAM, LPARAM)
 	ttb.dwFlags = TTBBF_SHOWTOOLTIP | TTBBF_VISIBLE;
 
 	char service[100];
-	mir_snprintf(service, sizeof(service), "%s%s", m_szModuleName, "/Mind");
+	mir_snprintf(service, SIZEOF(service), "%s%s", m_szModuleName, "/Mind");
 
 	ttb.pszService = service;
 	ttb.pszTooltipUp = ttb.name = LPGEN("Share status...");
@@ -447,24 +540,25 @@ int FacebookProto::OnToolbarInit(WPARAM, LPARAM)
 	return 0;
 }
 
-INT_PTR FacebookProto::OnMind(WPARAM wParam, LPARAM lParam)
+INT_PTR FacebookProto::OnMind(WPARAM wParam, LPARAM)
 {
 	if (!isOnline())
 		return 1;
 
-	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);
+	MCONTACT hContact = MCONTACT(wParam);
 
-	// TODO: why isn't wParam == 0 when is status menu moved to main menu?
-	if (wParam != 0 && !IsMyContact(hContact))
+	ptrA id(getStringA(hContact, FACEBOOK_KEY_ID));
+	if (!id)
 		return 1;
 
 	wall_data *wall = new wall_data();
-	wall->user_id = ptrA(getStringA(hContact, FACEBOOK_KEY_ID));
+	wall->user_id = id;
 	wall->isPage = false;
 	if (wall->user_id == facy.self_.user_id) {
 		wall->title = _tcsdup(TranslateT("Own wall"));
-	} else
-		wall->title = getTStringA(hContact, FACEBOOK_KEY_NAME);
+	}
+	else
+		wall->title = getTStringA(hContact, FACEBOOK_KEY_NICK);
 
 	post_status_data *data = new post_status_data(this, wall);
 
@@ -473,18 +567,74 @@ INT_PTR FacebookProto::OnMind(WPARAM wParam, LPARAM lParam)
 			data->walls.push_back(new wall_data(iter->first, mir_utf8decodeT(iter->second.c_str()), true));
 		}
 	}
-		
+
 	HWND hDlg = CreateDialogParam(g_hInstance, MAKEINTRESOURCE(IDD_MIND), (HWND)0, FBMindProc, reinterpret_cast<LPARAM>(data));
 	ShowWindow(hDlg, SW_SHOW);
 
 	return 0;
 }
 
+int FacebookProto::OnDbEventRead(WPARAM wParam, LPARAM)
+{
+	MCONTACT hContact = (MCONTACT)wParam;
+
+	if (isOffline() || !IsMyContact(hContact, false)) // ignore chats
+		return 0;
+
+	if (facy.ignore_read.find(hContact) != facy.ignore_read.end())
+		return 0; // it's there, so we ignore this
+
+	std::set<MCONTACT> *hContacts = new std::set<MCONTACT>();
+	hContacts->insert(hContact);
+
+	ForkThread(&FacebookProto::ReadMessageWorker, (void*)hContacts);
+
+	return 0;
+}
+
+
+int FacebookProto::OnProcessSrmmEvent(WPARAM, LPARAM lParam)
+{
+	MessageWindowEventData *event = (MessageWindowEventData *)lParam;
+
+	if (event->uType == MSG_WINDOW_EVT_OPENING) {
+		// Set statusbar to "Message read" time (if present)
+		MessageRead(event->hContact);
+	}
+	else if (event->uType == MSG_WINDOW_EVT_OPEN) {
+		// Check if we have enabled loading messages on open window
+		if (!getBool(FACEBOOK_KEY_MESSAGES_ON_OPEN, DEFAULT_MESSAGES_ON_OPEN) || isChatRoom(event->hContact))
+			return 0;
+
+		// Load last messages for this contact
+		ForkThread(&FacebookProto::LoadLastMessages, new MCONTACT(event->hContact));
+	}
+
+	return 0;
+}
+
+int FacebookProto::OnPreCreateEvent(WPARAM, LPARAM lParam)
+{
+	MessageWindowEvent *evt = (MessageWindowEvent *)lParam;
+	if (strcmp(GetContactProto(evt->hContact), m_szModuleName))
+		return 0;
+
+	std::map<int, time_t>::iterator it = facy.messages_timestamp.find(evt->seq);
+	if (it != facy.messages_timestamp.end()) {
+		// set correct timestamp of this message
+		evt->dbei->timestamp = it->second;
+		facy.messages_timestamp.erase(it);
+	}
+	
+	return 1;
+}
+
 INT_PTR FacebookProto::CheckNewsfeeds(WPARAM, LPARAM)
 {
 	if (!isOffline()) {
 		facy.client_notify(TranslateT("Loading newsfeeds..."));
-		facy.feeds();
+		facy.last_feeds_update_ = 0;
+		ForkThread(&FacebookProto::ProcessFeeds, NULL);
 	}
 	return 0;
 }
@@ -502,19 +652,15 @@ INT_PTR FacebookProto::RefreshBuddyList(WPARAM, LPARAM)
 {
 	if (!isOffline()) {
 		facy.client_notify(TranslateT("Refreshing buddy list..."));
-		facy.buddy_list();
+		ForkThread(&FacebookProto::ProcessBuddyList, NULL);
 	}
 	return 0;
 }
 
 
-INT_PTR FacebookProto::VisitProfile(WPARAM wParam,LPARAM lParam)
+INT_PTR FacebookProto::VisitProfile(WPARAM wParam, LPARAM)
 {
-	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);
-
-	// TODO: why isn't wParam == 0 when is status menu moved to main menu?
-	if (wParam != 0 && !IsMyContact(hContact))
-		return 1;
+	MCONTACT hContact = MCONTACT(wParam);
 
 	std::string url = FACEBOOK_URL_PROFILE;
 
@@ -522,25 +668,30 @@ INT_PTR FacebookProto::VisitProfile(WPARAM wParam,LPARAM lParam)
 	if (val != NULL) {
 		// Homepage link already present, get it
 		url = val;
-	} else {
+	}
+	else {
 		// No homepage link, create and save it
 		val = getStringA(hContact, FACEBOOK_KEY_ID);
-		url += val;
-		setString(hContact, "Homepage", url.c_str());
+		if (val != NULL) {
+			url += val;
+			setString(hContact, "Homepage", url.c_str());
+		}
 	}
 
 	OpenUrl(url);
 	return 0;
 }
 
-INT_PTR FacebookProto::VisitFriendship(WPARAM wParam,LPARAM lParam)
+INT_PTR FacebookProto::VisitFriendship(WPARAM wParam, LPARAM)
 {
-	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);
+	MCONTACT hContact = MCONTACT(wParam);
 
 	if (wParam == 0 || !IsMyContact(hContact))
 		return 1;
 
 	ptrA id(getStringA(hContact, FACEBOOK_KEY_ID));
+	if (!id)
+		return 1;
 
 	std::string url = FACEBOOK_URL_PROFILE;
 	url += facy.self_.user_id;
@@ -550,12 +701,46 @@ INT_PTR FacebookProto::VisitFriendship(WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
-INT_PTR FacebookProto::Poke(WPARAM wParam,LPARAM lParam)
+INT_PTR FacebookProto::VisitConversation(WPARAM wParam, LPARAM)
+{
+	MCONTACT hContact = MCONTACT(wParam);
+
+	if (wParam == 0 || !IsMyContact(hContact, true))
+		return 1;
+
+	bool isChat = isChatRoom(hContact);
+	ptrA id(getStringA(hContact, isChat ? FACEBOOK_KEY_TID : FACEBOOK_KEY_ID));
+	if (id == NULL)
+		return 1;
+
+	std::string url = FACEBOOK_URL_CONVERSATION + std::string(isChat ? "conversation-" : "") + std::string(id);
+
+	OpenUrl(url);
+	return 0;
+}
+
+INT_PTR FacebookProto::VisitNotifications(WPARAM, LPARAM)
+{
+	/*bool useChatRoom = getBool(FACEBOOK_KEY_NOTIFICATIONS_CHATROOM, DEFAULT_NOTIFICATIONS_CHATROOM);
+
+	if (useChatRoom) {
+	GCDEST gcd = { m_szModuleName, _T(FACEBOOK_NOTIFICATIONS_CHATROOM), GC_EVENT_CONTROL };
+	GCEVENT gce = { sizeof(gce), &gcd };
+	CallServiceSync(MS_GC_EVENT, WINDOW_VISIBLE, reinterpret_cast<LPARAM>(&gce));
+	}
+	else {*/
+	OpenUrl(FACEBOOK_URL_NOTIFICATIONS);
+	/*}*/
+
+	return 0;
+}
+
+INT_PTR FacebookProto::Poke(WPARAM wParam, LPARAM)
 {
 	if (wParam == NULL || isOffline())
 		return 1;
 
-	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);
+	MCONTACT hContact = MCONTACT(wParam);
 
 	ptrA id(getStringA(hContact, FACEBOOK_KEY_ID));
 	if (id == NULL)
@@ -565,25 +750,28 @@ INT_PTR FacebookProto::Poke(WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
-INT_PTR FacebookProto::CancelFriendship(WPARAM wParam,LPARAM lParam)
+INT_PTR FacebookProto::CancelFriendship(WPARAM wParam, LPARAM lParam)
 {
 	if (wParam == NULL || isOffline())
 		return 1;
 
 	bool deleting = (lParam == 1);
 
-	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);
+	MCONTACT hContact = MCONTACT(wParam);
 
 	// Ignore groupchats and, if deleting, also not-friends
 	if (isChatRoom(hContact) || (deleting && getByte(hContact, FACEBOOK_KEY_CONTACT_TYPE, 0) != CONTACT_FRIEND))
 		return 0;
 
-	ptrT tname(getTStringA(hContact, FACEBOOK_KEY_NAME));
+	ptrT tname(getTStringA(hContact, FACEBOOK_KEY_NICK));
 	if (tname == NULL)
 		tname = getTStringA(hContact, FACEBOOK_KEY_ID);
 
+	if (tname == NULL)
+		return 1;
+
 	TCHAR tstr[256];
-	mir_sntprintf(tstr,SIZEOF(tstr),TranslateT("Do you want to cancel your friendship with '%s'?"), tname);
+	mir_sntprintf(tstr, SIZEOF(tstr), TranslateT("Do you want to cancel your friendship with '%s'?"), tname);
 	if (MessageBox(0, tstr, m_tszUserName, MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2) == IDYES) {
 
 		ptrA id(getStringA(hContact, FACEBOOK_KEY_ID));
@@ -604,12 +792,12 @@ INT_PTR FacebookProto::CancelFriendship(WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
-INT_PTR FacebookProto::RequestFriendship(WPARAM wParam,LPARAM lParam)
+INT_PTR FacebookProto::RequestFriendship(WPARAM wParam, LPARAM)
 {
 	if (wParam == NULL || isOffline())
 		return 1;
 
-	HANDLE hContact = reinterpret_cast<HANDLE>(wParam);
+	MCONTACT hContact = MCONTACT(wParam);
 
 	ptrA id(getStringA(hContact, FACEBOOK_KEY_ID));
 	if (id == NULL)
@@ -619,49 +807,71 @@ INT_PTR FacebookProto::RequestFriendship(WPARAM wParam,LPARAM lParam)
 	return 0;
 }
 
-INT_PTR FacebookProto::ApproveFriendship(WPARAM wParam,LPARAM lParam)
+INT_PTR FacebookProto::ApproveFriendship(WPARAM wParam, LPARAM)
 {
 	if (wParam == NULL || isOffline())
 		return 1;
 
-	HANDLE *hContact = new HANDLE(reinterpret_cast<HANDLE>(wParam));
+	MCONTACT *hContact = new MCONTACT((MCONTACT)wParam);
 
 	ForkThread(&FacebookProto::ApproveContactToServer, hContact);
 	return 0;
 }
 
-INT_PTR FacebookProto::OnCancelFriendshipRequest(WPARAM wParam,LPARAM lParam)
+INT_PTR FacebookProto::DenyFriendship(WPARAM wParam, LPARAM)
 {
 	if (wParam == NULL || isOffline())
 		return 1;
 
-	HANDLE *hContact = new HANDLE(reinterpret_cast<HANDLE>(wParam));
+	MCONTACT *hContact = new MCONTACT((MCONTACT)wParam);
+
+	ForkThread(&FacebookProto::IgnoreFriendshipRequest, hContact);
+
+	return 0;
+}
+
+INT_PTR FacebookProto::OnCancelFriendshipRequest(WPARAM wParam, LPARAM)
+{
+	if (wParam == NULL || isOffline())
+		return 1;
+
+	MCONTACT *hContact = new MCONTACT((MCONTACT)wParam);
 
 	ForkThread(&FacebookProto::CancelFriendsRequest, hContact);
 	return 0;
 }
 
-HANDLE FacebookProto::HContactFromAuthEvent(HANDLE hEvent)
+MCONTACT FacebookProto::HContactFromAuthEvent(MEVENT hEvent)
 {
 	DWORD body[2];
 	DBEVENTINFO dbei = { sizeof(dbei) };
-	dbei.cbBlob = sizeof(DWORD)*2;
+	dbei.cbBlob = sizeof(DWORD) * 2;
 	dbei.pBlob = (PBYTE)&body;
 
 	if (db_event_get(hEvent, &dbei))
-		return INVALID_HANDLE_VALUE;
+		return INVALID_CONTACT_ID;
 
 	if (dbei.eventType != EVENTTYPE_AUTHREQUEST)
-		return INVALID_HANDLE_VALUE;
+		return INVALID_CONTACT_ID;
 
 	if (strcmp(dbei.szModule, m_szModuleName))
-		return INVALID_HANDLE_VALUE;
+		return INVALID_CONTACT_ID;
 
 	return DbGetAuthEventContact(&dbei);
 }
 
-void FacebookProto::OpenUrl(std::string url)
-{
+void FacebookProto::OpenUrlThread(void *p) {
+	if (p == NULL)
+		return;
+
+	open_url *data = static_cast<open_url*>(p);
+
+	ShellExecute(NULL, _T("open"), data->browser, data->url, NULL, SW_SHOWDEFAULT);
+
+	delete data;
+}
+
+std::string FacebookProto::PrepareUrl(std::string url) {
 	std::string::size_type pos = url.find(FACEBOOK_SERVER_DOMAIN);
 	bool isFacebookUrl = (pos != std::string::npos);
 	bool isRelativeUrl = (url.substr(0, 4) != "http");
@@ -679,12 +889,25 @@ void FacebookProto::OpenUrl(std::string url)
 		}
 
 		// Make absolute url
-		bool useHttps = getByte(FACEBOOK_KEY_FORCE_HTTPS, 1) > 0;
-		url = (useHttps ? HTTP_PROTO_SECURE : HTTP_PROTO_REGULAR) + facy.get_server_type() + url;
+		url = HTTP_PROTO_SECURE + facy.get_server_type() + url;
 	}
 
-	ptrT data = mir_utf8decodeT(url.c_str());
-	CallService(MS_UTILS_OPENURL, (WPARAM)OUF_TCHAR, (LPARAM)data);
+	return url;
+}
+
+void FacebookProto::OpenUrl(std::string url)
+{
+	url = PrepareUrl(url);
+	ptrT data(mir_utf8decodeT(url.c_str()));
+
+	// Check if there is user defined browser for opening links
+	ptrT browser(getTStringA(FACEBOOK_KEY_OPEN_URL_BROWSER));
+	if (browser != NULL)
+		// If so, use it to open this link
+		ForkThread(&FacebookProto::OpenUrlThread, new open_url(browser, data));
+	else
+		// Or use Miranda's service
+		CallService(MS_UTILS_OPENURL, (WPARAM)OUF_TCHAR, (LPARAM)data);
 }
 
 void FacebookProto::ReadNotificationWorker(void *p)
@@ -692,15 +915,21 @@ void FacebookProto::ReadNotificationWorker(void *p)
 	if (p == NULL)
 		return;
 
-	std::string *id = static_cast<std::string*>(p);
+	std::string *id = (std::string*)p;
 
-	std::string data = "seen=0&asyncSignal=&__dyn=&__req=a&alert_ids%5B0%5D=" + *id;
-	data += "&fb_dtsg=" + (facy.dtsg_.length() ? facy.dtsg_ : "0");
+	if (isOffline()) {
+		delete id;
+		return;
+	}
+
+	std::string data = "seen=0&asyncSignal=&__dyn=&__rev=&__req=&alert_ids%5B0%5D=" + utils::url::encode(*id);
+	data += "&fb_dtsg=" + facy.dtsg_;
 	data += "&__user=" + facy.self_.user_id;
+	data += "&ttstamp=" + facy.ttstamp();
 
 	facy.flap(REQUEST_NOTIFICATIONS_READ, NULL, &data);
 
-	delete p;
+	delete id;
 }
 
 /**
@@ -708,7 +937,7 @@ void FacebookProto::ReadNotificationWorker(void *p)
  */
 LRESULT CALLBACK PopupDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	switch(message)
+	switch (message)
 	{
 	case WM_COMMAND:
 	case WM_CONTEXTMENU:
@@ -731,8 +960,7 @@ LRESULT CALLBACK PopupDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 	{
 		// After close, free
 		popup_data *data = (popup_data *)PUGetPluginData(hwnd);
-		if (data != NULL)
-			delete data;
+		delete data;
 	} return FALSE;
 
 	default:
@@ -746,10 +974,11 @@ LRESULT CALLBACK PopupDlgProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
  * Popup classes initialization
  */
 void FacebookProto::InitPopups()
-{		
+{
 	POPUPCLASS ppc = { sizeof(ppc) };
-	ppc.flags = PCF_TCHAR;		
-	ppc.PluginWindowProc = (WNDPROC)PopupDlgProc;
+	ppc.flags = PCF_TCHAR;
+	ppc.PluginWindowProc = PopupDlgProc;
+	ppc.lParam = APF_RETURN_HWND;
 
 	TCHAR desc[256];
 	char name[256];
@@ -797,6 +1026,28 @@ void FacebookProto::InitPopups()
 	ppc.colorText = RGB(0, 0, 0); // black
 	ppc.iSeconds = 0;
 	popupClasses.push_back(Popup_RegisterClass(&ppc));
+
+	// Friendship changes
+	mir_sntprintf(desc, SIZEOF(desc), _T("%s/%s"), m_tszUserName, TranslateT("Friendship events"));
+	mir_snprintf(name, SIZEOF(name), "%s_%s", m_szModuleName, "Friendship");
+	ppc.ptszDescription = desc;
+	ppc.pszName = name;
+	ppc.hIcon = Skin_GetIconByHandle(GetIconHandle("friendship"));
+	ppc.colorBack = RGB(47, 71, 122); // Facebook's darker blue
+	ppc.colorText = RGB(255, 255, 255); // white
+	ppc.iSeconds = 0;
+	popupClasses.push_back(Popup_RegisterClass(&ppc));
+
+	// Ticker
+	mir_sntprintf(desc, SIZEOF(desc), _T("%s/%s"), m_tszUserName, TranslateT("Ticker feeds"));
+	mir_snprintf(name, SIZEOF(name), "%s_%s", m_szModuleName, "Ticker");
+	ppc.ptszDescription = desc;
+	ppc.pszName = name;
+	ppc.hIcon = Skin_GetIconByHandle(GetIconHandle("newsfeed"));
+	ppc.colorBack = RGB(255, 255, 255); // white
+	ppc.colorText = RGB(0, 0, 0); // black
+	ppc.iSeconds = 0;
+	popupClasses.push_back(Popup_RegisterClass(&ppc));
 }
 
 /**
@@ -804,16 +1055,27 @@ void FacebookProto::InitPopups()
  */
 void FacebookProto::InitHotkeys()
 {
-	char module[512];
-	mir_snprintf(module, sizeof(module), "%s/Mind", m_szModuleName);
+	char text[200];
+	mir_strncpy(text, m_szModuleName, 100);
+	char *tDest = text + strlen(text);
 
 	HOTKEYDESC hkd = { sizeof(hkd) };
-	hkd.dwFlags = HKD_TCHAR;
-	hkd.ptszDescription = LPGENT("Show 'Share status' window");
-	hkd.pszName = "ShowMindWnd";
+	hkd.pszName = text;
+	hkd.pszService = text;
 	hkd.ptszSection = m_tszUserName;
-	hkd.pszService = module;
-	hkd.DefHotKey = HOTKEYCODE(HOTKEYF_ALT|HOTKEYF_EXT, 'F');
+	hkd.dwFlags = HKD_TCHAR;
+
+	strcpy(tDest, "/VisitProfile");
+	hkd.ptszDescription = LPGENT("Visit profile");
+	Hotkey_Register(&hkd);
+
+	strcpy(tDest, "/VisitNotifications");
+	hkd.ptszDescription = LPGENT("Visit notifications");
+	Hotkey_Register(&hkd);
+
+	strcpy(tDest, "/Mind");
+	hkd.ptszDescription = LPGENT("Show 'Share status' window");
+	hkd.DefHotKey = HOTKEYCODE(HOTKEYF_ALT | HOTKEYF_EXT, 'F');
 	Hotkey_Register(&hkd);
 }
 
@@ -825,4 +1087,37 @@ void FacebookProto::InitSounds()
 	SkinAddNewSoundExT("Notification", m_tszUserName, LPGENT("Notification"));
 	SkinAddNewSoundExT("NewsFeed", m_tszUserName, LPGENT("News Feed"));
 	SkinAddNewSoundExT("OtherEvent", m_tszUserName, LPGENT("Other Event"));
+	SkinAddNewSoundExT("Friendship", m_tszUserName, LPGENT("Friendship Event"));
+}
+
+/**
+ * Sets statusbar text of hContact with last read time (from facy.readers map)
+ */
+void FacebookProto::MessageRead(MCONTACT hContact)
+{
+	/*std::map<MCONTACT, time_t>::iterator it = facy.readers.find(hContact);
+	if (it == facy.readers.end())
+	return;*/
+
+	// We may use this instead of checing map as we have this info already in memory (this value is resident)
+	time_t time = getDword(hContact, FACEBOOK_KEY_MESSAGE_READ, 0);
+	if (!time)
+		return;
+
+	TCHAR ttime[64];
+	_tcsftime(ttime, SIZEOF(ttime), _T("%X"), localtime(&time));
+
+	StatusTextData st = { 0 };
+	st.cbSize = sizeof(st);
+	st.hIcon = Skin_GetIconByHandle(GetIconHandle("read"));
+
+	if (isChatRoom(hContact)) {
+		// Load readers names
+		ptrT treaders(getTStringA(hContact, FACEBOOK_KEY_MESSAGE_READERS));
+		mir_sntprintf(st.tszText, SIZEOF(st.tszText), TranslateT("Message read: %s by %s"), ttime, treaders ? treaders : _T("???"));
+	} else {
+		mir_sntprintf(st.tszText, SIZEOF(st.tszText), TranslateT("Message read: %s"), ttime);
+	}
+
+	CallService(MS_MSG_SETSTATUSTEXT, (WPARAM)hContact, (LPARAM)&st);
 }

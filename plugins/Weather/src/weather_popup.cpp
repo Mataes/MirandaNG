@@ -32,30 +32,21 @@ static HANDLE hPopupContact;
 // display weather popups
 // wParam = the contact to display popup
 // lParam = whether the weather data is changed or not
-int WeatherPopup(WPARAM wParam, LPARAM lParam) 
+int WeatherPopup(WPARAM hContact, LPARAM lParam) 
 {
 	// determine if the popup should display or not
 	if (opt.UsePopup && opt.UpdatePopup && (!opt.PopupOnChange || (BOOL)lParam) &&
-	      !db_get_b((HANDLE)wParam, WEATHERPROTONAME, "DPopUp", 0)) 
+		!db_get_b(hContact, WEATHERPROTONAME, "DPopUp", 0))
 	{
-		POPUPDATAT ppd = {0};
-		WEATHERINFO winfo;
+		WEATHERINFO winfo = LoadWeatherInfo(hContact);
 
-	    // setup the popup
-		ppd.lchContact = (HANDLE)wParam;
-//		if ((HANDLE)wParam != NULL) {	// for actual contact
-			winfo = LoadWeatherInfo((HANDLE)wParam);
-			ppd.PluginData = ppd.lchIcon = LoadSkinnedProtoIcon(WEATHERPROTONAME, winfo.status);
-			GetDisplay(&winfo, opt.pTitle, ppd.lptzContactName);
-			GetDisplay(&winfo, opt.pText, ppd.lptzText);
-			ppd.PluginWindowProc = PopupDlgProc;
-//		}
-//		else {	// for preview
-//			ppd.lchIcon = LoadSkinnedProtoIcon(WEATHERPROTONAME, ONLINE);
-//			strcpy(ppd.lpzContactName, Translate("This is the name of the city"));
-//			strcpy(ppd.lpzText, Translate("Here is a short weather description"));
-//			ppd.PluginWindowProc = NULL;
-//		}
+		// setup the popup
+		POPUPDATAT ppd = { 0 };
+		ppd.lchContact = hContact;
+		ppd.PluginData = ppd.lchIcon = LoadSkinnedProtoIcon(WEATHERPROTONAME, winfo.status);
+		GetDisplay(&winfo, opt.pTitle, ppd.lptzContactName);
+		GetDisplay(&winfo, opt.pText, ppd.lptzText);
+		ppd.PluginWindowProc = PopupDlgProc;
 		ppd.colorBack = (opt.UseWinColors)?GetSysColor(COLOR_BTNFACE):opt.BGColour;
 		ppd.colorText = (opt.UseWinColors)?GetSysColor(COLOR_WINDOWTEXT):opt.TextColour;
 		ppd.iSeconds = opt.pDelay;
@@ -129,20 +120,20 @@ int WPShowMessage(TCHAR* lpzText, WORD kind)
 LRESULT CALLBACK PopupDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 {
 	DWORD ID = 0;
-	HANDLE hContact;
+	MCONTACT hContact;
 	hContact = PUGetContact(hWnd);
 
 	switch(message) {
 	case WM_COMMAND:
 		ID = opt.LeftClickAction;
 		if (ID != IDM_M7)  PUDeletePopup(hWnd);
-		SendMessage(hPopupWindow, ID, (WPARAM)hContact, 0);
+		SendMessage(hPopupWindow, ID, hContact, 0);
 		return TRUE;
 
 	case WM_CONTEXTMENU:
 		ID = opt.RightClickAction;
 		if (ID != IDM_M7)  PUDeletePopup(hWnd);
-		SendMessage(hPopupWindow, ID, (WPARAM)hContact, 0);
+		SendMessage(hPopupWindow, ID, hContact, 0);
 		return TRUE;
 
 	case UM_FREEPLUGINDATA:
@@ -228,7 +219,7 @@ void ReadPopupOpt(HWND hdlg)
 	opt.BGColour = SendDlgItemMessage(hdlg,IDC_BGCOLOUR,CPM_GETCOLOUR,0,0);
 
 	// get delay time
-	GetDlgItemText(hdlg, IDC_DELAY, str, sizeof(str));
+	GetDlgItemText(hdlg, IDC_DELAY, str, SIZEOF(str));
 	num = _ttoi(str);
 	opt.pDelay = num;
 
@@ -243,9 +234,9 @@ void ReadPopupOpt(HWND hdlg)
 	// popup texts
 	wfree(&opt.pText);
 	wfree(&opt.pTitle);
-	GetDlgItemText(hdlg, IDC_PText, text, MAX_TEXT_SIZE);
+	GetDlgItemText(hdlg, IDC_PText, text, SIZEOF(text));
 	wSetData(&opt.pText, text);
-	GetDlgItemText(hdlg, IDC_PTitle, text, MAX_TEXT_SIZE);
+	GetDlgItemText(hdlg, IDC_PTitle, text, SIZEOF(text));
 	wSetData(&opt.pTitle, text);
 }
 
@@ -257,7 +248,7 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 	HMENU hMenu, hMenu1;
 	RECT pos;
 	HWND button;
-	HANDLE hContact;
+	MCONTACT hContact;
 
 	switch (msg) {
 	case WM_INITDIALOG:
@@ -267,18 +258,18 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		// click actions
 		hMenu  = LoadMenu(hInst, MAKEINTRESOURCE(IDR_PMENU));
 		hMenu1 = GetSubMenu(hMenu, 0);
-		GetMenuString(hMenu1, opt.LeftClickAction, str, sizeof(str), MF_BYCOMMAND);
+		GetMenuString(hMenu1, opt.LeftClickAction, str, SIZEOF(str), MF_BYCOMMAND);
 		SetDlgItemText(hdlg, IDC_LeftClick, TranslateTS(str));
-		GetMenuString(hMenu1, opt.RightClickAction, str, sizeof(str), MF_BYCOMMAND);
+		GetMenuString(hMenu1, opt.RightClickAction, str, SIZEOF(str), MF_BYCOMMAND);
 		SetDlgItemText(hdlg, IDC_RightClick, TranslateTS(str));
 		DestroyMenu(hMenu);
 
 		// other options
-		CheckDlgButton(hdlg, IDC_E, opt.UsePopup);
-		CheckDlgButton(hdlg, IDC_POP2, opt.AlertPopup);
-		CheckDlgButton(hdlg, IDC_POP1, opt.UpdatePopup);
-		CheckDlgButton(hdlg, IDC_CH, opt.PopupOnChange);
-		CheckDlgButton(hdlg, IDC_W, opt.ShowWarnings);
+		CheckDlgButton(hdlg, IDC_E, opt.UsePopup ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hdlg, IDC_POP2, opt.AlertPopup ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hdlg, IDC_POP1, opt.UpdatePopup ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hdlg, IDC_CH, opt.PopupOnChange ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hdlg, IDC_W, opt.ShowWarnings ? BST_CHECKED : BST_UNCHECKED);
 		SetDlgItemText(hdlg,IDC_PText, opt.pText);
 		SetDlgItemText(hdlg,IDC_PTitle, opt.pTitle);
 		// setting popup delay option
@@ -291,19 +282,19 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		else
 			CheckRadioButton(hdlg, IDC_PD1, IDC_PD3, IDC_PD3);
 		//Colours. First step is configuring the colours.
-		SendDlgItemMessage(hdlg,IDC_BGCOLOUR,CPM_SETCOLOUR,0,opt.BGColour);
-		SendDlgItemMessage(hdlg,IDC_TEXTCOLOUR,CPM_SETCOLOUR,0,opt.TextColour);
+		SendDlgItemMessage(hdlg, IDC_BGCOLOUR, CPM_SETCOLOUR, 0, opt.BGColour);
+		SendDlgItemMessage(hdlg, IDC_TEXTCOLOUR, CPM_SETCOLOUR, 0, opt.TextColour);
 		//Second step is disabling them if we want to use default Windows ones.
-		CheckDlgButton(hdlg, IDC_USEWINCOLORS,opt.UseWinColors?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hdlg, IDC_USEWINCOLORS, opt.UseWinColors ? BST_CHECKED : BST_UNCHECKED);
 		EnableWindow(GetDlgItem(hdlg, IDC_BGCOLOUR), !opt.UseWinColors);
 		EnableWindow(GetDlgItem(hdlg, IDC_TEXTCOLOUR), !opt.UseWinColors);
 
 		// buttons
-		SendMessage(GetDlgItem(hdlg,IDC_PREVIEW), BUTTONSETASFLATBTN, TRUE, 0);
-		SendMessage(GetDlgItem(hdlg,IDC_PDEF), BUTTONSETASFLATBTN, TRUE, 0);
-		SendMessage(GetDlgItem(hdlg,IDC_LeftClick), BUTTONSETASFLATBTN, TRUE, 0);
-		SendMessage(GetDlgItem(hdlg,IDC_RightClick), BUTTONSETASFLATBTN, TRUE, 0);
-		SendMessage(GetDlgItem(hdlg,IDC_VAR3), BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hdlg, IDC_PREVIEW, BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hdlg, IDC_PDEF, BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hdlg, IDC_LeftClick, BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hdlg, IDC_RightClick, BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hdlg, IDC_VAR3, BUTTONSETASFLATBTN, TRUE, 0);
 		return TRUE;
 
 	case WM_COMMAND:

@@ -20,31 +20,23 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
-
-void CIcqProto::handleCloseChannel(BYTE *buf, WORD datalen, serverthread_info *info)
+void CIcqProto::handleCloseChannel(BYTE *buf, size_t datalen, serverthread_info *info)
 {
 	oscar_tlv_chain *chain = NULL;
 
 	// Parse server reply, prepare reconnection
-	if (!info->bLoggedIn && datalen && !info->newServerReady)
+	if (!info->bLoggedIn && datalen && !info->isNewServerReady)
 		handleLoginReply(buf, datalen, info);
 
 	if (info->isMigrating)
 		handleMigration(info);
 
-	if ((!info->bLoggedIn || info->isMigrating) && info->newServerReady)
-	{
-		if (!connectNewServer(info))
-		{ // Connecting failed
+	if ((!info->bLoggedIn || info->isMigrating) && info->isNewServerReady) {
+		if (!connectNewServer(info)) { // Connecting failed
 			if (info->isMigrating)
 				icq_LogUsingErrorCode(LOG_ERROR, GetLastError(), LPGEN("Unable to connect to migrated ICQ communication server"));
 			else
@@ -52,19 +44,16 @@ void CIcqProto::handleCloseChannel(BYTE *buf, WORD datalen, serverthread_info *i
 
 			SetCurrentStatus(ID_STATUS_OFFLINE);
 
-			info->isMigrating = 0;
+			info->isMigrating = false;
 		}
-		info->newServerReady = 0;
-
+		info->isNewServerReady = false;
 		return;
 	}
 
-	if (chain = readIntoTLVChain(&buf, datalen, 0))
-	{
+	if (chain = readIntoTLVChain(&buf, datalen, 0)) {
 		// TLV 9 errors (runtime errors?)
 		WORD wError = chain->getWord(0x09, 1);
-		if (wError)
-		{
+		if (wError) {
 			SetCurrentStatus(ID_STATUS_OFFLINE);
 
 			handleRuntimeError(wError);
@@ -76,32 +65,27 @@ void CIcqProto::handleCloseChannel(BYTE *buf, WORD datalen, serverthread_info *i
 	NetLib_CloseConnection(&hServerConn, TRUE);
 }
 
-
-void CIcqProto::handleLoginReply(BYTE *buf, WORD datalen, serverthread_info *info)
+void CIcqProto::handleLoginReply(BYTE *buf, size_t datalen, serverthread_info *info)
 {
 	oscar_tlv_chain *chain = NULL;
 
 	icq_sendCloseConnection(); // imitate icq5 behaviour
 
-	if (!(chain = readIntoTLVChain(&buf, datalen, 0)))
-	{
-		NetLog_Server("Error: Missing chain on close channel");
+	if (!(chain = readIntoTLVChain(&buf, datalen, 0))) {
+		debugLogA("Error: Missing chain on close channel");
 		NetLib_CloseConnection(&hServerConn, TRUE);
 		return; // Invalid data
 	}
 
 	// TLV 8 errors (signon errors?)
 	WORD wError = chain->getWord(0x08, 1);
-	if (wError)
-	{
+	if (wError) {
 		handleSignonError(wError);
 
 		// we return only if the server did not gave us cookie (possible to connect with soft error)
-		if (!chain->getLength(0x06, 1))
-		{
+		if (!chain->getLength(0x06, 1)) {
 			disposeChain(&chain);
-			SetCurrentStatus(ID_STATUS_OFFLINE);
-			icq_serverDisconnect(FALSE);
+			icq_serverDisconnect();
 			return; // Failure
 		}
 	}
@@ -116,8 +100,7 @@ void CIcqProto::handleLoginReply(BYTE *buf, WORD datalen, serverthread_info *inf
 	// We dont need this anymore
 	disposeChain(&chain);
 
-	if (!info->newServer || !info->cookieData)
-	{
+	if (!info->newServer || !info->cookieData) {
 		icq_LogMessage(LOG_FATAL, LPGEN("You could not sign on because the server returned invalid data. Try again."));
 
 		SAFE_FREE(&info->newServer);
@@ -129,12 +112,9 @@ void CIcqProto::handleLoginReply(BYTE *buf, WORD datalen, serverthread_info *inf
 		return; // Failure
 	}
 
-	NetLog_Server("Authenticated.");
-	info->newServerReady = 1;
-
-	return;
+	debugLogA("Authenticated.");
+	info->isNewServerReady = true;
 }
-
 
 int CIcqProto::connectNewServer(serverthread_info *info)
 {
@@ -144,43 +124,35 @@ int CIcqProto::connectNewServer(serverthread_info *info)
 	WORD wServerPort = info->wServerPort; // prepare default port
 	parseServerAddress(info->newServer, &wServerPort);
 
-	NETLIBOPENCONNECTION nloc = {0};
+	NETLIBOPENCONNECTION nloc = { 0 };
 	nloc.flags = 0;
 	nloc.szHost = info->newServer;
 	nloc.wPort = wServerPort;
 
-	if (!m_bGatewayMode)
-	{
+	if (!m_bGatewayMode) {
 		NetLib_SafeCloseHandle(&info->hPacketRecver);
 		NetLib_CloseConnection(&hServerConn, TRUE);
 
-		NetLog_Server("Closed connection to login server");
+		debugLogA("Closed connection to login server");
 
-		hServerConn = NetLib_OpenConnection(m_hServerNetlibUser, NULL, &nloc);
-		if (hServerConn && info->newServerSSL)
-		{ /* Start SSL session if requested */
+		hServerConn = NetLib_OpenConnection(m_hNetlibUser, NULL, &nloc);
+		if (hServerConn && info->newServerSSL) /* Start SSL session if requested */
 			if (!CallService(MS_NETLIB_STARTSSL, (WPARAM)hServerConn, 0))
 				NetLib_CloseConnection(&hServerConn, FALSE);
-		}
 
-		if (hServerConn)
-		{
+		if (hServerConn) {
 			/* Time to recreate the packet receiver */
 			info->hPacketRecver = (HANDLE)CallService(MS_NETLIB_CREATEPACKETRECVER, (WPARAM)hServerConn, 0x2400);
 			if (!info->hPacketRecver)
-			{
-				NetLog_Server("Error: Failed to create packet receiver.");
-			}
-			else // we need to reset receiving structs
-			{
-				info->bReinitRecver = 1;
+				debugLogA("Error: Failed to create packet receiver.");
+			else { // we need to reset receiving structs
+				info->bReinitRecver = true;
 				res = 1;
 			}
 		}
 	}
-	else
-	{ // TODO: We should really do some checks here
-		NetLog_Server("Walking in Gateway to %s", info->newServer);
+	else { // TODO: We should really do some checks here
+		debugLogA("Walking in Gateway to %s", info->newServer);
 		// TODO: This REQUIRES more work (most probably some kind of mid-netlib module)
 		icq_httpGatewayWalkTo(hServerConn, &nloc);
 		res = 1;
@@ -194,19 +166,16 @@ int CIcqProto::connectNewServer(serverthread_info *info)
 	return res;
 }
 
-
 void CIcqProto::handleMigration(serverthread_info *info)
 {
 	// Check the data that was saved when the migration was announced
-	NetLog_Server("Migrating to %s", info->newServer);
-	if (!info->newServer || !info->cookieData)
-	{
+	debugLogA("Migrating to %s", info->newServer);
+	if (!info->newServer || !info->cookieData) {
 		icq_LogMessage(LOG_FATAL, LPGEN("You have been disconnected from the ICQ network because the current server shut down."));
 
 		SAFE_FREE(&info->newServer);
 		SAFE_FREE((void**)&info->cookieData);
-		info->newServerReady = 0;
-		info->isMigrating = 0;
+		info->isNewServerReady = info->isMigrating = false;
 	}
 }
 
@@ -220,7 +189,7 @@ void CIcqProto::handleSignonError(WORD wError)
 	case 0x06: // Internal Client error (bad input to authorizer)
 	case 0x07: // Invalid account
 		ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_WRONGPASSWORD);
-		ZeroMemory(m_szPassword, sizeof(m_szPassword));
+		memset(m_szPassword, 0, sizeof(m_szPassword));
 		icq_LogFatalParam(LPGEN("Connection failed.\nYour ICQ number or password was rejected (%d)."), wError);
 		break;
 
@@ -294,18 +263,13 @@ void CIcqProto::handleSignonError(WORD wError)
 	}
 }
 
-
 void CIcqProto::handleRuntimeError(WORD wError)
 {
-	switch (wError)
-	{
-
+	switch (wError) {
 	case 0x01:
-		{
-			ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_OTHERLOCATION);
-			icq_LogMessage(LOG_FATAL, LPGEN("You have been disconnected from the ICQ network because you logged on from another location using the same ICQ number."));
-			break;
-		}
+		ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, LOGINERR_OTHERLOCATION);
+		icq_LogMessage(LOG_FATAL, LPGEN("You have been disconnected from the ICQ network because you logged on from another location using the same ICQ number."));
+		break;
 
 	default:
 		icq_LogFatalParam(LPGEN("Unknown runtime error: 0x%02x"), wError);

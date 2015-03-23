@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -86,10 +87,10 @@ static int OnContactMenuBuild(WPARAM wParam, LPARAM)
 	int i;
 	OBJLIST<GroupItemSort> groups(10, GroupItemSort::compare);
 
-	if ( !hMoveToGroupItem) {
+	if (!hMoveToGroupItem) {
 		CLISTMENUITEM mi = { sizeof(mi) };
 		mi.position = 100000;
-		mi.pszName = LPGEN("&Move to Group");
+		mi.pszName = LPGEN("&Move to group");
 		mi.flags = CMIF_ROOTHANDLE;
 		mi.icolibItem = GetSkinIconHandle(SKINICON_OTHER_GROUP);
 
@@ -97,19 +98,18 @@ static int OnContactMenuBuild(WPARAM wParam, LPARAM)
 	}
 
 	for (i=0; i < lphGroupsItems.getCount(); i++)
-		CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)lphGroupsItems[i], 0);
+		CallService(MO_REMOVEMENUITEM, (WPARAM)lphGroupsItems[i], 0);
 	lphGroupsItems.destroy();
 
-	ptrT szContactGroup( db_get_tsa((HANDLE)wParam, "CList", "Group"));
+	ptrT szContactGroup(db_get_tsa(wParam, "CList", "Group"));
 
 	int pos = 1000;
 
-	AddGroupItem(hMoveToGroupItem, TranslateT("<Root Group>"), pos, -1, !szContactGroup);
+	AddGroupItem(hMoveToGroupItem, TranslateT("<Root group>"), pos, -1, !szContactGroup);
 
 	pos += 100000; // Separator
 
-	for (i=0; ; i++)
-	{
+	for (i=0; ; i++) {
 		char intname[20];
 		_itoa(i, intname, 10);
 
@@ -128,7 +128,6 @@ static int OnContactMenuBuild(WPARAM wParam, LPARAM)
 		AddGroupItem(hMoveToGroupItem, groups[i].name, ++pos, groups[i].position, checked);
 	}
 
-	groups.destroy();
 	return 0;
 }
 
@@ -146,6 +145,5 @@ void MTG_OnmodulesLoad()
 
 int UnloadMoveToGroup(void)
 {
-	lphGroupsItems.destroy();
 	return 0;
 }

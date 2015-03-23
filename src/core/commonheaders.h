@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -38,14 +39,16 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <uxtheme.h>
 #include <commctrl.h>
 #include <vssym32.h>
+#include <Shlwapi.h>
+#include <Richedit.h>
 
-#include <map>
-#include <vector>
-#include <string>
-#include <algorithm>
-using namespace std;
+#ifdef _DEBUG
+#include <crtdbg.h>
+#endif
 
+#include <malloc.h>
 #include <stdio.h>
+#include <math.h>
 #include <time.h>
 #include <stddef.h>
 #include <process.h>
@@ -59,6 +62,7 @@ using namespace std;
 
 #include <m_system.h>
 #include <m_system_cpp.h>
+#include <m_string.h>
 #include <m_core.h>
 #include <newpluginapi.h>
 #include <m_database.h>
@@ -90,6 +94,7 @@ using namespace std;
 #include <m_timezones.h>
 #include <m_extraicons.h>
 #include <m_xstatus.h>
+#include <m_metacontacts.h>
 
 #include "miranda.h"
 #include "stdplug.h"
@@ -97,5 +102,8 @@ using namespace std;
 #include <m_ssl.h>
 #include <m_netlib.h>
 #include <m_xml.h>
+
+typedef struct GlobalLogSettingsBase GlobalLogSettings;
+#include <m_chat_int.h>
 
 #include "../resource.h"

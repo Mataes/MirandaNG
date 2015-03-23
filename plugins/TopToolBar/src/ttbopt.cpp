@@ -98,7 +98,6 @@ static void SaveTree(HWND hwndDlg)
 			delete Buttons[i];
 
 		Buttons = tmpList;
-		tmpList.destroy();	
 	}
 	SaveAllButtonsOptions();
 }
@@ -193,7 +192,7 @@ static INT_PTR CALLBACK ButOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
 		dat = (OrderData*)malloc( sizeof(OrderData));
-		SetWindowLongPtr(hTree, GWLP_USERDATA, (LONG)dat);
+		SetWindowLongPtr(hTree, GWLP_USERDATA, (LONG_PTR)dat);
 		dat->dragging = 0;
 
 		SetWindowLongPtr(hTree, GWL_STYLE, GetWindowLongPtr(hTree, GWL_STYLE)|TVS_NOHSCROLL);
@@ -210,9 +209,9 @@ static INT_PTR CALLBACK ButOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 		SendDlgItemMessage(hwndDlg, IDC_SPIN_GAP, UDM_SETRANGE, 0, MAKELONG(20,0));
 		SendDlgItemMessage(hwndDlg, IDC_SPIN_GAP, UDM_SETPOS, 0, MAKELONG(g_ctrl->nButtonSpace,0));
 
-		CheckDlgButton(hwndDlg, IDC_USEFLAT, g_ctrl->bFlatButtons);
-		CheckDlgButton(hwndDlg, IDC_AUTORESIZE, g_ctrl->bAutoSize);
-		CheckDlgButton(hwndDlg, IDC_SINGLELINE, g_ctrl->bSingleLine);
+		CheckDlgButton(hwndDlg, IDC_USEFLAT, g_ctrl->bFlatButtons ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_AUTORESIZE, g_ctrl->bAutoSize ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_SINGLELINE, g_ctrl->bSingleLine ? BST_CHECKED : BST_UNCHECKED);
 
 		BuildTree(hwndDlg);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_ENAME), FALSE);
@@ -242,14 +241,14 @@ static INT_PTR CALLBACK ButOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 				TCHAR str[MAX_PATH];
 				OPENFILENAME ofn = {0};
 
-				GetDlgItemText(hwndDlg, IDC_EPATH, str, sizeof(str));
+				GetDlgItemText(hwndDlg, IDC_EPATH, str, SIZEOF(str));
 				ofn.lStructSize = OPENFILENAME_SIZE_VERSION_400;
 				ofn.hwndOwner = hwndDlg;
 				ofn.hInstance = NULL;
 				ofn.lpstrFilter = NULL;
 				ofn.lpstrFile = str;
 				ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
-				ofn.nMaxFile = sizeof(str);
+				ofn.nMaxFile = SIZEOF(str);
 				ofn.nMaxFileTitle = MAX_PATH;
 				ofn.lpstrDefExt = _T("exe");
 				if (!GetOpenFileName(&ofn))
@@ -291,14 +290,14 @@ static INT_PTR CALLBACK ButOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 						TreeView_SetItem(hTree, &tvi);
 					}
 
-					GetDlgItemText(hwndDlg, IDC_ENAME, buf, 255);
+					GetDlgItemText(hwndDlg, IDC_ENAME, buf, SIZEOF(buf));
 					replaceStr(btn->pszName, _T2A(buf));
 
 					tvi.mask = TVIF_TEXT;
 					tvi.pszText = buf;
 					TreeView_SetItem(hTree, &tvi);
 
-					GetDlgItemText(hwndDlg, IDC_EPATH, buf, 255);
+					GetDlgItemText(hwndDlg, IDC_EPATH, buf, SIZEOF(buf));
 					replaceStrT(btn->ptszProgram, buf);
 				}
 				break;
@@ -547,11 +546,9 @@ static INT_PTR CALLBACK ButOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 int TTBOptInit(WPARAM wParam, LPARAM lParam)
 {
-	OPTIONSDIALOGPAGE odp = { 0 };
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = hInst;
-	odp.pszGroup = LPGEN("Contact List");
-
+	odp.pszGroup = LPGEN("Contact list");
 	odp.position = -1000000000;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_BUTORDER);
 	odp.pszTitle = LPGEN("Toolbar");

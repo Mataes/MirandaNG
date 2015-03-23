@@ -1,9 +1,9 @@
 ﻿#muuid {eebc474c-b0ad-470f-99a8-9dd9210ce233}
 ;============================================================
-;  File: mradio.dll
-;  Module: mRadio, mRadio Mod
-;  Versions: 0.0.2.1
-;  URL:http://awkward.mirandaim.ru
+;  File: mRadio.dll
+;  Plugin: mRadio Mod
+;  Version: 0.0.2.4
+;  Authors: Awkward
 ;============================================================
 [This plugin plays and records Internet radio streams. Also local media files can be played.]
 Этот плагин позволяет прослушивать и записывать интернет радио. Так же может воспроизводить локальные файлы.
@@ -163,6 +163,10 @@ URL станции/плейлиста
 Вкл/выкл звук
 [mRadio volume control]
 Уровень громкости mRadio
+[mRadio off]
+mRadio выкл
+[mRadio on]
+mRadio вкл
 [Import File]
 Импортировать файл
 [Play Station]
@@ -179,3 +183,19 @@ URL станции/плейлиста
 Дополнительно
 [Stop]
 Остановить
+[Play]
+Пуск
+[Frame background]
+Фон фрейма
+[OFF]
+выкл
+[Volume]
+Громкость
+[Device list]
+Список устройств
+[Equalizer]
+Эквалайзер
+[New]
+Новый
+[Quick Open]
+Открыть

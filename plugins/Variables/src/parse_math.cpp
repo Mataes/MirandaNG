@@ -2,7 +2,7 @@
     Variables Plugin for Miranda-IM (www.miranda-im.org)
     Copyright 2003-2006 P. Boon
 
-    This program is mir_free software; you can redistribute it and/or modify
+    This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
@@ -25,7 +25,7 @@ static TCHAR *parseAdd(ARGUMENTSINFO *ai)
 		return NULL;
 
 	int result = 0;
-	for (unsigned int i=1;i<ai->argc;i++)
+	for (unsigned int i = 1; i < ai->argc; i++)
 		result += ttoi(ai->targv[i]);
 
 	return itot(result);
@@ -41,7 +41,7 @@ static TCHAR *parseDiv(ARGUMENTSINFO *ai)
 	if (val2 == 0)
 		return NULL;
 
-	return itot(val1/val2);
+	return itot(val1 / val2);
 }
 
 static TCHAR *parseHex(ARGUMENTSINFO *ai)
@@ -60,10 +60,10 @@ static TCHAR *parseHex(ARGUMENTSINFO *ai)
 	if (res == NULL)
 		return NULL;
 
-	ZeroMemory(res, (zeros + _tcslen(szVal) + 3)*sizeof(TCHAR));
+	memset(res, 0, ((zeros + _tcslen(szVal) + 3) * sizeof(TCHAR)));
 	_tcscpy(res, _T("0x"));
-	for (i=0; i < zeros; i++)
-		*(res+2+i) = '0';
+	for (i = 0; i < zeros; i++)
+		*(res + 2 + i) = '0';
 
 	_tcscat(res, szVal);
 	return res;
@@ -88,7 +88,7 @@ static TCHAR *parseMul(ARGUMENTSINFO *ai)
 		return NULL;
 
 	int result = ttoi(ai->targv[1]);
-	for (unsigned i=2; i < ai->argc; i++)
+	for (unsigned i = 2; i < ai->argc; i++)
 		result *= ttoi(ai->targv[i]);
 
 	return itot(result);
@@ -102,7 +102,7 @@ static TCHAR *parseMuldiv(ARGUMENTSINFO *ai)
 	if (ttoi(ai->targv[3]) == 0)
 		return NULL;
 
-	return itot((ttoi(ai->targv[1])*ttoi(ai->targv[2]))/ttoi(ai->targv[3]));
+	return itot((ttoi(ai->targv[1])*ttoi(ai->targv[2])) / ttoi(ai->targv[3]));
 }
 
 static TCHAR *parseMin(ARGUMENTSINFO *ai)
@@ -111,7 +111,7 @@ static TCHAR *parseMin(ARGUMENTSINFO *ai)
 		return NULL;
 
 	int minVal = ttoi(ai->targv[1]);
-	for (unsigned i=2; i < ai->argc; i++)
+	for (unsigned i = 2; i < ai->argc; i++)
 		minVal = min(ttoi(ai->targv[i]), minVal);
 
 	return itot(minVal);
@@ -123,7 +123,7 @@ static TCHAR *parseMax(ARGUMENTSINFO *ai)
 		return NULL;
 
 	int maxVal = ttoi(ai->targv[1]);
-	for (unsigned i=2; i < ai->argc; i++)
+	for (unsigned i = 2; i < ai->argc; i++)
 		maxVal = max(ttoi(ai->targv[i]), maxVal);
 
 	return itot(maxVal);
@@ -142,12 +142,14 @@ static TCHAR *parseNum(ARGUMENTSINFO *ai)
 
 	unsigned zeros = max(padding - (signed int)_tcslen(szVal), 0);
 	TCHAR *res = (TCHAR*)mir_alloc((zeros + _tcslen(szVal) + 1)*sizeof(TCHAR));
-	if (res == NULL)
+	if (res == NULL) {
+		mir_free(szVal);
 		return NULL;
+	}
 
-	ZeroMemory(res, (zeros + _tcslen(szVal) + 1)*sizeof(TCHAR));
+	memset(res, 0, ((zeros + _tcslen(szVal) + 1) * sizeof(TCHAR)));
 	TCHAR *cur = res;
-	for (unsigned i=0; i < zeros; i++)
+	for (unsigned i = 0; i < zeros; i++)
 		*cur++ = '0';
 
 	_tcscat(res, szVal);
@@ -167,26 +169,24 @@ static TCHAR *parseSub(ARGUMENTSINFO *ai)
 		return NULL;
 
 	int result = ttoi(ai->targv[1]);
-	for (unsigned i=2;i<ai->argc;i++)
+	for (unsigned i = 2; i < ai->argc; i++)
 		result -= ttoi(ai->targv[i]);
 
 	return itot(result);
 }
 
-int registerMathTokens()
+void registerMathTokens()
 {
-	registerIntToken(_T(ADD), parseAdd, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y ,...)\t"LPGEN("x + y + ..."));
-	registerIntToken(_T(DIV), parseDiv,	TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("x divided by y"));
-	registerIntToken(_T(HEX), parseHex,	TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("converts decimal value x to hex value and padds to length y"));
-	registerIntToken(_T(MOD), parseMod, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("x modulo y (remainder of x divided by y)"));
-	registerIntToken(_T(MUL), parseMul,	TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("x times y"));
-	registerIntToken(_T(MULDIV), parseMuldiv, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,z)\t"LPGEN("x times y divided by z"));
-	registerIntToken(_T(MIN), parseMin,	TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,...)\t"LPGEN("minimum value of (decimal) arguments"));
-	registerIntToken(_T(MAX), parseMax,	TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,...)\t"LPGEN("maximum value of (decimal) arguments"));
-	registerIntToken(_T(NUM), parseNum,	TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("pads decimal value x to length y with zeros"));
-	registerIntToken(_T(RAND), parseRand, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t()\t"LPGEN("random number"));
-	registerIntToken(_T(SUB), parseSub, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,...)\t"LPGEN("x - y - ..."));
+	registerIntToken(ADD, parseAdd, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y ,...)\t"LPGEN("x + y + ..."));
+	registerIntToken(DIV, parseDiv, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("x divided by y"));
+	registerIntToken(HEX, parseHex, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("converts decimal value x to hex value and padds to length y"));
+	registerIntToken(MOD, parseMod, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("x modulo y (remainder of x divided by y)"));
+	registerIntToken(MUL, parseMul, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("x times y"));
+	registerIntToken(MULDIV, parseMuldiv, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,z)\t"LPGEN("x times y divided by z"));
+	registerIntToken(MIN, parseMin, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,...)\t"LPGEN("minimum value of (decimal) arguments"));
+	registerIntToken(MAX, parseMax, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,...)\t"LPGEN("maximum value of (decimal) arguments"));
+	registerIntToken(NUM, parseNum, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y)\t"LPGEN("pads decimal value x to length y with zeros"));
+	registerIntToken(RAND, parseRand, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t()\t"LPGEN("random number"));
+	registerIntToken(SUB, parseSub, TRF_FUNCTION, LPGEN("Mathematical Functions")"\t(x,y,...)\t"LPGEN("x - y - ..."));
 	srand((unsigned int)GetTickCount());
-
-	return 0;
 }

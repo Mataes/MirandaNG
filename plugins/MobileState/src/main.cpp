@@ -1,6 +1,6 @@
 /*
    Mobile State plugin for Miranda NG (www.miranda-ng.org)
-   (c) 2012-13 by Robert Pösel
+   (c) 2012-15 by Robert Pösel
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+   */
 
 #include "commonheaders.h"
 
@@ -24,7 +24,7 @@ int hLangpack;
 HANDLE hExtraIcon = NULL;
 
 PLUGININFOEX pluginInfo = {
-    sizeof(PLUGININFOEX),
+	sizeof(PLUGININFOEX),
 	__PLUGIN_NAME,
 	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
 	__DESCRIPTION,
@@ -34,35 +34,37 @@ PLUGININFOEX pluginInfo = {
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {F0BA32D0-CD07-4A9C-926B-5A1FF21C3C10}
-	{0xf0ba32d0, 0xcd07, 0x4a9c, {0x92, 0x6b, 0x5a, 0x1f, 0xf2, 0x1c, 0x3c, 0x10}}
+	{ 0xf0ba32d0, 0xcd07, 0x4a9c, { 0x92, 0x6b, 0x5a, 0x1f, 0xf2, 0x1c, 0x3c, 0x10 } }
 };
 
 static IconItem icon = { LPGEN("Mobile State"), "mobile_icon", IDI_MOBILE };
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD, LPVOID)
 {
 	g_hInst = hinstDLL;
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
+extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD)
 {
 	return &pluginInfo;
 }
 
-bool hasMobileClient(HANDLE hContact, LPARAM lParam)
+bool hasMobileClient(MCONTACT hContact, LPARAM)
 {
 	char *proto = GetContactProto(hContact);
 
-	DBVARIANT dbv;
-	if (!db_get_ts(hContact, proto, "MirVer", &dbv)) {
-		TCHAR *client = _tcslwr(NEWTSTR_ALLOCA(dbv.ptszVal));
-		db_free(&dbv);
-
+	ptrT client(db_get_tsa(hContact, proto, "MirVer"));
+	if (client) {
+		// Make client lower-case
+		_tcslwr(client);
+		
+		// Find whether this client contain something from clients list
 		for (size_t i = 0; i < SIZEOF(clients); i++)
 			if (_tcsstr(client, clients[i]))
 				return true;
 	}
+
 	return false;
 }
 
@@ -71,37 +73,32 @@ int ExtraIconsApply(WPARAM wParam, LPARAM lParam)
 	if (wParam == NULL)
 		return 0;
 
-	const char *icon = hasMobileClient((HANDLE) wParam, lParam) ? "mobile_icon" : NULL;	
+	if (hasMobileClient(wParam, lParam))
+		ExtraIcon_SetIcon(hExtraIcon, wParam, "mobile_icon");
+	else
+		ExtraIcon_Clear(hExtraIcon, wParam);
 
-	ExtraIcon_SetIcon(hExtraIcon, (HANDLE)wParam, icon);
 	return 0;
 }
 
-int onContactSettingChanged(WPARAM wParam,LPARAM lParam)
-{
-	DBCONTACTWRITESETTING *cws=(DBCONTACTWRITESETTING*)lParam;
-	char *proto = GetContactProto((HANDLE)wParam);
+int onContactSettingChanged(WPARAM wParam, LPARAM lParam)
+{	
+	char *proto = GetContactProto(wParam);
 	if (!proto)
 		return 0;
 
-	if (!lstrcmpA(cws->szModule,proto))
-		if (!lstrcmpA(cws->szSetting, "MirVer"))
-			ExtraIconsApply(wParam, 1);
+	DBCONTACTWRITESETTING *cws = (DBCONTACTWRITESETTING*)lParam;
+	if (!mir_strcmp(cws->szModule, proto) && !mir_strcmp(cws->szSetting, "MirVer"))
+		ExtraIconsApply(wParam, 1);
 
 	return 0;
 }
 
-int onModulesLoaded(WPARAM wParam,LPARAM lParam)
+int onModulesLoaded(WPARAM, LPARAM)
 {
-	// IcoLib support
-	Icon_Register(g_hInst, "Mobile State", &icon, 1);
-
-	// Extra icons
-	hExtraIcon = ExtraIcon_Register("mobilestate", LPGEN("Mobile State"), "mobile_icon");
-
 	// Set initial value for all contacts
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
-		ExtraIconsApply((WPARAM)hContact, 1);
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
+		ExtraIconsApply(hContact, 1);
 
 	return 0;
 }
@@ -113,6 +110,13 @@ extern "C" int __declspec(dllexport) Load(void)
 	HookEvent(ME_SYSTEM_MODULESLOADED, onModulesLoaded);
 	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, onContactSettingChanged);
 	HookEvent(ME_CLIST_EXTRA_IMAGE_APPLY, ExtraIconsApply);
+
+	// IcoLib support
+	Icon_Register(g_hInst, "Mobile State", &icon, 1);
+
+	// Extra icons
+	hExtraIcon = ExtraIcon_Register("mobilestate", LPGEN("Mobile State"), "mobile_icon");
+
 	return 0;
 }
 

@@ -1,9 +1,10 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -27,7 +28,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 void CJabberProto::JLoginFailed(int errorCode)
 {
-	*m_savedPassword = 0;
+	m_savedPassword = NULL;
 	ProtoBroadcastAck(NULL, ACKTYPE_LOGIN, ACKRESULT_FAILED, NULL, errorCode);
 }
 
@@ -40,10 +41,10 @@ void __forceinline sttCryptString(char *str)
 	}
 }
 
-TCHAR* CJabberProto::JGetStringCrypt(HANDLE hContact, char *valueName)
+static TCHAR* JSetStringCrypt(LPCSTR szModule, MCONTACT hContact, char *valueName)
 {
 	DBVARIANT dbv;
-	if ( db_get_s(hContact, m_szModuleName, valueName, &dbv))
+	if (db_get_s(hContact, szModule, valueName, &dbv))
 		return NULL;
 
 	sttCryptString(dbv.pszVal);
@@ -52,11 +53,36 @@ TCHAR* CJabberProto::JGetStringCrypt(HANDLE hContact, char *valueName)
 	return res;
 }
 
-DWORD CJabberProto::JSetStringCrypt(HANDLE hContact, char *valueName, const TCHAR *parValue)
+void CJabberProto::ConvertPasswords()
 {
-	char *tmp = mir_utf8encodeT(parValue);
-	sttCryptString(tmp);
-	setString(hContact, valueName, tmp);
-	mir_free(tmp);
-	return 0;
+	ptrT passw(JSetStringCrypt(m_szModuleName, NULL, "LoginPassword"));
+	if (passw == NULL)
+		return;
+
+	setTString("Password", passw);
+	delSetting("LoginPassword");
+
+	for (MCONTACT hContact = db_find_first(m_szModuleName); hContact; hContact = db_find_next(hContact, m_szModuleName)) {
+		if ((passw = JSetStringCrypt(m_szModuleName, hContact, "LoginPassword")) == NULL)
+			continue;
+
+		setTString(hContact, "Password", passw);
+		delSetting(hContact, "LoginPassword");
+	}
+
+	for (int i = 0;; i++) {
+		char varName[100];
+		mir_snprintf(varName, SIZEOF(varName), "rcMuc_%d_server", i);
+		ptrA str(getStringA(NULL, varName));
+		if (str == NULL)
+			break;
+
+		mir_snprintf(varName, SIZEOF(varName), "rcMuc_%d", i);
+		if ((passw = JSetStringCrypt(m_szModuleName, NULL, varName)) != NULL) {
+			delSetting(varName);
+
+			mir_snprintf(varName, SIZEOF(varName), "password_rcMuc_%d", i);
+			setTString(varName, passw);
+		}
+	}
 }

@@ -1,6 +1,6 @@
 /*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright 2000-12 Miranda IM, 2012-15 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -27,16 +27,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 struct NewMessageWindowLParam
 {
-	HANDLE hContact;
+	MCONTACT hContact;
 	const char *szInitialText;
 	int isWchar;
 	int noActivate;
 };
 
-struct SrmmWindowData
+struct SrmmWindowData : public MZeroedObject
 {
-	HANDLE hContact;
-	HANDLE hDbEventFirst, hDbEventLast;
+	SrmmWindowData() :
+		cmdList(20)
+		{}
+
+	MCONTACT hContact;
+	MEVENT hDbEventFirst, hDbEventLast;
 	HBRUSH hBkgBrush;
 	int splitterPos, originalSplitterPos;
 	SIZE minEditBoxSize;
@@ -60,9 +64,13 @@ struct SrmmWindowData
 	WORD wStatus;
 	WORD wOldStatus;
 	int cmdListInd;
-	SortedList *cmdList;
-	int bIsAutoRTL;
+	LIST<TCHAR> cmdList;
+	bool bIsAutoRTL, bIsMeta;
 	WORD wMinute;
+
+	__forceinline MCONTACT getActiveContact() const
+	{	return (bIsMeta) ? db_mc_getSrmmSub(hContact) : hContact;
+	}
 };
 
 #define DM_REMAKELOG         (WM_USER+11)
@@ -88,7 +96,6 @@ struct SrmmWindowData
 
 #define EVENTTYPE_JABBER_CHATSTATES     2000
 #define EVENTTYPE_JABBER_PRESENCE       2001
-#define EVENTTYPE_STATUSCHANGE          25368
 
 struct CREOleCallback : public IRichEditOleCallback
 {
@@ -98,27 +105,27 @@ struct CREOleCallback : public IRichEditOleCallback
 	int nextStgId;
 
 	STDMETHOD(QueryInterface)(REFIID riid, LPVOID FAR * lplpObj);
-	STDMETHOD_(ULONG,AddRef) (THIS);
-	STDMETHOD_(ULONG,Release) (THIS);
+	STDMETHOD_(ULONG,AddRef)(THIS);
+	STDMETHOD_(ULONG,Release)(THIS);
 
 	STDMETHOD(ContextSensitiveHelp)(BOOL fEnterMode);
-	STDMETHOD(GetNewStorage) (LPSTORAGE FAR * lplpstg);
-	STDMETHOD(GetInPlaceContext) (LPOLEINPLACEFRAME FAR * lplpFrame, LPOLEINPLACEUIWINDOW FAR * lplpDoc, LPOLEINPLACEFRAMEINFO lpFrameInfo);
-	STDMETHOD(ShowContainerUI) (BOOL fShow);
-	STDMETHOD(QueryInsertObject) (LPCLSID lpclsid, LPSTORAGE lpstg, LONG cp);
-	STDMETHOD(DeleteObject) (LPOLEOBJECT lpoleobj);
-	STDMETHOD(QueryAcceptData) (LPDATAOBJECT lpdataobj, CLIPFORMAT FAR * lpcfFormat, DWORD reco, BOOL fReally, HGLOBAL hMetaPict);
-	STDMETHOD(GetClipboardData) (CHARRANGE FAR * lpchrg, DWORD reco, LPDATAOBJECT FAR * lplpdataobj);
-	STDMETHOD(GetDragDropEffect) (BOOL fDrag, DWORD grfKeyState, LPDWORD pdwEffect);
-	STDMETHOD(GetContextMenu) (WORD seltype, LPOLEOBJECT lpoleobj, CHARRANGE FAR * lpchrg, HMENU FAR * lphmenu) ;
+	STDMETHOD(GetNewStorage)(LPSTORAGE FAR * lplpstg);
+	STDMETHOD(GetInPlaceContext)(LPOLEINPLACEFRAME FAR * lplpFrame, LPOLEINPLACEUIWINDOW FAR * lplpDoc, LPOLEINPLACEFRAMEINFO lpFrameInfo);
+	STDMETHOD(ShowContainerUI)(BOOL fShow);
+	STDMETHOD(QueryInsertObject)(LPCLSID lpclsid, LPSTORAGE lpstg, LONG cp);
+	STDMETHOD(DeleteObject)(LPOLEOBJECT lpoleobj);
+	STDMETHOD(QueryAcceptData)(LPDATAOBJECT lpdataobj, CLIPFORMAT FAR * lpcfFormat, DWORD reco, BOOL fReally, HGLOBAL hMetaPict);
+	STDMETHOD(GetClipboardData)(CHARRANGE FAR *lpchrg, DWORD reco, LPDATAOBJECT FAR * lplpdataobj);
+	STDMETHOD(GetDragDropEffect)(BOOL fDrag, DWORD grfKeyState, LPDWORD pdwEffect);
+	STDMETHOD(GetContextMenu)(WORD seltype, LPOLEOBJECT lpoleobj, CHARRANGE FAR * lpchrg, HMENU FAR * lphmenu) ;
 };
 
 INT_PTR CALLBACK DlgProcMessage(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK ErrorDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam);
-int DbEventIsForMsgWindow(DBEVENTINFO *dbei);
-int DbEventIsShown(DBEVENTINFO * dbei, SrmmWindowData *dat);
-void StreamInEvents(HWND hwndDlg, HANDLE hDbEventFirst, int count, int fAppend);
-HANDLE SendMessageDirect(const TCHAR *szMsg, HANDLE hContact, char *szProto);
+int  DbEventIsForMsgWindow(DBEVENTINFO *dbei);
+int  DbEventIsShown(DBEVENTINFO *dbei);
+void StreamInEvents(HWND hwndDlg, MEVENT hDbEventFirst, int count, int fAppend);
+int  SendMessageDirect(const TCHAR *szMsg, MCONTACT hContact, char *szProto);
 
 void LoadMsgLogIcons(void);
 void FreeMsgLogIcons(void);

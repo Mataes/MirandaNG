@@ -39,7 +39,7 @@ static INT_PTR Service_SetStatus(WPARAM wParam, LPARAM lParam)
 
 static INT_PTR Service_GetName(WPARAM wParam, LPARAM lParam)
 {
-	lstrcpynA((char *) lParam, YAMN_DBMODULE, wParam);;
+	mir_strncpy((char *) lParam, YAMN_DBMODULE, wParam);
 	return 0;
 }
 
@@ -65,12 +65,12 @@ static int Service_ContactDoubleclicked(WPARAM wParam, LPARAM lParam)
 
 static INT_PTR ContactApplication(WPARAM wParam, LPARAM lParam)
 {
-	char *szProto = GetContactProto((HANDLE)wParam);
-	if ( lstrcmpA(szProto, YAMN_DBMODULE))
+	char *szProto = GetContactProto(wParam);
+	if ( mir_strcmp(szProto, YAMN_DBMODULE))
 		return 0;
 
 	DBVARIANT dbv;
-	if ( db_get((HANDLE) wParam, YAMN_DBMODULE, "Id", &dbv))
+	if ( db_get(wParam, YAMN_DBMODULE, "Id", &dbv))
 		return 0;
 
 	HACCOUNT ActualAccount = (HACCOUNT) CallService(MS_YAMN_FINDACCOUNTBYNAME, (WPARAM)POP3Plugin, (LPARAM)dbv.pszVal);
@@ -93,11 +93,11 @@ static INT_PTR ContactApplication(WPARAM wParam, LPARAM lParam)
 					Command = new WCHAR[wcslen(ActualAccount->NewMailN.App)+6];
 					
 				if (Command != NULL) {
-					lstrcpyW(Command, L"\"");
-					lstrcatW(Command, ActualAccount->NewMailN.App);
-					lstrcatW(Command, L"\" ");
+					mir_wstrcpy(Command, L"\"");
+					mir_wstrcat(Command, ActualAccount->NewMailN.App);
+					mir_wstrcat(Command, L"\" ");
 					if (ActualAccount->NewMailN.AppParam != NULL)
-						lstrcatW(Command, ActualAccount->NewMailN.AppParam);
+						mir_wstrcat(Command, ActualAccount->NewMailN.AppParam);
 
 					PROCESS_INFORMATION pi;
 					CreateProcessW(NULL, Command, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &si, &pi);
@@ -166,14 +166,14 @@ static INT_PTR AccountMailCheck(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-static INT_PTR ContactMailCheck(WPARAM wParam, LPARAM lParam)
+static INT_PTR ContactMailCheck(WPARAM hContact, LPARAM lParam)
 {
-	char *szProto = GetContactProto((HANDLE)wParam);
-	if ( lstrcmpA(szProto, YAMN_DBMODULE))
+	char *szProto = GetContactProto(hContact);
+	if ( mir_strcmp(szProto, YAMN_DBMODULE))
 		return 0;
 
 	DBVARIANT dbv;
-	if ( db_get((HANDLE) wParam, YAMN_DBMODULE, "Id", &dbv))
+	if ( db_get(hContact, YAMN_DBMODULE, "Id", &dbv))
 		return 0;
 
 	HACCOUNT ActualAccount = (HACCOUNT) CallService(MS_YAMN_FINDACCOUNTBYNAME, (WPARAM)POP3Plugin, (LPARAM)dbv.pszVal);
@@ -227,15 +227,15 @@ void MainMenuAccountClicked(WPARAM wParam, LPARAM lParam)
 
 /*static*/ void ContactDoubleclicked(WPARAM wParam, LPARAM lParam)
 {
-	char *szProto = GetContactProto((HANDLE)wParam);
-	if ( lstrcmpA(szProto, YAMN_DBMODULE))
+	char *szProto = GetContactProto(wParam);
+	if ( mir_strcmp(szProto, YAMN_DBMODULE))
 		return;
 
 	DBVARIANT dbv;
-	if ( db_get(( HANDLE )wParam, YAMN_DBMODULE, "Id", &dbv))
+	if ( db_get(wParam, YAMN_DBMODULE, "Id", &dbv))
 		return;
 
-	HACCOUNT ActualAccount = (HACCOUNT) CallService(MS_YAMN_FINDACCOUNTBYNAME, (WPARAM)POP3Plugin, (LPARAM)dbv.pszVal);
+	HACCOUNT ActualAccount = (HACCOUNT)CallService(MS_YAMN_FINDACCOUNTBYNAME, (WPARAM)POP3Plugin, (LPARAM)dbv.pszVal);
 	if (ActualAccount != NULL) {
 		#ifdef DEBUG_SYNCHRO
 			DebugLog(SynchroFile, "Service_ContactDoubleclicked:ActualAccountSO-read wait\n");
@@ -244,7 +244,7 @@ void MainMenuAccountClicked(WPARAM wParam, LPARAM lParam)
 			#ifdef DEBUG_SYNCHRO
 				DebugLog(SynchroFile, "Service_ContactDoubleclicked:ActualAccountSO-read enter\n");
 			#endif
-			YAMN_MAILBROWSERPARAM Param = {(HANDLE)0, ActualAccount, ActualAccount->NewMailN.Flags, ActualAccount->NoNewMailN.Flags, 0};
+			YAMN_MAILBROWSERPARAM Param = { 0, ActualAccount, ActualAccount->NewMailN.Flags, ActualAccount->NoNewMailN.Flags, 0 };
 
 			Param.nnflags = Param.nnflags | YAMN_ACC_MSG;			//show mails in account even no new mail in account
 			Param.nnflags = Param.nnflags & ~YAMN_ACC_POP;
@@ -252,7 +252,7 @@ void MainMenuAccountClicked(WPARAM wParam, LPARAM lParam)
 			Param.nflags = Param.nflags | YAMN_ACC_MSG;			//show mails in account even no new mail in account
 			Param.nflags = Param.nflags & ~YAMN_ACC_POP;
 
-			RunMailBrowserSvc((WPARAM)&Param, (LPARAM)YAMN_MAILBROWSERVERSION);
+			RunMailBrowserSvc((WPARAM)&Param, YAMN_MAILBROWSERVERSION);
 					
 			#ifdef DEBUG_SYNCHRO
 				DebugLog(SynchroFile, "Service_ContactDoubleclicked:ActualAccountSO-read done\n");
@@ -483,7 +483,7 @@ void RefreshContact(void)
 				db_set_b(Finder->hContact, "CList", "Hidden", 1);
 		}
 		else if ((Finder->Flags & YAMN_ACC_ENA) && (Finder->NewMailN.Flags & YAMN_ACC_CONT)) {
-			Finder->hContact  = (HANDLE) CallService(MS_DB_CONTACT_ADD, 0, 0);
+			Finder->hContact = (MCONTACT)CallService(MS_DB_CONTACT_ADD, 0, 0);
 			CallService(MS_PROTO_ADDTOCONTACT, (WPARAM)Finder->hContact, (LPARAM)YAMN_DBMODULE);
 			db_set_s(Finder->hContact, YAMN_DBMODULE, "Id", Finder->Name);
 			db_set_s(Finder->hContact, YAMN_DBMODULE, "Nick", Finder->Name);

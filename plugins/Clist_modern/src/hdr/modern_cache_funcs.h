@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -33,14 +34,14 @@ Created by Pescuma
 
 void Cache_GetText(ClcData *dat, ClcContact *contact, BOOL forceRenew);
 void Cache_GetFirstLineText(ClcData *dat, ClcContact *contact);
-void Cache_GetSecondLineText(struct SHORTDATA *dat, ClcCacheEntry *pdnce);
-void Cache_GetThirdLineText(struct SHORTDATA *dat, ClcCacheEntry *pdnce);
+void Cache_GetSecondLineText(SHORTDATA *dat, ClcCacheEntry *pdnce);
+void Cache_GetThirdLineText(SHORTDATA *dat, ClcCacheEntry *pdnce);
 void Cache_GetAvatar(ClcData *dat, ClcContact *contact);
-void Cache_GetTimezone(ClcData *dat, HANDLE hContact);
+void Cache_GetTimezone(ClcData *dat, MCONTACT hContact);
 int Cache_GetLineText(ClcCacheEntry *pdnce, int type, LPTSTR text, int text_size, TCHAR *variable_text, BOOL xstatus_has_priority,
-					  BOOL show_status_if_no_away, BOOL show_listening_if_no_away, BOOL use_name_and_message_for_xstatus,
-					  BOOL pdnce_time_show_only_if_different);
+	BOOL show_status_if_no_away, BOOL show_listening_if_no_away, BOOL use_name_and_message_for_xstatus,
+	BOOL pdnce_time_show_only_if_different);
 
-void amRequestAwayMsg(HANDLE hContact);
+void amRequestAwayMsg(MCONTACT hContact);
 
 #endif // __CACHE_FUNCS_H__

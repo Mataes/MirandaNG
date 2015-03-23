@@ -73,13 +73,11 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>false</ExceptionHandling>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BufferSecurityCheck>true</BufferSecurityCheck>
-      <AdditionalOptions>
-      </AdditionalOptions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>hdr/modern_commonheaders.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
@@ -90,7 +88,7 @@
       <AdditionalIncludeDirectories>..\..\include;..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalManifestDependencies>type=%27Win32%27 name=%27Microsoft.Windows.Common-Controls%27 version=%276.0.0.0%27 processorArchitecture=%27*%27 publicKeyToken=%276595b64144ccf1df%27 language=%27*%27;%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -108,8 +106,6 @@
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <BufferSecurityCheck>true</BufferSecurityCheck>
-      <AdditionalOptions>
-      </AdditionalOptions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>hdr/modern_commonheaders.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
@@ -119,7 +115,7 @@
       <AdditionalIncludeDirectories>..\..\include;..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalManifestDependencies>type=%27Win32%27 name=%27Microsoft.Windows.Common-Controls%27 version=%276.0.0.0%27 processorArchitecture=%27*%27 publicKeyToken=%276595b64144ccf1df%27 language=%27*%27;%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -134,14 +130,12 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <AdditionalOptions>
-      </AdditionalOptions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>hdr/modern_commonheaders.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
@@ -151,7 +145,7 @@
       <AdditionalIncludeDirectories>..\..\include;..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalManifestDependencies>type=%27Win32%27 name=%27Microsoft.Windows.Common-Controls%27 version=%276.0.0.0%27 processorArchitecture=%27*%27 publicKeyToken=%276595b64144ccf1df%27 language=%27*%27;%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
@@ -174,7 +168,6 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <FloatingPointModel>Fast</FloatingPointModel>
-      <AdditionalOptions> </AdditionalOptions>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>hdr/modern_commonheaders.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
@@ -185,7 +178,7 @@
       <AdditionalIncludeDirectories>..\..\include;..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>MSImg32.Lib;comctl32.lib;shlwapi.lib;gdiplus.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalManifestDependencies>type=%27Win32%27 name=%27Microsoft.Windows.Common-Controls%27 version=%276.0.0.0%27 processorArchitecture=%27*%27 publicKeyToken=%276595b64144ccf1df%27 language=%27*%27;%(AdditionalManifestDependencies)</AdditionalManifestDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
@@ -198,6 +191,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\CLUIFrames\cluiframes.cpp">
+      <PrecompiledHeaderFile>../hdr/modern_commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\CLUIFrames\framesmenu.cpp">
+      <PrecompiledHeaderFile>../hdr/modern_commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <ClCompile Include="src\CLUIFrames\groupmenu.cpp">
+      <PrecompiledHeaderFile>../hdr/modern_commonheaders.h</PrecompiledHeaderFile>
+    </ClCompile>
     <ClCompile Include="src\init.cpp" />
     <ClCompile Include="src\modern_aniavatars.cpp" />
     <ClCompile Include="src\modern_awaymsg.cpp" />
@@ -216,28 +218,23 @@
     <ClCompile Include="src\modern_clistsettings.cpp" />
     <ClCompile Include="src\modern_clisttray.cpp" />
     <ClCompile Include="src\modern_clui.cpp" />
-    <ClCompile Include="src\modern_cluiframes.cpp" />
     <ClCompile Include="src\modern_cluiservices.cpp" />
     <ClCompile Include="src\modern_commonheaders.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\modern_contact.cpp" />
     <ClCompile Include="src\modern_docking.cpp" />
-    <ClCompile Include="src\modern_framesmenu.cpp" />
     <ClCompile Include="src\modern_gdiplus.cpp" />
     <ClCompile Include="src\modern_gettextasync.cpp" />
     <ClCompile Include="src\modern_global.cpp" />
-    <ClCompile Include="src\modern_groupmenu.cpp" />
     <ClCompile Include="src\modern_image_array.cpp" />
     <ClCompile Include="src\modern_keyboard.cpp" />
     <ClCompile Include="src\modern_log.cpp" />
     <ClCompile Include="src\modern_newrowopts.cpp" />
-    <ClCompile Include="src\modern_popup.cpp" />
     <ClCompile Include="src\modern_row.cpp" />
     <ClCompile Include="src\modern_rowheight_funcs.cpp" />
     <ClCompile Include="src\modern_rowtemplateopt.cpp" />
     <ClCompile Include="src\modern_skinbutton.cpp" />
-    <ClCompile Include="src\modern_skineditor.cpp" />
     <ClCompile Include="src\modern_skinengine.cpp" />
     <ClCompile Include="src\modern_skinopt.cpp" />
     <ClCompile Include="src\modern_skinselector.cpp" />
@@ -251,13 +248,13 @@
     <ClCompile Include="src\modern_xptheme.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\CLUIFrames\cluiframes.h" />
     <ClInclude Include="src\hdr\modern_cache_funcs.h" />
     <ClInclude Include="src\hdr\modern_callproc.h" />
     <ClInclude Include="src\hdr\modern_clc.h" />
     <ClInclude Include="src\hdr\modern_clcpaint.h" />
     <ClInclude Include="src\hdr\modern_clist.h" />
     <ClInclude Include="src\hdr\modern_clui.h" />
-    <ClInclude Include="src\hdr\modern_cluiframes.h" />
     <ClInclude Include="src\hdr\modern_commonheaders.h" />
     <ClInclude Include="src\hdr\modern_commonprototypes.h" />
     <ClInclude Include="src\hdr\modern_defsettings.h" />
@@ -265,7 +262,6 @@
     <ClInclude Include="src\hdr\modern_image_array.h" />
     <ClInclude Include="src\hdr\modern_layered_window_engine.h" />
     <ClInclude Include="src\hdr\modern_log.h" />
-    <ClInclude Include="src\hdr\modern_popup.h" />
     <ClInclude Include="src\hdr\modern_row.h" />
     <ClInclude Include="src\hdr\modern_rowheight_funcs.h" />
     <ClInclude Include="src\hdr\modern_skinengine.h" />

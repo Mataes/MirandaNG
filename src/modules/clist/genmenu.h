@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -63,27 +64,28 @@ struct TIntMenuObject : public MZeroedObject
 	TIntMenuObject();
 	~TIntMenuObject();
 
-	char* Name;
-	int   id;
+	char  *pszName;
+	TCHAR *ptszDisplayName;
+	int    id;
 
 	//ExecService
 	//LPARAM lParam;//owner data
 	//WPARAM wParam;//allways lparam from winproc
-	char *ExecService;
+	LPCSTR ExecService;
 
 	//CheckService called when building menu
 	//return false to skip item.
 	//LPARAM lParam;//0
 	//WPARAM wParam;//CheckParam
-	char *CheckService;//analog to check_proc
+	LPCSTR CheckService;//analog to check_proc
 
 	//LPARAM lParam;//ownerdata
 	//WPARAM wParam;//menuitemhandle
-	char *FreeService;//callback service used to free ownerdata for menuitems
+	LPCSTR FreeService;//callback service used to free ownerdata for menuitems
 
 	//LPARAM lParam;//MENUITEMINFO filled with all needed data
 	//WPARAM wParam;//menuitemhandle
-	char *onAddService;//called just before add MENUITEMINFO to hMenu
+	LPCSTR onAddService;//called just before add MENUITEMINFO to hMenu
 
 	TMO_LinkedList m_items;
 	HIMAGELIST m_hMenuIcons;

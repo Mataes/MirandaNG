@@ -7,8 +7,8 @@ extern int status_icon_list_size;
 int InitStatusIcons();
 int DeinitStatusIcons();
 
-int  GetStatusIconsCount(HANDLE hContact);
-void DrawStatusIcons(HANDLE hContact, HDC hdc, RECT r, int gap);
-void CheckIconClick(HANDLE hContact, HWND hwndFrom, POINT pt, RECT r, int gap, int flags);
+int  GetStatusIconsCount(MCONTACT hContact);
+void DrawStatusIcons(MCONTACT hContact, HDC hdc, const RECT &rc, int gap);
+void CheckStatusIconClick(MCONTACT hContact, HWND hwndFrom, POINT pt, const RECT &rc, int gap, int flags);
 
 #endif

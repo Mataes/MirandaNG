@@ -6,6 +6,7 @@
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2008 Joe Kucera, Bio
+// Copyright © 2012-2014 Miranda NG Team
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,11 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-// -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
 #include <m_skin.h>
@@ -39,7 +37,7 @@ static int sttCompareProtocols(const CIcqProto *p1, const CIcqProto *p2)
 
 LIST<CIcqProto> g_Instances(1, sttCompareProtocols);
 
-static CIcqProto* IcqGetInstanceByHContact(HANDLE hContact)
+static CIcqProto* IcqGetInstanceByHContact(MCONTACT hContact)
 {
 	char* szProto = GetContactProto(hContact);
 	if (szProto == NULL)
@@ -54,37 +52,37 @@ static CIcqProto* IcqGetInstanceByHContact(HANDLE hContact)
 
 static INT_PTR IcqMenuHandleRequestAuth(WPARAM wParam, LPARAM lParam)
 {
-	CIcqProto* ppro = IcqGetInstanceByHContact((HANDLE)wParam);
+	CIcqProto* ppro = IcqGetInstanceByHContact(wParam);
 	return (ppro) ? ppro->RequestAuthorization(wParam, lParam) : 0;
 }
 
 static INT_PTR IcqMenuHandleGrantAuth(WPARAM wParam, LPARAM lParam)
 {
-	CIcqProto* ppro = IcqGetInstanceByHContact((HANDLE)wParam);
+	CIcqProto* ppro = IcqGetInstanceByHContact(wParam);
 	return (ppro) ? ppro->GrantAuthorization(wParam, lParam) : 0;
 }
 
 static INT_PTR IcqMenuHandleRevokeAuth(WPARAM wParam, LPARAM lParam)
 {
-	CIcqProto* ppro = IcqGetInstanceByHContact((HANDLE)wParam);
+	CIcqProto* ppro = IcqGetInstanceByHContact(wParam);
 	return (ppro) ? ppro->RevokeAuthorization(wParam, lParam) : 0;
 }
 
 static INT_PTR IcqMenuHandleAddServContact(WPARAM wParam, LPARAM lParam)
 {
-	CIcqProto* ppro = IcqGetInstanceByHContact((HANDLE)wParam);
+	CIcqProto* ppro = IcqGetInstanceByHContact(wParam);
 	return (ppro) ? ppro->AddServerContact(wParam, lParam) : 0;
 }
 
 static INT_PTR IcqMenuHandleXStatusDetails(WPARAM wParam, LPARAM lParam)
 {
-	CIcqProto* ppro = IcqGetInstanceByHContact((HANDLE)wParam);
+	CIcqProto* ppro = IcqGetInstanceByHContact(wParam);
 	return (ppro) ? ppro->ShowXStatusDetails(wParam, lParam) : 0;
 }
 
 static INT_PTR IcqMenuHandleOpenProfile(WPARAM wParam, LPARAM lParam)
 {
-	CIcqProto* ppro = IcqGetInstanceByHContact((HANDLE)wParam);
+	CIcqProto* ppro = IcqGetInstanceByHContact(wParam);
 	return (ppro) ? ppro->OpenWebProfile(wParam, lParam) : 0;
 }
 
@@ -97,7 +95,7 @@ static int IcqPrebuildContactMenu( WPARAM wParam, LPARAM lParam )
 	Menu_ShowItem(g_hContactMenuItems[ICMI_XSTATUS_DETAILS], FALSE);
 	Menu_ShowItem(g_hContactMenuItems[ICMI_OPEN_PROFILE], FALSE);
 
-	CIcqProto* ppro = IcqGetInstanceByHContact((HANDLE)wParam);
+	CIcqProto* ppro = IcqGetInstanceByHContact(wParam);
 	return (ppro) ? ppro->OnPreBuildContactMenu(wParam, lParam) : 0;
 }
 
@@ -166,28 +164,26 @@ void g_MenuInit(void)
 
 void g_MenuUninit(void)
 {
-	CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_AUTH_REQUEST], 0);
-	CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_AUTH_GRANT], 0);
-	CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_AUTH_REVOKE], 0);
-	CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_ADD_TO_SERVLIST], 0);
-	CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_XSTATUS_DETAILS], 0);
-	CallService(MS_CLIST_REMOVECONTACTMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_OPEN_PROFILE], 0);
+	CallService(MO_REMOVEMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_AUTH_REQUEST], 0);
+	CallService(MO_REMOVEMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_AUTH_GRANT], 0);
+	CallService(MO_REMOVEMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_AUTH_REVOKE], 0);
+	CallService(MO_REMOVEMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_ADD_TO_SERVLIST], 0);
+	CallService(MO_REMOVEMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_XSTATUS_DETAILS], 0);
+	CallService(MO_REMOVEMENUITEM, (WPARAM)g_hContactMenuItems[ICMI_OPEN_PROFILE], 0);
 }
 
 
-INT_PTR CIcqProto::OpenWebProfile(WPARAM wParam, LPARAM lParam)
+INT_PTR CIcqProto::OpenWebProfile(WPARAM hContact, LPARAM)
 {
-	HANDLE hContact = (HANDLE)wParam;
 	DWORD dwUin = getContactUin(hContact);
 	char url[256];
-	mir_snprintf(url, sizeof(url), "http://www.icq.com/people/%d",dwUin);
-	return CallService(MS_UTILS_OPENURL, 1, (LPARAM)url);
+	mir_snprintf(url, SIZEOF(url), "http://www.icq.com/people/%d",dwUin);
+	return CallService(MS_UTILS_OPENURL, OUF_NEWWINDOW, (LPARAM)url);
 }
 
 
-int CIcqProto::OnPreBuildContactMenu(WPARAM wParam, LPARAM)
+int CIcqProto::OnPreBuildContactMenu(WPARAM hContact, LPARAM)
 {
-	HANDLE hContact = (HANDLE)wParam;
 	if (hContact == NULL)
 		return 0;
 
@@ -197,18 +193,18 @@ int CIcqProto::OnPreBuildContactMenu(WPARAM wParam, LPARAM)
 		DWORD dwUin = getContactUin(hContact);
 
 		Menu_ShowItem(g_hContactMenuItems[ICMI_AUTH_REQUEST],
-			dwUin && (bCtrlPressed || (getByte((HANDLE)wParam, "Auth", 0) && getWord((HANDLE)wParam, DBSETTING_SERVLIST_ID, 0))));
-		Menu_ShowItem(g_hContactMenuItems[ICMI_AUTH_GRANT], dwUin && (bCtrlPressed || getByte((HANDLE)wParam, "Grant", 0)));
+			dwUin && (bCtrlPressed || (getByte(hContact, "Auth", 0) && getWord(hContact, DBSETTING_SERVLIST_ID, 0))));
+		Menu_ShowItem(g_hContactMenuItems[ICMI_AUTH_GRANT], dwUin && (bCtrlPressed || getByte(hContact, "Grant", 0)));
 		Menu_ShowItem(g_hContactMenuItems[ICMI_AUTH_REVOKE],
-			dwUin && (bCtrlPressed || (getByte("PrivacyItems", 0) && !getByte((HANDLE)wParam, "Grant", 0))));
+			dwUin && (bCtrlPressed || (getByte("PrivacyItems", 0) && !getByte(hContact, "Grant", 0))));
 		Menu_ShowItem(g_hContactMenuItems[ICMI_ADD_TO_SERVLIST],
-			m_bSsiEnabled && !getWord((HANDLE)wParam, DBSETTING_SERVLIST_ID, 0) &&
-			!getWord((HANDLE)wParam, DBSETTING_SERVLIST_IGNORE, 0) &&
+			m_bSsiEnabled && !getWord(hContact, DBSETTING_SERVLIST_ID, 0) &&
+			!getWord(hContact, DBSETTING_SERVLIST_IGNORE, 0) &&
 			!db_get_b(hContact, "CList", "NotOnList", 0));
 	}
 
 	Menu_ShowItem(g_hContactMenuItems[ICMI_OPEN_PROFILE],getContactUin(hContact) != 0);
-	BYTE bXStatus = getContactXStatus((HANDLE)wParam);
+	BYTE bXStatus = getContactXStatus(hContact);
 
 	Menu_ShowItem(g_hContactMenuItems[ICMI_XSTATUS_DETAILS], m_bHideXStatusUI ? 0 : bXStatus != 0);
 	if (bXStatus && !m_bHideXStatusUI) {
@@ -227,7 +223,7 @@ int CIcqProto::OnPreBuildContactMenu(WPARAM wParam, LPARAM)
 /////////////////////////////////////////////////////////////////////////////////////////
 // OnPreBuildStatusMenu event
 
-int CIcqProto::OnPreBuildStatusMenu(WPARAM wParam, LPARAM lParam)
+int CIcqProto::OnPreBuildStatusMenu(WPARAM, LPARAM)
 {
 	InitXStatusItems(TRUE);
 	return 0;

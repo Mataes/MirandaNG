@@ -1,172 +1,182 @@
 ﻿#muuid {e4058506-6494-4d60-9cf4-40bf545f78bd}
 ;============================================================
 ;  File: QuickSearch.dll
-;  Module: Quick Search, Quick Search Mod
-;  Versions: 1.4.0.4 - 1.4.0.18
-;  URL: http://miranda-im.org/download/details.php?action=viewfile&id=260
+;  Module: Quick Search
+;  Version: 1.4.2.0
+;  Authors: Awkward
 ;============================================================
-[Global QuickSearch hotkey]
-Глобальная комбинация
-[Local QuickSearch hotkey]
-Локальная комбинация
-[Show Offline contacts]
-Показывать отключённых
-[New column]
-Новый
-[Set Item]
-Установить
-[wParam type:]
-wParam тип:
-[lParam type:]
-lParam тип:
-[Sort by Status]
-Сортировать по статусу
-[Don't Use Tool Window Style]
-Использовать темы Windows
-[Draw Grid]
-Рисовать сетку
-[integer value]
-целое число
-[Save Item]
-Сохранить значение
-[ClientID]
-Клиент
+[This plugin allows you to quick search for nickname, firstname, lastname, email, uin in your contact list. And now you may add any setting to display - for example user's version of Miranda, group or city.]
+Плагин позволит вам быстро найти ник, имя, фамилию, e-mail, uin в вашем списке контактов. Пользователь может добавить любую настройку для отображения (например, версии Miranda, группы или города).
 [Quick Search]
 Поиск по списку
 [Quick search]
 Поиск по списку
-[Search on:]
-Искать в:
-[Quick Search:]
-Быстрый поиск:
-[UID:]
-Пользователь:
-[E-mail Address:]
-E-mail:
-[MirandaV]
-Версия Miranda
-[Ext IP]
-Внешний IP
-[Last Event]
-Появления
-[Online Since]
-В сети с:
-[Quick Search Options]
-Настройки быстрого поиска
-[&New]
-&Новое
-[D&n]
-Вн
-[Setting:]
-Парам.:
-[De&fault]
-Умолчания
-[&Set Item]
-Добавить
-[At Start Sort by Status]
-Сортировать по состоянию
-[Global scope hotkey:]
-Горячая клавиша:
-[Miranda scope hotkey:]
-... в Miranda:
-[Add Item to Main Menu]
-Добавить пункт в меню
-[Show Only Users in List]
-Только контакты из списка
-[Add Button to TopToolBar]
-Кнопка на Панели кнопок
-[Additional Options]
-Дополнительные параметры
-[Columns && Data]
-Колонки и данные
-[Auto Close mode]
-Закрывать автоматически
-[InfoType:]
-Тип пер.:
+[Title]
+Заголовок
 [Module/InfoType]
 Модуль/Тип пер.
-[Not Selected]
-Не выбрано
-[FIRSTNAME]
-Имя
-[LASTNAME]
-Фамилия
-[CUSTOMNICK]
-Свое "название"
-[EMAIL]
-Почта
-[CITY]
-Город
-[STATE]
-Штат
-[COUNTRY]
-Страна
-[PHONE]
-Телефон
-[HOMEPAGE]
-Сайт
-[ABOUT]
-О себе
-[GENDER]
-Пол
-[AGE]
-Возраст
-[FIRSTLAST]
-Имя Фамилия
-[UNIQUEID]
-Идентификатор
-[This Plugin allow you to quick search for nickname,firstname, lastname, email, uin in your contact list.And now you may add any setting to display - for exampleusers version of miranda,group or city.]
-Плагин позволит вам быстро найти ник, имя, фамилию, e-mail, uin в вашем списке контактов. Теперь вы можете добавить любую настройку для отображения. Например версии Miranda, группы или города.
-[This Plugin allow you to quick search for nickname,firstname, lastname, email, uin in your contact list.And now you may add any setting to display - for exampleusers version of miranda,group or city.Press F3 for activate...]
-Плагин позволит вам быстро найти прозвище, имя, фамилию, e-mail, uin в вашем списке контактов. Теперь вы можете добавить любую настройку для отображения. Например версии Miranda, группы или города. Нажмите F3 для запуска.
-[New Column]
+[Setting]
+Параметр
+[Reload]
+Перегрузить
+[New]
 Добавить
-[Save Column]
-Cохранить
+[Up]
+Выше
+[Down]
+Ниже
+[Delete]
+Удалить
+[Default]
+По умолчанию
+[Additional Options]
+Дополнительные параметры
+[Tool Window Style]
+Окно в стиле панели
+[Draw Grid]
+Рисовать сетку
+[Save search pattern]
+Сохранить маску поиска
+[Auto Close mode]
+Закрывать автоматически
+[Sort by Status]
+Сортировать по статусу
+[Show Client Icons]
+Значки клиентов
+[Settings]
+Настройки
+[Title:]
+Заголовок:
+[Account]
+Учётная запись
+[Gender]
+Пол
+[UserID]
+ID пользователя
+[Nickname]
+Ник:
+[First name]
+Имя
+[Last name]
+Фамилия
+[Group]
+Группа
+[Container]
+Контейнер
+[E-mail]
+Почта
+[Client ID]
+ID клиента
+[Ext IP]
+Внешний IP
+[LastSeen]
+Последнее появление
+[Last Event]
+Последнее событие
+[Online since]
+В сети с
+[Metacontact]
+Метаконтакт
+[Event count]
+Количество событий
+[Contact add time]
+Время, когда был добавлен контакт
+[Type:]
+Тип:
+[DB setting]
+Настройка базы
+[Script]
+Скрипт
+[Service]
+Вызов службы
+[Contact info]
+Данные контакта
+[Other]
+Другое
+[Data type:]
+Тип данных:
+[Byte]
+Байт
+[Word]
+Слово
+[DWord]
+Дв.слово
+[Signed]
+Со знаком
+[As hex]
+Шестнадцатерич.
+[String]
+Строка
+[TimeStamp]
+Время
+[Module:]
+Модуль:
+[Setting:]
+Параметр:
+[Service:]
+Служба:
+[Param]
+Параметр
+[number value]
+число
+[ANSI string]
+строка ANSI
+[Unicode string]
+строка Unicode
+[current contact]
+текущий контакт
+[last result]
+последний результат
+[parameter]
+параметр
+[Result]
+Результат
+[Result type]
+Тип
+[Free memory]
+Очищать память
+[Save]
+Сохранить
+[All]
+Все
+[Close]
+Закрыть
+[Refresh]
+Обновить
+[QuickSearch]
+Поиск по списку
+[Show Offline contacts]
+Показывать отключённых
+[New column]
+Новый
+[Save Item]
+Сохранить значение
+[InfoType:]
+Тип переменной:
+[New Column]
+Добавить колонку
 [Column Up]
 Выше
 [Column Down]
 Ниже
 [Delete Column]
 Удалить колонку
-[Only Users in List]
-Только в списке
-[Show Client Icons]
-Значки клиентов
-[Item in Main Menu]
-Пункт в главном меню
-[Button on TopToolBar]
-Кнопка в Панели кнопок
-[Tool Window Style]
-Окно в стиле панели
-[Global scope hotkey]
-Глобальное сочетание
-[Miranda scope hotkey]
-Сочетание в Miranda
-[CSV with headers]
-CSV с заголовками
-[Skip minimized columns]
-Игнор скрытых колонок
-[Copy line to CSV]
-Копировать в CSV
-[Save search pattern]
-Сохранить маску поиска
-[QuickSearch error]
-Ошибка быстрого поиска
-[Quick Search Mod]
-Быстрый поиск (мод)
-[Script]
-Скрипт
-[Int]
-Целое
+[Male]
+Мужской
+[Female]
+Женский
+[Contacts]
+Контакты
 [ContactInfo]
 Данные контакта
 [LastEvent]
 Последнее событие
-[TimeStamp]
-Время
+[EventCount]
+Счетчик событий
 [Script Editor]
 Редактор скриптов
+[Normal background]
+Обычный фон
 [Normal foreground]
 Обычный текст
 [Odd background]
@@ -181,45 +191,78 @@ CSV с заголовками
 Фон удалённых учётных записей
 [Deleted account foreground]
 Текст удалённых учётных записей
-[Not-in-list contact background]
-Фон контактов не в списке
-[Not-in-list contact foreground]
-Текст контактов не в списке
-[C&onvert to Meta]
-Прео&бразовать в метаконтакт
-[Some of selected contacts in different metacontacts already]
-Некоторые из выделенных контактов уже находятся в других метаконтактах
-[Do you really want to delete selected contacts?]
-Вы хотите удалить выделенные контакты?
-[One or more contacts in same Meta already. Try to convert anyway?]
-Один или несколько контактов в похожем метаконтакте. Все равно преобразовать?
-[Metacontact background]
-Фон метаконтактов
-[Metacontact foreground]
-Текст метаконтактов
-[SubMetacontact background]
-Фон субконтактов
-[SubMetacontact foreground]
-Текст субконтактов
-[%u users found (%u) Online: %u]
-%u пользователей найдено (из %u) В сети: %u
-[ users found (]
- пользователей найдено (
-[) Online: ]
-) В сети:\s
-[Colorize]
-Добавить цвет
-[Metacontact]
-Метаконтакт
 [Hidden contact background]
 Фон скрытых контактов
 [Hidden contact foreground]
 Текст скрытых контактов
+[Metacontact background]
+Фон метаконтактов
+[Metacontact foreground]
+Текст метаконтактов
+[Subcontact background]
+Фон субконтактов
+[Subcontact foreground]
+Текст субконтактов
+[&Delete]
+&Удалить
+[&Copy]
+&Копировать
+[C&onvert to Meta]
+Прео&бразовать в метаконтакт
+[Attach to &Tab container]
+Присоединить к &контейнеру
+[&Move to Group]
+&Переместить в группу
+[Some of selected contacts in different metacontacts already]
+Некоторые из выделенных контактов уже находятся в других метаконтактах
+[Do you really want to delete selected contacts?]
+Вы хотите удалить выделенные контакты?
+[Warning]
+Предупреждение
+[One or more contacts in same Meta already. Try to convert anyway?]
+Один или несколько контактов в похожем метаконтакте. Все равно преобразовать?
+[Editing of column ]
+Изменение колонки\s
+[%i users found (%i) Online: %i]
+%i пользователей найдено (из %i) В сети: %i
+[ users found (]
+ пользователей найдено (
+[) Online: ]
+) В сети:\s
+[Online]
+В сети
+[deleted]
+удалено
+[off]
+выкл.
+[active]
+активн.
+[Colorize]
+Добавить цвет
 [QuickSearch window hotkey]
 Открыть окно быстрого поиска
-[Previous item]
-Предыдущее совпадение
-[Next item]
-Следующее совпадение
-[Open main window]
-Открыть основное окно
+[Column content is contact property (see list). Can be empty.]
+Колонка содержит свойство контакта (см. список). Может быть пустой.
+[Content is time of last contact event.]
+Содержит время последнего события контакта.
+[Content is metacontact info.]
+Содержит информацию метаконтакта.
+[Content is count of ALL contact events (not messages only)]
+Содержит количество ВСЕХ событий контакта (не только сообщений)
+[Change setting through QS]
+Изменить с помощью QuickSearch
+[default]
+по умолчанию
+[Selected]
+Выбрано
+[contacts]
+контактов
+[Unknown]
+Неизвестный
+[Stay on Top]
+Поверх всех окон
+; these lines are not present in the sources, but they are present in compiled plugin
+[Text Editor]
+Текстовый редактор
+[Wrap Text]
+Перенос строк

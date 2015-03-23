@@ -13,6 +13,9 @@
       <UniqueIdentifier>{160168fd-2f10-425e-bd83-f37565fffc2c}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
+    <Filter Include="Source Files\CLUIFrames">
+      <UniqueIdentifier>{826d2dcb-6f27-428e-a2bf-4825dc88ce32}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\init.cpp">
@@ -69,9 +72,6 @@
     <ClCompile Include="src\modern_clui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\modern_cluiframes.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\modern_cluiservices.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -84,9 +84,6 @@
     <ClCompile Include="src\modern_docking.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\modern_framesmenu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\modern_gdiplus.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -94,9 +91,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\modern_global.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\modern_groupmenu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\modern_image_array.cpp">
@@ -111,9 +105,6 @@
     <ClCompile Include="src\modern_newrowopts.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\modern_popup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\modern_row.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -124,9 +115,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\modern_skinbutton.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\modern_skineditor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\modern_skinengine.cpp">
@@ -161,6 +149,15 @@
     </ClCompile>
     <ClCompile Include="src\modern_utils.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CLUIFrames\cluiframes.cpp">
+      <Filter>Source Files\CLUIFrames</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CLUIFrames\framesmenu.cpp">
+      <Filter>Source Files\CLUIFrames</Filter>
+    </ClCompile>
+    <ClCompile Include="src\CLUIFrames\groupmenu.cpp">
+      <Filter>Source Files\CLUIFrames</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -197,9 +194,6 @@
     <ClInclude Include="src\hdr\modern_clui.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\hdr\modern_cluiframes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\hdr\modern_commonprototypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -216,9 +210,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\hdr\modern_log.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\hdr\modern_popup.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\hdr\modern_row.h">
@@ -253,6 +244,9 @@
     </ClInclude>
     <ClInclude Include="src\Version.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\CLUIFrames\cluiframes.h">
+      <Filter>Source Files\CLUIFrames</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

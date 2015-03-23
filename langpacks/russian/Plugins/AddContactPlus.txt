@@ -2,9 +2,7 @@
 ;============================================================
 ;  File: AddContactPlus.dll
 ;  Plugin: Add contact+
-;  Version: 0.9.9.1
-;  URL: http://miranda-ng.org/distr/x32/Plugins/addcontactplus.zip
-;  Source: http://svn.miranda-ng.org/main/trunk/plugins/AddContactPlus/
+;  Version: 0.9.9.2
 ;  Authors: Bartosz 'Dezeath' Bialek
 ;============================================================
 [Provides the ability to quickly add new contacts.]
@@ -18,7 +16,7 @@
 [Contact ID:]
 ID контакта:
 [Custom name:]
-Custom name:
+Заданное имя:
 [Group:]
 Группа:
 [Options]
@@ -29,20 +27,18 @@ Custom name:
 Отправить "Вас добавили"
 [Send authorization request]
 Отправить запрос авторизации
-[Authorization Request]
+[Authorization request]
 Запрос авторизации
 [&Add]
 &Добавить
 [&Cancel]
 &Отмена
 [Please authorize my request and add me to your contact list.]
-Пожалуйста, разрешите добавить Вас в мой список контактов.
+Пожалуйста, разрешите добавить вас в мой список контактов.
 [None]
 Нет
 [The contact cannot be added to your contact list. Please make sure the contact ID is entered correctly.]
 Контакт не может быть добавлен в ваш список контактов. Убедитесь, что вы указали правильный ID пользователя.
-[Add contact]
-Добавить контакт
 [The contact cannot be added to your contact list. If you are not logged into the selected account, please try to do so. Also, make sure the contact ID is entered correctly.]
 Контакт не может быть добавлен в ваш список контактов. Убедитесь, что вы вошли в эту учётную запись и указали правильный ID пользователя.
 [&Add contact...]

@@ -6,6 +6,7 @@
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2010 Joe Kucera
+// Copyright © 2012-2014 Miranda NG Team
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,13 +21,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
 #include "m_extraicons.h"
@@ -34,32 +30,34 @@
 
 HINSTANCE hInst;
 int hLangpack;
+TIME_API tmi;
 CLIST_INTERFACE *pcli;
+
 BOOL bPopupService = FALSE;
 
-HANDLE   hExtraXStatus;
+HANDLE hExtraXStatus;
 
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
 	__PLUGIN_NAME,
-	__VERSION_DWORD,
+	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
 	__DESCRIPTION,
 	__AUTHOR,
 	__AUTHOREMAIL,
 	__COPYRIGHT,
 	__AUTHORWEB,
 	UNICODE_AWARE,   //doesn't replace anything built-in
-	{0x73a9615c, 0x7d4e, 0x4555, {0xba, 0xdb, 0xee, 0x5, 0xdc, 0x92, 0x8e, 0xff}} // {73A9615C-7D4E-4555-BADB-EE05DC928EFF}
+	{ 0x73a9615c, 0x7d4e, 0x4555, { 0xba, 0xdb, 0xee, 0x5, 0xdc, 0x92, 0x8e, 0xff } } // {73A9615C-7D4E-4555-BADB-EE05DC928EFF}
 };
 
-extern "C" PLUGININFOEX __declspec(dllexport) *MirandaPluginInfoEx(DWORD mirandaVersion)
+extern "C" PLUGININFOEX __declspec(dllexport) *MirandaPluginInfoEx(DWORD)
 {
 	return &pluginInfo;
 }
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_PROTOCOL, MIID_LAST};
+extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = { MIID_PROTOCOL, MIID_LAST };
 
-extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
+extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD, LPVOID)
 {
 	hInst = hinstDLL;
 	return TRUE;
@@ -67,39 +65,40 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvRese
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-static PROTO_INTERFACE* icqProtoInit( const char* pszProtoName, const TCHAR* tszUserName )
+static PROTO_INTERFACE* icqProtoInit(const char* pszProtoName, const TCHAR* tszUserName)
 {
 	CIcqProto *ppro = new CIcqProto(pszProtoName, tszUserName);
 	g_Instances.insert(ppro);
 	return ppro;
 }
 
-static int icqProtoUninit( PROTO_INTERFACE* ppro )
+static int icqProtoUninit(PROTO_INTERFACE* ppro)
 {
-	g_Instances.remove(( CIcqProto* )ppro);
-	delete ( CIcqProto* )ppro;
+	g_Instances.remove((CIcqProto*)ppro);
+	delete (CIcqProto*)ppro;
 	return 0;
 }
 
-int ModuleLoad(WPARAM wParam, LPARAM lParam)
+int ModuleLoad(WPARAM, LPARAM)
 {
-	bPopupService = ServiceExists(MS_POPUP_ADDPOPUP);
+	bPopupService = ServiceExists(MS_POPUP_ADDPOPUPT);
 	return 0;
 }
 
 extern "C" int __declspec(dllexport) Load(void)
 {
-	mir_getLP( &pluginInfo );
+	mir_getLP(&pluginInfo);
 	mir_getCLI();
+	mir_getTMI(&tmi);
 
 	srand(time(NULL));
 	_tzset();
 
 	// Register the module
 	PROTOCOLDESCRIPTOR pd = { sizeof(pd) };
-	pd.szName   = ICQ_PROTOCOL_NAME;
-	pd.type     = PROTOTYPE_PROTOCOL;
-	pd.fnInit   = icqProtoInit;
+	pd.szName = ICQ_PROTOCOL_NAME;
+	pd.type = PROTOTYPE_PROTOCOL;
+	pd.fnInit = icqProtoInit;
 	pd.fnUninit = icqProtoUninit;
 	CallService(MS_PROTO_REGISTERMODULE, 0, (LPARAM)&pd);
 
@@ -116,19 +115,16 @@ extern "C" int __declspec(dllexport) Load(void)
 	HookEvent(ME_SYSTEM_MODULELOAD, ModuleLoad);
 	HookEvent(ME_SYSTEM_MODULEUNLOAD, ModuleLoad);
 
-	hExtraXStatus = ExtraIcon_Register("xstatus", LPGEN("ICQ XStatus"), "icq_xstatus13");
+	hExtraXStatus = ExtraIcon_Register("xstatus", LPGEN("ICQ xStatus"), "icq_xstatus13");
 
 	g_MenuInit();
 	return 0;
 }
 
-
 extern "C" int __declspec(dllexport) Unload(void)
 {
 	// destroying contact menu
 	g_MenuUninit();
-
-	g_Instances.destroy();
 	return 0;
 }
 
@@ -151,9 +147,9 @@ void CIcqProto::UpdateGlobalSettings()
 		}
 	}
 
-	if (m_hServerNetlibUser) {
+	if (m_hNetlibUser) {
 		NETLIBUSERSETTINGS nlus = { sizeof(NETLIBUSERSETTINGS) };
-		if ( !m_bSecureConnection && CallService(MS_NETLIB_GETUSERSETTINGS, (WPARAM)m_hServerNetlibUser, (LPARAM)&nlus)) {
+		if ( !m_bSecureConnection && CallService(MS_NETLIB_GETUSERSETTINGS, (WPARAM)m_hNetlibUser, (LPARAM)&nlus)) {
 			if (nlus.useProxy && nlus.proxyType == PROXYTYPE_HTTP)
 				m_bGatewayMode = 1;
 			else

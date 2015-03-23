@@ -53,13 +53,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 #include <m_userinfo.h>
 #include <m_extraicons.h>
 #include <m_message.h>
+#include <m_metacontacts.h>
 
 #include <m_fingerprint.h>
 
 //plugins header
 #include "version.h"
 #include "resource.h"
-#include "utilities.h"
 
 typedef struct {
 	BYTE	b;
@@ -104,15 +104,17 @@ typedef struct _foundInfo
 #define TLEN_CASE					3015	//	Tlen clients (+ versions)
 #define WEATHER_CASE				3016	//	Weather clients
 #define YAHOO_CASE					3017	//	Yahoo clients (+ versions)
+#define FACEBOOK_CASE               3018    //  Facebook clients
+#define VK_CASE                     3019    //  VK clients
 
-#define OTHER_PROTOS_CASE			3018	//	other protocols
-#define OTHERS_CASE					3019	//	other icons
+#define OTHER_PROTOS_CASE			3020	//	other protocols
+#define OTHERS_CASE					3021	//	other icons
 
-#define OVERLAYS_RESOURCE_CASE		3020	//	resource overlays
-#define OVERLAYS_PLATFORM_CASE		3021	//	platforms overlays
-#define OVERLAYS_PROTO_CASE			3022	//	protocols overlays
-#define OVERLAYS_UNICODE_CASE		3023	//	unicode overlay
-#define OVERLAYS_SECURITY_CASE		3024	//	security overlays
+#define OVERLAYS_RESOURCE_CASE		3022	//	resource overlays
+#define OVERLAYS_PLATFORM_CASE		3023	//	platforms overlays
+#define OVERLAYS_PROTO_CASE			3024	//	protocols overlays
+#define OVERLAYS_UNICODE_CASE		3025	//	unicode overlay
+#define OVERLAYS_SECURITY_CASE		3026	//	security overlays
 
 /*
 #define OVERLAYS_RESOURCE_ALT_CASE	24		//	alternative (old style) overlays
@@ -131,7 +133,6 @@ typedef struct _foundInfo
 void ClearFI();
 
 void InitFingerModule(void);
-void UninitFingerModule(void);
 
 int  OnOptInitialise(WPARAM wParam, LPARAM lParam);
 int  OnExtraImageApply(WPARAM wParam, LPARAM lParam);
@@ -152,13 +153,13 @@ void RegisterIcons();
 extern HINSTANCE g_hInst;
 extern HANDLE hHeap;
 
-extern KN_FP_MASK 
-	def_kn_fp_mask[], 
-	def_kn_fp_overlays_mask[], 
-	def_kn_fp_overlays1_mask[], 
-	def_kn_fp_overlays2_mask[],
-	def_kn_fp_overlays3_mask[],
-	def_kn_fp_overlays4_mask[];
+extern KN_FP_MASK
+def_kn_fp_mask[],
+def_kn_fp_overlays_mask[],
+def_kn_fp_overlays1_mask[],
+def_kn_fp_overlays2_mask[],
+def_kn_fp_overlays3_mask[],
+def_kn_fp_overlays4_mask[];
 
 extern int DEFAULT_KN_FP_MASK_COUNT, DEFAULT_KN_FP_OVERLAYS_COUNT, DEFAULT_KN_FP_OVERLAYS2_COUNT, DEFAULT_KN_FP_OVERLAYS3_COUNT, DEFAULT_KN_FP_OVERLAYS4_COUNT;
 

@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define _WIN32_WINNT   0x0500
 #define _WIN32_WINDOWS 0x0500
+#define _CRT_RAND_S
 
 #include <sstream>
 #include <fstream>
@@ -60,9 +61,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <m_smileyadd.h>
 #include <m_toptoolbar.h>
 #include <m_json.h>
+#include <m_imgsrvc.h>
 
 class FacebookProto;
 
+#include "constants.h"
 #include "definitions.h"
 #include "entities.h"
 #include "http.h"
@@ -72,7 +75,6 @@ class FacebookProto;
 #include "proto.h"
 #include "json.h"
 #include "db.h"
-#include "constants.h"
 #include "dialogs.h"
 #include "theme.h"
 #include "resource.h"

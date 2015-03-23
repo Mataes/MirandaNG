@@ -1,58 +1,55 @@
-/*
- * astyle --force-indent=tab=4 --brackets=linux --indent-switches
- *		  --pad=oper --one-line=keep-blocks  --unpad=paren
- *
- * Miranda NG: the free IM client for Microsoft* Windows*
- *
- * Copyright 2000-2009 Miranda ICQ/IM project,
- * all portions of this codebase are copyrighted to the people
- * listed in contributors.txt.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * you should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- * part of tabSRMM messaging plugin for Miranda.
- *
- * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
- *
- * Windows 7 taskbar integration
- *
- * - overlay icons
- * - custom taskbar thumbnails for aero peek in tabbed containers
- * - read Windows 7 task bar configuration from the registry.
- */
-/**
- * how it works:
- *
- * Because of the fact, the DWM does not talk to non-toplevel windows
- * we need an invisible "proxy window" for each tab. This window is a very
- * small and hidden toplevel tool window which is used to communicate
- * with the dwm. Each proxy is associated with the client window (the "tab")
- * and registers itself with the message container window via
- * ITaskbarList3::RegisterTab().
- *
- * Instead of automatically created snapshots of the window content, we
- * use custom generated thumbnails for the task bar buttons, including
- * nickname, UID, status message and avatar. This makes the thumbnails
- * easily recognizable.
- *
- * Thumbnails are generated "on request", only when the desktop window
- * manager needs one.
- *
- * Each proxy window has a CThumbIM or CThumbMUC object which represents
- * the actual thumbnail bitmap.
- */
+/////////////////////////////////////////////////////////////////////////////////////////
+// Miranda NG: the free IM client for Microsoft* Windows*
+//
+// Copyright (ñ) 2012-15 Miranda NG project,
+// Copyright (c) 2000-09 Miranda ICQ/IM project,
+// all portions of this codebase are copyrighted to the people
+// listed in contributors.txt.
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// you should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+// part of tabSRMM messaging plugin for Miranda.
+//
+// (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
+//
+// Windows 7 taskbar integration
+//
+// - overlay icons
+// - custom taskbar thumbnails for aero peek in tabbed containers
+// - read Windows 7 task bar configuration from the registry.
+//
+/////////////////////////////////////////////////////////////////////////////////////////
+//  how it works:
+//
+//  Because of the fact, the DWM does not talk to non-toplevel windows
+//  we need an invisible "proxy window" for each tab. This window is a very
+//  small and hidden toplevel tool window which is used to communicate
+//  with the dwm. Each proxy is associated with the client window (the "tab")
+//  and registers itself with the message container window via
+//  ITaskbarList3::RegisterTab().
+//
+//  Instead of automatically created snapshots of the window content, we
+//  use custom generated thumbnails for the task bar buttons, including
+//  nickname, UID, status message and avatar. This makes the thumbnails
+//  easily recognizable.
+//
+//  Thumbnails are generated "on request", only when the desktop window
+//  manager needs one.
+//
+// Each proxy window has a CThumbIM or CThumbMUC object which represents
+// the actual thumbnail bitmap.
 
 #include "commonheaders.h"
 
@@ -75,8 +72,8 @@ CTaskbarInteract* Win7Taskbar = 0;
 bool CTaskbarInteract::setOverlayIcon(HWND hwndDlg, LPARAM lParam) const
 {
 	if (m_pTaskbarInterface && m_isEnabled && m_fHaveLargeicons) {
-		m_pTaskbarInterface->SetOverlayIcon(hwndDlg,(HICON)lParam, NULL);
-		return true;;
+		m_pTaskbarInterface->SetOverlayIcon(hwndDlg, (HICON)lParam, NULL);
+		return true;
 	}
 	return false;
 }
@@ -227,7 +224,7 @@ void CProxyWindow::verify(TWindowData *dat)
  * and previews for a message session.
  * each tab has one invisible proxy window
  */
-CProxyWindow::CProxyWindow(const TWindowData *dat)
+CProxyWindow::CProxyWindow(TWindowData *dat)
 {
 	m_dat = dat;
 	m_hBigIcon = 0;
@@ -244,7 +241,7 @@ CProxyWindow::CProxyWindow(const TWindowData *dat)
 		BOOL	fIconic = TRUE;
 		BOOL	fHasIconicBitmap = TRUE;
 
-		CMimAPI::m_pfnDwmSetWindowAttribute(m_hwndProxy, DWMWA_FORCE_ICONIC_REPRESENTATION, &fIconic,  sizeof(fIconic));
+		CMimAPI::m_pfnDwmSetWindowAttribute(m_hwndProxy, DWMWA_FORCE_ICONIC_REPRESENTATION, &fIconic, sizeof(fIconic));
 		CMimAPI::m_pfnDwmSetWindowAttribute(m_hwndProxy, DWMWA_HAS_ICONIC_BITMAP, &fHasIconicBitmap, sizeof(fHasIconicBitmap));
 	}
 }
@@ -327,15 +324,15 @@ void CProxyWindow::sendPreview()
 	if (!m_thumb || !dat_active)
 		return;
 
-	FORMATRANGE fr = {0};
-	POINT pt = {0};
+	FORMATRANGE fr = { 0 };
+	POINT pt = { 0 };
 	RECT rcContainer, rcTemp, rcRich, rcLog;
 	HDC hdc, dc;
-	int twips = (int)(15.0f / PluginConfig.g_DPIscaleY);
+	int twips = (int)(15.0f / PluginConfig.m_DPIscaleY);
 	bool fIsChat = m_dat->bType != SESSIONTYPE_IM;
 	HWND 	hwndRich = ::GetDlgItem(m_dat->hwnd, fIsChat ? IDC_CHAT_LOG : IDC_LOG);
 	LONG 	cx, cy;
-	POINT	ptOrigin = {0}, ptBottom;
+	POINT	ptOrigin = { 0 }, ptBottom;
 
 	if (m_dat->dwFlags & MWF_NEEDCHECKSIZE) {
 		RECT	rcClient;
@@ -343,7 +340,7 @@ void CProxyWindow::sendPreview()
 		::SendMessage(m_dat->pContainer->hwnd, DM_QUERYCLIENTAREA, 0, (LPARAM)&rcClient);
 		::MoveWindow(m_dat->hwnd, rcClient.left, rcClient.top, (rcClient.right - rcClient.left), (rcClient.bottom - rcClient.top), FALSE);
 		::SendMessage(m_dat->hwnd, WM_SIZE, 0, 0);
-		::SendMessage(m_dat->hwnd, DM_FORCESCROLL, 0, 0);
+		DM_ScrollToBottom(m_dat, 0, 1);
 	}
 	/*
 		* a minimized container has a null rect as client area, so do not use it
@@ -385,7 +382,7 @@ void CProxyWindow::sendPreview()
 	::DeleteObject(brb);
 	CImageItem::SetBitmap32Alpha(hbm, 100);
 
-	LRESULT first = ::SendMessage(hwndRich, EM_CHARFROMPOS, 0, reinterpret_cast<LPARAM>(&ptOrigin));
+	LRESULT first = ::SendMessage(hwndRich, EM_CHARFROMPOS, 0, LPARAM(&ptOrigin));
 
 	/*
 		* paint the content of the message log control into a separate bitmap without
@@ -403,8 +400,8 @@ void CProxyWindow::sendPreview()
 	if (m_dat->hwndIEView)
 		::SendMessage(m_dat->hwndIEView, WM_PRINT, reinterpret_cast<WPARAM>(hdcRich), PRF_CLIENT | PRF_NONCLIENT);
 	else if (m_dat->hwndHPP) {
-		CSkin::RenderText(hdcRich, m_dat->hTheme, TranslateT("Previews not availble when using History++ plugin for message log display."),
-							&rcRich, DT_VCENTER | DT_CENTER | DT_WORDBREAK, 10, m_dat->pContainer->theme.fontColors[MSGFONTID_MYMSG], false);
+		CSkin::RenderText(hdcRich, m_dat->hTheme, TranslateT("Previews not available when using History++ plugin for message log display."),
+			&rcRich, DT_VCENTER | DT_CENTER | DT_WORDBREAK, 10, m_dat->pContainer->theme.fontColors[MSGFONTID_MYMSG], false);
 	}
 	else {
 		rcRich.right *= twips;
@@ -417,7 +414,7 @@ void CProxyWindow::sendPreview()
 		fr.chrg.cpMax = -1;
 		fr.chrg.cpMin = first;
 
-		::SendMessage(hwndRich, EM_FORMATRANGE, 1, reinterpret_cast<LPARAM>(&fr));
+		::SendMessage(hwndRich, EM_FORMATRANGE, 1, LPARAM(&fr));
 	}
 
 	::SelectObject(hdcRich, hbmRichOld);
@@ -481,7 +478,7 @@ void CProxyWindow::setOverlayIcon(const HICON hIcon, bool fInvalidate)
 void CProxyWindow::updateIcon(const HICON hIcon) const
 {
 	if (m_hwndProxy && hIcon)
-		::SendMessage(m_hwndProxy, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(hIcon));
+		::SendMessage(m_hwndProxy, WM_SETICON, ICON_SMALL, LPARAM(hIcon));
 }
 
 /**
@@ -537,11 +534,11 @@ LRESULT CALLBACK CProxyWindow::stubWndProc(HWND hWnd, UINT msg, WPARAM wParam, L
 	if (pWnd)
 		return(pWnd->wndProc(hWnd, msg, wParam, lParam));
 
-	switch(msg) {
+	switch (msg) {
 	case WM_NCCREATE:
 		CREATESTRUCT *cs = reinterpret_cast<CREATESTRUCT *>(lParam);
 		CProxyWindow *pWnd = reinterpret_cast<CProxyWindow *>(cs->lpCreateParams);
-		::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<UINT_PTR>(pWnd));
+		::SetWindowLongPtr(hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pWnd));
 		return pWnd->wndProc(hWnd, msg, wParam, lParam);
 	}
 	return ::DefWindowProc(hWnd, msg, wParam, lParam);
@@ -552,7 +549,7 @@ LRESULT CALLBACK CProxyWindow::stubWndProc(HWND hWnd, UINT msg, WPARAM wParam, L
  */
 LRESULT CALLBACK CProxyWindow::wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	switch(msg) {
+	switch (msg) {
 
 #if defined(__LOGDEBUG_)
 	case WM_NCCREATE:
@@ -560,22 +557,22 @@ LRESULT CALLBACK CProxyWindow::wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
 		break;
 #endif
 	case WM_CLOSE:
-		{
-			TContainerData* pC = m_dat->pContainer;
+	{
+		TContainerData* pC = m_dat->pContainer;
 
-			if (m_dat->hwnd != pC->hwndActive)
-				SendMessage(m_dat->hwnd, WM_CLOSE, 1, 3);
-			else
-				SendMessage(m_dat->hwnd, WM_CLOSE, 1, 2);
-			if (!IsIconic(pC->hwnd))
-				SetForegroundWindow(pC->hwnd);
-		}
-		return 0;
+		if (m_dat->hwnd != pC->hwndActive)
+			SendMessage(m_dat->hwnd, WM_CLOSE, 1, 3);
+		else
+			SendMessage(m_dat->hwnd, WM_CLOSE, 1, 2);
+		if (!IsIconic(pC->hwnd))
+			SetForegroundWindow(pC->hwnd);
+	}
+	return 0;
 
-		/*
-		* proxy window was activated by clicking on the thumbnail. Send this
-		* to the real message window.
-		*/
+	/*
+	* proxy window was activated by clicking on the thumbnail. Send this
+	* to the real message window.
+	*/
 	case WM_ACTIVATE:
 		if (WA_ACTIVE == wParam) {
 			if (IsWindow(m_dat->hwnd))
@@ -699,10 +696,10 @@ void CThumbBase::renderBase()
 		wchar_t	tszTemp[30];
 
 		m_rcIcon.top += m_sz.cy;
-		mir_sntprintf(tszTemp, 30, TranslateT("%d Unread"), m_dat->dwUnread);
+		mir_sntprintf(tszTemp, SIZEOF(tszTemp), TranslateT("%d unread"), m_dat->dwUnread);
 		CSkin::RenderText(m_hdc, m_dat->hTheme, tszTemp, &m_rcIcon, m_dtFlags | DT_CENTER | DT_WORD_ELLIPSIS, 10, 0, true);
 	}
-	m_rcIcon= m_rcTop;
+	m_rcIcon = m_rcTop;
 	m_rcIcon.top += 2;
 	m_rcIcon.left = m_rc.right / 3;
 	m_cx = m_rcIcon.right - m_rcIcon.left;
@@ -717,7 +714,7 @@ void CThumbBase::setupRect()
 	if (SESSIONTYPE_IM == m_pWnd->getDat()->bType) {
 		m_rcTop = m_rc;
 		m_rcBottom = m_rc;
-		m_rcBottom.top = m_rc.bottom - ( 2 * (m_rcBottom.bottom / 5)) - 2;
+		m_rcBottom.top = m_rc.bottom - (2 * (m_rcBottom.bottom / 5)) - 2;
 		m_rcTop.bottom = m_rcBottom.top - 2;
 
 		m_rcIcon = m_rcTop;
@@ -726,7 +723,7 @@ void CThumbBase::setupRect()
 	else {
 		m_rcTop = m_rc;
 		m_rcBottom = m_rc;
-		m_rcBottom.top = m_rc.bottom - ( 2 * (m_rcBottom.bottom / 5)) - 2;
+		m_rcBottom.top = m_rc.bottom - (2 * (m_rcBottom.bottom / 5)) - 2;
 		m_rcTop.bottom = m_rcBottom.top - 2;
 
 		m_rcIcon = m_rcTop;
@@ -799,7 +796,7 @@ void CThumbIM::renderContent()
 
 	hRgn = ::CreateRectRgn(xOff - 1, yOff - 1, xOff + (LONG)dNewWidth + 2, yOff + (LONG)dNewHeight + 2);
 	CSkin::m_default_bf.SourceConstantAlpha = 150;
-	CMimAPI::m_MyAlphaBlend(m_hdc, xOff, yOff, (LONG)dNewWidth, (LONG)dNewHeight, dc, 0, 0, (LONG)dNewWidth, (LONG)dNewHeight, CSkin::m_default_bf);
+	GdiAlphaBlend(m_hdc, xOff, yOff, (LONG)dNewWidth, (LONG)dNewHeight, dc, 0, 0, (LONG)dNewWidth, (LONG)dNewHeight, CSkin::m_default_bf);
 	CSkin::m_default_bf.SourceConstantAlpha = 255;
 	::FrameRgn(m_hdc, hRgn, reinterpret_cast<HBRUSH>(::GetStockObject(BLACK_BRUSH)), 1, 1);
 
@@ -828,7 +825,7 @@ void CThumbIM::renderContent()
 	m_rcBottom.bottom = m_rc.bottom;
 	m_rcBottom.top = m_rcBottom.bottom - m_sz.cy - 2;
 	CSkin::RenderText(m_hdc, m_dat->hTheme, Win7Taskbar->haveAlwaysGroupingMode() ? m_dat->cache->getUIN() : m_dat->cache->getNick(),
-					  &m_rcBottom, m_dtFlags | DT_SINGLELINE | DT_WORD_ELLIPSIS | DT_END_ELLIPSIS, 10, 0, true);
+		&m_rcBottom, m_dtFlags | DT_SINGLELINE | DT_WORD_ELLIPSIS | DT_END_ELLIPSIS, 10, 0, true);
 
 	/*
 	 * finalize it
@@ -872,21 +869,21 @@ void CThumbMUC::update()
 void CThumbMUC::renderContent()
 {
 	if (m_dat->si) {
-		const MODULEINFO*	mi = MM_FindModule(m_dat->si->pszModule);
+		const MODULEINFO*	mi = pci->MM_FindModule(m_dat->si->pszModule);
 		wchar_t				szTemp[250];
 		const wchar_t*		szStatusMsg = 0;
 
 		if (mi) {
 			if (m_dat->dwUnread) {
-				mir_sntprintf(szTemp, 30, TranslateT("%d Unread"), m_dat->dwUnread);
+				mir_sntprintf(szTemp, SIZEOF(szTemp), TranslateT("%d unread"), m_dat->dwUnread);
 				CSkin::RenderText(m_hdc, m_dat->hTheme, szTemp, &m_rcIcon, m_dtFlags | DT_SINGLELINE | DT_RIGHT, 10, 0, true);
 				m_rcIcon.top += m_sz.cy;
 			}
 			if (m_dat->si->iType != GCW_SERVER) {
 				wchar_t* _p = NULL;
-				if ( m_dat->si->ptszStatusbarText )
+				if (m_dat->si->ptszStatusbarText)
 					_p = wcschr(m_dat->si->ptszStatusbarText, ']');
-				if ( _p ) {
+				if (_p) {
 					_p++;
 					wchar_t	_t = *_p;
 					*_p = 0;
@@ -897,7 +894,7 @@ void CThumbMUC::renderContent()
 					mir_sntprintf(szTemp, SIZEOF(szTemp), TranslateT("Chat room %s"), L"");
 				CSkin::RenderText(m_hdc, m_dat->hTheme, szTemp, &m_rcIcon, m_dtFlags | DT_SINGLELINE | DT_RIGHT, 10, 0, true);
 				m_rcIcon.top += m_sz.cy;
-				mir_sntprintf(szTemp, SIZEOF(szTemp), TranslateT("%d User(s)"), m_dat->si->nUsersInNicklist);
+				mir_sntprintf(szTemp, SIZEOF(szTemp), TranslateT("%d user(s)"), m_dat->si->nUsersInNicklist);
 				CSkin::RenderText(m_hdc, m_dat->hTheme, szTemp, &m_rcIcon, m_dtFlags | DT_SINGLELINE | DT_RIGHT, 10, 0, true);
 			}
 			else {

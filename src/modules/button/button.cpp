@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -35,7 +36,7 @@ struct TTooltips
 };
 
 static LIST<TTooltips> lToolTips(1, NumericKeySortT);
-static CRITICAL_SECTION csTips;
+static mir_cs csTips;
 static BOOL bModuleInitialized = FALSE;
 
 // Used for our own cheap TrackMouseEvent
@@ -44,27 +45,23 @@ static BOOL bModuleInitialized = FALSE;
 
 static void DestroyTheme(MButtonCtrl *ctl)
 {
-	if (closeThemeData) {
-		if (ctl->hThemeButton) {
-			closeThemeData(ctl->hThemeButton);
-			ctl->hThemeButton = NULL;
-		}
-		if (ctl->hThemeToolbar) {
-			closeThemeData(ctl->hThemeToolbar);
-			ctl->hThemeToolbar = NULL;
-		}
-		ctl->bIsThemed = false;
+	if (ctl->hThemeButton) {
+		CloseThemeData(ctl->hThemeButton);
+		ctl->hThemeButton = NULL;
 	}
+	if (ctl->hThemeToolbar) {
+		CloseThemeData(ctl->hThemeToolbar);
+		ctl->hThemeToolbar = NULL;
+	}
+	ctl->bIsThemed = false;
 }
 
 static void LoadTheme(MButtonCtrl *ctl)
 {
 	DestroyTheme(ctl);
-	if (openThemeData) {
-		ctl->hThemeButton = openThemeData(ctl->hwnd, L"BUTTON");
-		ctl->hThemeToolbar = openThemeData(ctl->hwnd, L"TOOLBAR");
-		ctl->bIsThemed = true;
-	}
+	ctl->hThemeButton = OpenThemeData(ctl->hwnd, L"BUTTON");
+	ctl->hThemeToolbar = OpenThemeData(ctl->hwnd, L"TOOLBAR");
+	ctl->bIsThemed = true;
 }
 
 static void SetHwndPropInt(MButtonCtrl* bct, DWORD idObject, DWORD idChild, MSAAPROPID idProp, int val)
@@ -97,7 +94,7 @@ static int TBStateConvert2Flat(int state)
 
 static void PaintWorker(MButtonCtrl *ctl, HDC hdcPaint)
 {
-	if ( !hdcPaint)
+	if (!hdcPaint)
 		return;
 
 	RECT rcClient;
@@ -115,9 +112,9 @@ static void PaintWorker(MButtonCtrl *ctl, HDC hdcPaint)
 	if (ctl->bIsFlat) {
 		if (ctl->hThemeToolbar && ctl->bIsThemed) {
 			int state = IsWindowEnabled(ctl->hwnd)?(ctl->stateId == PBS_NORMAL && ctl->bIsDefault ? PBS_DEFAULTED : ctl->stateId):PBS_DISABLED;
-			if (isThemeBackgroundPartiallyTransparent(ctl->hThemeToolbar, TP_BUTTON, TBStateConvert2Flat(state)))
-				drawThemeParentBackground(ctl->hwnd, hdcMem, &rcClient);
-			drawThemeBackground(ctl->hThemeToolbar, hdcMem, TP_BUTTON, TBStateConvert2Flat(state), &rcClient, &rcClient);
+			if (IsThemeBackgroundPartiallyTransparent(ctl->hThemeToolbar, TP_BUTTON, TBStateConvert2Flat(state)))
+				DrawThemeParentBackground(ctl->hwnd, hdcMem, &rcClient);
+			DrawThemeBackground(ctl->hThemeToolbar, hdcMem, TP_BUTTON, TBStateConvert2Flat(state), &rcClient, &rcClient);
 		}
 		else {
 			HBRUSH hbr;
@@ -150,10 +147,10 @@ static void PaintWorker(MButtonCtrl *ctl, HDC hdcPaint)
 		if (ctl->hThemeButton && ctl->bIsThemed) {
 			int state = IsWindowEnabled(ctl->hwnd)?(ctl->stateId == PBS_NORMAL && ctl->bIsDefault ? PBS_DEFAULTED : ctl->stateId) : PBS_DISABLED;
 
-			if (isThemeBackgroundPartiallyTransparent(ctl->hThemeButton, BP_PUSHBUTTON, state))
-				drawThemeParentBackground(ctl->hwnd, hdcMem, &rcClient);
+			if (IsThemeBackgroundPartiallyTransparent(ctl->hThemeButton, BP_PUSHBUTTON, state))
+				DrawThemeParentBackground(ctl->hwnd, hdcMem, &rcClient);
 
-			drawThemeBackground(ctl->hThemeButton, hdcMem, BP_PUSHBUTTON, state, &rcClient, &rcClient);
+			DrawThemeBackground(ctl->hThemeButton, hdcMem, BP_PUSHBUTTON, state, &rcClient, &rcClient);
 		}
 		else {
 			UINT uState = DFCS_BUTTONPUSH | ((ctl->stateId == PBS_HOT) ? DFCS_HOT : 0) | ((ctl->stateId == PBS_PRESSED) ? DFCS_PUSHED : 0);
@@ -183,7 +180,7 @@ static void PaintWorker(MButtonCtrl *ctl, HDC hdcPaint)
 			iy++;
 		}
 
-		HIMAGELIST hImageList = ImageList_Create(g_cxsmIcon, g_cysmIcon, ILC_MASK | (IsWinVerXPPlus() ? ILC_COLOR32 : ILC_COLOR16), 1, 0);
+		HIMAGELIST hImageList = ImageList_Create(g_cxsmIcon, g_cysmIcon, ILC_MASK | ILC_COLOR32, 1, 0);
 		ImageList_AddIcon(hImageList, ctl->hIcon);
 		HICON hIconNew = ImageList_GetIcon(hImageList, 0, ILD_NORMAL);
 		DrawState(hdcMem, NULL, NULL, (LPARAM) hIconNew, 0, ix, iy, g_cxsmIcon, g_cysmIcon, DST_ICON | (IsWindowEnabled(ctl->hwnd) ? DSS_NORMAL : DSS_DISABLED));
@@ -212,7 +209,7 @@ static void PaintWorker(MButtonCtrl *ctl, HDC hdcPaint)
 		SIZE sz;
 		TCHAR szText[MAX_PATH];
 		GetWindowText(ctl->hwnd, szText, SIZEOF(szText));
-		GetTextExtentPoint32(hdcMem, szText, lstrlen(szText), &sz);
+		GetTextExtentPoint32(hdcMem, szText, (int)mir_tstrlen(szText), &sz);
 		int xOffset = (rcClient.right - rcClient.left - sz.cx)/2;
 		int yOffset = (rcClient.bottom - rcClient.top - sz.cy)/2;
 
@@ -225,7 +222,7 @@ static void PaintWorker(MButtonCtrl *ctl, HDC hdcPaint)
 			sz.cx -= szHot.cx;
 		}
 		if (ctl->arrow)
-			DrawState(hdcMem, NULL, NULL, (LPARAM)ctl->arrow, 0, rcClient.right-rcClient.left-5-GetSystemMetrics(SM_CXSMICON)+( !ctl->hThemeButton && ctl->stateId == PBS_PRESSED?1:0), (rcClient.bottom-rcClient.top)/2-GetSystemMetrics(SM_CYSMICON)/2+(!ctl->hThemeButton && ctl->stateId == PBS_PRESSED?1:0), GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), IsWindowEnabled(ctl->hwnd)?DST_ICON:DST_ICON|DSS_DISABLED);
+			DrawState(hdcMem, NULL, NULL, (LPARAM)ctl->arrow, 0, rcClient.right-rcClient.left-5-GetSystemMetrics(SM_CXSMICON)+(!ctl->hThemeButton && ctl->stateId == PBS_PRESSED?1:0), (rcClient.bottom-rcClient.top)/2-GetSystemMetrics(SM_CYSMICON)/2+(!ctl->hThemeButton && ctl->stateId == PBS_PRESSED?1:0), GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), IsWindowEnabled(ctl->hwnd)?DST_ICON:DST_ICON|DSS_DISABLED);
 
 		SelectObject(hdcMem, ctl->hFont);
 		DrawState(hdcMem, NULL, NULL, (LPARAM)szText, 0,
@@ -259,7 +256,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		bct->fnPainter = PaintWorker;
 		bct->hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 		LoadTheme(bct);
-		
+
 		// Annotating the Role of this object to be PushButton
 		if (SUCCEEDED(CoCreateInstance(CLSID_AccPropServices, NULL, CLSCTX_SERVER, IID_IAccPropServices, (void**)&bct->pAccPropServices)))
 			SetHwndPropInt(bct, OBJID_CLIENT, CHILDID_SELF, PROPID_ACC_ROLE, ROLE_SYSTEM_PUSHBUTTON);
@@ -287,12 +284,12 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 					SendMessage(bct->hwndToolTips, TTM_DELTOOL, 0, (LPARAM)&ti);
 
 				if (SendMessage(bct->hwndToolTips, TTM_GETTOOLCOUNT, 0, (LPARAM)&ti) == 0) {
-					int idx;
 					TTooltips tt;
 					tt.ThreadId = GetCurrentThreadId();
 
 					mir_cslock lck(csTips);
-					if ((idx = lToolTips.getIndex(&tt)) != -1) {
+					int idx = lToolTips.getIndex(&tt);
+					if (idx != -1) {
 						mir_free(lToolTips[idx]);
 						lToolTips.remove(idx);
 						DestroyWindow(bct->hwndToolTips);
@@ -409,7 +406,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 		else return 0;
 
 	case BM_SETCHECK:
-		if ( !bct->bIsPushBtn) break;
+		if (!bct->bIsPushBtn) break;
 		if (wParam == BST_CHECKED) {
 			bct->bIsPushed = 1;
 			bct->stateId = PBS_PRESSED;
@@ -428,7 +425,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 
 	case BUTTONSETARROW: // turn arrow on/off
 		if (wParam) {
-			if ( !bct->arrow) {
+			if (!bct->arrow) {
 				bct->arrow = LoadSkinIcon(SKINICON_OTHER_DOWNARROW);
 				SetHwndPropInt(bct, OBJID_CLIENT, CHILDID_SELF, PROPID_ACC_ROLE, ROLE_SYSTEM_BUTTONDROPDOWN);
 			}
@@ -466,14 +463,13 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 
 	case BUTTONADDTOOLTIP:
 		if (wParam) {
-			TOOLINFO ti = {0};
-			if ( !bct->hwndToolTips) {
-				int idx;
+			if (!bct->hwndToolTips) {
 				TTooltips tt;
 				tt.ThreadId = GetCurrentThreadId();
 
 				mir_cslock lck(csTips);
-				if ((idx = lToolTips.getIndex(&tt)) != -1)
+				int idx = lToolTips.getIndex(&tt);
+				if (idx != -1)
 					bct->hwndToolTips = lToolTips[idx]->hwnd;
 				else {
 					TTooltips *ptt = (TTooltips*)mir_alloc(sizeof(TTooltips));
@@ -483,6 +479,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 					bct->hwndToolTips = ptt->hwnd;
 				}
 			}
+			TOOLINFO ti = {0};
 			ti.cbSize = sizeof(ti);
 			ti.uFlags = TTF_IDISHWND;
 			ti.hwnd = bct->hwnd;
@@ -567,7 +564,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 			if (bct->stateId != PBS_DISABLED) { // don't change states if disabled
 				if (bct->stateId == PBS_PRESSED)
 					showClick = 1;
-				bct->stateId = (msg == WM_LBUTTONUP) ? PBS_HOT : PBS_NORMAL;
+				bct->stateId = PBS_HOT;
 				InvalidateRect(bct->hwnd, NULL, TRUE);
 			}
 			if (showClick && !bct->bSendOnDown) // Tell your daddy you got clicked.
@@ -591,7 +588,7 @@ static LRESULT CALLBACK MButtonWndProc(HWND hwnd, UINT msg,  WPARAM wParam, LPAR
 
 			POINT pt;
 			GetCursorPos(&pt);
-			if ( !PtInRect(&rc, pt)) { // mouse must be gone, trigger mouse leave
+			if (!PtInRect(&rc, pt)) { // mouse must be gone, trigger mouse leave
 				PostMessage(hwnd, WM_MOUSELEAVE, 0, 0L);
 				KillTimer(hwnd, BUTTON_POLLID);
 		}	}
@@ -616,9 +613,10 @@ int LoadButtonModule(void)
 {
 	if (bModuleInitialized)
 		return 0;
-	bModuleInitialized = TRUE;
 
-	WNDCLASSEX wc = {0};
+	bModuleInitialized = true;
+
+	WNDCLASSEX wc = { 0 };
 	wc.cbSize = sizeof(wc);
 	wc.lpszClassName = MIRANDABUTTONCLASS;
 	wc.lpfnWndProc = MButtonWndProc;
@@ -629,21 +627,5 @@ int LoadButtonModule(void)
 	RegisterClassEx(&wc);
 
 	CreateServiceFunction("Button/GetWindowProc", GetButtonProc);
-	InitializeCriticalSection(&csTips);
 	return 0;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Module unload
-
-void UnloadButtonModule()
-{
-	if ( !bModuleInitialized)
-		return;
-
-	{
-		mir_cslock lck(csTips);
-		lToolTips.destroy();
-	}
-	DeleteCriticalSection(&csTips);
 }

@@ -36,7 +36,7 @@ BEGIN
     PUSHBUTTON      "Delete default picture",IDC_REMOVEPROTOPIC,176,99,106,14
     CONTROL         "",IDC_PROTOPIC,"Button",BS_OWNERDRAW,197,118,56,50
     EDITTEXT        IDC_PROTOAVATARNAME,18,176,264,30,ES_MULTILINE | ES_READONLY,WS_EX_CLIENTEDGE
-    CTEXT           "CAUTION: These pictures are NOT your own avatars.\nTo set your own Avatar goto Main Menu | View/Change My Details | Avatars",IDC_STATIC,0,53,294,18
+    CTEXT           "CAUTION: These pictures are NOT your own avatars.\nTo set your own Avatar go to Main menu | View/change my details | Avatars.",IDC_STATIC,0,53,294,18
 END
 
 IDD_OPTIONS_AVATARS DIALOGEX 0, 0, 302, 189
@@ -45,7 +45,7 @@ FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     CONTROL         "Try to draw avatar background transparent (for images without transparency)",IDC_MAKE_TRANSPARENT_BKG,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,19,17,278,12
-    LTEXT           "Num of points to define bkg:",IDC_BKG_NUM_POINTS_L,33,31,135,11
+    LTEXT           "Number of points to define background:",IDC_BKG_NUM_POINTS_L,33,31,135,11
     EDITTEXT        IDC_BKG_NUM_POINTS,173,30,36,12,ES_AUTOHSCROLL | ES_NUMBER
     CONTROL         "",IDC_BKG_NUM_POINTS_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,209,30,11,12
     LTEXT           "Color difference allowed:",IDC_BKG_COLOR_DIFFERENCE_L,33,44,135,11
@@ -65,7 +65,7 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,8,17,281,11
     CONTROL         "Try to draw own avatar background transparent (for images without transparency)",IDC_MAKE_MY_AVATARS_TRANSP,
                     "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,7,30,289,16
-    LTEXT           "This uses the same additional options as in ""Contact Avatars"" tab",IDC_STATIC,17,50,257,13
+    LTEXT           "This uses the same additional options as in ""Contact avatars"" tab",IDC_STATIC,17,50,257,13
 END
 
 IDD_OPENSUBCLASS DIALOGEX 0, 0, 246, 18
@@ -101,7 +101,7 @@ BEGIN
     CONTROL         "Set as hidden",IDC_HIDEAVATAR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,122,186,11
     CONTROL         "Try to make picture background transparent",IDC_MAKETRANSPBKG,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,133,186,11
-    LTEXT           "Num of points to define bkg:",IDC_BKG_NUM_POINTS_L,23,148,118,11
+    LTEXT           "Number of points to define background:",IDC_BKG_NUM_POINTS_L,23,148,118,11
     EDITTEXT        IDC_BKG_NUM_POINTS,145,146,42,12,ES_AUTOHSCROLL | ES_NUMBER
     CONTROL         "",IDC_BKG_NUM_POINTS_SPIN,"msctls_updown32",UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS,187,147,11,12
     LTEXT           "Color difference allowed:",IDC_BKG_COLOR_DIFFERENCE_L,23,162,118,11
@@ -192,14 +192,6 @@ END
 #endif    // APSTUDIO_INVOKED
 
 
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-IDI_AVATAR              ICON                    "avatar.ico"
 #endif    // Neutral resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -250,4 +242,3 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
-

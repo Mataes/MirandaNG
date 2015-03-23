@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,67 +24,82 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct facebook_user
 {
-	HANDLE handle;
+	MCONTACT handle;
 
 	std::string user_id;
 	std::string real_name;
+	std::string nick;
+	std::string username;
 
 	unsigned int status_id;
 	unsigned int gender;
-	DWORD last_active;
+	time_t last_active;
 
 	std::string image_url;
 
 	bool deleted;
+	bool idle;
+
+	ClientType client;
 
 	facebook_user()
 	{
 		this->handle = NULL;
-		this->user_id = this->real_name = this->image_url = "";
 		this->status_id = ID_STATUS_OFFLINE;
 		this->gender = this->last_active = 0;
-		this->deleted = false;
+		this->deleted = this->idle = false;
+		this->client = CLIENT_WEB;
 	}
 
-	facebook_user(facebook_user* fu)
+	TCHAR *getMirVer()
 	{
-		this->handle = fu->handle;
-		this->image_url = fu->image_url;
-		this->real_name = fu->real_name;
-		this->status_id = fu->status_id;
-		this->user_id = fu->user_id;
-		this->gender = fu->gender;
-		this->last_active = fu->last_active;
-		this->deleted = fu->deleted;
+		switch (this->client) {
+		case CLIENT_APP:
+			return _T(FACEBOOK_CLIENT_APP);
+		case CLIENT_MESSENGER:
+			return _T(FACEBOOK_CLIENT_MESSENGER);
+		case CLIENT_OTHER:
+			return _T(FACEBOOK_CLIENT_OTHER);
+		case CLIENT_MOBILE:
+			return _T(FACEBOOK_CLIENT_MOBILE);
+		case CLIENT_WEB:
+		default:
+			return _T(FACEBOOK_CLIENT_WEB);
+		}
 	}
+};
+
+struct facebook_chatroom
+{	
+	std::tstring thread_id;
+	std::tstring chat_name;
+	std::map<std::string, std::string> participants;
+
+	facebook_chatroom(std::tstring thread_id) : thread_id(thread_id) {}
 };
 
 struct facebook_message
 {
 	std::string user_id;
-	std::string message_text;
 	std::string sender_name;
+	std::string message_text;	
 	std::string message_id;
-	DWORD time;
+	std::string thread_id;
+	time_t time;
 	bool isIncoming;
 	bool isUnread;
+	bool isChat;
+	MessageType type;
+
+	int flag_;
 
 	facebook_message()
 	{
-		this->user_id = this->message_text = this->sender_name = this->message_id = "";
 		this->time = 0;
 		this->isUnread = this->isIncoming = true;
-	}
-
-	facebook_message(const facebook_message& msg)
-	{
-		this->user_id = msg.user_id;
-		this->message_text = msg.message_text;
-		this->sender_name = msg.sender_name;
-		this->message_id = msg.message_id;
-		this->time = msg.time;
-		this->isIncoming = msg.isIncoming;
-		this->isUnread = msg.isUnread;
+		this->isChat = false;
+		this->type = MESSAGE;
+		this->flag_ = 0;
 	}
 };
 
@@ -94,10 +109,15 @@ struct facebook_notification
 	std::string text;
 	std::string link;
 	std::string id;
+	time_t time;
+	bool seen;
+	HWND hWndPopup;
 
 	facebook_notification()
 	{
-		this->user_id = this->text = this->link = this->id = "";
+		this->time = 0;
+		this->seen = false;
+		this->hWndPopup = NULL;
 	}
 };
 
@@ -108,10 +128,7 @@ struct facebook_newsfeed
 	std::string text;
 	std::string link;
 
-	facebook_newsfeed()
-	{
-		this->user_id = this->title = this->text = this->link = "";
-	}
+	facebook_newsfeed() {}
 };
 
 struct send_chat
@@ -123,16 +140,16 @@ struct send_chat
 
 struct send_direct
 {
-	send_direct(HANDLE hContact,const std::string &msg, HANDLE msgid) : hContact(hContact), msg(msg), msgid(msgid) {}
-	HANDLE hContact;
+	send_direct(MCONTACT hContact,const std::string &msg, int msgid) : hContact(hContact), msg(msg), msgid(msgid) {}
+	MCONTACT hContact;
 	std::string msg;
-	HANDLE msgid;
+	int msgid;
 };
 
 struct send_typing
 {
-	send_typing(HANDLE hContact,const int status) : hContact(hContact), status(status) {}
-	HANDLE hContact;
+	send_typing(MCONTACT hContact,const int status) : hContact(hContact), status(status) {}
+	MCONTACT hContact;
 	int status;
 };
 
@@ -148,7 +165,6 @@ struct popup_data
 struct status_data
 {
 	status_data() {
-		this->user_id = this->text = this->url = this->place = this->privacy = "";
 		this->isPage = false;
 	}
 	std::string user_id;
@@ -163,7 +179,6 @@ struct status_data
 struct wall_data
 {
 	wall_data() {
-		this->user_id = "";
 		this->title = NULL;
 		this->isPage = false;
 	}
@@ -180,4 +195,11 @@ struct post_status_data {
 	}
 	FacebookProto *proto;
 	std::vector<wall_data*> walls;
+};
+
+struct open_url
+{
+	open_url(TCHAR *browser, TCHAR *url) : browser(browser), url(url) {}
+	TCHAR *browser;
+	TCHAR *url;	
 };

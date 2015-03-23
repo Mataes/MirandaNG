@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -37,14 +38,12 @@ INT_PTR InvalidateDisplayName(WPARAM wParam, LPARAM lParam);
 int InitGroupServices(void);
 void LoadCluiServices();
 INT_PTR Docking_IsDocked(WPARAM wParam, LPARAM lParam);
-void InitDisplayNameCache(void);
 void FreeDisplayNameCache(void);
 int LoadCLUIModule(void);
 int InitClistHotKeys(void);
 
 HANDLE hContactDoubleClicked, hContactIconChangedEvent;
 HIMAGELIST hCListImages;
-BOOL(WINAPI * MySetProcessWorkingSetSize) (HANDLE, SIZE_T, SIZE_T);
 
 extern BYTE nameOrder[];
 
@@ -63,69 +62,64 @@ TCHAR* fnGetStatusModeDescription(int mode, int flags)
 	int    noPrefixReqd = 0;
 	switch (mode) {
 	case ID_STATUS_OFFLINE:
-		descr = _T("Offline");
+		descr = LPGENT("Offline");
 		noPrefixReqd = 1;
 		break;
 	case ID_STATUS_CONNECTING:
-		descr = _T("Connecting");
+		descr = LPGENT("Connecting");
 		noPrefixReqd = 1;
 		break;
 	case ID_STATUS_ONLINE:
-		descr = _T("Online");
+		descr = LPGENT("Online");
 		noPrefixReqd = 1;
 		break;
 	case ID_STATUS_AWAY:
-		descr = _T("Away");
+		descr = LPGENT("Away");
 		break;
 	case ID_STATUS_DND:
-		descr = _T("DND");
+		descr = LPGENT("DND");
 		break;
 	case ID_STATUS_NA:
-		descr = _T("NA");
+		descr = LPGENT("NA");
 		break;
 	case ID_STATUS_OCCUPIED:
-		descr = _T("Occupied");
+		descr = LPGENT("Occupied");
 		break;
 	case ID_STATUS_FREECHAT:
-		descr = _T("Free for chat");
+		descr = LPGENT("Free for chat");
 		break;
 	case ID_STATUS_INVISIBLE:
-		descr = _T("Invisible");
+		descr = LPGENT("Invisible");
 		break;
 	case ID_STATUS_OUTTOLUNCH:
-		descr = _T("Out to lunch");
+		descr = LPGENT("Out to lunch");
 		break;
 	case ID_STATUS_ONTHEPHONE:
-		descr = _T("On the phone");
+		descr = LPGENT("On the phone");
 		break;
 	case ID_STATUS_IDLE:
-		descr = _T("Idle");
+		descr = LPGENT("Idle");
 		break;
 	default:
 		if (mode > ID_STATUS_CONNECTING && mode < ID_STATUS_CONNECTING + MAX_CONNECT_RETRIES) {
-			const TCHAR* connFmt = _T("Connecting (attempt %d)");
+			const TCHAR* connFmt = LPGENT("Connecting (attempt %d)");
 			mir_sntprintf(szMode, SIZEOF(szMode), (flags&GSMDF_UNTRANSLATED)?connFmt:TranslateTS(connFmt), mode - ID_STATUS_CONNECTING + 1);
 			return szMode;
 		}
 		return NULL;
 	}
-	if (noPrefixReqd || !(flags & GSMDF_PREFIXONLINE))
-		return (flags & GSMDF_UNTRANSLATED) ? descr : TranslateTS(descr);
 
-	lstrcpy(szMode, TranslateT("Online"));
-	lstrcat(szMode, _T(": "));
-	lstrcat(szMode, (flags & GSMDF_UNTRANSLATED) ? descr : TranslateTS(descr));
-	return szMode;
+	return (flags & GSMDF_UNTRANSLATED) ? descr : TranslateTS(descr);
 }
 
 static INT_PTR GetStatusModeDescription(WPARAM wParam, LPARAM lParam)
 {
 	TCHAR* buf1 = cli.pfnGetStatusModeDescription(wParam, lParam);
 
-	if ( !(lParam & GSMDF_TCHAR)) {
+	if (!(lParam & GSMDF_TCHAR)) {
 		static char szMode[64];
 		char *buf2 = mir_u2a(buf1);
-		mir_snprintf(szMode, SIZEOF(szMode), "%s", buf2);
+		strncpy_s(szMode, buf2, _TRUNCATE);
 		mir_free(buf2);
 		return (INT_PTR)szMode;
 	}
@@ -144,10 +138,10 @@ static int ProtocolAck(WPARAM, LPARAM lParam)
 	if ((int)ack->hProcess < ID_STATUS_ONLINE && ack->lParam >= ID_STATUS_ONLINE) {
 		DWORD caps = (DWORD)CallProtoServiceInt(NULL,ack->szModule, PS_GETCAPS, PFLAGNUM_1, 0);
 		if (caps & PF1_SERVERCLIST) {
-			for (HANDLE hContact = db_find_first(ack->szModule); hContact; ) {
-				HANDLE hNext = db_find_next(hContact, ack->szModule);
+			for (MCONTACT hContact = db_find_first(ack->szModule); hContact; ) {
+				MCONTACT hNext = db_find_next(hContact, ack->szModule);
 				if (db_get_b(hContact, "CList", "Delete", 0))
-					CallService(MS_DB_CONTACT_DELETE, (WPARAM)hContact, 0);
+					CallService(MS_DB_CONTACT_DELETE, hContact, 0);
 				hContact = hNext;
 			}
 		}
@@ -157,12 +151,12 @@ static int ProtocolAck(WPARAM, LPARAM lParam)
 	return 0;
 }
 
-HICON fnGetIconFromStatusMode(HANDLE hContact, const char *szProto, int status)
+HICON fnGetIconFromStatusMode(MCONTACT hContact, const char *szProto, int status)
 {
 	return ImageList_GetIcon(hCListImages, cli.pfnIconFromStatusMode(szProto, status, hContact), ILD_NORMAL);
 }
 
-int fnIconFromStatusMode(const char *szProto, int status, HANDLE)
+int fnIconFromStatusMode(const char *szProto, int status, MCONTACT)
 {
 	int index, i;
 
@@ -181,7 +175,7 @@ int fnIconFromStatusMode(const char *szProto, int status, HANDLE)
 	return 1;
 }
 
-int fnGetContactIcon(HANDLE hContact)
+int fnGetContactIcon(MCONTACT hContact)
 {
 	char *szProto = GetContactProto(hContact);
 	return cli.pfnIconFromStatusMode(szProto,
@@ -190,10 +184,10 @@ int fnGetContactIcon(HANDLE hContact)
 
 static INT_PTR GetContactIcon(WPARAM wParam, LPARAM)
 {
-	return cli.pfnGetContactIcon((HANDLE)wParam);
+	return cli.pfnGetContactIcon(wParam);
 }
 
-static void AddProtoIconIndex(PROTOACCOUNT* pa)
+static void AddProtoIconIndex(PROTOACCOUNT *pa)
 {
 	ProtoIconIndex *pii = new ProtoIconIndex;
 	pii->szProto = pa->szModuleName;
@@ -205,7 +199,7 @@ static void AddProtoIconIndex(PROTOACCOUNT* pa)
 	protoIconIndex.insert(pii);
 }
 
-static void RemoveProtoIconIndex(PROTOACCOUNT* pa)
+static void RemoveProtoIconIndex(PROTOACCOUNT *pa)
 {
 	for (int i=0; i < protoIconIndex.getCount(); i++)
 		if (strcmp(protoIconIndex[i].szProto, pa->szModuleName) == 0) {
@@ -250,7 +244,7 @@ static int ContactListAccountsChanged(WPARAM eventCode, LPARAM lParam)
 static INT_PTR ContactDoubleClicked(WPARAM wParam, LPARAM)
 {
 	// Try to process event myself
-	if (cli.pfnEventsProcessContactDoubleClick((HANDLE)wParam) == 0)
+	if (cli.pfnEventsProcessContactDoubleClick(wParam) == 0)
 		return 0;
 
 	// Allow third-party plugins to process a dblclick
@@ -258,7 +252,7 @@ static INT_PTR ContactDoubleClicked(WPARAM wParam, LPARAM)
 		return 0;
 
 	// Otherwise try to execute the default action
-	TryProcessDoubleClick((HANDLE)wParam);
+	TryProcessDoubleClick(wParam);
 	return 0;
 }
 
@@ -325,13 +319,11 @@ int fnGetWindowVisibleState(HWND hWnd, int iStepX, int iStepY)
 	GetWindowRect(hWnd, &rcWin);
 
 	SystemParametersInfo(SPI_GETWORKAREA, 0, &rcWorkArea, FALSE);
-	if (MyMonitorFromWindow) {
-		HMONITOR hMon = MyMonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
-		MONITORINFO mi;
-		mi.cbSize = sizeof(mi);
-		if (MyGetMonitorInfo(hMon, &mi))
-			rcWorkArea = mi.rcWork;
-	}
+	HMONITOR hMon = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO mi;
+	mi.cbSize = sizeof(mi);
+	if (GetMonitorInfo(hMon, &mi))
+		rcWorkArea = mi.rcWork;
 
 	IntersectRect(&rc, &rcWin, &rcWorkArea);
 
@@ -373,7 +365,7 @@ int fnShowHide(WPARAM, LPARAM)
 	switch (iVisibleState) {
 	case GWVS_PARTIALLY_COVERED:
 		//If we don't want to bring it to top, we can use a simple break. This goes against readability ;-) but the comment explains it.
-		if ( !db_get_b(NULL, "CList", "BringToFront", SETTING_BRINGTOFRONT_DEFAULT))
+		if (!db_get_b(NULL, "CList", "BringToFront", SETTING_BRINGTOFRONT_DEFAULT))
 			break;
 	case GWVS_COVERED:     //Fall through (and we're already falling)
 	case GWVS_HIDDEN:
@@ -390,7 +382,7 @@ int fnShowHide(WPARAM, LPARAM)
 		RECT rcWindow;
 
 		ShowWindow(cli.hwndContactList, SW_RESTORE);
-		if ( !db_get_b(NULL, "CList", "OnTop", SETTING_ONTOP_DEFAULT))
+		if (!db_get_b(NULL, "CList", "OnTop", SETTING_ONTOP_DEFAULT))
 			SetWindowPos(cli.hwndContactList, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
 		else
 			SetWindowPos(cli.hwndContactList, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -416,8 +408,8 @@ int fnShowHide(WPARAM, LPARAM)
 			db_set_b(NULL, "CList", "State", SETTING_STATE_MINIMIZED);
 		}
 
-		if (MySetProcessWorkingSetSize != NULL && db_get_b(NULL, "CList", "DisableWorkingSet", 1))
-			MySetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
+		if (db_get_b(NULL, "CList", "DisableWorkingSet", 1))
+			SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1);
 	}
 	return 0;
 }
@@ -432,7 +424,7 @@ extern int sortByStatus, sortByProto;
 
 static INT_PTR CompareContacts(WPARAM wParam, LPARAM lParam)
 {
-	HANDLE a = (HANDLE)wParam, b = (HANDLE) lParam;
+	MCONTACT a = wParam, b = lParam;
 	TCHAR namea[128], *nameb;
 	int statusa, statusb;
 	char *szProto1, *szProto2;
@@ -440,8 +432,8 @@ static INT_PTR CompareContacts(WPARAM wParam, LPARAM lParam)
 
 	szProto1 = GetContactProto(a);
 	szProto2 = GetContactProto(b);
-	statusa = db_get_w((HANDLE) a, SAFESTRING(szProto1), "Status", ID_STATUS_OFFLINE);
-	statusb = db_get_w((HANDLE) b, SAFESTRING(szProto2), "Status", ID_STATUS_OFFLINE);
+	statusa = db_get_w(a, SAFESTRING(szProto1), "Status", ID_STATUS_OFFLINE);
+	statusb = db_get_w(b, SAFESTRING(szProto2), "Status", ID_STATUS_OFFLINE);
 
 	if (sortByProto) {
 		/* deal with statuses, online contacts have to go above offline */
@@ -513,14 +505,11 @@ int LoadContactListModule2(void)
 	CreateServiceFunction(MS_CLIST_HOTKEYSPROCESSMESSAGE, HotkeysProcessMessageStub);
 	CreateServiceFunction(MS_CLIST_GETCONTACTICON, GetContactIcon);
 
-	MySetProcessWorkingSetSize = (BOOL(WINAPI *) (HANDLE, SIZE_T, SIZE_T)) GetProcAddress(GetModuleHandleA("kernel32"), "SetProcessWorkingSetSize");
-
-	InitDisplayNameCache();
 	InitCListEvents();
 	InitGroupServices();
 	cli.pfnInitTray();
 
-	hCListImages = ImageList_Create(16, 16, ILC_MASK | (IsWinVerXPPlus()? ILC_COLOR32 : ILC_COLOR16), 13, 0);
+	hCListImages = ImageList_Create(16, 16, ILC_MASK | ILC_COLOR32, 13, 0);
 	HookEvent(ME_SKIN_ICONSCHANGED, CListIconsChanged);
 	CreateServiceFunction(MS_CLIST_GETICONSIMAGELIST, GetIconsImageList);
 
@@ -542,14 +531,13 @@ void UnloadContactListModule()
 		return;
 
 	//remove transitory contacts
-	for (HANDLE hContact = db_find_first(); hContact != NULL; ) {
-		HANDLE hNext = db_find_next(hContact);
+	for (MCONTACT hContact = db_find_first(); hContact != NULL; ) {
+		MCONTACT hNext = db_find_next(hContact);
 		if (db_get_b(hContact, "CList", "NotOnList", 0))
-			CallService(MS_DB_CONTACT_DELETE, (WPARAM) hContact, 0);
+			CallService(MS_DB_CONTACT_DELETE, hContact, 0);
 		hContact = hNext;
 	}
 	ImageList_Destroy(hCListImages);
 	UninitCListEvents();
-	protoIconIndex.destroy();
 	DestroyHookableEvent(hContactDoubleClicked);
 }

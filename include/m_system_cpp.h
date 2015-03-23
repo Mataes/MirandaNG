@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -44,13 +45,14 @@ template<class T> class mir_ptr
 	T* data;
 
 public:
-	__inline mir_ptr() : data(NULL) {}
-	__inline mir_ptr(T* _p) : data(_p) {}
+	__inline explicit mir_ptr() : data(NULL) {}
+	__inline explicit mir_ptr(T* _p) : data(_p) {}
 	__inline ~mir_ptr() { mir_free(data); }
 	__inline T* operator = (T* _p) { if (data) mir_free(data); data = _p; return data; }
 	__inline T* operator->() const { return data; }
 	__inline operator T*() const { return data; }
 	__inline operator INT_PTR() const { return (INT_PTR)data; }
+	__inline T* detouch() { T *res = data; data = NULL; return res; }
 };
 
 typedef mir_ptr<char>  ptrA;
@@ -58,15 +60,30 @@ typedef mir_ptr<TCHAR> ptrT;
 typedef mir_ptr<WCHAR> ptrW;
 
 ///////////////////////////////////////////////////////////////////////////////
+// mir_cs - simple wrapper for the critical sections
+
+class mir_cs
+{
+	CRITICAL_SECTION m_cs;
+
+public:
+	__inline mir_cs() { ::InitializeCriticalSection(&m_cs); }
+	__inline ~mir_cs() { ::DeleteCriticalSection(&m_cs); }
+
+	__inline operator CRITICAL_SECTION&() { return m_cs; }
+};
+
+///////////////////////////////////////////////////////////////////////////////
 // mir_cslock - simple locker for the critical sections
 
 class mir_cslock
 {
 	CRITICAL_SECTION& cs;
+	__inline mir_cslock& operator = (const mir_cslock&) { return *this; }
 
 public:
-	__inline mir_cslock(CRITICAL_SECTION& _cs) : cs(_cs) { EnterCriticalSection(&cs); }
-	__inline ~mir_cslock() { LeaveCriticalSection(&cs); }
+	__inline mir_cslock(CRITICAL_SECTION& _cs) : cs(_cs) { ::EnterCriticalSection(&cs); }
+	__inline ~mir_cslock() { ::LeaveCriticalSection(&cs); }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,6 +93,7 @@ class mir_cslockfull
 {
 	CRITICAL_SECTION& cs;
 	bool bIsLocked;
+	__inline mir_cslockfull& operator = (const mir_cslockfull&) { return *this; }
 
 public:
 	__inline void lock() { bIsLocked = true; EnterCriticalSection(&cs); }
@@ -122,35 +140,43 @@ template<class T> struct LIST
 		sortFunc = FTSortFunc(id);
 	}
 
-	__inline T* operator[](int idx) const { return (idx >= 0 && idx < count) ? items[idx] : NULL; }
-	__inline int getCount(void)     const { return count; }
-	__inline T** getArray(void)     const { return items; }
-
 	__inline LIST(const LIST& x)
-	{	items = NULL;
+	{
+		items = NULL;
 		List_Copy((SortedList*)&x, (SortedList*)this, sizeof(T));
 	}
 
 	__inline LIST& operator = (const LIST& x)
-	{	destroy();
+	{
+		destroy();
 		List_Copy((SortedList*)&x, (SortedList*)this, sizeof(T));
 		return *this;
 	}
 
-	__inline int getIndex(T* p) const
-	{	int idx;
-		return ( !List_GetIndex((SortedList*)this, p, &idx)) ? -1 : idx;
+	__inline ~LIST()
+	{
+		destroy();
 	}
 
-	__inline void destroy(void)        { List_Destroy((SortedList*)this); }
+	__inline T*  operator[](int idx) const { return (idx >= 0 && idx < count) ? items[idx] : NULL; }
+	__inline int getCount(void)     const { return count; }
+	__inline T** getArray(void)     const { return items; }
 
-	__inline T*  find(T* p)            { return (T*)List_Find((SortedList*)this, p); }
-	__inline int indexOf(T* p)         { return List_IndexOf((SortedList*)this, p); }
-	__inline int insert(T* p, int idx) { return List_Insert((SortedList*)this, p, idx); }
-	__inline int remove(int idx)       { return List_Remove((SortedList*)this, idx); }
+	__inline int getIndex(T *p) const
+	{	int idx;
+		return (!List_GetIndex((SortedList*)this, p, &idx)) ? -1 : idx;
+	}
 
-	__inline int insert(T* p)          { return List_InsertPtr((SortedList*)this, p); }
-	__inline int remove(T* p)          { return List_RemovePtr((SortedList*)this, p); }
+	__inline void destroy(void)         { List_Destroy((SortedList*)this); }
+	__inline T*   find(T *p) const      { return (T*)List_Find((SortedList*)this, p); }
+	__inline int  indexOf(T *p) const   { return List_IndexOf((SortedList*)this, p); }
+	__inline int  insert(T *p, int idx) { return List_Insert((SortedList*)this, p, idx); }
+	__inline int  remove(int idx)       { return List_Remove((SortedList*)this, idx); }
+
+	__inline int  insert(T *p)          { return List_InsertPtr((SortedList*)this, p); }
+	__inline int  remove(T *p)          { return List_RemovePtr((SortedList*)this, p); }
+
+	__inline void put(int idx, T *p)   { items[idx] = p; }
 
 protected:
 	T**        items;
@@ -172,7 +198,7 @@ template<class T> struct OBJLIST : public LIST<T>
 
 	__inline OBJLIST(const OBJLIST& x) :
 		LIST<T>(x.increment, x.sortFunc)
-		{	items = NULL;
+		{	this->items = NULL;
 			List_ObjCopy((SortedList*)&x, (SortedList*)this, sizeof(T));
 		}
 
@@ -200,10 +226,10 @@ template<class T> struct OBJLIST : public LIST<T>
 		return List_Remove((SortedList*)this, idx);
 	}
 
-	__inline int remove(T* p)
+	__inline int remove(T *p)
 	{
 		int i = getIndex( p );
-		if ( i != -1 ) {	
+		if ( i != -1 ) {
 			remove(i);
 			return 1;
 		}

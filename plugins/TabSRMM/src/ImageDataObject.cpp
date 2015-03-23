@@ -1,35 +1,33 @@
-/*
- * astyle --force-indent=tab=4 --brackets=linux --indent-switches
- *		  --pad=oper --one-line=keep-blocks  --unpad=paren
- *
- * Miranda NG: the free IM client for Microsoft* Windows*
- *
- * Copyright 2000-2009 Miranda ICQ/IM project,
- * all portions of this codebase are copyrighted to the people
- * listed in contributors.txt.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * you should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- * part of tabSRMM messaging plugin for Miranda.
- *
- * This inserts a bitmap into a rich edit control using OLE
- * code partially taken from public example on the internet, source unknown.
- *
- * originally part of the smileyadd plugin for Miranda NG
- *
- */
+/////////////////////////////////////////////////////////////////////////////////////////
+// Miranda NG: the free IM client for Microsoft* Windows*
+//
+// Copyright (ñ) 2012-15 Miranda NG project,
+// Copyright (c) 2000-09 Miranda ICQ/IM project,
+// all portions of this codebase are copyrighted to the people
+// listed in contributors.txt.
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// you should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+// part of tabSRMM messaging plugin for Miranda.
+//
+// (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
+//
+// inserts a bitmap into a rich edit control using OLE
+// code partially taken from public example on the internet, source unknown.
+//
+// originally part of the smileyadd plugin for Miranda NG
 
 #include "commonheaders.h"
 
@@ -45,20 +43,18 @@ extern void ImageDataInsertBitmap(IRichEditOle *ole, HBITMAP hBm)
 
 int CacheIconToBMP(TLogIcon *theIcon, HICON hIcon, COLORREF backgroundColor, int sizeX, int sizeY)
 {
-	bool succeeded = false;
-
 	int IconSizeX = sizeX;
 	int IconSizeY = sizeY;
 
 	if ((IconSizeX == 0) || (IconSizeY == 0)) {
 		Utils::getIconSize(hIcon, IconSizeX, IconSizeY);
-		if (sizeX != 0) 
+		if (sizeX != 0)
 			IconSizeX = sizeX;
-		if (sizeY != 0) 
+		if (sizeY != 0)
 			IconSizeY = sizeY;
 	}
 	RECT rc;
-	BITMAPINFOHEADER bih = {0};
+	BITMAPINFOHEADER bih = { 0 };
 	int widthBytes;
 	theIcon->hBkgBrush = CreateSolidBrush(backgroundColor);
 	bih.biSize = sizeof(bih);
@@ -120,7 +116,7 @@ bool CImageDataObject::InsertBitmap(IRichEditOle* pRichEditOle, HBITMAP hBitmap)
 		return false;
 	}
 	sc = ::StgCreateDocfileOnILockBytes(lpLockBytes,
-										STGM_SHARE_EXCLUSIVE | STGM_CREATE | STGM_READWRITE, 0, &pStorage);
+		STGM_SHARE_EXCLUSIVE | STGM_CREATE | STGM_READWRITE, 0, &pStorage);
 	if (sc != S_OK) {
 		lpLockBytes = NULL;
 		pOleClientSite->Release();
@@ -143,7 +139,7 @@ bool CImageDataObject::InsertBitmap(IRichEditOle* pRichEditOle, HBITMAP hBitmap)
 	// Now Add the object to the RichEdit
 	//
 	REOBJECT reobject;
-	ZeroMemory(&reobject, sizeof(REOBJECT));
+	memset(&reobject, 0, sizeof(REOBJECT));
 	reobject.cbStruct = sizeof(REOBJECT);
 
 	CLSID clsid;
@@ -156,7 +152,7 @@ bool CImageDataObject::InsertBitmap(IRichEditOle* pRichEditOle, HBITMAP hBitmap)
 	}
 
 	reobject.clsid = clsid;
-	reobject.cp = REO_CP_SELECTION ;
+	reobject.cp = REO_CP_SELECTION;
 	reobject.dvaspect = DVASPECT_CONTENT;
 	reobject.poleobj = pOleObject;
 	reobject.polesite = pOleClientSite;
@@ -204,7 +200,7 @@ IOleObject *CImageDataObject::GetOleObject(IOleClientSite *pOleClientSite, IStor
 	SCODE sc;
 	IOleObject *pOleObject;
 	sc = ::OleCreateStaticFromData(this, IID_IOleObject, OLERENDER_FORMAT,
-								   &m_format, pOleClientSite, pStorage, (void **) & pOleObject);
+		&m_format, pOleClientSite, pStorage, (void **)& pOleObject);
 	if (sc != S_OK)
 		pOleObject = NULL;
 	return pOleObject;

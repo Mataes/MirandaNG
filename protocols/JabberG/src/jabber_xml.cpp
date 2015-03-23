@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -59,7 +60,7 @@ XmlNodeIq::XmlNodeIq(const TCHAR *type, HXML node, LPCTSTR to) :
 	}
 }
 
-XmlNodeIq::XmlNodeIq(CJabberIqInfo* pInfo) :
+XmlNodeIq::XmlNodeIq(CJabberIqInfo *pInfo) :
 	XmlNode(_T("iq"))
 {
 	if (pInfo) {
@@ -69,7 +70,7 @@ XmlNodeIq::XmlNodeIq(CJabberIqInfo* pInfo) :
 	}
 }
 
-XmlNodeIq::XmlNodeIq(const TCHAR *type, CJabberIqInfo* pInfo) :
+XmlNodeIq::XmlNodeIq(const TCHAR *type, CJabberIqInfo *pInfo) :
 	XmlNode(_T("iq"))
 {
 	if (type != NULL) *this << XATTR(_T("type"), type);
@@ -152,8 +153,8 @@ void __fastcall xmlAddAttr(HXML hXml, LPCTSTR pszName, unsigned __int64 value)
 
 void __fastcall xmlAddAttrID(HXML hXml, int id)
 {
-	TCHAR text[ 100 ];
-	mir_sntprintf(text, SIZEOF(text), _T("mir_%d"), id);
+	TCHAR text[100];
+	mir_sntprintf(text, SIZEOF(text), _T(JABBER_IQID) _T("%d"), id);
 	xmlAddAttr(hXml, _T("id"), text);
 }
 
@@ -245,15 +246,15 @@ HXML __fastcall xmlGetNthChild(HXML hXml, LPCTSTR tag, int nth)
 {
 	int i, num;
 
-	if ( !hXml || tag == NULL || _tcslen(tag) <= 0 || nth < 1)
+	if (!hXml || tag == NULL || _tcslen(tag) <= 0 || nth < 1)
 		return NULL;
 
 	num = 1;
 	for (i=0; ; i++) {
 		HXML n = xi.getChild(hXml, i);
-		if ( !n)
+		if (!n)
 			break;
-		if ( !lstrcmp(tag, xmlGetName(n))) {
+		if (!mir_tstrcmp(tag, xmlGetName(n))) {
 			if (num == nth)
 				return n;
 
@@ -277,29 +278,25 @@ LPCTSTR __fastcall xmlGetText(HXML xml)
 
 void XPath::ProcessPath(LookupInfo &info, bool bCreate)
 {
-	if ( !info.nodeName) return;
+	if (!info.nodeName) return;
 
 	TCHAR *nodeName = (TCHAR *)alloca(sizeof(TCHAR) * (info.nodeName.length+1));
-	lstrcpyn(nodeName, info.nodeName.p, info.nodeName.length+1);
+	mir_tstrncpy(nodeName, info.nodeName.p, info.nodeName.length+1);
 
-	if (info.attrName && info.attrValue)
-	{
-		TCHAR *attrName = (TCHAR *)alloca(sizeof(TCHAR) * (info.attrName.length+1));
-		lstrcpyn(attrName, info.attrName.p, info.attrName.length+1);
-		TCHAR *attrValue = (TCHAR *)alloca(sizeof(TCHAR) * (info.attrValue.length+1));
-		lstrcpyn(attrValue, info.attrValue.p, info.attrValue.length+1);
+	if (info.attrName && info.attrValue) {
+		TCHAR *attrName = (TCHAR *)alloca(sizeof(TCHAR)* (info.attrName.length + 1));
+		mir_tstrncpy(attrName, info.attrName.p, info.attrName.length + 1);
+		TCHAR *attrValue = (TCHAR *)alloca(sizeof(TCHAR)* (info.attrValue.length + 1));
+		mir_tstrncpy(attrValue, info.attrValue.p, info.attrValue.length + 1);
 		HXML hXml = xmlGetChildByTag(m_hXml, nodeName, attrName, attrValue);
 
 		m_hXml = (hXml || !bCreate) ? hXml : (m_hXml << XCHILD(nodeName) << XATTR(attrName, attrValue));
-	} else
-	if (info.nodeIndex)
-	{
+	}
+	else if (info.nodeIndex) {
 		int idx = _ttoi(info.nodeIndex.p);
-		m_hXml = lstrcmp(nodeName, _T("*")) ? xmlGetNthChild(m_hXml, nodeName, idx) : xmlGetChild(m_hXml, idx-1);
-
-		// no support for such creation mode
-	} else
-	{
+		m_hXml = mir_tstrcmp(nodeName, _T("*")) ? xmlGetNthChild(m_hXml, nodeName, idx) : xmlGetChild(m_hXml, idx - 1);
+	}
+	else {
 		HXML hXml = xmlGetChild(m_hXml, nodeName);
 		m_hXml = (hXml || !bCreate) ? hXml : (m_hXml << XCHILD(nodeName));
 	}
@@ -312,26 +309,21 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 	LookupState state = S_START;
 	LookupInfo info = {0};
 
-	for (LPCTSTR p = m_szPath; state < S_FINAL; ++p)
-	{
-		switch (state)
-		{
+	for (LPCTSTR p = m_szPath; state < S_FINAL; ++p) {
+		switch (state) {
 		case S_START:
-		{
 			ProcessPath(info, bCreate);
-			if ( !m_hXml)
-			{
+			if (!m_hXml) {
 				state = S_FINAL_ERROR;
 				break;
 			}
 
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_ERROR;
 				break;
 			case _T('@'):
-				info.attrName.Begin(p+1);
+				info.attrName.Begin(p + 1);
 				state = S_ATTR_STEP;
 				break;
 			case _T('/'):
@@ -342,11 +334,9 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_ATTR_STEP:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				info.attrName.End(p);
 				state = S_FINAL_ATTR;
@@ -355,11 +345,9 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_NAME:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				info.nodeName.End(p);
 				state = S_FINAL_NODESET;
@@ -376,16 +364,14 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_OPENBRACKET:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_ERROR;
 				break;
 			case _T('@'):
-				info.attrName.Begin(p+1);
+				info.attrName.Begin(p + 1);
 				state = S_NODE_ATTRNAME;
 				break;
 			case _T('0'): case _T('1'): case _T('2'): case _T('3'): case _T('4'):
@@ -398,11 +384,9 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_INDEX:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_ERROR;
 				break;
@@ -418,11 +402,9 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_ATTRNAME:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_ERROR;
 				break;
@@ -434,16 +416,14 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_ATTREQUALS:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_ERROR;
 				break;
 			case _T('\''):
-				info.attrValue.Begin(p+1);
+				info.attrValue.Begin(p + 1);
 				state = S_NODE_ATTRVALUE;
 				break;
 			default:
@@ -451,11 +431,9 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_ATTRVALUE:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_ERROR;
 				break;
@@ -467,11 +445,9 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_ATTRCLOSEVALUE:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_ERROR;
 				break;
@@ -483,11 +459,9 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 				break;
 			};
 			break;
-		}
+
 		case S_NODE_CLOSEBRACKET:
-		{
-			switch (*p)
-			{
+			switch (*p) {
 			case 0:
 				state = S_FINAL_NODE;
 				break;
@@ -500,16 +474,12 @@ XPath::PathType XPath::LookupImpl(bool bCreate)
 			};
 			break;
 		}
-		}
 
-		if ( !*p && (state < S_FINAL))
-		{
+		if (!*p && (state < S_FINAL))
 			state = S_FINAL_ERROR;
-		}
 	}
 
-	switch (state)
-	{
+	switch (state) {
 	case S_FINAL_ATTR:
 		m_szParam = info.attrName.p;
 		return T_ATTRIBUTE;

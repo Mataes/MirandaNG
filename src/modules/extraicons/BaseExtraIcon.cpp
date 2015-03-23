@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -23,9 +23,10 @@ Boston, MA 02111-1307, USA.
 
 #include "extraicons.h"
 
-BaseExtraIcon::BaseExtraIcon(int id, const char *name, const TCHAR *description, const char *descIcon,
-		MIRANDAHOOKPARAM OnClick, LPARAM param) :
-	ExtraIcon(name), id(id), description(description), descIcon(descIcon), OnClick(OnClick), onClickParam(param)
+BaseExtraIcon::BaseExtraIcon(int id, const char *name, const TCHAR *description, const char *descIcon, MIRANDAHOOKPARAM OnClick, LPARAM param) :
+	ExtraIcon(name), id(id), OnClick(OnClick), onClickParam(param),
+	tszDescription(mir_tstrdup(description)),
+	szDescIcon(mir_strdup(descIcon))
 {
 }
 
@@ -33,10 +34,10 @@ BaseExtraIcon::~BaseExtraIcon()
 {
 }
 
-void BaseExtraIcon::setOnClick(MIRANDAHOOKPARAM OnClick, LPARAM param)
+void BaseExtraIcon::setOnClick(MIRANDAHOOKPARAM pFunc, LPARAM pParam)
 {
-	this->OnClick = OnClick;
-	this->onClickParam = param;
+	OnClick = pFunc;
+	onClickParam = pParam;
 }
 
 int BaseExtraIcon::getID() const
@@ -44,39 +45,36 @@ int BaseExtraIcon::getID() const
 	return id;
 }
 
-const TCHAR *BaseExtraIcon::getDescription() const
+const TCHAR* BaseExtraIcon::getDescription() const
 {
-	return description.c_str();
+	return tszDescription;
 }
 
 void BaseExtraIcon::setDescription(const TCHAR *desc)
 {
-	description = desc;
+	tszDescription = mir_tstrdup(desc);
 }
 
-const char *BaseExtraIcon::getDescIcon() const
+const char* BaseExtraIcon::getDescIcon() const
 {
-	return descIcon.c_str();
+	return szDescIcon;
 }
 
 void BaseExtraIcon::setDescIcon(const char *icon)
 {
-	descIcon = icon;
+	szDescIcon = mir_strdup(icon);
 }
 
-void BaseExtraIcon::onClick(HANDLE hContact)
+void BaseExtraIcon::onClick(MCONTACT hContact)
 {
-	if (OnClick == NULL)
-		return;
-
-	OnClick((WPARAM) hContact, (LPARAM) ConvertToClistSlot(slot), onClickParam);
+	if (OnClick != NULL)
+		OnClick(hContact, (LPARAM)ConvertToClistSlot(slot), onClickParam);
 }
 
-int BaseExtraIcon::ClistSetExtraIcon(HANDLE hContact, HANDLE hImage)
+int BaseExtraIcon::ClistSetExtraIcon(MCONTACT hContact, HANDLE hImage)
 {
 	ExtraIcon *tmp = extraIconsByHandle[id - 1];
 	if (tmp != this)
 		return tmp->ClistSetExtraIcon(hContact, hImage);
-	else
-		return Clist_SetExtraIcon(hContact, slot, hImage);
+	return Clist_SetExtraIcon(hContact, slot, hImage);
 }

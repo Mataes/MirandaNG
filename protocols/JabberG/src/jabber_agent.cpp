@@ -1,9 +1,10 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -55,7 +56,7 @@ public:
 			else
 				SetDlgItemText(m_hwnd, IDC_REG_STATUS, (TCHAR*)lParam);
 			if (wParam >= 0)
-				SendMessage(GetDlgItem(m_hwnd, IDC_PROGRESS_REG), PBM_SETPOS, wParam, 0);
+				SendDlgItemMessage(m_hwnd, IDC_PROGRESS_REG, PBM_SETPOS, wParam, 0);
 			if (wParam >= 100)
 				m_ok.SetText(TranslateT("OK"));
 		}
@@ -101,12 +102,12 @@ public:
 		SetDlgItemText(m_hwnd, IDC_SUBMIT, TranslateT("Register"));
 		SetDlgItemText(m_hwnd, IDC_FRAME_TEXT, TranslateT("Please wait..."));
 
-		int iqId = m_proto->SerialNext();
-		m_proto->IqAdd(iqId, IQ_PROC_GETREGISTER, &CJabberProto::OnIqResultGetRegister);
-		m_proto->m_ThreadInfo->send( XmlNodeIq(_T("get"), iqId, m_jid) << XQUERY(JABBER_FEAT_REGISTER));
+		m_proto->m_ThreadInfo->send( 
+			XmlNodeIq( m_proto->AddIQ(&CJabberProto::OnIqResultGetRegister, JABBER_IQ_TYPE_GET, m_jid))
+				<< XQUERY(JABBER_FEAT_REGISTER));
 
 		// Enable WS_EX_CONTROLPARENT on IDC_FRAME (so tab stop goes through all its children)
-		LONG frameExStyle = GetWindowLongPtr(GetDlgItem(m_hwnd, IDC_FRAME), GWL_EXSTYLE);
+		LONG_PTR frameExStyle = GetWindowLongPtr(GetDlgItem(m_hwnd, IDC_FRAME), GWL_EXSTYLE);
 		frameExStyle |= WS_EX_CONTROLPARENT;
 		SetWindowLongPtr(GetDlgItem(m_hwnd, IDC_FRAME), GWL_EXSTYLE, frameExStyle);
 	}
@@ -166,13 +167,13 @@ public:
 							break;
 
 						if (xmlGetName(n)) {
-							if ( !lstrcmp(xmlGetName(n), _T("instructions"))) {
+							if (!mir_tstrcmp(xmlGetName(n), _T("instructions"))) {
 								JabberFormSetInstruction(m_hwnd, xmlGetText(n));
 							}
-							else if ( !lstrcmp(xmlGetName(n), _T("key")) || !lstrcmp(xmlGetName(n), _T("registered"))) {
+							else if (!mir_tstrcmp(xmlGetName(n), _T("key")) || !mir_tstrcmp(xmlGetName(n), _T("registered"))) {
 								// do nothing
 							}
-							else if ( !lstrcmp(xmlGetName(n), _T("password")))
+							else if (!mir_tstrcmp(xmlGetName(n), _T("password")))
 								JabberFormAppendControl(hFrame, layout_info, JFORM_CTYPE_TEXT_PRIVATE, xmlGetName(n), xmlGetText(n));
 							else 	// everything else is a normal text field
 								JabberFormAppendControl(hFrame, layout_info, JFORM_CTYPE_TEXT_SINGLE, xmlGetName(n), xmlGetText(n));
@@ -233,10 +234,7 @@ public:
 		TCHAR *str2 = (TCHAR*)alloca(sizeof(TCHAR) * 128);
 		int id = 0;
 
-		int iqId = m_proto->SerialNext();
-		m_proto->IqAdd(iqId, IQ_PROC_SETREGISTER, &CJabberProto::OnIqResultSetRegister);
-
-		XmlNodeIq iq(_T("set"), iqId, from);
+		XmlNodeIq iq( m_proto->AddIQ(&CJabberProto::OnIqResultSetRegister, JABBER_IQ_TYPE_SET, from));
 		HXML query = iq << XQUERY(JABBER_FEAT_REGISTER);
 
 		if ((xNode = xmlGetChild(queryNode , "x")) != NULL) {
@@ -249,18 +247,18 @@ public:
 			// use old registration information form
 			for (int i=0; ; i++) {
 				HXML n = xmlGetChild(queryNode ,i);
-				if ( !n)
+				if (!n)
 					break;
 
 				if (xmlGetName(n)) {
-					if ( !lstrcmp(xmlGetName(n), _T("key"))) {
+					if (!mir_tstrcmp(xmlGetName(n), _T("key"))) {
 						// field that must be passed along with the registration
 						if (xmlGetText(n))
 							xmlAddChild(query, xmlGetName(n), xmlGetText(n));
 						else
 							xmlAddChild(query, xmlGetName(n));
 					}
-					else if ( !lstrcmp(xmlGetName(n), _T("registered")) || !lstrcmp(xmlGetName(n), _T("instructions"))) {
+					else if (!mir_tstrcmp(xmlGetName(n), _T("registered")) || !mir_tstrcmp(xmlGetName(n), _T("instructions"))) {
 						// do nothing, we will skip these
 					}
 					else {

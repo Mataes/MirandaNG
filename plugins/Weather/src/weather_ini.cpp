@@ -175,22 +175,23 @@ void DestroyCondList(WICONDLIST *List)
 // load the weather update data form INI files
 bool LoadWIData(bool dial)
 {
-	TCHAR szSearchPath[MAX_PATH], FileName[MAX_PATH];
-	WIN32_FIND_DATA fd;
-	WIDATA Data;
-
 	// make sure that the current service data list is empty
 	WITail = NULL;
 	WIHead = WITail;
 
 	// find all *.ini file in the plugin\weather directory
+	TCHAR szSearchPath[MAX_PATH], FileName[MAX_PATH];
 	GetModuleFileName(GetModuleHandle(NULL), szSearchPath, SIZEOF(szSearchPath));
 	TCHAR *chop = _tcsrchr(szSearchPath, '\\');
+	if (chop == NULL)
+		return false;
 	*chop = '\0';
 	_tcsncat(szSearchPath, _T("\\Plugins\\Weather\\*.ini"),SIZEOF(szSearchPath));
 	_tcsncpy(FileName, szSearchPath, SIZEOF(FileName));
 
+	WIN32_FIND_DATA fd;
 	HANDLE hFind = FindFirstFile(szSearchPath, &fd);
+
 
 	// load the content of the ini file into memory
 	if (hFind != INVALID_HANDLE_VALUE) {
@@ -199,6 +200,7 @@ bool LoadWIData(bool dial)
 			chop[1] = '\0';
 			_tcscat(FileName, fd.cFileName);
 			if ( _tcsicmp(fd.cFileName, _T("SAMPLE_INI.INI"))) {
+				WIDATA Data;
 				LoadStationData(FileName, fd.cFileName, &Data);
 				if (Data.Enabled)
 					WIListAdd(Data);
@@ -247,7 +249,7 @@ void LoadStationData(TCHAR *pszFile, TCHAR *pszShortFile, WIDATA *Data)
 	};
 
 	// clean up old stuff
-	ZeroMemory(Data, sizeof(Data));
+	memset(Data, 0, sizeof(*Data));
 	Data->Enabled = FALSE;
 
 	// open the ini file
@@ -270,6 +272,8 @@ void LoadStationData(TCHAR *pszFile, TCHAR *pszShortFile, WIDATA *Data)
 			Data->InternalVer = 5;
 		else if ( !strcmp(Line, "[Weather 0.3.x Update Data 1.4]"))
 			Data->InternalVer = 6;
+		else if ( !strcmp(Line, "[Weather 0.3.x Update Data 1.5]"))
+			Data->InternalVer = 7;
 		else
 		{
 			TCHAR str[4096];
@@ -294,6 +298,7 @@ void LoadStationData(TCHAR *pszFile, TCHAR *pszShortFile, WIDATA *Data)
 		Data->UpdateURL3 = "";
 		Data->UpdateURL4 = "";
 		Data->Cookie = "";
+		Data->UserAgent = "";
 		Data->IDSearch.SearchURL = "";
 		Data->IDSearch.NotFoundStr = _T("");
 		Data->NameSearch.SearchURL = "";
@@ -399,6 +404,7 @@ void LoadStationData(TCHAR *pszFile, TCHAR *pszShortFile, WIDATA *Data)
 				else if ( !_stricmp(ValName, "UPDATE URL3"))		wSetData(&Data->UpdateURL3, Value);
 				else if ( !_stricmp(ValName, "UPDATE URL4"))		wSetData(&Data->UpdateURL4, Value);
 				else if ( !_stricmp(ValName, "COOKIE"))				wSetData(&Data->Cookie, Value);
+				else if ( !_stricmp(ValName, "USERAGENT"))			wSetData(&Data->UserAgent, Value);
 			}
 			else if ( !_stricmp(Group, "ID SEARCH")) {
 				if ( !_stricmp(ValName, "AVAILABLE")) {
@@ -507,6 +513,7 @@ void FreeWIData(WIDATA *Data)
 	wfree(&Data->UpdateURL3);
 	wfree(&Data->UpdateURL4);
 	wfree(&Data->Cookie);
+	wfree(&Data->UserAgent);
 	wfree(&Data->IDSearch.SearchURL);
 	wfree(&Data->IDSearch.NotFoundStr);
 	FreeDataItem(&Data->IDSearch.Name);
@@ -535,10 +542,10 @@ INT_PTR CALLBACK DlgProcSetup(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 		TranslateDialogDefault(hwndDlg);
 
 		// make the buttons flat
-		SendMessage(GetDlgItem(hwndDlg,IDC_STEP1), BUTTONSETASFLATBTN, TRUE, 0);
-		SendMessage(GetDlgItem(hwndDlg,IDC_STEP2), BUTTONSETASFLATBTN, TRUE, 0);
-		SendMessage(GetDlgItem(hwndDlg,IDC_STEP3), BUTTONSETASFLATBTN, TRUE, 0);
-		SendMessage(GetDlgItem(hwndDlg,IDC_STEP4), BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hwndDlg,IDC_STEP1, BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hwndDlg,IDC_STEP2, BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hwndDlg,IDC_STEP3, BUTTONSETASFLATBTN, TRUE, 0);
+		SendDlgItemMessage(hwndDlg,IDC_STEP4, BUTTONSETASFLATBTN, TRUE, 0);
 
 		// set icons
 		SendMessage(hwndDlg, WM_SETICON, ICON_BIG,   (LPARAM)LoadIconEx("main", TRUE));
@@ -561,10 +568,12 @@ INT_PTR CALLBACK DlgProcSetup(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 				TCHAR szPath[1024];
 				GetModuleFileName(GetModuleHandle(NULL), szPath, SIZEOF(szPath));
 				TCHAR *chop = _tcsrchr(szPath, '\\');
-				*chop = '\0';
-				_tcsncat(szPath, _T("\\Plugins\\weather\\"),SIZEOF(szPath));
-				_tmkdir(szPath);
-				ShellExecute((HWND)lParam, _T("open"), szPath, _T(""), _T(""), SW_SHOW);
+				if (chop) {
+					*chop = '\0';
+					_tcsncat(szPath, _T("\\Plugins\\weather\\"),SIZEOF(szPath));
+					_tmkdir(szPath);
+					ShellExecute((HWND)lParam, _T("open"), szPath, _T(""), _T(""), SW_SHOW);
+				}
 				break;
 			}
 

@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -57,11 +58,13 @@ int fnGetRowsPriorTo(ClcGroup *group, ClcGroup *subgroup, int contactIndex)
 		if (group == subgroup && contactIndex == group->scanIndex)
 			return count;
 		count++;
-		if (group->cl.items[group->scanIndex]->type == CLCIT_GROUP) {
-			if (group->cl.items[group->scanIndex]->group == subgroup && contactIndex == -1)
+
+		ClcContact *cc = group->cl.items[group->scanIndex];
+		if (cc->type == CLCIT_GROUP) {
+			if (cc->group == subgroup && contactIndex == -1)
 				return count - 1;
-			if (group->cl.items[group->scanIndex]->group->expanded) {
-				group = group->cl.items[group->scanIndex]->group;
+			if (cc->group->expanded) {
+				group = cc->group;
 				group->scanIndex = 0;
 				continue;
 			}
@@ -71,7 +74,7 @@ int fnGetRowsPriorTo(ClcGroup *group, ClcGroup *subgroup, int contactIndex)
 	return -1;
 }
 
-int fnFindItem(HWND hwnd, struct ClcData *dat, HANDLE hItem, ClcContact **contact, ClcGroup **subgroup, int *isVisible)
+int fnFindItem(HWND hwnd, struct ClcData *dat, DWORD dwItem, ClcContact **contact, ClcGroup **subgroup, int *isVisible)
 {
 	int index = 0;
 	int nowVisible = 1;
@@ -86,24 +89,23 @@ int fnFindItem(HWND hwnd, struct ClcData *dat, HANDLE hItem, ClcContact **contac
 				break;
 			nowVisible = 1;
 			for (tgroup = group; tgroup; tgroup = tgroup->parent)
-				if ( !group->expanded) {
+				if (!group->expanded) {
 					nowVisible = 0;
 					break;
 				}
-				group->scanIndex++;
-				continue;
+			group->scanIndex++;
+			continue;
 		}
 		if (nowVisible)
 			index++;
-		if ((IsHContactGroup(hItem) && group->cl.items[group->scanIndex]->type == CLCIT_GROUP
-			&& ((unsigned) hItem & ~HCONTACT_ISGROUP) == group->cl.items[group->scanIndex]->groupId) || (IsHContactContact(hItem)
-			&& group->cl.items[group->scanIndex]->type == CLCIT_CONTACT
-			&& group->cl.items[group->scanIndex]->hContact == hItem) || (IsHContactInfo(hItem)
-			&& group->cl.items[group->scanIndex]->type == CLCIT_INFO
-			&& group->cl.items[group->scanIndex]->hContact == (HANDLE) ((UINT_PTR)hItem & ~HCONTACT_ISINFO)))
+
+		ClcContact *cc = group->cl.items[group->scanIndex];
+		if ((IsHContactGroup(dwItem) && cc->type == CLCIT_GROUP && (dwItem & ~HCONTACT_ISGROUP) == cc->groupId) || 
+			 (IsHContactContact(dwItem) && cc->type == CLCIT_CONTACT && cc->hContact == dwItem) ||
+			 (IsHContactInfo(dwItem) && cc->type == CLCIT_INFO && cc->hContact == (dwItem & ~HCONTACT_ISINFO)))
 		{
 			if (isVisible) {
-				if ( !nowVisible)
+				if (!nowVisible)
 					*isVisible = 0;
 				else {
 					int posY = cli.pfnGetRowTopY(dat, index+1);
@@ -120,13 +122,13 @@ int fnFindItem(HWND hwnd, struct ClcData *dat, HANDLE hItem, ClcContact **contac
 				}
 			}
 			if (contact)
-				*contact = group->cl.items[group->scanIndex];
+				*contact = cc;
 			if (subgroup)
 				*subgroup = group;
 			return 1;
 		}
-		if (group->cl.items[group->scanIndex]->type == CLCIT_GROUP) {
-			group = group->cl.items[group->scanIndex]->group;
+		if (cc->type == CLCIT_GROUP) {
+			group = cc->group;
 			group->scanIndex = 0;
 			nowVisible &= group->expanded;
 			continue;
@@ -157,16 +159,18 @@ int fnGetRowByIndex(struct ClcData *dat, int testindex, ClcContact **contact, Cl
 			group->scanIndex++;
 			continue;
 		}
+
+		ClcContact *cc = group->cl.items[group->scanIndex];
 		if (testindex == index) {
 			if (contact)
-				*contact = group->cl.items[group->scanIndex];
+				*contact = cc;
 			if (subgroup)
 				*subgroup = group;
 			return index;
 		}
 		index++;
-		if (group->cl.items[group->scanIndex]->type == CLCIT_GROUP && group->cl.items[group->scanIndex]->group->expanded) {
-			group = group->cl.items[group->scanIndex]->group;
+		if (cc->type == CLCIT_GROUP && cc->group->expanded) {
+			group = cc->group;
 			group->scanIndex = 0;
 			continue;
 		}
@@ -175,32 +179,32 @@ int fnGetRowByIndex(struct ClcData *dat, int testindex, ClcContact **contact, Cl
 	return -1;
 }
 
-HANDLE fnContactToHItem(ClcContact * contact)
+HANDLE fnContactToHItem(ClcContact *contact)
 {
 	switch (contact->type) {
 	case CLCIT_CONTACT:
-		return contact->hContact;
+		return (HANDLE)contact->hContact;
 	case CLCIT_GROUP:
-		return (HANDLE) (contact->groupId | HCONTACT_ISGROUP);
+		return (HANDLE)(contact->groupId | HCONTACT_ISGROUP);
 	case CLCIT_INFO:
-		return (HANDLE) ((UINT_PTR) contact->hContact | HCONTACT_ISINFO);
+		return (HANDLE)((UINT_PTR)contact->hContact | HCONTACT_ISINFO);
 	}
 	return NULL;
 }
 
-HANDLE fnContactToItemHandle(ClcContact * contact, DWORD * nmFlags)
+HANDLE fnContactToItemHandle(ClcContact *contact, DWORD *nmFlags)
 {
 	switch (contact->type) {
 	case CLCIT_CONTACT:
-		return contact->hContact;
+		return (HANDLE)contact->hContact;
 	case CLCIT_GROUP:
 		if (nmFlags)
 			*nmFlags |= CLNF_ISGROUP;
-		return (HANDLE) contact->groupId;
+		return (HANDLE)contact->groupId;
 	case CLCIT_INFO:
 		if (nmFlags)
 			*nmFlags |= CLNF_ISINFO;
-		return (HANDLE) ((UINT_PTR) contact->hContact | HCONTACT_ISINFO);
+		return (HANDLE)((UINT_PTR)contact->hContact | HCONTACT_ISINFO);
 	}
 	return NULL;
 }

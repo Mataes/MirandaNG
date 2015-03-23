@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -67,41 +68,76 @@ typedef enum {			// initial default to RSMODE_LASTSEEN
 	RSMODE_MANUAL		// specify resource manually (see the defaultResource field - must not be NULL)
 } JABBER_RESOURCE_MODE;
 
-
-struct JABBER_XEP0232_SOFTWARE_INFO : public MZeroedObject
+class JABBER_RESOURCE_STATUS : public MZeroedObject
 {
-	ptrT tszOs, tszOsVersion, tszSoftware, tszSoftwareVersion, tszXMirandaCoreVersion;
-};
+	LONG m_refCount;
 
-struct JABBER_RESOURCE_STATUS
-{
-	int status;
-	TCHAR* resourceName;
-	TCHAR* nick;
-	TCHAR* statusMessage;
-	TCHAR* software;
-	TCHAR* version;
-	TCHAR* system;
-	signed char priority; // resource priority, -128..+127
-	time_t idleStartTime;// XEP-0012 support
-	JABBER_GC_AFFILIATION affiliation;
-	JABBER_GC_ROLE role;
-	TCHAR* szRealJid; // real jid for jabber conferences
+public:
+	JABBER_RESOURCE_STATUS();
+	~JABBER_RESOURCE_STATUS();
+
+	void AddRef();
+	void Release();
+
+	int    m_iStatus;
+	ptrT   m_tszResourceName;
+	ptrT   m_tszStatusMessage;
+	int    m_iPriority; // resource priority, -128..+127
+	time_t m_dwIdleStartTime;// XEP-0012 support
+
+	// groupchat support
+	JABBER_GC_AFFILIATION m_affiliation;
+	JABBER_GC_ROLE m_role;
+	ptrT  m_tszNick;
+	ptrT  m_tszRealJid; // real jid for jabber conferences
 
 	// XEP-0115 support
-	TCHAR* szCapsNode;
-	TCHAR* szCapsVer;
-	TCHAR* szCapsExt;
-	DWORD dwVersionRequestTime;
-	DWORD dwDiscoInfoRequestTime;
-	JabberCapsBits jcbCachedCaps;
-	JabberCapsBits jcbManualDiscoveredCaps;
+	ptrT  m_tszCapsNode;
+	ptrT  m_tszCapsVer;
+	ptrT  m_tszCapsExt;
+	DWORD m_dwVersionRequestTime, m_dwDiscoInfoRequestTime;
+
+	JabberCapsBits m_jcbCachedCaps;
+	JabberCapsBits m_jcbManualDiscoveredCaps;
+
+	// XEP-232 support
+	ptrT  m_tszOs, m_tszOsVersion;
+	ptrT  m_tszSoftware, m_tszSoftwareVersion, m_tszXMirandaCoreVersion;
 
 	// XEP-0085 gone event support
-	BOOL bMessageSessionActive;
-
-	JABBER_XEP0232_SOFTWARE_INFO* pSoftwareInfo;
+	BOOL m_bMessageSessionActive;
 };
+
+class pResourceStatus
+{
+	JABBER_RESOURCE_STATUS *m_pStatus;
+
+public:
+	__forceinline pResourceStatus(JABBER_RESOURCE_STATUS *pStatus) :
+		m_pStatus(pStatus)
+	{	pStatus->AddRef();
+	}
+
+	__forceinline pResourceStatus(const pResourceStatus &r)
+	{	m_pStatus = r.m_pStatus;
+		m_pStatus->AddRef();
+	}
+
+	__forceinline ~pResourceStatus()
+	{	m_pStatus->Release();
+	}
+
+	__forceinline operator JABBER_RESOURCE_STATUS*() const { return m_pStatus; }
+	__forceinline JABBER_RESOURCE_STATUS* operator->() const { return m_pStatus; }
+
+	__forceinline void operator=(const pResourceStatus &r) {
+		m_pStatus->Release();
+		m_pStatus = r.m_pStatus;
+		m_pStatus->AddRef();
+	}
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 struct JABBER_LIST_ITEM : public MZeroedObject
 {
@@ -115,14 +151,15 @@ struct JABBER_LIST_ITEM : public MZeroedObject
 	// jid = jid of the contact
 	TCHAR* nick;
 
-	JABBER_RESOURCE_STATUS* findResource(const TCHAR *resourceName) const;
-	JABBER_RESOURCE_STATUS* getBestResource() const;
+	pResourceStatus findResource(const TCHAR *resourceName) const;
+	pResourceStatus getBestResource() const;
 	JABBER_RESOURCE_MODE resourceMode;
 	LIST<JABBER_RESOURCE_STATUS> arResources; // array of resources
 	JABBER_RESOURCE_STATUS
-		*pLastSeenResource, // resource which was last seen active
-		*pManualResource,   // manually set resource
-		itemResource;       // resource for jids without /resource node
+		*m_pLastSeenResource, // resource which was last seen active
+		*m_pManualResource,   // manually set resource
+		*m_pItemResource,     // resource for jids without /resource node
+		*getTemp();           // allocates m_pItemResource if needed
 
 	JABBER_SUBSCRIPTION subscription;
 	TCHAR* group;
@@ -170,12 +207,14 @@ struct JABBER_LIST_ITEM : public MZeroedObject
 	BOOL bHistoryRead;
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+
 struct JABBER_HTTP_AVATARS
 {
 	char * Url;
-	HANDLE hContact;
+	MCONTACT hContact;
 
-	JABBER_HTTP_AVATARS(const TCHAR *tUrl, HANDLE thContact)
+	JABBER_HTTP_AVATARS(const TCHAR *tUrl, MCONTACT thContact)
 		: Url(mir_t2a(tUrl)), hContact(thContact) {}
 
 	~JABBER_HTTP_AVATARS() { mir_free(Url); }

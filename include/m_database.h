@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -24,51 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef M_DATABASE_H__
 #define M_DATABASE_H__ 1
 
-#ifndef M_CORE_H__
-	#include <m_core.h>
-#endif
-
-/******************* DATABASE MODULE ***************************/
-
-/*	Notes (as I think of them):
-- The module is 100% thread-safe
-- The database is the main routing point for the vast majority of Miranda.
-  Events are sent from the protocol module to here, and the send/recv message
-  module (for example) hooks the db/event/added event. Events like 'contact
-  online status changed' do not come through here - icqlib will send that one.
-- contacts work much the same. the find/add users module calls db/contact/add
-  and db/contact/writesetting and the contact list will get db/contact/added
-  and db/contact/settingchanged events
-- The user is just a special contact. A hcontact of NULL in most functions
-  means the user. Functions in which it cannot be used will be stated
-- events attached to the user are things like system messages
-- also in this module are crypt/decrypt functions for stuff that should be
-  obfuscated on the disk, and some time functions for dealing with timestamps
-  in events.
-- the contactsettings system is designed for being read by many different
-  modules. eg lots of people will be interested in "ICQ"/"UIN", but the module
-  name passed to contact/writesetting should always be your own. The Mirabilis
-  ICQ database importer clearly has to be an exception to this rule, along with
-  a few other bits.
-- the current database format means that geteventcontact is exceptionally slow.
-  It should be avoidable in most cases so I'm not too concerned, but if people
-  really need to use it a lot, I'll sort it out.
-- handles do not need to be closed unless stated
-- the database is loaded as a memory mapped file. This has various
-  disadvantages but a massive advantage in speed for random access.
-- The database is optimised for reading. Write performance is fairly bad,
-  except for adding events which is the most common activity and pretty good.
-- I'll work on caching to improve this later
-- Deleted items are left as empty space and never reused. All new items are
-  put at the end. A count is kept of this slack space and at some point a
-  separate programme will need to be written to repack the database when the
-  slack gets too high. It's going to be a good few months of usage before this
-  can happen to anyone though, so no rush.
-*/
-
-/******************** GENERALLY USEFUL STUFF***********************/
-
-#include <tchar.h>
+/////////////////////////////////////////////////////////////////////////////////////////
+// GENERALLY USEFUL STUFF
 
 #if !defined(M_SYSTEM_H__)
 	#include "m_system.h"
@@ -82,9 +40,307 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 	#pragma warning(disable:4201 4204)
 #endif
 
-/******************************************************************/
-/************************* SERVICES *******************************/
-/******************************************************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// database functions
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// DBVARIANT: used by db/contact/getsetting and db/contact/writesetting
+
+#define DBVT_DELETED  0   // this setting just got deleted, no other values are valid
+#define DBVT_BYTE     1	  // bVal and cVal are valid
+#define DBVT_WORD     2	  // wVal and sVal are valid
+#define DBVT_DWORD    4	  // dVal and lVal are valid
+#define DBVT_ASCIIZ 255	  // pszVal is valid
+#define DBVT_BLOB   254	  // cpbVal and pbVal are valid
+#define DBVT_UTF8   253   // pszVal is valid
+#define DBVT_WCHAR  252   // pszVal is valid
+#if defined(_UNICODE)
+#define DBVT_TCHAR DBVT_WCHAR
+#else
+#define DBVT_TCHAR DBVT_ASCIIZ
+#endif
+#define DBVTF_VARIABLELENGTH  0x80
+
+typedef struct
+{
+	BYTE type;
+	union {
+		BYTE bVal; char cVal;
+		WORD wVal; short sVal;
+		DWORD dVal; long lVal;
+		struct {
+			union {
+				char *pszVal;
+				TCHAR *ptszVal;
+				wchar_t *pwszVal;
+			};
+			WORD cchVal;   //only used for db/contact/getsettingstatic
+		};
+		struct {
+			WORD cpbVal;
+			BYTE *pbVal;
+		};
+	};
+} DBVARIANT;
+
+#define DBEF_SENT       2  // this event was sent by the user. If not set this event was received.
+#define DBEF_READ       4  // event has been read by the user. It does not need to be processed any more except for history.
+#define DBEF_RTL        8  // event contains the right-to-left aligned text
+#define DBEF_UTF       16  // event contains a text in utf-8
+#define DBEF_ENCRYPTED 32  // event is encrypted (never reported outside a driver)
+
+typedef struct
+{
+	int   cbSize;           // size of the structure in bytes
+	char *szModule;         // pointer to name of the module that 'owns' this
+	// event, ie the one that is in control of the data format
+	DWORD timestamp;        // seconds since 00:00, 01/01/1970. Gives us times until
+	// 2106 unless you use the standard C library which is
+	// signed and can only do until 2038. In GMT.
+	DWORD flags;            // the omnipresent flags
+	WORD  eventType;        // module-defined event type field
+	DWORD cbBlob;           // size of pBlob in bytes
+	PBYTE pBlob;            // pointer to buffer containing module-defined event data
+
+#if defined(__cplusplus)
+	bool __forceinline markedRead() const
+	{
+		return (flags & (DBEF_SENT | DBEF_READ)) != 0;
+	}
+#endif
+} DBEVENTINFO;
+
+MIR_CORE_DLL(INT_PTR) db_free(DBVARIANT *dbv);
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Database contacts
+
+/*
+Gets the handle of the first contact in the database. This handle can be used
+with loads of functions. It does not need to be closed.
+You can specify szProto to find only its contacts
+Returns a handle to the first contact in the db on success, or NULL if there
+are no contacts in the db.
+*/
+
+#if defined(__cplusplus)
+MIR_CORE_DLL(MCONTACT) db_find_first(const char *szProto = NULL);
+#else
+MIR_CORE_DLL(MCONTACT) db_find_first(const char *szProto);
+#endif
+
+/*
+Gets the handle of the next contact after hContact in the database. This handle
+can be used with loads of functions. It does not need to be closed.
+You can specify szProto to find only its contacts
+Returns a handle to the contact after hContact in the db on success or NULL if
+hContact was the last contact in the db or hContact was invalid.
+*/
+
+#if defined(__cplusplus)
+MIR_CORE_DLL(MCONTACT) db_find_next(MCONTACT hContact, const char *szProto = NULL);
+#else
+MIR_CORE_DLL(MCONTACT) db_find_next(MCONTACT hContact, const char *szProto);
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Database events
+
+/*
+Adds a new event to a contact's event list
+Returns a handle to the newly added event, or NULL on failure
+Triggers a db/event/added event just before it returns.
+Events are sorted chronologically as they are entered, so you cannot guarantee
+that the new hEvent is the last event in the chain, however if a new event is
+added that has a timestamp less than 90 seconds *before* the event that should
+be after it, it will be added afterwards, to allow for protocols that only
+store times to the nearest minute, and slight delays in transports.
+There are a few predefined eventTypes below for easier compatibility, but
+modules are free to define their own, beginning at 2000
+DBEVENTINFO.timestamp is in GMT, as returned by time(). There are services
+db/time/x below with useful stuff for dealing with it.
+*/
+
+#define EVENTTYPE_MESSAGE         0
+#define EVENTTYPE_URL             1
+#define EVENTTYPE_CONTACTS        2   //v0.1.2.2+
+#define EVENTTYPE_ADDED         1000  //v0.1.1.0+: these used to be module-
+#define EVENTTYPE_AUTHREQUEST   1001  //specific codes, hence the module-
+#define EVENTTYPE_FILE          1002  //specific limit has been raised to 2000
+
+MIR_CORE_DLL(MEVENT) db_event_add(MCONTACT hContact, DBEVENTINFO *dbei);
+
+/*
+Gets the number of events in the chain belonging to a contact in the database.
+Returns the number of events in the chain owned by hContact or -1 if hContact
+is invalid. They can be retrieved using the db_event_first/last() services.
+*/
+
+MIR_CORE_DLL(int) db_event_count(MCONTACT hContact);
+
+/*
+Removes a single event from the database
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns 0 on success, or nonzero if hDbEvent was invalid
+Triggers a db/event/deleted event just *before* the event is deleted
+*/
+
+MIR_CORE_DLL(int) db_event_delete(MCONTACT hContact, MEVENT hDbEvent);
+
+/*
+Retrieves a handle to the first event in the chain for hContact
+Returns the handle, or NULL if hContact is invalid or has no events
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(MEVENT) db_event_first(MCONTACT hContact);
+
+/*
+Retrieves a handle to the first unread event in the chain for hContact
+Returns the handle, or NULL if hContact is invalid or all its events have been
+read
+
+Events in a chain are sorted chronologically automatically, but this does not
+necessarily mean that all events after the first unread are unread too. They
+should be checked individually with db_event_next() and db_event_get()
+This service is designed for startup, reloading all the events that remained
+unread from last time
+*/
+
+MIR_CORE_DLL(MEVENT) db_event_firstUnread(MCONTACT hContact);
+
+/*
+Retrieves all the information stored in hDbEvent
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns 0 on success or nonzero if hDbEvent is invalid
+Don't forget to set dbe.cbSize, dbe.pBlob and dbe.cbBlob before calling this
+service
+The correct value dbe.cbBlob can be got using db/event/getblobsize
+If successful, all the fields of dbe are filled. dbe.cbBlob is set to the
+actual number of bytes retrieved and put in dbe.pBlob
+If dbe.cbBlob is too small, dbe.pBlob is filled up to the size of dbe.cbBlob
+and then dbe.cbBlob is set to the required size of data to go in dbe.pBlob
+On return, dbe.szModule is a pointer to the database module's own internal list
+of modules. Look but don't touch.
+*/
+
+MIR_CORE_DLL(int) db_event_get(MEVENT hDbEvent, DBEVENTINFO *dbei);
+
+/*
+Retrieves the space in bytes required to store the blob in hDbEvent
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns the space required in bytes, or -1 if hDbEvent is invalid
+*/
+
+MIR_CORE_DLL(int) db_event_getBlobSize(MEVENT hDbEvent);
+
+/*
+Retrieves a handle to the contact that owns hDbEvent.
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+NULL is a valid return value, meaning, as usual, the user.
+Returns INVALID_CONTACT_ID if hDbEvent is invalid, or the handle to the contact on success
+*/
+
+MIR_CORE_DLL(MCONTACT) db_event_getContact(MEVENT hDbEvent);
+
+/*
+Retrieves a handle to the last event in the chain for hContact
+Returns the handle, or NULL if hContact is invalid or has no events
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(MEVENT) db_event_last(MCONTACT hContact);
+
+/*
+Changes the flags for an event to mark it as read.
+hDbEvent should have been returned by db_event_add/first/last/next/prev()
+Returns the entire flag DWORD for the event after the change, or -1 if hDbEvent
+is invalid.
+This is the one database write operation that does not trigger an event.
+Modules should not save flags states for any length of time.
+*/
+
+MIR_CORE_DLL(int) db_event_markRead(MCONTACT hContact, MEVENT hDbEvent);
+
+/*
+Retrieves a handle to the next event in a chain after hDbEvent
+Returns the handle, or NULL if hDbEvent is invalid or is the last event
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(MEVENT) db_event_next(MCONTACT hContact, MEVENT hDbEvent);
+
+/*
+Retrieves a handle to the previous event in a chain before hDbEvent
+Returns the handle, or NULL if hDbEvent is invalid or is the first event
+Events in a chain are sorted chronologically automatically
+*/
+
+MIR_CORE_DLL(MEVENT) db_event_prev(MCONTACT hContact, MEVENT hDbEvent);
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Database settings
+
+MIR_CORE_DLL(INT_PTR)  db_get(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, DBVARIANT *dbv);
+MIR_CORE_DLL(int)      db_get_b(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, int errorValue);
+MIR_CORE_DLL(int)      db_get_w(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, int errorValue);
+MIR_CORE_DLL(DWORD)    db_get_dw(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, DWORD errorValue);
+MIR_CORE_DLL(char*)    db_get_sa(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting);
+MIR_CORE_DLL(wchar_t*) db_get_wsa(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting);
+
+MIR_CORE_DLL(int)      db_get_static(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, char *pDest, int cbDest);
+MIR_CORE_DLL(int)      db_get_static_utf(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, char *pDest, int cbDest);
+MIR_CORE_DLL(int)      db_get_wstatic(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, wchar_t *pDest, int cbDest);
+
+#if defined(__cplusplus)
+MIR_CORE_DLL(INT_PTR) db_get_s(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, DBVARIANT *dbv, const int nType = DBVT_ASCIIZ);
+#else
+MIR_CORE_DLL(INT_PTR) db_get_s(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, DBVARIANT *dbv, const int nType);
+#endif
+
+MIR_CORE_DLL(INT_PTR)  db_set(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, DBVARIANT *dbv);
+MIR_CORE_DLL(INT_PTR)  db_set_b(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, BYTE val);
+MIR_CORE_DLL(INT_PTR)  db_set_w(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, WORD val);
+MIR_CORE_DLL(INT_PTR)  db_set_dw(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, DWORD val);
+MIR_CORE_DLL(INT_PTR)  db_set_s(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, LPCSTR val);
+MIR_CORE_DLL(INT_PTR)  db_set_ws(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, LPCWSTR val);
+MIR_CORE_DLL(INT_PTR)  db_set_utf(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, LPCSTR val);
+MIR_CORE_DLL(INT_PTR)  db_set_blob(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting, void *val, unsigned len);
+
+MIR_CORE_DLL(INT_PTR) db_unset(MCONTACT hContact, LPCSTR szModule, LPCSTR szSetting);
+
+#if defined(__cplusplus)
+MIR_CORE_DLL(BOOL) db_set_resident(LPCSTR szModule, const char *szService, BOOL bEnable = TRUE);
+#else
+MIR_CORE_DLL(BOOL) db_set_resident(LPCSTR szModule, const char *szService, BOOL bEnable);
+#endif
+
+#define db_get_ws(a,b,c,d)    db_get_s(a,b,c,d,DBVT_WCHAR)
+#define db_get_utf(a,b,c,d)   db_get_s(a,b,c,d,DBVT_UTF8)
+
+#ifdef _UNICODE
+#define db_get_ts(a,b,c,d) db_get_s(a,b,c,d,DBVT_WCHAR)
+#define db_get_tsa         db_get_wsa
+#define db_set_ts          db_set_ws
+#define db_get_tstatic     db_get_wstatic
+#else
+#define db_get_ts(a,b,c,d) db_get_s(a,b,c,d,DBVT_ASCIIZ)
+#define db_get_tsa         db_get_sa
+#define db_set_ts          db_set_s
+#define db_get_tstatic     db_get_static
+#endif
+
+#if defined(__cplusplus)
+}
+#endif
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Profile services
 
 /* DB/GetProfileName service
 Gets the name of the profile currently being used by the database module. This
@@ -133,58 +389,32 @@ Analog of Database/DefaultProfile in mirandaboot.ini
 Checks the specified profile like dbtool did.
 Implemented in the dbchecker plugins, thus it might not exist
   wParam = (WPARAM)(TCHAR*)ptszProfileName
-  lParam = 0 (unused)
+  lParam = (BOOL)bConversionMode
 */
 
 #define MS_DB_CHECKPROFILE "DB/CheckProfile"
 
-/************************* Contact ********************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// Contact services
 
 typedef struct {
-	const char *szModule;	// pointer to name of the module that wrote the
+	const char *szModule;   // pointer to name of the module that wrote the
 	                        // setting to get
-	const char *szSetting;	// pointer to name of the setting to get
-	DBVARIANT *pValue;		// pointer to variant to receive the value
+	const char *szSetting;  // pointer to name of the setting to get
+	DBVARIANT *pValue;      // pointer to variant to receive the value
 } DBCONTACTGETSETTING;
 
 typedef struct {
-	const char *szModule;	// pointer to name of the module that wrote the
+	const char *szModule;   // pointer to name of the module that wrote the
 	                        // setting to get
-	const char *szSetting;	// pointer to name of the setting to get
-	DBVARIANT value;		// variant containing the value to set
+	const char *szSetting;  // pointer to name of the setting to get
+	DBVARIANT value;        // variant containing the value to set
 } DBCONTACTWRITESETTING;
-
-/* DB/Contact/GetSettingStatic service
-Look up the value of a named setting for a specific contact in the database
-  wParam = (WPARAM)(HANDLE)hContact
-  lParam = (LPARAM)(DBCONTACTGETSETTING*)&dbcgs
-hContact should have been returned by find*contact or addcontact
-This service differs from db/contact/getsetting in that it won't malloc()
-memory for the return value if it needs to do so. This introduces some extra
-constraints:
-Upon calling dbcgs.pValue->type should be initialised to the expected type of
-the setting. If the setting is of an integral type it won't matter if it's
-wrong and the service will correct it before returning, however if the setting
-is a string or a blob the service needs to know where to put the data and will
-fail if type is set wrongly.
-If dbcgs.pValue->type is DBVT_ASCIIZ or DBVT_BLOB upon calling, the
-corresponding data field (pszVal or pbVal) must point to a buffer allocated by
-the caller and the length field (cchVal or cpbVal) must contain the size of
-that buffer in bytes.
-If the setting type is variable length (DBVT_ASCIIZ or DBVT_BLOB), on exit the
-length field (cchVal or cpbVal) will be filled with the full length of the
-setting's value (excluding the terminating nul if it's DBVT_ASCIIZ).
-This service exists as well as db/contact/getsetting because malloc()/free()
-can be too slow for frequently queried settings.
-Returns 0 on success or nonzero if the setting name was not found or hContact
-was invalid.
-*/
-#define MS_DB_CONTACT_GETSETTINGSTATIC  "DB/Contact/GetSettingStatic"
 
 /* db/contact/enumsettings    v0.1.0.1+
 Lists all the settings a specific modules has stored in the database for a
 specific contact.
-wParam = (WPARAM)(HANDLE)hContact
+wParam = (MCONTACT)hContact
 lParam = (LPARAM)(DBCONTACTENUMSETTINGS*)&dbces
 Returns the return value of the last call to pfnEnumProc, or -1 if there are
 no settings for that module/contact pair
@@ -197,10 +427,10 @@ you want to keep it for longer you must allocation your own storage.
 typedef int (*DBSETTINGENUMPROC)(const char *szSetting, LPARAM lParam);
 typedef struct {
 	DBSETTINGENUMPROC pfnEnumProc;
-	LPARAM lParam;    //passed direct to pfnEnumProc
-	const char *szModule;    //name of the module to get settings for
-	DWORD ofsSettings;   //filled by the function to contain the offset from
-	       //the start of the database of the requested settings group.
+	LPARAM lParam;        // passed direct to pfnEnumProc
+	const char *szModule; // name of the module to get settings for
+	DWORD ofsSettings;    // filled by the function to contain the offset from
+	                      // the start of the database of the requested settings group.
 } DBCONTACTENUMSETTINGS;
 #define MS_DB_CONTACT_ENUMSETTINGS   "DB/Contact/EnumSettings"
 
@@ -215,7 +445,7 @@ and contact/findnext
 /* DB/Contact/Delete
 Deletes the contact hContact from the database and all events and settings
 associated with it.
-  wParam = (WPARAM)(HANDLE)hContact
+  wParam = (MCONTACT)hContact
   lParam = 0
 Returns 0 on success or nonzero if hContact was invalid
 Please don't try to delete the user contact (hContact = NULL)
@@ -244,7 +474,8 @@ Returns 1 if the contact is a contact, or 0 if the contact is not valid.
 */
 #define MS_DB_CONTACT_IS "DB/Contact/Is"
 
-/************************** Event *********************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// Event services
 
 /* DB/EventType/Register service (0.7+)
 Registers the specified database event type, with module, id & description.
@@ -255,24 +486,21 @@ decode a blob and return the event text in the required format, its prototype is
 to a call of MS_DB_EVENT_GETTEXT (see below)
   wParam = 0
   lParam = (LPARAM)(DBEVENTTYPEDESCR*)
-Always returns 0.
+Returns -1 on error (e.g., event type already registred), 0 on success
 */
 
 typedef struct
 {
-	int   cbSize;      // structure size in bytes
-	char* module;      // event module name
-	int   eventType;   // event id, unique for this module
-	char* descr;       // event type description (i.e. "File Transfer")
-	char* textService; // service name for MS_DB_EVENT_GETTEXT (0.8+, default Module+'/GetEventText'+EvtID)
-	char* iconService; // service name for MS_DB_EVENT_GETICON (0.8+, default Module+'/GetEventIcon'+EvtID)
+	int    cbSize;      // structure size in bytes
+	LPSTR  module;      // event module name
+	int    eventType;   // event id, unique for this module
+	LPSTR  descr;       // event type description (i.e. "File Transfer")
+	LPSTR  textService; // service name for MS_DB_EVENT_GETTEXT (0.8+, default Module+'/GetEventText'+EvtID)
+	LPSTR  iconService; // service name for MS_DB_EVENT_GETICON (0.8+, default Module+'/GetEventIcon'+EvtID)
 	HANDLE eventIcon;  // icolib handle to eventicon (0.8+, default 'eventicon_'+Module+EvtID)
-	DWORD flags;       // flags, combination of the DETF_*
+	DWORD  flags;       // flags, combination of the DETF_*
 }
 	DBEVENTTYPEDESCR;
-
-#define DBEVENTTYPEDESCR_SIZE    sizeof(DBEVENTTYPEDESCR)
-#define DBEVENTTYPEDESCR_SIZE_V1 (offsetof(DBEVENTTYPEDESCR, textService))
 
 // constants for default event behaviour
 #define DETF_HISTORY    1   // show event in history
@@ -290,22 +518,23 @@ Returns DBEVENTTYPEDESCR* or NULL, if an event isn't found.
 
 #define MS_DB_EVENT_GETTYPE "DB/EventType/Get"
 
-__forceinline HANDLE DbGetAuthEventContact(DBEVENTINFO* dbei)
-{	return (HANDLE)(*(DWORD*)&dbei->pBlob[sizeof(DWORD)]);
+__forceinline MCONTACT DbGetAuthEventContact(DBEVENTINFO* dbei)
+{
+	return (MCONTACT)(*(DWORD*)&dbei->pBlob[sizeof(DWORD)]);
 }
 
 /* DB/Event/GetText (0.7.0+)
 Retrieves the event's text
-  wParam = (WPARAM)0 (unused)
+  wParam = 0 (unused)
   lParam = (LPARAM)(DBEVENTGETTEXT*)egt - pointer to structure with parameters
   egt->dbei should be the valid database event read via db_event_get()
-  egt->datatype = DBVT_WCHAR or DBVT_ASCIIZ or DBVT_TCHAR. If a caller wants to
-suppress Unicode part of event in answer, add DBVTF_DENYUNICODE to this field.
+  egt->datatype = DBVT_WCHAR or DBVT_ASCIIZ or DBVT_TCHAR.
   egt->codepage is any valid codepage, CP_ACP by default.
 
 Function returns a pointer to a string in the required format.
 This string should be freed by a call of mir_free
 */
+
 typedef struct {
 	DBEVENTINFO* dbei;
 	int datatype;
@@ -363,31 +592,8 @@ __forceinline TCHAR* DbGetEventStringT(DBEVENTINFO* dbei, const char* str)
 	return (TCHAR*)CallService(MS_DB_EVENT_GETSTRINGT, (WPARAM)dbei, (LPARAM)str);
 }
 
-/************************** Encryption ****************************/
-
-/* DB/Crypt/EncodeString
-Scrambles pszString in-place using a strange encryption algorithm
-  wParam = (WPARAM)(int)cbString
-  lParam = (LPARAM)(char*)pszString
-cbString is the size of the buffer pointed to by pszString, *not* the length
-of pszString. This service may be changed at a later date such that it
-increases the length of pszString
-Returns 0 always
-*/
-#define MS_DB_CRYPT_ENCODESTRING  "DB/Crypt/EncodeString"
-
-/* DB/Crypt/DecodeString
-Descrambles pszString in-place using the strange encryption algorithm
-  wParam = (WPARAM)(int)cbString
-  lParam = (LPARAM)(char*)pszString
-Reverses the operation done by crypt/encodestring
-cbString is the size of the buffer pointed to by pszString, *not* the length
-of pszString.
-Returns 0 always
-*/
-#define MS_DB_CRYPT_DECODESTRING  "DB/Crypt/DecodeString"
-
-/**************************** Time ********************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// Time services
 
 /* DB/Time/TimestampToLocal
 Converts a GMT timestamp into local time
@@ -439,7 +645,8 @@ typedef struct {
 } DBTIMETOSTRINGT;
 #define MS_DB_TIME_TIMESTAMPTOSTRINGT "DB/Time/TimestampToStringT"
 
-/*************************** Random *******************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// Random services
 
 /*
 Switches safety settings on or off
@@ -458,7 +665,8 @@ so you need not use this service for that purpose.
 */
 #define MS_DB_SETSAFETYMODE     "DB/SetSafetyMode"
 
-/*************************** Modules ******************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// Module services
 
 /* db/modules/enum   v0.1.0.1+
 Enumerates the names of all modules that have stored or requested information
@@ -477,9 +685,6 @@ Writing to the database while module names are being enumerated will cause
 unpredictable results in the enumeration, but the write will work.
 szModuleName is only guaranteed to be valid for the duration of the callback.
 If you want to keep it for longer you must allocation your own storage.
-**BUG**: Prior to 0.1.2.0 dbmep was called as (lParam)(szMod, ofsMod, lParam).
-  This means that the lParam parameter to dbmep was useless, and explains the
-  slightly odd 'wParam = lParam' in the definition.
 */
 typedef int (*DBMODULEENUMPROC)(const char *szModuleName, DWORD ofsModuleName, LPARAM lParam);
 #define MS_DB_MODULES_ENUM    "DB/Modules/Enum"
@@ -487,19 +692,18 @@ typedef int (*DBMODULEENUMPROC)(const char *szModuleName, DWORD ofsModuleName, L
 /* DB/Module/Delete  0.8.0+
 
 Removes all settings for the specified module.
-wParam = 0 (unused)
+wParam = (WPARAM)(MCONTACT)hContact or 0 for global settings
 lParam = (LPARAM)(char*)szModuleName - the module name to be deleted
 */
 
 #define MS_DB_MODULE_DELETE "DB/Module/Delete"
 
-/******************************************************************/
-/************************** EVENTS ********************************/
-/******************************************************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// Database events
 
 /* DB/Event/Added event
 Called when a new event has been added to the event chain for a contact
-  wParam = (WPARAM)(HANDLE)hContact
+  wParam = (MCONTACT)hContact
   lParam = (LPARAM)(HANDLE)hDbEvent
 hDbEvent is a valid handle to the event. hContact is a valid handle to the
 contact to which hDbEvent refers.
@@ -517,7 +721,7 @@ passed to db_event_add.
 The point of this hook is to stop any unwanted database events, to stop
 an event being added, return 1, to allow the event to pass through return
 0.
-  wParam = (WPARAM)(HANDLE)hContact
+  wParam = (MCONTACT)hContact
   lParam = (LPARAM)&DBEVENTINFO
 
 Any changed made to the said DBEVENTINFO are also passed along to the database,
@@ -525,9 +729,19 @@ therefore it is possible to shape the data, however DO NOT DO THIS.
 */
 #define ME_DB_EVENT_FILTER_ADD "DB/Event/FilterAdd"
 
+/* DB/Event/Marked/Read event
+Called when an event is marked read
+wParam = (MCONTACT)hContact
+lParam = (LPARAM)(HANDLE)hDbEvent
+hDbEvent is a valid handle to the event.
+hContact is a valid handle to the contact to which hDbEvent refers, and will
+remain valid.
+*/
+#define ME_DB_EVENT_MARKED_READ "DB/Event/Marked/Read"
+
 /* DB/Event/Deleted event
 Called when an event is about to be deleted from the event chain for a contact
-  wParam = (WPARAM)(HANDLE)hContact
+  wParam = (MCONTACT)hContact
   lParam = (LPARAM)(HANDLE)hDbEvent
 hDbEvent is a valid handle to the event which is about to be deleted, but it
 won't be once your hook has returned.
@@ -540,7 +754,7 @@ usual, stop other hooks from being called.
 
 /* DB/Contact/Added event
 Called when a new contact has been added to the database
-  wParam = (WPARAM)(HANDLE)hContact
+  wParam = (MCONTACT)hContact
   lParam = 0
 hContact is a valid handle to the new contact.
 Contacts are initially created without any settings, so if you hook this event
@@ -550,7 +764,7 @@ you will almost certainly also want to hook db/contact/settingchanged as well.
 
 /* DB/Contact/Deleted event
 Called when an contact is about to be deleted
-  wParam = (WPARAM)(HANDLE)hContact
+  wParam = (MCONTACT)hContact
   lParam = 0
 hContact is a valid handle to the contact which is about to be deleted, but it
 won't be once your hook has returned.
@@ -562,7 +776,7 @@ Deleting a contact invalidates all events in its chain.
 
 /* DB/Contact/SettingChanged event
 Called when a contact has had one of its settings changed
-  wParam = (WPARAM)(HANDLE)hContact
+  wParam = (MCONTACT)hContact
   lParam = (LPARAM)(DBCONTACTWRITESETTING*)&dbcws
 hContact is a valid handle to the contact that has changed.
 This event will be triggered many times rapidly when a whole bunch of values
@@ -575,27 +789,26 @@ don't change any of the members.
 */
 #define ME_DB_CONTACT_SETTINGCHANGED  "DB/Contact/SettingChanged"
 
-/******************************************************************/
-/********************* SETTINGS HELPER FUNCTIONS ******************/
-/******************************************************************/
+/////////////////////////////////////////////////////////////////////////////////////////
+// Settings helper functions
 
 #ifndef DB_NOHELPERFUNCTIONS
 
 /* inlined range tolerate versions */
 
-__inline BYTE DBGetContactSettingRangedByte(HANDLE hContact, const char *szModule, const char *szSetting, BYTE errorValue, BYTE minValue, BYTE maxValue)
+__inline BYTE DBGetContactSettingRangedByte(MCONTACT hContact, const char *szModule, const char *szSetting, BYTE errorValue, BYTE minValue, BYTE maxValue)
 {
 	BYTE bVal = db_get_b(hContact, szModule, szSetting, errorValue);
 	return (bVal < minValue || bVal > maxValue) ? errorValue : bVal;
 }
 
-__inline WORD DBGetContactSettingRangedWord(HANDLE hContact, const char *szModule, const char *szSetting, WORD errorValue, WORD minValue, WORD maxValue)
+__inline WORD DBGetContactSettingRangedWord(MCONTACT hContact, const char *szModule, const char *szSetting, WORD errorValue, WORD minValue, WORD maxValue)
 {
 	WORD wVal = db_get_w(hContact, szModule, szSetting, errorValue);
 	return (wVal < minValue || wVal > maxValue) ? errorValue : wVal;
 }
 
-__inline DWORD DBGetContactSettingRangedDword(HANDLE hContact, const char *szModule, const char *szSetting, DWORD errorValue, DWORD minValue, DWORD maxValue) 
+__inline DWORD DBGetContactSettingRangedDword(MCONTACT hContact, const char *szModule, const char *szSetting, DWORD errorValue, DWORD minValue, DWORD maxValue)
 {
 	DWORD dwVal = db_get_dw(hContact, szModule, szSetting, errorValue);
 	return (dwVal < minValue || dwVal > maxValue) ? errorValue : dwVal;

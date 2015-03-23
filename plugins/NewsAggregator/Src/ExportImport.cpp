@@ -27,7 +27,7 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 	switch (msg) {
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
-		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, lParam);
+		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG)lParam);
 		Utils_RestoreWindowPositionNoSize(hwndDlg, NULL, MODULE, "ImportDlg");
 		EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), FALSE);
@@ -46,18 +46,18 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				HXML hXml = xi.parseFile(FileName, &bytesParsed, NULL);
 				if(hXml != NULL) {
 					HWND hwndList = (HWND)GetWindowLongPtr(hwndDlg, GWLP_USERDATA);
-					BYTE isTitleUTF = 0, isURLUTF = 0, isSiteURLUTF = 0, isGroupUTF = 0;
+					bool isTextUTF = false, isURLUTF = false, isSiteURLUTF = false, isGroupUTF = false;
 					HXML node = xi.getChildByPath(hXml, _T("opml/body/outline"), 0);
 					if ( !node)
 						node = xi.getChildByPath(hXml, _T("body/outline"), 0);
-					int count = SendMessage(FeedsImportList, LB_GETCOUNT, 0, 0);
+					int count = (int)SendMessage(FeedsImportList, LB_GETCOUNT, 0, 0);
 					int DUPES = 0;
 					if (node) {
 						while (node) {
 							int outlineAttr = xi.getAttrCount(node);
 							int outlineChildsCount = xi.getChildCount(node);
-							TCHAR *type = (TCHAR *)xi.getAttrValue(node, _T("type"));
-							if ( !type && !outlineChildsCount) {
+							TCHAR *xmlUrl = (TCHAR *)xi.getAttrValue(node, _T("xmlUrl"));
+							if (!xmlUrl && !outlineChildsCount) {
 								HXML tmpnode = node;
 								node = xi.getNextNode(node);
 								if ( !node) {
@@ -68,68 +68,68 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 										node = xi.getNextNode(node);
 										if (node)
 											break;
-									} while (lstrcmpi(xi.getName(node), _T("body")));
+									} while (mir_tstrcmpi(xi.getName(node), _T("body")));
 								}
 							}
-							else if (!type && outlineChildsCount)
+							else if (!xmlUrl && outlineChildsCount)
 								node = xi.getFirstChild(node);
-							else if (type) {
-								TCHAR *title = NULL, *url = NULL, *siteurl = NULL, *group = NULL, *utfgroup = NULL;
+							else if (xmlUrl) {
+								TCHAR *text = NULL, *url = NULL, *siteurl = NULL, *group = NULL;
 								BYTE NeedToImport = FALSE;
 								for (int i = 0; i < outlineAttr; i++) {
-									if (!lstrcmpi(xi.getAttrName(node, i), _T("title"))) {
-										title = mir_utf8decodeT(_T2A(xi.getAttrValue(node, xi.getAttrName(node, i))));
-										if ( !title) {
-											isTitleUTF = 0;
-											title = (TCHAR *)xi.getAttrValue(node, xi.getAttrName(node, i));
+									if (!mir_tstrcmpi(xi.getAttrName(node, i), _T("text"))) {
+										text = mir_utf8decodeT(_T2A(xi.getAttrValue(node, xi.getAttrName(node, i))));
+										if (!text) {
+											isTextUTF = 0;
+											text = (TCHAR *)xi.getAttrValue(node, xi.getAttrName(node, i));
 										} else
-											isTitleUTF = 1;
+											isTextUTF = 1;
 
 										for (int i = 0; i < count; i++) {
 											TCHAR item[MAX_PATH];
-											SendMessage(FeedsImportList, LB_GETTEXT, i, (LPARAM)item);
-											if (!lstrcmpi(item, title)) {
+											SendMessage(FeedsImportList, LB_GETTEXT, (WPARAM)i, (LPARAM)item);
+											if (!mir_tstrcmpi(item, text)) {
 												NeedToImport = TRUE;
 												break;
 											}
 										}
 										continue;
 									}
-									if (!lstrcmpi(xi.getAttrName(node, i), _T("xmlUrl"))) {
+									if (!mir_tstrcmpi(xi.getAttrName(node, i), _T("xmlUrl"))) {
 										url = mir_utf8decodeT(_T2A(xi.getAttrValue(node, xi.getAttrName(node, i))));
 										if ( !url) {
-											isURLUTF = 0;
+											isURLUTF = false;
 											url = (TCHAR *)xi.getAttrValue(node, xi.getAttrName(node, i));
 										} else
-											isURLUTF = 1;
+											isURLUTF = true;
 										if (GetContactByURL(url) && NeedToImport) {
 											NeedToImport = FALSE;
-											DUPES += 1;
+											DUPES++;
 										}
 										continue;
 									}
-									if (!lstrcmpi(xi.getAttrName(node, i), _T("htmlUrl"))) {
+									if (!mir_tstrcmpi(xi.getAttrName(node, i), _T("htmlUrl"))) {
 										siteurl = mir_utf8decodeT(_T2A(xi.getAttrValue(node, xi.getAttrName(node, i))));
 										if ( !siteurl) {
-											isSiteURLUTF = 0;
+											isSiteURLUTF = false;
 											siteurl = (TCHAR *)xi.getAttrValue(node, xi.getAttrName(node, i));
 										} else
-											isSiteURLUTF = 1;
+											isSiteURLUTF = true;
 										continue;
 									}
-									if (title && url && siteurl)
+									if (text && url && siteurl)
 										break;
 								}
 
 								if (NeedToImport) {
 									HXML parent = xi.getParent(node);
-									while (lstrcmpi(xi.getName(parent), _T("body"))) {
+									TCHAR tmpgroup[1024];
+									while (mir_tstrcmpi(xi.getName(parent), _T("body"))) {
 										for (int i = 0; i < xi.getAttrCount(parent); i++) {
-											if (!lstrcmpi(xi.getAttrName(parent, i), _T("title"))) {
+											if (!mir_tstrcmpi(xi.getAttrName(parent, i), _T("text"))) {
 												if ( !group)
 													group = (TCHAR *)xi.getAttrValue(parent, xi.getAttrName(parent, i));
 												else {
-													TCHAR tmpgroup[1024];
 													mir_sntprintf(tmpgroup, SIZEOF(tmpgroup), _T("%s\\%s"), xi.getAttrValue(parent, xi.getAttrName(parent, i)), group);
 													group = tmpgroup;
 												}
@@ -139,23 +139,24 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 										parent = xi.getParent(parent);
 									}
 
+									TCHAR *utfgroup = NULL;
 									if (group) {
 										utfgroup = mir_utf8decodeT(_T2A(group));
 										if ( !utfgroup) {
-											isGroupUTF = 0;
+											isGroupUTF = false;
 											utfgroup = group;
 										} else
 											isGroupUTF = 1;
 									}
 
-									HANDLE hContact = (HANDLE)CallService(MS_DB_CONTACT_ADD, 0, 0);
+									MCONTACT hContact = (MCONTACT)CallService(MS_DB_CONTACT_ADD, 0, 0);
 									CallService(MS_PROTO_ADDTOCONTACT, (WPARAM)hContact, (LPARAM)MODULE);
-									db_set_ts(hContact, MODULE, "Nick", title);
+									db_set_ts(hContact, MODULE, "Nick", text);
 									db_set_ts(hContact, MODULE, "URL", url);
 									db_set_ts(hContact, MODULE, "Homepage", siteurl);
 									db_set_b(hContact, MODULE, "CheckState", 1);
 									db_set_dw(hContact, MODULE, "UpdateTime", DEFAULT_UPDATE_TIME);
-									db_set_ts(hContact, MODULE, "MsgFormat", _T(TAGSDEFAULT));
+									db_set_ts(hContact, MODULE, "MsgFormat", TAGSDEFAULT);
 									db_set_w(hContact, MODULE, "Status", CallProtoService(MODULE, PS_GETSTATUS, 0, 0));
 									if (utfgroup) {
 										db_set_ts(hContact, "CList", "Group", utfgroup);
@@ -175,15 +176,15 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 										if(!GroupExist)
 											CallService(MS_CLIST_GROUPCREATE, 0, (LPARAM)utfgroup);
 									}
-									if (isTitleUTF)
-										mir_free(title);
-									if (isURLUTF)
-										mir_free(url);
 									if (isGroupUTF)
 										mir_free(utfgroup);
-									if (isSiteURLUTF)
-										mir_free(siteurl);
 								}
+								if (isTextUTF)
+									mir_free(text);
+								if (isURLUTF)
+									mir_free(url);
+								if (isSiteURLUTF)
+									mir_free(siteurl);
 
 								HXML tmpnode = node;
 								node = xi.getNextNode(node);
@@ -196,7 +197,7 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 										if (node)
 											break;
 									}
-										while (lstrcmpi(xi.getName(tmpnode), _T("body")));
+										while (mir_tstrcmpi(xi.getName(tmpnode), _T("body")));
 								}
 							}
 						}
@@ -222,7 +223,7 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 		case IDC_BROWSEIMPORTFILE:
 			{
 				TCHAR FileName[MAX_PATH];
-				TCHAR *tszMirDir = Utils_ReplaceVarsT(_T("%miranda_path%"));
+				VARST tszMirDir(_T("%miranda_path%"));
 
 				OPENFILENAME ofn = {0};
 				ofn.lStructSize = sizeof(ofn);
@@ -242,7 +243,6 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					int bytesParsed = 0;
 					HXML hXml = xi.parseFile(FileName, &bytesParsed, NULL);
 					if(hXml != NULL) {
-						BYTE isTitleUTF = 0;
 						HXML node = xi.getChildByPath(hXml, _T("opml/body/outline"), 0);
 						if ( !node)
 							node = xi.getChildByPath(hXml, _T("body/outline"), 0);
@@ -250,8 +250,8 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 							while (node) {
 								int outlineAttr = xi.getAttrCount(node);
 								int outlineChildsCount = xi.getChildCount(node);
-								TCHAR *type = (TCHAR *)xi.getAttrValue(node, _T("type"));
-								if ( !type && !outlineChildsCount) {
+								TCHAR *xmlUrl = (TCHAR *)xi.getAttrValue(node, _T("xmlUrl"));
+								if (!xmlUrl && !outlineChildsCount) {
 									HXML tmpnode = node;
 									node = xi.getNextNode(node);
 									if ( !node) {
@@ -262,30 +262,29 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 											node = xi.getNextNode(node);
 											if (node)
 												break;
-										} while (lstrcmpi(xi.getName(node), _T("body")));
+										} while (mir_tstrcmpi(xi.getName(node), _T("body")));
 									}
 								}
-								else if (!type && outlineChildsCount)
+								else if (!xmlUrl && outlineChildsCount)
 									node = xi.getFirstChild(node);
-								else if (type) {
-									TCHAR *title = NULL;
+								else if (xmlUrl) {
 									for (int i = 0; i < outlineAttr; i++) {
-										if (!lstrcmpi(xi.getAttrName(node, i), _T("title"))) {
-											title = mir_utf8decodeT(_T2A(xi.getAttrValue(node, xi.getAttrName(node, i))));
-											if ( !title) {
-												isTitleUTF = 0;
-												title = (TCHAR *)xi.getAttrValue(node, xi.getAttrName(node, i));
+										if (!mir_tstrcmpi(xi.getAttrName(node, i), _T("text"))) {
+											TCHAR *text = mir_utf8decodeT(_T2A(xi.getAttrValue(node, xi.getAttrName(node, i))));
+											bool isTextUTF;
+											if (!text) {
+												isTextUTF = false;
+												text = (TCHAR *)xi.getAttrValue(node, xi.getAttrName(node, i));
 											} else
-												isTitleUTF = 1;
-											SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)title);
+												isTextUTF = true;
+											SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)text);
 											EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), TRUE);
 											EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), TRUE);
-											continue;
+											if (isTextUTF)
+												mir_free(text);
 										}
 									}
 
-									if (isTitleUTF)
-										mir_free(title);
 
 									HXML tmpnode = node;
 									node = xi.getNextNode(node);
@@ -297,7 +296,7 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 											node = xi.getNextNode(node);
 											if (node)
 												break;
-										} while (lstrcmpi(xi.getName(tmpnode), _T("body")));
+										} while (mir_tstrcmpi(xi.getName(tmpnode), _T("body")));
 									}
 								}
 							}
@@ -310,10 +309,8 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					else
 						MessageBox(hwndDlg, TranslateT("Not valid import file."), TranslateT("Error"), MB_OK | MB_ICONERROR);
 
-					mir_free(tszMirDir);
 					break;
 				}
-				mir_free(tszMirDir);
 				break;
 			}
 			break;
@@ -326,11 +323,11 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDOK)))
 					EnableWindow(GetDlgItem(hwndDlg, IDOK), TRUE);
-				int cursel = SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
+				int cursel = (int)SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
 				TCHAR item[MAX_PATH];
-				SendMessage(FeedsList, LB_GETTEXT, cursel, (LPARAM)item);
+				SendMessage(FeedsList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 				SendMessage(FeedsImportList, LB_ADDSTRING, 0, (LPARAM)item);
-				SendMessage(FeedsList, LB_DELETESTRING, cursel, 0);
+				SendMessage(FeedsList, LB_DELETESTRING, (WPARAM)cursel, 0);
 				if (!SendMessage(FeedsList, LB_GETCOUNT, 0, 0)) {
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), FALSE);
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), FALSE);
@@ -344,11 +341,11 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS)))
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), TRUE);
-				int cursel = SendMessage(FeedsImportList, LB_GETCURSEL, 0, 0);
+				int cursel = (int)SendMessage(FeedsImportList, LB_GETCURSEL, 0, 0);
 				TCHAR item[MAX_PATH];
-				SendMessage(FeedsImportList, LB_GETTEXT, cursel, (LPARAM)item);
+				SendMessage(FeedsImportList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 				SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)item);
-				SendMessage(FeedsImportList, LB_DELETESTRING, cursel, 0);
+				SendMessage(FeedsImportList, LB_DELETESTRING, (WPARAM)cursel, 0);
 				if (!SendMessage(FeedsImportList, LB_GETCOUNT, 0, 0))
 				{
 					EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);
@@ -366,14 +363,14 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDOK)))
 					EnableWindow(GetDlgItem(hwndDlg, IDOK), TRUE);
-				int count = SendMessage(FeedsList, LB_GETCOUNT, 0, 0);
+				int count = (int)SendMessage(FeedsList, LB_GETCOUNT, 0, 0);
 				for (int i = 0; i < count; i++) {
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsList, LB_GETTEXT, i, (LPARAM)item);
+					SendMessage(FeedsList, LB_GETTEXT, (WPARAM)i, (LPARAM)item);
 					SendMessage(FeedsImportList, LB_ADDSTRING, 0, (LPARAM)item);
 				}
 				for (int i = count - 1; i > -1; i--)
-					SendMessage(FeedsList, LB_DELETESTRING, i, 0);
+					SendMessage(FeedsList, LB_DELETESTRING, (WPARAM)i, 0);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), FALSE);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), FALSE);
 			}
@@ -385,14 +382,14 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS)))
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), TRUE);
-				int count = SendMessage(FeedsImportList, LB_GETCOUNT, 0, 0);
+				int count = (int)SendMessage(FeedsImportList, LB_GETCOUNT, 0, 0);
 				for (int i = 0; i < count; i++) {
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsImportList, LB_GETTEXT, i, (LPARAM)item);
+					SendMessage(FeedsImportList, LB_GETTEXT, (WPARAM)i, (LPARAM)item);
 					SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)item);
 				}
 				for (int i = count - 1; i > -1; i--)
-					SendMessage(FeedsImportList, LB_DELETESTRING, i, 0);
+					SendMessage(FeedsImportList, LB_DELETESTRING, (WPARAM)i, 0);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), FALSE);
 				EnableWindow(GetDlgItem(hwndDlg, IDOK), FALSE);
@@ -409,11 +406,11 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 						EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), TRUE);
 					if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDOK)))
 						EnableWindow(GetDlgItem(hwndDlg, IDOK), TRUE);
-					int cursel = SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
+					int cursel = (int)SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsList, LB_GETTEXT, cursel, (LPARAM)item);
+					SendMessage(FeedsList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 					SendMessage(FeedsImportList, LB_ADDSTRING, 0, (LPARAM)item);
-					SendMessage(FeedsList, LB_DELETESTRING, cursel, 0);
+					SendMessage(FeedsList, LB_DELETESTRING, (WPARAM)cursel, 0);
 					if (!SendMessage(FeedsList, LB_GETCOUNT, 0, 0)) {
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), FALSE);
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), FALSE);
@@ -430,11 +427,11 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), TRUE);
 					if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS)))
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), TRUE);
-					int cursel = SendMessage(FeedsImportList, LB_GETCURSEL, 0, 0);
+					int cursel = (int)SendMessage(FeedsImportList, LB_GETCURSEL, 0, 0);
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsImportList, LB_GETTEXT, cursel, (LPARAM)item);
+					SendMessage(FeedsImportList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 					SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)item);
-					SendMessage(FeedsImportList, LB_DELETESTRING, cursel, 0);
+					SendMessage(FeedsImportList, LB_DELETESTRING, (WPARAM)cursel, 0);
 					if (!SendMessage(FeedsImportList, LB_GETCOUNT, 0, 0))
 					{
 						EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);
@@ -459,7 +456,7 @@ INT_PTR CALLBACK DlgProcImportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 	return FALSE;
 }
 
-INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM)
 {
 	HWND FeedsList = GetDlgItem(hwndDlg, IDC_FEEDSLIST);
 	HWND FeedsExportList = GetDlgItem(hwndDlg, IDC_FEEDSEXPORTLIST);
@@ -468,11 +465,11 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
 		Utils_RestoreWindowPositionNoSize(hwndDlg, NULL, MODULE, "ExportDlg");
-		for (HANDLE hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
-			DBVARIANT dbVar = {0};
-			if (!db_get_ts(hContact, MODULE, "Nick", &dbVar)) {
-				SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)dbVar.ptszVal);
-				db_free(&dbVar);
+		for (MCONTACT hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
+			TCHAR *message = db_get_tsa(hContact, MODULE, "Nick");
+			if (message != NULL) {
+				SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)message);
+				mir_free(message);
 			}
 		}
 		EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);
@@ -489,7 +486,7 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 		case IDOK:
 			{
 				TCHAR FileName[MAX_PATH];
-				TCHAR *tszMirDir = Utils_ReplaceVarsT(_T("%miranda_path%"));
+				VARST tszMirDir(_T("%miranda_path%"));
 
 				OPENFILENAME ofn = {0};
 				ofn.lStructSize = sizeof(ofn);
@@ -509,32 +506,20 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					HXML hXml = xi.createNode(_T("opml"), NULL, FALSE);
 					xi.addAttr(hXml, _T("version"), _T("1.0"));
 					HXML header = xi.addChild(hXml, _T("head"), NULL);
-					HXML title = xi.addChild(header, _T("title"), _T("Miranda NG NewsAggregator plugin export"));
+					xi.addChild(header, _T("title"), _T("Miranda NG NewsAggregator plugin export"));
 					header = xi.addChild(hXml, _T("body"), NULL);
 
-					int count = SendMessage(FeedsExportList, LB_GETCOUNT, 0, 0);
+					int count = (int)SendMessage(FeedsExportList, LB_GETCOUNT, 0, 0);
 					for (int i = 0; i < count; i++) {
 						TCHAR item[MAX_PATH];
-						SendMessage(FeedsExportList, LB_GETTEXT, i, (LPARAM)item);
-						HANDLE hContact = GetContactByNick(item);
-						TCHAR *title = NULL, *url = NULL, *siteurl = NULL, *group = NULL;
-						DBVARIANT dbv = {0};
-						if (!db_get_ts(hContact, MODULE, "Nick", &dbv)) {
-							title = mir_tstrdup(dbv.ptszVal);
-							db_free(&dbv);
-						}
-						if (!db_get_ts(hContact, MODULE, "URL", &dbv)) {
-							url = mir_tstrdup(dbv.ptszVal);
-							db_free(&dbv);
-						}
-						if (!db_get_ts(hContact, MODULE, "Homepage", &dbv)) {
-							siteurl = mir_tstrdup(dbv.ptszVal);
-							db_free(&dbv);
-						}
-						if (!db_get_ts(hContact, "CList", "Group", &dbv)) {
-							group = mir_tstrdup(dbv.ptszVal);
-							db_free(&dbv);
-						}
+						SendMessage(FeedsExportList, LB_GETTEXT, (WPARAM)i, (LPARAM)item);
+						MCONTACT hContact = GetContactByNick(item);
+						TCHAR
+							*title = db_get_tsa(hContact, MODULE, "Nick"),
+							*url = db_get_tsa(hContact, MODULE, "URL"),
+							*siteurl = db_get_tsa(hContact, MODULE, "Homepage"),
+							*group = db_get_tsa(hContact, "CList", "Group");
+
 						HXML elem = header;
 						if (group)
 						{
@@ -553,7 +538,8 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 								section = _tcstok(NULL, _T("\\"));
 							}
 							elem = xi.addChild(elem, _T("outline"), NULL);
-						} else
+						}
+						else
 							elem = xi.addChild(elem, _T("outline"), NULL);
 						xi.addAttr(elem, _T("text"), title);
 						xi.addAttr(elem, _T("title"), title);
@@ -583,11 +569,11 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDOK)))
 					EnableWindow(GetDlgItem(hwndDlg, IDOK), TRUE);
-				int cursel = SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
+				int cursel = (int)SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
 				TCHAR item[MAX_PATH];
-				SendMessage(FeedsList, LB_GETTEXT, cursel, (LPARAM)item);
+				SendMessage(FeedsList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 				SendMessage(FeedsExportList, LB_ADDSTRING, 0, (LPARAM)item);
-				SendMessage(FeedsList, LB_DELETESTRING, cursel, 0);
+				SendMessage(FeedsList, LB_DELETESTRING, (WPARAM)cursel, 0);
 				if (!SendMessage(FeedsList, LB_GETCOUNT, 0, 0)) {
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), FALSE);
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), FALSE);
@@ -601,11 +587,11 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS)))
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), TRUE);
-				int cursel = SendMessage(FeedsExportList, LB_GETCURSEL, 0, 0);
+				int cursel = (int)SendMessage(FeedsExportList, LB_GETCURSEL, 0, 0);
 				TCHAR item[MAX_PATH];
-				SendMessage(FeedsExportList, LB_GETTEXT, cursel, (LPARAM)item);
+				SendMessage(FeedsExportList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 				SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)item);
-				SendMessage(FeedsExportList, LB_DELETESTRING, cursel, 0);
+				SendMessage(FeedsExportList, LB_DELETESTRING, (WPARAM)cursel, 0);
 				if (!SendMessage(FeedsExportList, LB_GETCOUNT, 0, 0))
 				{
 					EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);
@@ -623,14 +609,14 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDOK)))
 					EnableWindow(GetDlgItem(hwndDlg, IDOK), TRUE);
-				int count = SendMessage(FeedsList, LB_GETCOUNT, 0, 0);
+				int count = (int)SendMessage(FeedsList, LB_GETCOUNT, 0, 0);
 				for (int i = 0; i < count; i++) {
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsList, LB_GETTEXT, i, (LPARAM)item);
+					SendMessage(FeedsList, LB_GETTEXT, (WPARAM)i, (LPARAM)item);
 					SendMessage(FeedsExportList, LB_ADDSTRING, 0, (LPARAM)item);
 				}
 				for (int i = count - 1; i > -1; i--)
-					SendMessage(FeedsList, LB_DELETESTRING, i, 0);
+					SendMessage(FeedsList, LB_DELETESTRING, (WPARAM)i, 0);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), FALSE);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), FALSE);
 			}
@@ -642,14 +628,14 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), TRUE);
 				if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS)))
 					EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), TRUE);
-				int count = SendMessage(FeedsExportList, LB_GETCOUNT, 0, 0);
+				int count = (int)SendMessage(FeedsExportList, LB_GETCOUNT, 0, 0);
 				for (int i = 0; i < count; i++) {
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsExportList, LB_GETTEXT, i, (LPARAM)item);
+					SendMessage(FeedsExportList, LB_GETTEXT, (WPARAM)i, (LPARAM)item);
 					SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)item);
 				}
 				for (int i = count - 1; i > -1; i--)
-					SendMessage(FeedsExportList, LB_DELETESTRING, i, 0);
+					SendMessage(FeedsExportList, LB_DELETESTRING, (WPARAM)i, 0);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), FALSE);
 				EnableWindow(GetDlgItem(hwndDlg, IDOK), FALSE);
@@ -666,11 +652,11 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 						EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEALLFEEDS), TRUE);
 					if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDOK)))
 						EnableWindow(GetDlgItem(hwndDlg, IDOK), TRUE);
-					int cursel = SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
+					int cursel = (int)SendMessage(FeedsList, LB_GETCURSEL, 0, 0);
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsList, LB_GETTEXT, cursel, (LPARAM)item);
+					SendMessage(FeedsList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 					SendMessage(FeedsExportList, LB_ADDSTRING, 0, (LPARAM)item);
-					SendMessage(FeedsList, LB_DELETESTRING, cursel, 0);
+					SendMessage(FeedsList, LB_DELETESTRING, (WPARAM)cursel, 0);
 					if (!SendMessage(FeedsList, LB_GETCOUNT, 0, 0)) {
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), FALSE);
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), FALSE);
@@ -687,11 +673,11 @@ INT_PTR CALLBACK DlgProcExportOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDFEED), TRUE);
 					if (!IsWindowEnabled(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS)))
 						EnableWindow(GetDlgItem(hwndDlg, IDC_ADDALLFEEDS), TRUE);
-					int cursel = SendMessage(FeedsExportList, LB_GETCURSEL, 0, 0);
+					int cursel = (int)SendMessage(FeedsExportList, LB_GETCURSEL, 0, 0);
 					TCHAR item[MAX_PATH];
-					SendMessage(FeedsExportList, LB_GETTEXT, cursel, (LPARAM)item);
+					SendMessage(FeedsExportList, LB_GETTEXT, (WPARAM)cursel, (LPARAM)item);
 					SendMessage(FeedsList, LB_ADDSTRING, 0, (LPARAM)item);
-					SendMessage(FeedsExportList, LB_DELETESTRING, cursel, 0);
+					SendMessage(FeedsExportList, LB_DELETESTRING, (WPARAM)cursel, 0);
 					if (!SendMessage(FeedsExportList, LB_GETCOUNT, 0, 0))
 					{
 						EnableWindow(GetDlgItem(hwndDlg, IDC_REMOVEFEED), FALSE);

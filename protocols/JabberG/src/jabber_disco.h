@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2005-07  Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2005-07  Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -32,7 +33,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define JABBER_DISCO_RESULT_ERROR					-1
 #define JABBER_DISCO_RESULT_OK						-2
 
-class CJabberSDIdentity;
 class CJabberSDIdentity
 {
 protected:
@@ -114,7 +114,6 @@ public:
 	}
 };
 
-class CJabberSDNode;
 class CJabberSDNode
 {
 protected:
@@ -294,11 +293,11 @@ public:
 	}
 	BOOL AddFeature(const TCHAR *szFeature)
 	{
-		if ( !szFeature)
+		if (!szFeature)
 			return FALSE;
 
 		CJabberSDFeature *pFeature = new CJabberSDFeature(szFeature);
-		if ( !pFeature)
+		if (!pFeature)
 			return FALSE;
 
 		pFeature->SetNext(m_pFeatures);
@@ -308,11 +307,11 @@ public:
 	}
 	BOOL AddIdentity(const TCHAR *szCategory, const TCHAR *szType, const TCHAR *szName)
 	{
-		if ( !szCategory || !szType)
+		if (!szCategory || !szType)
 			return FALSE;
 
 		CJabberSDIdentity *pIdentity = new CJabberSDIdentity(szCategory, szType, szName);
-		if ( !pIdentity)
+		if (!pIdentity)
 			return FALSE;
 
 		pIdentity->SetNext(m_pIdentities);
@@ -322,106 +321,74 @@ public:
 	}
 	BOOL AddChildNode(const TCHAR *szJid, const TCHAR *szNode, const TCHAR *szName)
 	{
-		if ( !szJid)
+		if (!szJid)
 			return FALSE;
 
 		CJabberSDNode *pNode = new CJabberSDNode(szJid, szNode, szName);
-		if ( !pNode)
+		if (!pNode)
 			return FALSE;
 
 		pNode->SetNext(m_pChild);
 		m_pChild = pNode;
-
 		return TRUE;
 	}
-	BOOL AppendString(TCHAR **ppBuffer, TCHAR *szString)
-	{
-		if ( !*ppBuffer) {
-			*ppBuffer = mir_tstrdup(szString);
-			return TRUE;
-		}
 
-		*ppBuffer = (TCHAR *)mir_realloc(*ppBuffer,  (_tcslen(*ppBuffer) + _tcslen(szString) + 1) * sizeof(TCHAR));
-		_tcscat(*ppBuffer, szString);
-
-		return TRUE;
-	}
 	BOOL SetItemsRequestErrorText(TCHAR *szError)
 	{
 		replaceStrT(m_szItemsError, szError);
 		return TRUE;
 	}
+
 	BOOL SetInfoRequestErrorText(TCHAR *szError)
 	{
 		replaceStrT(m_szInfoError, szError);
 		return TRUE;
 	}
+
 	BOOL GetTooltipText(TCHAR *szText, int nMaxLength)
 	{
-		TCHAR *szBuffer = NULL;
+		CMString tszTmp;
 
-		TCHAR szTmp[ 8192 ];
+		tszTmp.AppendFormat(_T("Jid: %s\r\n"), m_szJid);
 
-		mir_sntprintf(szTmp, SIZEOF(szTmp), _T("Jid: %s\r\n"), m_szJid);
-		AppendString(&szBuffer, szTmp);
-
-		if (m_szNode) {
-			mir_sntprintf(szTmp, SIZEOF(szTmp), _T("%s: %s\r\n"), TranslateT("Node"), m_szNode);
-			AppendString(&szBuffer, szTmp);
-		}
+		if (m_szNode)
+			tszTmp.AppendFormat(_T("%s: %s\r\n"), TranslateT("Node"), m_szNode);
 
 		if (m_pIdentities) {
-			mir_sntprintf(szTmp, SIZEOF(szTmp), _T("\r\n%s:\r\n"), TranslateT("Identities"));
-			AppendString(&szBuffer, szTmp);
+			tszTmp.AppendFormat(_T("\r\n%s:\r\n"), TranslateT("Identities"));
 
 			CJabberSDIdentity *pIdentity = m_pIdentities;
 			while (pIdentity) {
 				if (pIdentity->GetName())
-					mir_sntprintf(szTmp, SIZEOF(szTmp), _T(" %c %s (%s: %s, %s: %s)\r\n"),
+					tszTmp.AppendFormat(_T(" %c %s (%s: %s, %s: %s)\r\n"),
 						CHR_BULLET, pIdentity->GetName(),
 							TranslateT("category"), pIdentity->GetCategory(),
 							TranslateT("type"), pIdentity->GetType());
 				else
-					mir_sntprintf(szTmp, SIZEOF(szTmp), _T(" %c %s: %s, %s: %s\r\n"),
+					tszTmp.AppendFormat(_T(" %c %s: %s, %s: %s\r\n"),
 						CHR_BULLET,
 						TranslateT("Category"), pIdentity->GetCategory(),
 						TranslateT("Type"), pIdentity->GetType());
-
-				AppendString(&szBuffer, szTmp);
 
 				pIdentity = pIdentity->GetNext();
 			}
 		}
 
 		if (m_pFeatures) {
-			mir_sntprintf(szTmp, SIZEOF(szTmp), _T("\r\n%s:\r\n"), TranslateT("Supported features"));
-			AppendString(&szBuffer, szTmp);
+			tszTmp.AppendFormat(_T("\r\n%s:\r\n"), TranslateT("Supported features"));
 
-			CJabberSDFeature *pFeature = m_pFeatures;
-			while (pFeature) {
-				mir_sntprintf(szTmp, SIZEOF(szTmp), _T(" %c %s\r\n"), CHR_BULLET, pFeature->GetVar());
-
-				AppendString(&szBuffer, szTmp);
-
-				pFeature = pFeature->GetNext();
-			}
+			for (CJabberSDFeature *pFeature = m_pFeatures; pFeature; pFeature = pFeature->GetNext())
+				tszTmp.AppendFormat(_T(" %c %s\r\n"), CHR_BULLET, pFeature->GetVar());
 		}
 
-		if (m_szInfoError) {
-			mir_sntprintf(szTmp, SIZEOF(szTmp), _T("\r\n%s: %s\r\n"), TranslateT("Info request error"), m_szInfoError);
-			AppendString(&szBuffer, szTmp);
-		}
+		if (m_szInfoError)
+			tszTmp.AppendFormat(_T("\r\n%s: %s\r\n"), TranslateT("Info request error"), m_szInfoError);
 
-		if (m_szItemsError) {
-			mir_sntprintf(szTmp, SIZEOF(szTmp), _T("\r\n%s: %s\r\n"), TranslateT("Items request error"), m_szItemsError);
-			AppendString(&szBuffer, szTmp);
-		}
+		if (m_szItemsError)
+			tszTmp.AppendFormat(_T("\r\n%s: %s\r\n"), TranslateT("Items request error"), m_szItemsError);
 
-		szBuffer[lstrlen(szBuffer)-2] = 0; // remove CR/LF
-		mir_sntprintf(szText, nMaxLength, _T("%s"), szBuffer);
-
-		mir_free(szBuffer);
-
+		tszTmp.TrimRight();
+		_tcsncpy_s(szText, nMaxLength, tszTmp, _TRUNCATE);
 		return TRUE;
 	}
 };
@@ -429,62 +396,53 @@ public:
 class CJabberSDManager
 {
 protected:
-	CRITICAL_SECTION m_cs;
+	mir_cs m_cs;
 	CJabberSDNode *m_pPrimaryNodes;
+
 public:
 	CJabberSDManager()
 	{
 		m_pPrimaryNodes = NULL;
-		InitializeCriticalSection(&m_cs);
 	}
+
 	~CJabberSDManager()
 	{
-		DeleteCriticalSection(&m_cs);
 		RemoveAll();
 	}
+
+	mir_cs& cs() { return m_cs; }
+
 	void RemoveAll()
 	{
 		delete m_pPrimaryNodes;
 		m_pPrimaryNodes = NULL;
 	}
-	BOOL Lock()
-	{
-		EnterCriticalSection(&m_cs);
-		return TRUE;
-	}
-	BOOL Unlock()
-	{
-		LeaveCriticalSection(&m_cs);
-		return TRUE;
-	}
+
 	CJabberSDNode* GetPrimaryNode()
 	{
 		return m_pPrimaryNodes;
 	}
+
 	CJabberSDNode* AddPrimaryNode(const TCHAR *szJid, const TCHAR *szNode, const TCHAR *szName)
 	{
-		if ( !szJid)
-			return FALSE;
+		if (!szJid)
+			return NULL;
 
 		CJabberSDNode *pNode = new CJabberSDNode(szJid, szNode, szName);
-		if ( !pNode)
+		if (!pNode)
 			return NULL;
 
 		pNode->SetNext(m_pPrimaryNodes);
 		m_pPrimaryNodes = pNode;
-
 		return pNode;
 	}
+
 	CJabberSDNode* FindByIqId(int nIqId, BOOL bInfoId = TRUE)
 	{
-		CJabberSDNode *pNode = NULL;
-		CJabberSDNode *pTmpNode = NULL;
-		pNode = m_pPrimaryNodes;
-		while (pNode) {
-			if (pTmpNode = pNode->FindByIqId(nIqId, bInfoId))
+		for (CJabberSDNode *pNode = m_pPrimaryNodes; pNode; pNode = pNode->GetNext())
+			if (CJabberSDNode *pTmpNode = pNode->FindByIqId(nIqId, bInfoId))
 				return pTmpNode;
-			pNode = pNode->GetNext();
-		}
+
 		return NULL;
 	}
 };

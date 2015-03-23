@@ -31,10 +31,10 @@ static INT_PTR CALLBACK SetOptsDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARA
 				db_free(&dbv);
 			}
 		}
-		CheckDlgButton(hwndDlg, IDC_PARSEATSTARTUP, db_get_b(NULL, MODULENAME, SETTING_PARSEATSTARTUP, 0));
-		CheckDlgButton(hwndDlg, IDC_STRIPCRLF, db_get_b(NULL, MODULENAME, SETTING_STRIPCRLF, 0));
-		CheckDlgButton(hwndDlg, IDC_STRIPWS, db_get_b(NULL, MODULENAME, SETTING_STRIPWS, 0));
-		CheckDlgButton(hwndDlg, IDC_STRIPALL, db_get_b(NULL, MODULENAME, SETTING_STRIPALL, 0));
+		CheckDlgButton(hwndDlg, IDC_PARSEATSTARTUP, db_get_b(NULL, MODULENAME, SETTING_PARSEATSTARTUP, 0) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_STRIPCRLF, db_get_b(NULL, MODULENAME, SETTING_STRIPCRLF, 0) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_STRIPWS, db_get_b(NULL, MODULENAME, SETTING_STRIPWS, 0) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_STRIPALL, db_get_b(NULL, MODULENAME, SETTING_STRIPALL, 0) ? BST_CHECKED : BST_UNCHECKED);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_STRIPCRLF), IsDlgButtonChecked(hwndDlg, IDC_STRIPALL)?FALSE:TRUE);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_STRIPWS), IsDlgButtonChecked(hwndDlg, IDC_STRIPALL)?FALSE:TRUE);
 		variables_skin_helpbutton(hwndDlg, IDC_SHOWHELP);
@@ -107,7 +107,7 @@ static INT_PTR CALLBACK SetOptsDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARA
 			if (string != NULL) {
 				TCHAR *newString = variables_parsedup(string, NULL, NULL);
 				if (newString != NULL) {
-					SetWindowText(GetDlgItem(hwndDlg, IDC_RESULT), newString);
+					SetDlgItemText(hwndDlg, IDC_RESULT, newString);
 					mir_free(newString);
 				}
 				mir_free(string);
@@ -127,10 +127,9 @@ static INT_PTR CALLBACK SetOptsDlgProc(HWND hwndDlg,UINT msg,WPARAM wParam,LPARA
 	return FALSE;
 }
 
-int OptionsInit(WPARAM wParam, LPARAM lParam)
+int OptionsInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = {0};
-	odp.cbSize        = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.position      = 150000000;
 	odp.pszGroup      = LPGEN("Services");
 	odp.groupPosition = 910000000;
@@ -140,6 +139,5 @@ int OptionsInit(WPARAM wParam, LPARAM lParam)
 	odp.pfnDlgProc    = SetOptsDlgProc;
 	odp.flags         = ODPF_BOLDGROUPS;
 	Options_AddPage(wParam, &odp);
-
 	return 0;
 }

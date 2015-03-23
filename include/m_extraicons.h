@@ -1,21 +1,25 @@
 /*
- Copyright (C) 2009 Ricardo Pescuma Domenecci
 
- This is free software; you can redistribute it and/or
- modify it under the terms of the GNU Library General Public
- License as published by the Free Software Foundation; either
- version 2 of the License, or (at your option) any later version.
+Miranda NG: the free IM client for Microsoft* Windows*
 
- This is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Library General Public License for more details.
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2009 Ricardo Pescuma Domenecci
 
- You should have received a copy of the GNU Library General Public
- License along with this file; see the file license.txt.  If
- not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- Boston, MA 02111-1307, USA.
- */
+This is free software; you can redistribute it and/or
+modify it under the terms of the GNU Library General Public
+License as published by the Free Software Foundation; either
+version 2 of the License, or (at your option) any later version.
+
+This is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Library General Public
+License along with this file; see the file license.txt.  If
+not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.
+*/
 
 #ifndef __M_EXTRAICONS_H__
 #define __M_EXTRAICONS_H__
@@ -91,14 +95,14 @@ typedef struct {
 	MIRANDAHOOK RebuildIcons;
 
 	// Callback to set the icon to clist, calling MS_CLIST_EXTRA_SET_ICON or MS_EXTRAICON_SET_ICON
-	// wParam = HANDLE hContact
+	// wParam = MCONTACT hContact
 	// lParam = 0
 	MIRANDAHOOK ApplyIcon;
 
 	// Other optional callbacks
 
 	// [Optional] Callback called when extra icon was clicked
-	// wParam = HANDLE hContact
+	// wParam = MCONTACT hContact
 	// lParam = int slot
 	// param = onClickParam
 	MIRANDAHOOKPARAM OnClick;
@@ -118,7 +122,7 @@ typedef struct {
 typedef struct {
 	int cbSize;
 	HANDLE hExtraIcon;      // Value returned by MS_EXTRAICON_REGISTER
-	HANDLE hContact;        // Contact to set the extra icon
+	MCONTACT hContact;        // Contact to set the extra icon
 	union {                 // The icon to be set. This depends on the type of the extra icon:
 		HANDLE hImage;       // Value returned by MS_CLIST_EXTRA_ADD_ICON (if EXTRAICON_TYPE_CALLBACK)
 		                     // or the icolib icon handle (if EXTRAICON_TYPE_ICOLIB)
@@ -140,6 +144,8 @@ typedef struct {
 #ifdef __cplusplus
 
 extern int hLangpack;
+
+#pragma warning(disable:4505)
 
 static HANDLE ExtraIcon_Register(
 	const char *name, const char *description, const char *descIcon,
@@ -181,7 +187,7 @@ static HANDLE ExtraIcon_Register(
 	return (HANDLE) CallService(MS_EXTRAICON_REGISTER, (WPARAM) &ei, hLangpack);
 }
 
-static int ExtraIcon_SetIcon(HANDLE hExtraIcon, HANDLE hContact, HANDLE hImage)
+static int ExtraIcon_SetIcon(HANDLE hExtraIcon, MCONTACT hContact, HANDLE hImage)
 {
 	EXTRAICON ei = { sizeof(ei) };
 	ei.hExtraIcon = hExtraIcon;
@@ -191,7 +197,7 @@ static int ExtraIcon_SetIcon(HANDLE hExtraIcon, HANDLE hContact, HANDLE hImage)
 	return CallService(MS_EXTRAICON_SET_ICON, (WPARAM) &ei, 0);
 }
 
-static int ExtraIcon_SetIcon(HANDLE hExtraIcon, HANDLE hContact, const char *icoName)
+static int ExtraIcon_SetIcon(HANDLE hExtraIcon, MCONTACT hContact, const char *icoName)
 {
 	EXTRAICON ei = { sizeof(ei) };
 	ei.hExtraIcon = hExtraIcon;
@@ -201,7 +207,7 @@ static int ExtraIcon_SetIcon(HANDLE hExtraIcon, HANDLE hContact, const char *ico
 	return CallService(MS_EXTRAICON_SET_ICON_BY_NAME, (WPARAM) &ei, 0);
 }
 
-static int ExtraIcon_Clear(HANDLE hExtraIcon, HANDLE hContact)
+static int ExtraIcon_Clear(HANDLE hExtraIcon, MCONTACT hContact)
 {
 	EXTRAICON ei = { sizeof(ei) };
 	ei.hExtraIcon = hExtraIcon;

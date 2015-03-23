@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -69,7 +70,7 @@ ULONG CDropTarget::Release(void)
 	return InterlockedDecrement(&refCount);
 }
 
-static HANDLE HContactFromPoint(HWND hwnd, struct ClcData *dat, int x, int y, int *hitLine)
+static MCONTACT HContactFromPoint(HWND hwnd, struct ClcData *dat, int x, int y, int *hitLine)
 {
 	DWORD hitFlags;
 	ClcContact *contact;
@@ -82,7 +83,7 @@ static HANDLE HContactFromPoint(HWND hwnd, struct ClcData *dat, int x, int y, in
 		return NULL;
 
 	DWORD protoCaps = CallProtoServiceInt(NULL,szProto, PS_GETCAPS, PFLAGNUM_1, 0);
-	if ( !(protoCaps & PF1_FILESEND))
+	if (!(protoCaps & PF1_FILESEND))
 		return NULL;
 	if (ID_STATUS_OFFLINE == db_get_w(contact->hContact, szProto, "Status", ID_STATUS_OFFLINE))
 		return NULL;
@@ -97,7 +98,7 @@ HRESULT CDropTarget::DragOver(DWORD /*grfKeyState*/, POINTL pt, DWORD * pdwEffec
 	struct ClcData *dat;
 	RECT clRect;
 	int hit;
-	HANDLE hContact;
+	MCONTACT hContact;
 
 	if (pDropTargetHelper && hwndCurrentDrag)
 		pDropTargetHelper->DragOver((POINT*)&pt, *pdwEffect);
@@ -147,7 +148,7 @@ HRESULT CDropTarget::DragEnter(IDataObject *pDataObj, DWORD grfKeyState, POINTL 
 	shortPt.y = pt.y;
 	hwnd = WindowFromPoint(shortPt);
 	GetClassName(hwnd, szWindowClass, SIZEOF(szWindowClass));
-	if ( !lstrcmp(szWindowClass, _T(CLISTCONTROL_CLASS))) {
+	if (!mir_tstrcmp(szWindowClass, _T(CLISTCONTROL_CLASS))) {
 		struct ClcData *dat;
 		hwndCurrentDrag = hwnd;
 		dat = (struct ClcData *) GetWindowLongPtr(hwndCurrentDrag, 0);
@@ -183,15 +184,15 @@ static void AddToFileList(TCHAR ***pppFiles, int *totalCount, const TCHAR *szFil
 		WIN32_FIND_DATA fd;
 		HANDLE hFind;
 		TCHAR szPath[MAX_PATH];
-		lstrcpy(szPath, szFilename);
-		lstrcat(szPath, _T("\\*"));
+		mir_tstrcpy(szPath, szFilename);
+		mir_tstrcat(szPath, _T("\\*"));
 		if (hFind = FindFirstFile(szPath, &fd)) {
 			do {
-				if ( !lstrcmp(fd.cFileName, _T(".")) || !lstrcmp(fd.cFileName, _T("..")))
+				if (!mir_tstrcmp(fd.cFileName, _T(".")) || !mir_tstrcmp(fd.cFileName, _T("..")))
 					continue;
-				lstrcpy(szPath, szFilename);
-				lstrcat(szPath, _T("\\"));
-				lstrcat(szPath, fd.cFileName);
+				mir_tstrcpy(szPath, szFilename);
+				mir_tstrcat(szPath, _T("\\"));
+				mir_tstrcat(szPath, fd.cFileName);
 				AddToFileList(pppFiles, totalCount, szPath);
 			} while (FindNextFile(hFind, &fd));
 			FindClose(hFind);
@@ -206,7 +207,6 @@ HRESULT CDropTarget::Drop(IDataObject * pDataObj, DWORD /*fKeyState*/, POINTL pt
 	HDROP hDrop;
 	POINT shortPt;
 	struct ClcData *dat;
-	HANDLE hContact;
 
 	if (pDropTargetHelper && hwndCurrentDrag)
 		pDropTargetHelper->Drop(pDataObj, (POINT*)&pt, *pdwEffect);
@@ -220,7 +220,7 @@ HRESULT CDropTarget::Drop(IDataObject * pDataObj, DWORD /*fKeyState*/, POINTL pt
 	shortPt.x = pt.x;
 	shortPt.y = pt.y;
 	ScreenToClient(hwndCurrentDrag, &shortPt);
-	hContact = HContactFromPoint(hwndCurrentDrag, dat, shortPt.x, shortPt.y, NULL);
+	MCONTACT hContact = HContactFromPoint(hwndCurrentDrag, dat, shortPt.x, shortPt.y, NULL);
 	if (hContact != NULL) {
 		TCHAR **ppFiles = NULL;
 		TCHAR szFilename[MAX_PATH];
@@ -233,7 +233,7 @@ HRESULT CDropTarget::Drop(IDataObject * pDataObj, DWORD /*fKeyState*/, POINTL pt
 			AddToFileList(&ppFiles, &totalCount, szFilename);
 		}
 
-		if ( !CallService(MS_FILE_SENDSPECIFICFILEST, (WPARAM) hContact, (LPARAM) ppFiles))
+		if (!CallService(MS_FILE_SENDSPECIFICFILEST, hContact, (LPARAM)ppFiles))
 			*pdwEffect = DROPEFFECT_COPY;
 
 		for (i=0; ppFiles[i]; i++)

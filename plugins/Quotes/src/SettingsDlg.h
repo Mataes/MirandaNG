@@ -25,8 +25,8 @@ public:
 	static COLORREF GetDefColourBk();
 	static COLORREF GetDefColourText();
 
-	void InitForContact(HANDLE hContact);
-	void SaveForContact(HANDLE hContact)const;
+	void InitForContact(MCONTACT hContact);
+	void SaveForContact(MCONTACT hContact)const;
 
 	EColourMode GetColourMode()const;
 	void SetColourMode(EColourMode nMode);
@@ -87,7 +87,7 @@ public:
 	void SetShowPopupIfValueChangedFlag(bool val);
 
 	CPopupSettings* GetPopupSettingsPtr()const;
-			
+
 private:
 	const IQuotesProvider* m_pQuotesProvider;
 	WORD m_wLogMode;
@@ -101,18 +101,18 @@ private:
 	mutable CPopupSettings* m_pPopupSettings;
 };
 
-void ShowSettingsDlg(HANDLE hContact);
-bool ShowSettingsDlg(HWND hWndParent,CAdvProviderSettings* pAdvSettings);
+void ShowSettingsDlg(MCONTACT hContact);
+bool ShowSettingsDlg(HWND hWndParent, CAdvProviderSettings* pAdvSettings);
 
-enum 
+enum
 {
 	glfnResolveQuoteName = 0x0001,
 	glfnResolveUserProfile = 0x0002,
-	glfnResolveAll = glfnResolveQuoteName|glfnResolveUserProfile,
+	glfnResolveAll = glfnResolveQuoteName | glfnResolveUserProfile,
 };
-tstring GenerateLogFileName(const tstring& rsLogFilePattern,const tstring& rsQuoteSymbol,int nFlags = glfnResolveAll);
-tstring GetContactLogFileName(HANDLE hContact);
-tstring GetContactName(HANDLE hContact);
+tstring GenerateLogFileName(const tstring& rsLogFilePattern, const tstring& rsQuoteSymbol, int nFlags = glfnResolveAll);
+tstring GetContactLogFileName(MCONTACT hContact);
+tstring GetContactName(MCONTACT hContact);
 
 #endif //__E211E4D9_383C_43BE_A787_7EF1D585B90D_SettingsDlg_h__
 

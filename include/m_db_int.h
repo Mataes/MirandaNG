@@ -2,7 +2,7 @@
 
 Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -33,76 +33,98 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 struct DBCachedGlobalValue
 {
-	char* name;
+	char *name;
 	DBVARIANT value;
 };
 
 struct DBCachedContactValue
 {
-	char* name;
+	char *name;
 	DBVARIANT value;
-	DBCachedContactValue* next;
+	DBCachedContactValue *next;
 };
 
-struct DBCachedContact
+struct DBCachedContactBase
 {
-	HANDLE hContact;
-	HANDLE hNext;
-	char  *szProto;
-	DBCachedContactValue* first;
-	DBCachedContactValue* last;
+	MCONTACT contactID;
+	char *szProto;
+	DBCachedContactValue *first, *last;
+
+	// metacontacts
+	int       nSubs;    // == -1 -> not a metacontact
+	MCONTACT *pSubs;
+	MCONTACT  parentID; // == 0 -> not a subcontact
+	int       nDefault; // default sub number
+
+	__forceinline bool IsMeta() const { return nSubs != -1; }
+	__forceinline bool IsSub() const { return parentID != 0; }
 };
+
+#ifndef OWN_CACHED_CONTACT
+struct DBCachedContact : public DBCachedContactBase {};
+#else
+struct DBCachedContact;
+#endif
 
 interface MIDatabaseCache : public MZeroedObject
 {
-	STDMETHOD_(DBCachedContact*,AddContactToCache)(HANDLE hContact) PURE;
-	STDMETHOD_(DBCachedContact*,GetCachedContact)(HANDLE hContact) PURE;
-	STDMETHOD_(void,FreeCachedContact)(HANDLE hContact) PURE;
+	STDMETHOD_(DBCachedContact*, AddContactToCache)(MCONTACT contactID) PURE;
+	STDMETHOD_(DBCachedContact*, GetCachedContact)(MCONTACT contactID) PURE;
+	STDMETHOD_(DBCachedContact*, GetFirstContact)(void) PURE;
+	STDMETHOD_(DBCachedContact*, GetNextContact)(MCONTACT contactID) PURE;
+	STDMETHOD_(void, FreeCachedContact)(MCONTACT contactID) PURE;
 
-	STDMETHOD_(char*,InsertCachedSetting)(const char *szName, int) PURE;
-	STDMETHOD_(char*,GetCachedSetting)(const char *szModuleName, const char *szSettingName, int, int) PURE;
-	STDMETHOD_(void,SetCachedVariant)(DBVARIANT *s, DBVARIANT *d) PURE;
-	STDMETHOD_(DBVARIANT*,GetCachedValuePtr)(HANDLE hContact, char *szSetting, int bAllocate) PURE;
+	STDMETHOD_(char*, InsertCachedSetting)(const char *szName, int) PURE;
+	STDMETHOD_(char*, GetCachedSetting)(const char *szModuleName, const char *szSettingName, int, int) PURE;
+	STDMETHOD_(void, SetCachedVariant)(DBVARIANT *s, DBVARIANT *d) PURE;
+	STDMETHOD_(DBVARIANT*, GetCachedValuePtr)(MCONTACT contactID, char *szSetting, int bAllocate) PURE;
 };
 
 interface MIDatabase
 {
 	MIDatabaseCache* m_cache;
 
-	STDMETHOD_(void,SetCacheSafetyMode)(BOOL) PURE;
+	STDMETHOD_(void, SetCacheSafetyMode)(BOOL) PURE;
 
-	STDMETHOD_(LONG,GetContactCount)(void) PURE;
-	STDMETHOD_(HANDLE,FindFirstContact)(const char* szProto = NULL) PURE;
-	STDMETHOD_(HANDLE,FindNextContact)(HANDLE hContact, const char* szProto = NULL) PURE;
+	STDMETHOD_(LONG, GetContactCount)(void) PURE;
+	STDMETHOD_(MCONTACT, FindFirstContact)(const char *szProto = NULL) PURE;
+	STDMETHOD_(MCONTACT, FindNextContact)(MCONTACT contactID, const char *szProto = NULL) PURE;
 
-	STDMETHOD_(LONG,DeleteContact)(HANDLE hContact) PURE;
-	STDMETHOD_(HANDLE,AddContact)(void) PURE;
-	STDMETHOD_(BOOL,IsDbContact)(HANDLE hContact) PURE;
+	STDMETHOD_(LONG, DeleteContact)(MCONTACT contactID) PURE;
+	STDMETHOD_(MCONTACT, AddContact)(void) PURE;
+	STDMETHOD_(BOOL, IsDbContact)(MCONTACT contactID) PURE;
+	STDMETHOD_(LONG, GetContactSize)(void) PURE;
 
-	STDMETHOD_(LONG,GetEventCount)(HANDLE hContact) PURE;
-	STDMETHOD_(HANDLE,AddEvent)(HANDLE hContact, DBEVENTINFO *dbe) PURE;
-	STDMETHOD_(BOOL,DeleteEvent)(HANDLE hContact, HANDLE hDbEvent) PURE;
-	STDMETHOD_(LONG,GetBlobSize)(HANDLE hDbEvent) PURE;
-	STDMETHOD_(BOOL,GetEvent)(HANDLE hDbEvent, DBEVENTINFO *dbe) PURE;
-	STDMETHOD_(BOOL,MarkEventRead)(HANDLE hContact, HANDLE hDbEvent) PURE;
-	STDMETHOD_(HANDLE,GetEventContact)(HANDLE hDbEvent) PURE;
-	STDMETHOD_(HANDLE,FindFirstEvent)(HANDLE hContact) PURE;
-	STDMETHOD_(HANDLE,FindFirstUnreadEvent)(HANDLE hContact) PURE;
-	STDMETHOD_(HANDLE,FindLastEvent)(HANDLE hContact) PURE;
-	STDMETHOD_(HANDLE,FindNextEvent)(HANDLE hDbEvent) PURE;
-	STDMETHOD_(HANDLE,FindPrevEvent)(HANDLE hDbEvent) PURE;
+	STDMETHOD_(LONG, GetEventCount)(MCONTACT contactID) PURE;
+	STDMETHOD_(MEVENT, AddEvent)(MCONTACT contactID, DBEVENTINFO *dbe) PURE;
+	STDMETHOD_(BOOL, DeleteEvent)(MCONTACT contactID, MEVENT hDbEvent) PURE;
+	STDMETHOD_(LONG, GetBlobSize)(MEVENT hDbEvent) PURE;
+	STDMETHOD_(BOOL, GetEvent)(MEVENT hDbEvent, DBEVENTINFO *dbe) PURE;
+	STDMETHOD_(BOOL, MarkEventRead)(MCONTACT contactID, MEVENT hDbEvent) PURE;
+	STDMETHOD_(MCONTACT, GetEventContact)(MEVENT hDbEvent) PURE;
+	STDMETHOD_(MEVENT, FindFirstEvent)(MCONTACT contactID) PURE;
+	STDMETHOD_(MEVENT, FindFirstUnreadEvent)(MCONTACT contactID) PURE;
+	STDMETHOD_(MEVENT, FindLastEvent)(MCONTACT contactID) PURE;
+	STDMETHOD_(MEVENT, FindNextEvent)(MCONTACT contactID, MEVENT hDbEvent) PURE;
+	STDMETHOD_(MEVENT, FindPrevEvent)(MCONTACT contactID, MEVENT hDbEvent) PURE;
 
-	STDMETHOD_(BOOL,EnumModuleNames)(DBMODULEENUMPROC pFunc, void *pParam) PURE;
+	STDMETHOD_(BOOL, EnumModuleNames)(DBMODULEENUMPROC pFunc, void *pParam) PURE;
 
-	STDMETHOD_(BOOL,GetContactSetting)(HANDLE hContact, DBCONTACTGETSETTING *dbcgs) PURE;
-	STDMETHOD_(BOOL,GetContactSettingStr)(HANDLE hContact, DBCONTACTGETSETTING *dbcgs) PURE;
-	STDMETHOD_(BOOL,GetContactSettingStatic)(HANDLE hContact, DBCONTACTGETSETTING *dbcgs) PURE;
-	STDMETHOD_(BOOL,FreeVariant)(DBVARIANT *dbv) PURE;
-	STDMETHOD_(BOOL,WriteContactSetting)(HANDLE hContact, DBCONTACTWRITESETTING *dbcws) PURE;
-	STDMETHOD_(BOOL,DeleteContactSetting)(HANDLE hContact, DBCONTACTGETSETTING *dbcgs) PURE;
-	STDMETHOD_(BOOL,EnumContactSettings)(HANDLE hContact, DBCONTACTENUMSETTINGS* dbces) PURE;
-	STDMETHOD_(BOOL,SetSettingResident)(BOOL bIsResident, const char *pszSettingName) PURE;
-	STDMETHOD_(BOOL,EnumResidentSettings)(DBMODULEENUMPROC pFunc, void *pParam) PURE;
+	STDMETHOD_(BOOL, GetContactSetting)(MCONTACT contactID, LPCSTR szModule, LPCSTR szSetting, DBVARIANT *dbv) PURE;
+	STDMETHOD_(BOOL, GetContactSettingStr)(MCONTACT contactID, LPCSTR szModule, LPCSTR szSetting, DBVARIANT *dbv) PURE;
+	STDMETHOD_(BOOL, GetContactSettingStatic)(MCONTACT contactID, LPCSTR szModule, LPCSTR szSetting, DBVARIANT *dbv) PURE;
+	STDMETHOD_(BOOL, FreeVariant)(DBVARIANT *dbv) PURE;
+	STDMETHOD_(BOOL, WriteContactSetting)(MCONTACT contactID, DBCONTACTWRITESETTING *dbcws) PURE;
+	STDMETHOD_(BOOL, DeleteContactSetting)(MCONTACT contactID, LPCSTR szModule, LPCSTR szSetting) PURE;
+	STDMETHOD_(BOOL, EnumContactSettings)(MCONTACT contactID, DBCONTACTENUMSETTINGS* dbces) PURE;
+	STDMETHOD_(BOOL, SetSettingResident)(BOOL bIsResident, const char *pszSettingName) PURE;
+	STDMETHOD_(BOOL, EnumResidentSettings)(DBMODULEENUMPROC pFunc, void *pParam) PURE;
+	STDMETHOD_(BOOL, IsSettingEncrypted)(LPCSTR szModule, LPCSTR szSetting) PURE;
+
+	STDMETHOD_(BOOL, MetaDetouchSub)(DBCachedContact*, int nSub) PURE;
+	STDMETHOD_(BOOL, MetaSetDefault)(DBCachedContact*) PURE;
+	STDMETHOD_(BOOL, MetaMergeHistory)(DBCachedContact *ccMeta, DBCachedContact *ccSub) PURE;
+	STDMETHOD_(BOOL, MetaSplitHistory)(DBCachedContact *ccMeta, DBCachedContact *ccSub) PURE;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -139,11 +161,12 @@ interface MIDatabaseChecker
 */
 
 // grokHeader() error codes
-#define EGROKPRF_NOERROR	0
-#define EGROKPRF_CANTREAD	1	// can't open the profile for reading
-#define EGROKPRF_UNKHEADER  2	// header not supported, not a supported profile
-#define EGROKPRF_VERNEWER   3	// header correct, version in profile newer than reader/writer
-#define EGROKPRF_DAMAGED	4	// header/version fine, other internal data missing, damaged.
+#define EGROKPRF_NOERROR   0
+#define EGROKPRF_CANTREAD  1  // can't open the profile for reading
+#define EGROKPRF_UNKHEADER 2  // header not supported, not a supported profile
+#define EGROKPRF_VERNEWER  3  // header correct, version in profile newer than reader/writer
+#define EGROKPRF_DAMAGED   4  // header/version fine, other internal data missing, damaged.
+#define EGROKPRF_OBSOLETE  5  // obsolete database version detected, requiring conversion
 
 // makeDatabase() error codes
 #define EMKPRF_CREATEFAILED 1   // for some reason CreateFile() didnt like something
@@ -179,7 +202,7 @@ struct DATABASELINK
 		which is a PLUGINLINK structure
 	Returns: 0 on success, nonzero on failure
 	*/
-	MIDatabase* (*Load) (const TCHAR *profile);
+	MIDatabase* (*Load)(const TCHAR *profile, BOOL bReadOnly);
 
 	/*
 	Affect: The database plugin should shutdown, unloading things from the core and freeing internal structures
@@ -192,8 +215,22 @@ struct DATABASELINK
 	Returns a pointer to the database checker or NULL if a database doesn't support checking
 	When you don't need this object aanymore,  call its Destroy() method
 	*/
-	MIDatabaseChecker* (*CheckDB) (const TCHAR *profile, int *error);
+	MIDatabaseChecker* (*CheckDB)(const TCHAR *profile, int *error);
 };
+
+///////////////////////////////////////////////////////////////////////////////
+// cache access function
+
+#if defined(__cplusplus)
+extern "C"
+{
+#endif
+
+MIR_CORE_DLL(DBCachedContact*) db_get_contact(MCONTACT);
+
+#if defined(__cplusplus)
+}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////
 // Database list's services

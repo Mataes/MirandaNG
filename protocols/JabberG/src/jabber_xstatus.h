@@ -1,11 +1,12 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007-09  Maxim Mluhov
-Copyright (C) 2007-09  Victor Pavlychko
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007-09  Maxim Mluhov
+Copyright (c) 2007-09  Victor Pavlychko
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -44,7 +45,7 @@ public:
 
 	virtual void InitGui() {}
 	virtual void RebuildMenu() {}
-	virtual void ResetExtraIcon(HANDLE /*hContact*/) {}
+	virtual void ResetExtraIcon(MCONTACT) {}
 	virtual bool LaunchSetGui() { return false; }
 
 protected:
@@ -66,7 +67,7 @@ public:
 
 	void ProcessEvent(const TCHAR *from, HXML eventNode)
 	{
-		for (int i = 0; i < getCount(); i++)
+		for (int i=0; i < getCount(); i++)
 		{
 			CPepService &pepSvc = (*this)[i];
 			HXML itemsNode = xmlGetChildByTag(eventNode, _T("items"), _T("node"), pepSvc.GetNode());
@@ -77,44 +78,44 @@ public:
 
 	void InitGui()
 	{
-		for (int i = 0; i < getCount(); i++)
+		for (int i=0; i < getCount(); i++)
 			(*this)[i].InitGui();
 	}
 
 	void RebuildMenu()
 	{
-		for (int i = 0; i < getCount(); i++)
+		for (int i=0; i < getCount(); i++)
 			(*this)[i].RebuildMenu();
 	}
 
-	void ResetExtraIcon(HANDLE hContact)
+	void ResetExtraIcon(MCONTACT hContact)
 	{
-		for (int i = 0; i < getCount(); i++)
+		for (int i=0; i < getCount(); i++)
 			(*this)[i].ResetExtraIcon(hContact);
 	}
 
 	void PublishAll()
 	{
-		for (int i = 0; i < getCount(); i++)
+		for (int i=0; i < getCount(); i++)
 			(*this)[i].Publish();
 	}
 
 	void RetractAll()
 	{
-		for (int i = 0; i < getCount(); i++)
+		for (int i=0; i < getCount(); i++)
 			(*this)[i].Retract();
 	}
 
 	void ResetPublishAll()
 	{
-		for(int i = 0; i < getCount(); i++)
+		for(int i=0; i < getCount(); i++)
 			(*this)[i].ResetPublish();
 	}
 
 	CPepService *Find(TCHAR *node)
 	{
-		for (int i = 0; i < getCount(); i++)
-			if ( !lstrcmp((*this)[i].GetNode(), node))
+		for (int i=0; i < getCount(); i++)
+			if (!mir_tstrcmp((*this)[i].GetNode(), node))
 				return &((*this)[i]);
 		return NULL;
 	}
@@ -151,7 +152,7 @@ public:
 	CPepMood(CJabberProto *proto);
 	~CPepMood();
 	void ProcessItems(const TCHAR *from, HXML items);
-	void ResetExtraIcon(HANDLE hContact);
+	void ResetExtraIcon(MCONTACT hContact);
 
 public:
 	TCHAR *m_text;
@@ -160,9 +161,9 @@ public:
 protected:
 	void CreateData(HXML);
 	void ShowSetDialog(BYTE bQuiet);
-	void SetExtraIcon(HANDLE hContact, char *szMood);
+	void SetExtraIcon(MCONTACT hContact, char *szMood);
 
-	void SetMood(HANDLE hContact, const TCHAR *szMood, const TCHAR *szText);
+	void SetMood(MCONTACT hContact, const TCHAR *szMood, const TCHAR *szText);
 };
 
 class CPepActivity: public CPepGuiService
@@ -172,7 +173,7 @@ public:
 	CPepActivity(CJabberProto *proto);
 	~CPepActivity();
 	void ProcessItems(const TCHAR *from, HXML items);
-	void ResetExtraIcon(HANDLE hContact);
+	void ResetExtraIcon(MCONTACT hContact);
 
 protected:
 	TCHAR *m_text;
@@ -180,9 +181,9 @@ protected:
 
 	void CreateData(HXML);
 	void ShowSetDialog(BYTE bQuiet);
-	void SetExtraIcon(HANDLE hContact, char *szActivity);
+	void SetExtraIcon(MCONTACT hContact, char *szActivity);
 
-	void SetActivity(HANDLE hContact, LPCTSTR szFirst, LPCTSTR szSecond, LPCTSTR szText);
+	void SetActivity(MCONTACT hContact, LPCTSTR szFirst, LPCTSTR szSecond, LPCTSTR szText);
 };
 
 #endif // _JABBER_XSTATUS_H_

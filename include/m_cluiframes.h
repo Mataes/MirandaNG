@@ -1,6 +1,9 @@
 /*
-Miranda ICQ: the free icq client for MS Windows
-Copyright (C) 2000-2  Richard Hughes, Roland Rabien & Tristan Van de Vreede
+
+Miranda NG: the free IM client for Microsoft* Windows*
+
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-02 Richard Hughes, Roland Rabien & Tristan Van de Vreede
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -232,13 +235,6 @@ __forceinline HGENMENU Menu_AddContextFrameMenuItem(CLISTMENUITEM *mi)
 {	mi->hLangpack = hLangpack;
 	return (HGENMENU)CallService("CList/AddContextFrameMenuItem", 0, (LPARAM)mi);
 }
-
-//////////////////////////////////////////////////////////////////////////
-//remove a item from context frame menu
-//wParam=hMenuItem returned by MS_CLIST_ADDCONTACTMENUITEM
-//lParam=0
-//returns 0 on success, nonzero on failure
-#define MS_CLIST_REMOVECONTEXTFRAMEMENUITEM			"CList/RemoveContextFrameMenuItem"
 
 //////////////////////////////////////////////////////////////////////////
 //builds the context menu for a frame

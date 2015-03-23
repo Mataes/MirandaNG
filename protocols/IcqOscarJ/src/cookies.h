@@ -1,35 +1,30 @@
 // ---------------------------------------------------------------------------80
 //                ICQ plugin for Miranda Instant Messenger
 //                ________________________________________
-// 
+//
 // Copyright © 2000-2001 Richard Hughes, Roland Rabien, Tristan Van de Vreede
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2010 Joe Kucera
-// 
+// Copyright © 2012-2014 Miranda NG Team
+//
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
 // as published by the Free Software Foundation; either version 2
 // of the License, or (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
+
 #ifndef __COOKIES_H
 #define __COOKIES_H
-
 
 #define CKT_MESSAGE           0x01
 #define CKT_FILE              0x02
@@ -49,7 +44,7 @@ struct CIcqProto;
 struct icq_cookie_info
 {
   DWORD dwCookie;
-  HANDLE hContact;
+  MCONTACT hContact;
   void *pvExtra;
   time_t dwTime;
   BYTE bType;
@@ -61,7 +56,7 @@ struct icq_cookie_info
 struct cookie_family_request
 {
   WORD wFamily;
-  void (CIcqProto::*familyHandler)(HANDLE hConn, char* cookie, WORD cookieLen);
+  void (CIcqProto::*familyHandler)(HANDLE hConn, char* cookie, size_t cookieLen);
 };
 
 
@@ -114,17 +109,17 @@ struct cookie_search
 struct cookie_avatar
 {
   DWORD dwUin;
-  HANDLE hContact;
-  unsigned int hashlen;
+  MCONTACT hContact;
+  size_t hashlen;
   BYTE *hash;
-  unsigned int cbData;
+  size_t cbData;
   TCHAR *szFile;
 };
 
 
 struct cookie_reverse_connect: public cookie_message_data
 {
-  HANDLE hContact;
+  MCONTACT hContact;
   DWORD dwUin;
   int type;
   void *ft;

@@ -9,6 +9,7 @@
 //
 // wParam  = 0
 // lParam  = (BBButton *) &description
+// Returns 0 on success, 1 otherwise
 #define MS_BB_ADDBUTTON "TabSRMM/ButtonsBar/AddButton"
 
 //////////////////////////////////////////////////////////////////////////
@@ -16,6 +17,7 @@
 //
 // wParam = 0
 // lParam  = (BBButton *) &description, only button ID and ModuleName used
+// Returns 0 on success, 1 otherwise
 #define MS_BB_REMOVEBUTTON "TabSRMM/ButtonsBar/RemoveButton"
 
 //////////////////////////////////////////////////////////////////////////
@@ -23,6 +25,7 @@
 //
 // wParam = 0
 // lParam = (BBButton *) &description
+// Returns 0 on success, 1 otherwise
 #define MS_BB_MODIFYBUTTON		"TabSRMM/ButtonsBar/ModifyButton"
 
 
@@ -37,6 +40,7 @@
 // wParam =  hContact
 // lParam = (BBButton *) &description , only ModuleName and ID used
 // Returns BBButton struct with BBSF_ bbbFlags:
+// Returns 0 on success, 1 otherwise
 #define MS_BB_GETBUTTONSTATE	"TabSRMM/ButtonsBar/GetButtonState"
 
 //////////////////////////////////////////////////////////////////////////
@@ -44,6 +48,7 @@
 //
 // wParam =  hContact
 // lParam = (BBButton *) &description , ModuleName, ID,hIcon,Tooltip, and BBSF_ bbbFlags are used
+// Returns 0 on success, 1 otherwise
 #define MS_BB_SETBUTTONSTATE	 "TabSRMM/ButtonsBar/SetButtonState"
 
 
@@ -74,13 +79,13 @@
 
 typedef struct {
 	int cbSize;
-	POINT pt;		// screen coordinates for menus
-	char* pszModule;		// button owners name
-	DWORD dwButtonId;		// registered button ID
-	HWND hwndFrom;		// button parents HWND
-	HANDLE hContact;	//
-	DWORD flags;		// BBCF_ flags
-	} CustomButtonClickData;
+	POINT pt;          // screen coordinates for menus
+	char* pszModule;   // button owners name
+	DWORD dwButtonId;  // registered button ID
+	HWND hwndFrom;     // button parents HWND
+	MCONTACT hContact;
+	DWORD flags;       // BBCF_ flags
+} CustomButtonClickData;
 
 
 //button flags

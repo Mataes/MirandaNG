@@ -314,8 +314,7 @@ void CreateFromBitmaps(bool bServiceTip)
 					skin.hbmpSkinParts[i][j] = NULL;
 				}
 
-			if (MyUpdateLayeredWindow) 
-				skin.bNeedLayerUpdate = true;
+			skin.bNeedLayerUpdate = true;
 
 			DeleteDC(hdcMem);
 		}
@@ -400,12 +399,8 @@ void DestroySkinBitmap()
 	skin.bCached = false;
 }
 
-void SaveAlpha(LPRECT lpRect)
+COLOR32* SaveAlpha(LPRECT lpRect)
 {
-	if (skin.colSavedBits) {
-		mir_free(skin.colSavedBits);
-		skin.colSavedBits = 0;
-	}
 	GdiFlush();
 
 	if (lpRect->left < 0) lpRect->left = 0; 
@@ -418,8 +413,8 @@ void SaveAlpha(LPRECT lpRect)
 	int w = lpRect->right - lpRect->left;
 	int h = lpRect->bottom - lpRect->top;
 
-	skin.colSavedBits = (COLOR32 *)mir_alloc(sizeof(COLOR32) * w * h);
-	COLOR32 *p1 = skin.colSavedBits;
+	COLOR32 *res = (COLOR32 *)mir_alloc(sizeof(COLOR32) * w * h);
+	COLOR32 *p1 = res;
 
 	for (int i = 0; i < h; i++) {
 		if (i+y < 0) continue;
@@ -431,13 +426,11 @@ void SaveAlpha(LPRECT lpRect)
 			*p1++ = *p2++;
 		}
 	}
+	return res;
 }
 
-void RestoreAlpha(LPRECT lpRect, BYTE alpha)
+void RestoreAlpha(LPRECT lpRect, COLOR32 *pBits, BYTE alpha)
 {
-	if (!skin.colSavedBits) 
-		return;
-
 	GdiFlush();
 
 	if (lpRect->left < 0) lpRect->left = 0; 
@@ -450,7 +443,7 @@ void RestoreAlpha(LPRECT lpRect, BYTE alpha)
 	int w = lpRect->right - lpRect->left;
 	int h = lpRect->bottom - lpRect->top;
 
-	COLOR32 *p1 = skin.colSavedBits;
+	COLOR32 *p1 = pBits;
 
 	for (int i = 0; i < h; i++) {
 		if (i+y < 0) continue;
@@ -468,9 +461,6 @@ void RestoreAlpha(LPRECT lpRect, BYTE alpha)
 			++p1; ++p2;
 		}
 	}
-
-	mir_free(skin.colSavedBits);
-	skin.colSavedBits = 0;
 }
 
 BOOL IsAlphaTransparent(HBITMAP hBitmap)
@@ -505,7 +495,7 @@ BOOL IsAlphaTransparent(HBITMAP hBitmap)
 
 void DrawIconExAlpha(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, UINT istepIfAniCur, HBRUSH hbrFlickerFreeDraw, UINT diFlags, bool bIsSmiley)
 {
-	bool restore = false;
+	mir_ptr<COLOR32> pBits;
 
 	if (skin.bNeedLayerUpdate && !bIsSmiley) {
 		ICONINFO icon;
@@ -513,8 +503,7 @@ void DrawIconExAlpha(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int
 			if ( !IsAlphaTransparent(icon.hbmColor)) {
 				RECT rc;
 				SetRect(&rc, xLeft, yTop, xLeft + cxWidth, yTop + cyWidth);
-				SaveAlpha(&rc);
-				restore = true;
+				pBits = SaveAlpha(&rc);
 			}
 
 			DeleteObject(icon.hbmColor);
@@ -524,10 +513,10 @@ void DrawIconExAlpha(HDC hdc, int xLeft, int yTop, HICON hIcon, int cxWidth, int
 
 	DrawIconEx(hdc, xLeft, yTop, hIcon, cxWidth, cyWidth, istepIfAniCur, hbrFlickerFreeDraw, diFlags); 
 
-	if (skin.bNeedLayerUpdate && restore) {
+	if (skin.bNeedLayerUpdate && pBits != NULL) {
 		RECT rc;
 		SetRect(&rc, xLeft, yTop, xLeft + cxWidth, yTop + cyWidth);
-		RestoreAlpha(&rc);
+		RestoreAlpha(&rc, pBits);
 	}
 }
 
@@ -536,9 +525,10 @@ int DrawTextAlpha(HDC hdc, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFo
 	RECT rc;
 	SetRect(&rc, lpRect->left - 1, lpRect->top - 1, lpRect->right + 1, lpRect->bottom + 1);
 
-	if (skin.bNeedLayerUpdate) SaveAlpha(&rc);
+	mir_ptr<COLOR32> pBits;
+	if (skin.bNeedLayerUpdate) pBits = SaveAlpha(&rc);
 	int result = DrawText(hdc, lpString, nCount, lpRect, uFormat);
-	if (skin.bNeedLayerUpdate) RestoreAlpha(&rc);
+	if (skin.bNeedLayerUpdate) RestoreAlpha(&rc, pBits);
 
 	return result;
 }

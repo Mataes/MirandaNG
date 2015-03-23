@@ -1,162 +1,214 @@
 ﻿#muuid {8432b009-ff32-4727-aae6-a9035038fd58}
 ;============================================================
-;  File: facebook.dll
-;  Module: Facebook
-;  Versions: 0.0.5.5
-;  URL: http://addons.miranda-im.org/details.php?action=viewfile&id=4406
-;  Source: http://miranda-plugins.googlecode.com/svn/trunk/FacebookRM/
-;  Authors: Robyer
+;  File: Facebook.dll
+;  Plugin: Facebook RM
+;  Version: 0.2.10.5
+;  Authors: Michal Zelinka, Robert Pösel
 ;============================================================
 [Facebook protocol support for Miranda NG.]
 Поддержка протокола Facebook в Miranda NG.
-[Default group for newly added contacts:]
-Добавлять контакты в группу:
-[User-Agent:]
-Клиент:
-[Set Facebook status through Miranda status]
-Устанавливать статус Facebook через Miranda
+[E-mail:]
+Почта:
+[Password:]
+Пароль:
 [Create a new Facebook account]
 Создать новую учётную запись Facebook
-[Share status...]
-Статус...
-[Set Facebook status through Miranda status (TBD)]
-Устанавливать статус Facebook через Miranda (TBD)
-[Show cookies]
-Показывать cookies
-[No cookies available.]
-Нет cookies.
-[Facebook Protocol]
-Протокол Facebook
-[Enable loggin for debugging purposes]
-Включить отображение ошибок
-[Info Dialog]
-Информация
-[Probably wrong password entered, please try again.]
-Неправильный пароль, попробуйте снова.
-[Enable popup notifications for others minds]
-Включить popup уведомления
-[Force secure (HTTPS) connection]
-Безопасное соединение (HTTPS)
-[Automatically close chat windows on website]
-Автоматически закрывать чат в браузере
-[Post Miranda statuses to Wall]
-Публиковать статусы Miranda на стену
-[Enable logging for debugging purposes]
-Логирование для отладки
-[News feeds]
-Новости
-[Client notifications]
-Уведомления клиента
-[Timeout (sec.)]
-Длительность (сек.)
-[(0 = default, -1 = infinite)]
-(0 = умолчание, -1 = бесконечно)
-[Request following types of News Feed items]
-Запрашивать виды новостей:
-[Use balloon notifications in system tray instead of popups]
-Уведомлять подсказкой в трее вместо всплывающих окон
-[Most Recent]
-Недавние обновления
-[Status Updates]
-Обновления статуса
-[Top News]
-Популярные новости
-[Sample event]
-Пример события
-[Sample newsfeed]
-Пример новости
-[Sample notification]
-Пример уведомления
-[Please enter a username.]
-Пожалуйста, введите имя пользователя.
-[Please enter a password.]
-Пожалуйста, введите пароль.
-[Sample request]
-Пример запроса
-[Visit profile]
-Профиль
-[Visit friendship details]
-Информация о дружбе
-[Friendship details]
-Информация о дружбе
-[News Feed]
-Новости
-[News Feed types to notify:]
-Уведомлять о типах новостей:
-[Contacts Settings]
-Настройки контактов
+[What's on your mind?]
+О чем вы думаете?
+[Wall:]
+Стена:
+[Visibility:]
+Видно:
+[Text:]
+Текст:
+[Place:]
+Место:
+[Contacts >>]
+Контакты >>
+[Attach contacts:]
+Присоединить контакты:
+[Share]
+Отправить
+[Cancel]
+Отмена
+[User details]
+О пользователе
+[Contacts]
+Контакты
 [Default group:]
 Группа:
 [Automatically set 'Ignore status change' flag]
 Автоматически включать игнорирование смены статусов
 [Use bigger avatars]
 Большие аватары
-[Load contacts with 'On the Mobile' status]
-Загружать контакты "с мобильного"
-[Use secure connection also for channel requests]
-Безопасное соединение также для запросов канала
-[Also disconnect chat when going to offline]
-Отключать чат на сайте при уходе в оффлайн
-[Automatically close chat windows (on website)]
-Автоматически закрывать окно чата (на сайте)
-[Map non-standard statuses to Invisible (instead of Online)]
-Нестандартные статусы, как Невидимый (вместо 'В сети')
-[Get unread messages on login (EXPERIMENTAL)]
-Непрочтённые сообщения при входе (Экспериментально)
-[Enable groupchats support (EXPERIMENTAL)]
-Поддержка конференций (Экспериментально)
-[Enable support for Custom smileys (EXPERIMENTAL + BUGGY!)]
-Поддержка пользовательских смайлов (Экспериментально!)
-[Use local time for received messages]
-Локальное время для принятых сообщений
-[Allow posting statuses to my pages (may slow down login)]
-Разрешить публиковать статусы на своих страницах (замедляет вход)
+[Event notifications]
+Уведомления
+[Notifications]
+Уведомления
+[News feeds (WARNING: Causes excessive network traffic!)]
+Новости (Предупреждение: высокое потребление сетевого трафика)
+[News feed types to notify:]
+Уведомлять о типах новостей:
+[Don't show advertising posts]
+Не показывать рекламные публикации
+[Other events]
+Другие события
+[Client notifications]
+Уведомления клиента
+[Friendship notifications]
+Уведомления о дружбе
 [Use this server for opening links:]
 Тип сайта для открытия ссылок:
+[Use balloon notifications in system tray instead of popups]
+Уведомлять подсказкой в трее вместо всплывающих окон
+[Use logging notifications into special chatroom]
+Запись уведомлений в специальную комнату чата
+[Preview]
+Тест
+[Statuses]
+Статусы
+[Post Miranda statuses to Wall]
+Публиковать статусы Miranda на стену
+[Turn off chat on Facebook when going to offline in Miranda]
+Отключать чат на сайте при уходе в оффлайн в Miranda NG
+[Map unsupported statuses to Invisible (instead of Online)]
+Неподдерживаемые статусы, как Невидимый (вместо 'В сети')
+[Allow posting statuses to my pages (may slow down login)]
+Разрешить публиковать статусы на своих страницах (замедляет вход)
+[Bots challenge test]
+Защита от ботов
+[Instruction:]
+Инструкция:
+[Submit]
+Передать
+[Messages]
+Сообщения
+[Receive messages from "inbox" folder only]
+Принимать сообщения только из папки "входящие"
+[Keep messages as unread on server (don't send "seen" info)]
+Не помечать сообщения на сервере как прочитанные
+[Show stickers as custom smileys (EXPERIMENTAL)]
+Стикеры, как пользовательские смайлы (Экспериментально!)
+[Multi user chats]
+Многопользовательские чаты
+[Enable multi user chats support]
+Включить поддержку многопользовательских чатов
+[Do not open chat windows on creation]
+Не открывать окна комнат чата при создании
+[History synchronization]
+Синхронизация истории
+[Load last messages (24 hours old) on login (EXPERIMENTAL)]
+Загрузка сообщений за последние 24 часа при логине (Экспериментально)
+[Load last messages on opening message window (EXPERIMENTAL)]
+Подгружать последние сообщения при открытии окна (Экспериментально)
+[Number of messages to load:]
+Количество подгружаемых сообщений:
+[Enter the text you see]
+Введите текст, который видите
+[Myself]
+Я
+[User]
+Пользователь
+[Friend]
+Друг
+[&Invite user...]
+&Пригласить пользователя...
+[&Leave chat session]
+&Покинуть чат
+[User &details]
+&Данные контакта
+[User &history]
+&История пользователя
+[Login error: %s]
+Ошибка входа: %s
+[Unknown error]
+Неизвестная ошибка
+[Login error: Invalid request.]
+Ошибка входа: Неверный запрос.
+[Login error: Some Facebook things are required.]
+Ошибка входа: Требуются дополнительные вещи от Facebook
+[Login error: Your account is temporarily locked. You need to confirm this device from web browser.]
+Ошибка входа: Ваша учётная запись заблокирована. Требуется пройти подтверждение в браузере.
+[Login error: Captcha code is required. You need to confirm this device from web browser.]
+Ошибка входа: Требуется ввести капчу. Требуется пройти подтверждение в браузере.
+[Login error, probably bad login credentials.]
+Ошибка входа, скорее всего неверный логин.
+[Could not load communication token. You should report this and wait for plugin update.]
+Невозможно загрузить токен авторизации. Оставьте отчёт о данной ошибке и ждите обновления плагина.
+[Could not load all required data. Plugin may still work correctly, but you should report this and wait for plugin update.]
+Невозможно загрузить все требуемые данные. Возможна корректная работа плагина, тем не менее оставьте отчёт о данной ошибке и ждите обновления плагина.
+[Need confirmation for sending messages to other clients.\nOpen Facebook website and try to send message to this contact again!]
+Требуется подтверждение разрешения отправки сообщений на другие клиенты.\nОткройте сайт Facebook и попробуйте заново отправить сообщение этому контакту!
+[User cancel captcha challenge.]
+Прервано пользователем.
+[Timeout when sending message.]
+Таймаут отправки сообщения.
+[Status update was successful.]
+Успешное обновление статуса.
+[Please enter a username.]
+Пожалуйста, введите имя пользователя.
+[Please enter a password.]
+Пожалуйста, введите пароль.
+[Top News]
+Популярные новости
+[Most Recent]
+Недавние обновления
+[Pages]
+Страницы
 [Classic website]
 Классический сайт
 [Mobile website]
 Мобильный сайт
 [Smartphone website]
 Сайт для смартфонов
-[Photos]
-Фотографии
-[Links]
-Ссылки
-[Request friendship]
-Запросить добавление в друзья
-[Approve friendship]
-Подтвердить добавление в друзья
-[Cancel friendship]
-Удалить из друзей
-[Do you want to cancel your friendship with '%s'?]
-Вы уверены, что хотите удалить '%s' из друзей?
-[Cancel friendship request]
-Отозвать запрос дружбы
-[Check Friends Requests]
-Проверить запросы дружбы
-[Check Newsfeeds]
-Проверить новости
-[Refresh Buddy List]
-Обновить список друзей
-[Checking friend requests...]
-Проверка запросов дружбы...
-[Loading newsfeeds...]
-Загрузка новостей...
-[Refreshing buddy list...]
-Обновление списка друзей...
-[Services]
-Службы
-[Wall Posts]
-Сообщения со стены
-[Apps and Games]
-Приложения и игры
-[Facebook icon]
-Значок Facebook
-[Mind]
-Мнение
-[Other Event]
-Другое событие
+[Public]
+Всем
+[Friends of friends]
+Друзьям друзей
+[Friends]
+Друзьям
+[Friends except acquaintances]
+Друзьям, кроме знакомых
+[Only me]
+Только мне
+[%s and more (%d)]
+%s и ещё (%d)
+[Contact was removed from your server list.]
+Контакт удален из списка на сервере.
+[Error occurred when removing contact from server.]
+Ошибка удаления контакта из списка на сервере.
+[Request for friendship was sent.]
+Запрос дружбы отослан.
+[Error occurred when requesting friendship.]
+Произошла ошибка запроса дружбы.
+[Request for friendship was accepted.]
+Запрос дружбы одобрен.
+[Error occurred when accepting friendship request.]
+Произошла ошибка при запросе дружбы!
+[Request for friendship was canceled.]
+Запрос дружбы был отменён.
+[Error occurred when canceling friendship request.]
+Произошла ошибка отмены запроса дружбы.
+[Request for friendship was ignored.]
+Запрос дружбы был проигнорирован.
+[Error occurred when ignoring friendship request.]
+Произошла ошибка игнора запроса дружбы.
+[Default]
+По умолчанию
+[<< Contacts]
+<< Контакты
+[What's on your mind, %s?]
+О чём вы думаете, %s?
+[Sample event]
+Пример события
+[Sample request]
+Пример запроса
+[Sample newsfeed]
+Пример новости
+[Sample notification]
+Пример уведомления
+[Sample friendship]
+Пример уведомления о дружбе
 [a sticker]
 стикер
 [files]
@@ -167,47 +219,107 @@
 фотографии
 [a photo]
 фотографию
-[User sent you %s:]
-Контакт послал вам %s:
-[Message read: %s]
-Сообщение прочтено в: %s
-[Poke]
-Подмигнуть
-[What's on your mind, %s?]
-О чём Вы думаете, %s?
-[Public]
-Всем
-[Friends]
-Друзьям
-[Friends of friends]
-Друзьям друзей
-[Friends except acquaintances]
-Друзьям, кроме знакомых
-[Only me]
-Только мне
-[Attach contacts:]
-Присоединить контакты:
-[Wall:]
-Стена:
-[Visibility:]
-Видно:
-[Text:]
-Текст:
-[Place:]
-Место:
-[Newsfeed]
-Лента
-[Cancel]
-Отмена
-[Share]
-Отправить
-[Show 'Share status' window]
-Сообщение статуса Facebook 
+[User sent %s:]
+Контакт послал %s:
+[User sent an unsupported attachment. Open your browser to see it.]
+Контакт послал неподдерживаемое вложение. Для просмотра перейдите на сайт.
+[This message is no longer available, because it was marked as abusive or spam.]
+Сообщение недоступно, поскольку было отмечено, как оскорбительное или спам.
+[%s is typing a message...]
+%s набирает сообщение...
+[You cannot send messages when you are offline.]
+Вы не можете отправлять сообщения без подключения к сети.
+[Contact is back on server-list.]
+Контакт снова в списке на сервере.
+[Contact is no longer on server-list.]
+Контакта больше нет в списке на сервере.
+[%s server connection]
+%s подключение к серверу
+[Unable to get Netlib connection for Facebook]
+Не удается установить соединение с Facebook
+[Video call]
+Видеовызов
+[Facebook ID must be numeric value.]
+Значение Facebook ID должно быть числовым.
+[Network]
+Сеть
+[Account]
+Учётная запись
+[Events]
+События
+[Messaging]
+Сообщения
+[Share status...]
+Статус...
 [Own wall]
 Своя стена
-[Status update was successful.]
-Успешное обновление статуса.
-[<< Contacts]
-<< Контакты
-[Contacts >>]
-Контакты >>
+[Loading newsfeeds...]
+Загрузка новостей...
+[Checking friend requests...]
+Проверка запросов дружбы...
+[Refreshing buddy list...]
+Обновление списка друзей...
+[Do you want to cancel your friendship with '%s'?]
+Вы уверены, что хотите удалить '%s' из друзей?
+[News feeds]
+Новости
+[Friendship events]
+События дружбы
+[Visit profile]
+Профиль на сайте
+[Visit notifications]
+Уведомления на сайте
+[Show 'Share status' window]
+Сообщение статуса Facebook
+[Notification]
+Уведомление
+[News Feed]
+Новости
+[Other Event]
+Другое событие
+[Friendship Event]
+Событие дружбы
+[Message read: %s by %s]
+Сообщение прочтено в: %s пользователем %s
+[Message read: %s]
+Сообщение прочтено в: %s
+[Facebook icon]
+Значок Facebook
+[Mind]
+Мнение
+[Poke]
+Подмигнуть
+[Newsfeed]
+Лента
+[Friendship details]
+Информация о дружбе
+[Conversation]
+Беседа
+[Message read]
+Сообщение прочтено
+[Captcha form icon]
+Значок формы с капчей
+[Visit friendship details]
+Информация о дружбе
+[Visit conversation]
+Беседа на сайте
+[Cancel friendship]
+Удалить из друзей
+[Cancel friendship request]
+Отозвать запрос дружбы
+[Request friendship]
+Запросить добавление в друзья
+[Approve friendship]
+Подтвердить добавление в друзья
+[Deny friendship request]
+Отклонить запрос дружбы
+[Services...]
+Службы...
+[Refresh Buddy List]
+Обновить список друзей
+[Services]
+Службы
+[Check Friends Requests]
+Проверить запросы дружбы
+[Check Newsfeeds]
+Проверить новости

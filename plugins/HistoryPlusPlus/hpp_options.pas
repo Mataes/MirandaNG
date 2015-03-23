@@ -98,7 +98,7 @@ const
   DEFFORMAT_SELECTION       = '%selmes%\n';
   DEFFORMAT_DATETIME        = 'c'; // ShortDateFormat + LongTimeFormat
 
-  hppIconsDefs : array[0..33] of ThppIconsRec = (
+  hppIconsDefs : array[0..32] of ThppIconsRec = (
     (name:'historypp_01'; desc:'Contact history';           group: nil; i:HPP_ICON_CONTACTHISTORY),
     (name:'historypp_02'; desc:'History search';            group: nil; i:HPP_ICON_GLOBALSEARCH),
     (name:'historypp_03'; desc:'Conversation divider';      group: 'Conversations'; i:HPP_ICON_SESS_DIVIDER),
@@ -131,8 +131,7 @@ const
     (name:'historypp_30'; desc:'Bookmark enabled';          group: nil; i:HPP_ICON_BOOKMARK_ON),
     (name:'historypp_31'; desc:'Bookmark disabled';         group: nil; i:HPP_ICON_BOOKMARK_OFF),
     (name:'historypp_32'; desc:'Advanced Search Options';   group: 'Toolbar'; i:HPP_ICON_SEARCHADVANCED),
-    (name:'historypp_33'; desc:'Limit Search Range';        group: 'Toolbar'; i:HPP_ICON_SEARCHRANGE),
-    (name:'historypp_34'; desc:'Search Protected Contacts'; group: 'Toolbar'; i:HPP_ICON_SEARCHPROTECTED)
+    (name:'historypp_33'; desc:'Limit Search Range';        group: 'Toolbar'; i:HPP_ICON_SEARCHRANGE)
   );
 
   hppFontItems: array[0..29] of ThppFontsRec = (
@@ -159,7 +158,7 @@ const
 
     (_type: [hppFont,hppColor]; name: 'Incoming url';
        Mes: [mtUrl,mtIncoming]; style:0; size: -13; color: $000000; back: $F4D9CC),
-    
+
     (_type: [hppFont,hppColor]; name: 'Outgoing url';
        Mes: [mtUrl,mtOutgoing]; style:0; size: -13; color: $000000; back: $F4D9CC),
 
@@ -228,17 +227,8 @@ const
   );
 
 var
-  hppIntIcons: array[0..0] of ThppIntIconsRec = (
-    (handle: 0; name:'z_password_protect')
-  );
-
-var
   GridOptions: TGridOptions;
   SmileyAddEnabled: Boolean;
-  MathModuleEnabled: Boolean;
-  MetaContactsEnabled: Boolean;
-  MetaContactsProto: AnsiString;
-  MeSpeakEnabled: Boolean;
   ShowHistoryCount: Boolean;
   hppIcons: array of ThppIntIconsRec;
   skinIcons: array of ThppIntIconsRec;
@@ -248,7 +238,6 @@ procedure LoadGridOptions;
 procedure SaveGridOptions;
 procedure LoadIcons;
 procedure LoadIcons2;
-procedure LoadIntIcons;
 procedure OnShowIcons;
 procedure OnTextFormatting(Value: Boolean);
 procedure hppRegisterGridOptions;
@@ -270,9 +259,6 @@ const
     (Index: 4;  Filter:'mContacts files';   DefaultExt:'*.dat'; Owned:[]; OwnedIndex: -1),
     (Index: 5;  Filter:'Unicode text file'; DefaultExt:'*.txt'; Owned:[sfUnicode,sfText]; OwnedIndex: 1),
     (Index: 6;  Filter:'Text file';         DefaultExt:'*.txt'; Owned:[sfUnicode,sfText]; OwnedIndex: 2));
-
-{$include m_mathmodule.inc}
-{$include m_speak.inc}
 
 procedure RegisterFont(Name:PAnsiChar; Order:integer; const defFont:TFontSettings);
 var
@@ -354,14 +340,6 @@ begin
   finally
     GridOptions.EndChange(Changed);
   end;
-end;
-
-procedure LoadIntIcons;
-var
-  i: Integer;
-begin
-  for i := 0 to High(hppIntIcons) do
-    hppIntIcons[i].handle := LoadIconA(hInstance,hppIntIcons[i].name);
 end;
 
 procedure LoadIcons2;
@@ -465,7 +443,6 @@ begin
 
     GridOptions.SmileysEnabled        := GetDBBool(hppDBName, 'Smileys', SmileyAddEnabled);
     GridOptions.BBCodesEnabled        := GetDBBool(hppDBName, 'BBCodes', true);
-    GridOptions.MathModuleEnabled     := GetDBBool(hppDBName, 'MathModule', MathModuleEnabled);
     GridOptions.RawRTFEnabled         := GetDBBool(hppDBName, 'RawRTF', true);
     GridOptions.AvatarsHistoryEnabled := GetDBBool(hppDBName, 'AvatarsHistory', true);
 
@@ -497,7 +474,6 @@ begin
 
     WriteDBBool(hppDBName, 'BBCodes', GridOptions.BBCodesEnabled);
     WriteDBBool(hppDBName, 'Smileys', GridOptions.SmileysEnabled);
-    WriteDBBool(hppDBName, 'MathModule', GridOptions.MathModuleEnabled);
     WriteDBBool(hppDBName, 'RawRTF', GridOptions.RawRTFEnabled);
     WriteDBBool(hppDBName, 'AvatarsHistory', GridOptions.AvatarsHistoryEnabled);
 
@@ -568,7 +544,6 @@ var
   // sarc: SMADD_REGCAT;
   i: Integer;
   mt: TMessageType;
-  str: PAnsiChar;
   hppIconPack: String;
 begin
   // Register in IcoLib
@@ -629,30 +604,9 @@ begin
           hppFontItems[i].back { TRANSLATE-IGNORE } );
     end;
   end;
+
   // Register in SmileyAdd
   SmileyAddEnabled := boolean(ServiceExists(MS_SMILEYADD_REPLACESMILEYS));
-  { if SmileyAddEnabled then begin
-    ZeroMemory(@sarc,SizeOf(sarc));
-    sarc.cbSize := SizeOf(sarc);
-    sarc.name := hppName;
-    sarc.dispname := hppName;
-    CallService(MS_SMILEYADD_REGISTERCATEGORY,0,LPARAM(@sarc));
-    end; }
-  // Register in MathModule
-  MathModuleEnabled := boolean(ServiceExists(MATH_RTF_REPLACE_FORMULAE));
-  // Checking MetaContacts
-  MetaContactsEnabled := boolean(ServiceExists(MS_MC_GETMOSTONLINECONTACT));
-  if MetaContactsEnabled then
-  begin
-    str := PAnsiChar(CallService(MS_MC_GETPROTOCOLNAME, 0, 0));
-    if Assigned(str) then
-      MetaContactsProto := AnsiString(str)
-    else
-      MetaContactsEnabled := false;
-  end;
-  // Checking presence of speech api
-  MeSpeakEnabled := boolean(ServiceExists(MS_SPEAK_SAY_W)) or
-    boolean(ServiceExists(MS_SPEAK_SAY_A));
 end;
 
 procedure PrepareSaveDialog(SaveDialog: TSaveDialog; SaveFormat: TSaveFormat; AllFormats: boolean = false);
@@ -701,15 +655,6 @@ begin
   end;
 end;
 
-procedure LocalFreeIcons;
-var
-  i: Integer;
-begin
-  for i := 0 to High(hppIntIcons) do
-    if hppIntIcons[i].handle <> 0 then
-      DestroyIcon(hppIntIcons[i].handle);
-end;
-
 initialization
 
   GridOptions := TGridOptions.Create;
@@ -719,8 +664,6 @@ initialization
   SetLength(skinIcons, SkinIconsCount);
 
 finalization
-
-  LocalFreeIcons;
 
   Finalize(hppIcons);
   Finalize(skinIcons);

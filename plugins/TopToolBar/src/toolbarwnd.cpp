@@ -20,7 +20,6 @@ static void PaintToolbar(HWND hwnd)
 
 	RECT clRect;
 	GetClientRect(hwnd, &clRect);
-	if (rcPaint == NULL) rcPaint = &clRect;
 
 	int yScroll = 0;
 	int y = -yScroll;
@@ -43,7 +42,7 @@ static void PaintToolbar(HWND hwnd)
 		SelectObject(hdcBmp, hBmpBackground);
 		int y = backgroundBmpUse & CLBF_SCROLL ? -yScroll : 0;
 		int maxx = backgroundBmpUse & CLBF_TILEH ? clRect.right : 1;
-		int maxy = backgroundBmpUse & CLBF_TILEV ? maxy = rcPaint->bottom : y+1;
+		int maxy = backgroundBmpUse & CLBF_TILEV ? rcPaint->bottom : y+1;
 
 		int destw, desth;
 		switch(backgroundBmpUse & CLBM_TYPE) {
@@ -148,7 +147,8 @@ LRESULT CALLBACK TopToolBarProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 			if ( g_ctrl->bAutoSize) {
 				RECT rcClient;
 				GetClientRect(g_ctrl->hWnd, &rcClient);
-				if (rcClient.bottom - rcClient.top != iHeight && iHeight) {
+				rcClient.bottom -= rcClient.top;
+				if (rcClient.bottom != iHeight && iHeight && rcClient.bottom) {
 					supressRepos = true;
 					PostMessage(hwnd, TTB_UPDATEFRAMEVISIBILITY, 0, 0);
 				}
@@ -248,20 +248,20 @@ INT_PTR OnEventFire(WPARAM wParam, LPARAM lParam)
 	if (parent == NULL) // no clist, no buttons
 		return -1;
 
-	WNDCLASS wndclass = { 0 };
-	wndclass.lpfnWndProc   = TopToolBarProc;
-	wndclass.cbWndExtra    = sizeof(void*);
-	wndclass.hInstance     = hInst;
-	wndclass.hCursor       = LoadCursor(NULL, IDC_ARROW);
-	wndclass.hbrBackground = (HBRUSH)(COLOR_BTNFACE+1);
+	WNDCLASS wndclass = {0};
+	wndclass.lpfnWndProc = TopToolBarProc;
+	wndclass.cbWndExtra = sizeof(void *);
+	wndclass.hInstance = hInst;
+	wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wndclass.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
 	wndclass.lpszClassName = pluginname;
 	RegisterClass(&wndclass);
 
-	g_ctrl->pButtonList = (SortedList*)&Buttons;
+	g_ctrl->pButtonList = (SortedList *)&Buttons;
 	g_ctrl->hWnd = CreateWindow(pluginname, _T("Toolbar"),
 		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
 		0, 0, 0, g_ctrl->nLastHeight, parent, NULL, hInst, NULL);
-	SetWindowLongPtr(g_ctrl->hWnd, 0, (LPARAM)g_ctrl);
+	SetWindowLongPtr(g_ctrl->hWnd, 0, (LONG_PTR)g_ctrl);
 
 	LoadBackgroundOptions();
 

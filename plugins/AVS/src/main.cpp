@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2004 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-04 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -23,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "commonheaders.h"
 
+CLIST_INTERFACE *pcli;
+
 HINSTANCE g_hInst = 0;
 HICON g_hIcon = 0;
 bool g_shutDown = false;
@@ -30,7 +33,6 @@ bool g_shutDown = false;
 int hLangpack;
 
 TCHAR  g_szDataPath[MAX_PATH];		// user datae path (read at startup only)
-BOOL   g_MetaAvail = FALSE;
 BOOL   g_AvatarHistoryAvail = FALSE;
 HWND   hwndSetMyAvatar = 0;
 
@@ -41,20 +43,18 @@ HANDLE hEventChanged, hEventContactAvatarChanged, hMyAvatarChanged;
 
 void   InitServices();
 
-BOOL (WINAPI *AvsAlphaBlend)(HDC, int, int, int, int, HDC, int, int, int, int, BLENDFUNCTION) = NULL;
-
-static int ComparePicture( const protoPicCacheEntry* p1, const protoPicCacheEntry* p2 )
+static int ComparePicture(const protoPicCacheEntry* p1, const protoPicCacheEntry* p2)
 {
-	if ((lstrcmpA(p1->szProtoname, "Global avatar") == 0) || strstr(p1->szProtoname, "Global avatar"))
+	if ((mir_strcmp(p1->szProtoname, "Global avatar") == 0) || strstr(p1->szProtoname, "Global avatar"))
 		return -1;
-	if ((lstrcmpA(p2->szProtoname, "Global avatar") == 0) || strstr(p1->szProtoname, "Global avatar"))
+	if ((mir_strcmp(p2->szProtoname, "Global avatar") == 0) || strstr(p1->szProtoname, "Global avatar"))
 		return 1;
-	return lstrcmpA( p1->szProtoname, p2->szProtoname );
+	return mir_strcmp(p1->szProtoname, p2->szProtoname);
 }
 
 OBJLIST<protoPicCacheEntry>
-	g_ProtoPictures( 10, ComparePicture ),
-	g_MyAvatars( 10, ComparePicture );
+g_ProtoPictures(10, ComparePicture),
+g_MyAvatars(10, ComparePicture);
 
 char* g_szMetaName = NULL;
 
@@ -76,41 +76,21 @@ PLUGININFOEX pluginInfoEx = {
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {E00F1643-263C-4599-B84B-053E5C511D29}
-	{0xe00f1643, 0x263c, 0x4599, {0xb8, 0x4b, 0x5, 0x3e, 0x5c, 0x51, 0x1d, 0x29}}
+	{ 0xe00f1643, 0x263c, 0x4599, { 0xb8, 0x4b, 0x5, 0x3e, 0x5c, 0x51, 0x1d, 0x29 } }
 };
 
-static TCHAR* getJGMailID(char *szProto)
+static int ProtocolAck(WPARAM, LPARAM lParam)
 {
-	static TCHAR szJID[MAX_PATH+1]; szJID[0] = '\0';
-
-	DBVARIANT dbva, dbvb;
-	if ( db_get_ts(NULL, szProto, "LoginName", &dbva))
-		return szJID;
-
-	if ( db_get_ts(NULL, szProto, "LoginServer", &dbvb)) {
-		db_free(&dbva);
-		return szJID;
-	}
-
-	mir_sntprintf(szJID, SIZEOF(szJID), _T("%s@%s"), dbva.ptszVal, dbvb.ptszVal);
-	db_free(&dbva);
-	db_free(&dbvb);
-	return szJID;
-}
-
-static int ProtocolAck(WPARAM wParam, LPARAM lParam)
-{
-	ACKDATA *ack = (ACKDATA *) lParam;
-
-	if (ack != NULL && ack->type == ACKTYPE_AVATAR && ack->hContact != 0 && (!g_MetaAvail || strcmp(ack->szModule, g_szMetaName))) {
+	ACKDATA *ack = (ACKDATA*)lParam;
+	if (ack != NULL && ack->type == ACKTYPE_AVATAR && !db_mc_isMeta(ack->hContact)) {
 		if (ack->result == ACKRESULT_SUCCESS) {
 			if (ack->hProcess == NULL)
 				ProcessAvatarInfo(ack->hContact, GAIR_NOAVATAR, NULL, ack->szModule);
 			else
-				ProcessAvatarInfo(ack->hContact, GAIR_SUCCESS, (PROTO_AVATAR_INFORMATIONT *) ack->hProcess, ack->szModule);
+				ProcessAvatarInfo(ack->hContact, GAIR_SUCCESS, (PROTO_AVATAR_INFORMATIONT *)ack->hProcess, ack->szModule);
 		}
 		else if (ack->result == ACKRESULT_FAILED) {
-			ProcessAvatarInfo(ack->hContact, GAIR_FAILED, (PROTO_AVATAR_INFORMATIONT *) ack->hProcess, ack->szModule);
+			ProcessAvatarInfo(ack->hContact, GAIR_FAILED, (PROTO_AVATAR_INFORMATIONT *)ack->hProcess, ack->szModule);
 		}
 		else if (ack->result == ACKRESULT_STATUS) {
 			char *szProto = GetContactProto(ack->hContact);
@@ -119,34 +99,29 @@ static int ProtocolAck(WPARAM wParam, LPARAM lParam)
 				db_set_b(ack->hContact, "ContactPhoto", "NeedUpdate", 1);
 				QueueAdd(ack->hContact);
 			}
-			else {
-				// Fetch it now
+			else // Fetch it now
 				FetchAvatarFor(ack->hContact, szProto);
-			}
 		}
 	}
 	return 0;
 }
 
-static int MetaChanged(WPARAM wParam, LPARAM lParam)
+static int MetaChanged(WPARAM hMeta, LPARAM hSubContact)
 {
-	if (wParam == 0 || g_shutDown)
+	if (g_shutDown)
 		return 0;
 
 	AVATARCACHEENTRY *ace;
 
-	HANDLE hContact = (HANDLE) wParam;
-	HANDLE hSubContact = GetContactThatHaveTheAvatar(hContact);
-
 	// Get the node
 	CacheNode *node = FindAvatarInCache(hSubContact, TRUE);
 	if (node == NULL || !node->loaded) {
-		ace = (AVATARCACHEENTRY *)GetProtoDefaultAvatar(hSubContact);
+		ace = (AVATARCACHEENTRY*)GetProtoDefaultAvatar(hSubContact);
 		QueueAdd(hSubContact);
 	}
-	else ace = &node->ace;
+	else ace = node;
 
-	NotifyEventHooks(hEventChanged, (WPARAM)hContact, (LPARAM)ace);
+	NotifyEventHooks(hEventChanged, hMeta, (LPARAM)ace);
 	return 0;
 }
 
@@ -183,15 +158,15 @@ static void LoadProtoInfo(PROTOCOLDESCRIPTOR *proto)
 static void LoadAccountInfo(PROTOACCOUNT *acc)
 {
 	protoPicCacheEntry *pce = new protoPicCacheEntry;
-	if ( CreateAvatarInCache(0, pce, acc->szModuleName) != 1)
+	if (CreateAvatarInCache(0, pce, acc->szModuleName) != 1)
 		db_unset(0, PPICT_MODULE, acc->szModuleName);
 
-	pce->szProtoname = mir_strdup( acc->szModuleName);
-	pce->tszAccName = mir_tstrdup( acc->tszAccountName);
+	pce->szProtoname = mir_strdup(acc->szModuleName);
+	pce->tszAccName = mir_tstrdup(acc->tszAccountName);
 	g_ProtoPictures.insert(pce);
 
 	pce = new protoPicCacheEntry;
-	CreateAvatarInCache((HANDLE)-1, pce, acc->szModuleName);
+	CreateAvatarInCache(INVALID_CONTACT_ID, pce, acc->szModuleName);
 	pce->szProtoname = mir_strdup(acc->szModuleName);
 	pce->tszAccName = mir_tstrdup(acc->tszAccountName);
 	g_MyAvatars.insert(pce);
@@ -201,53 +176,47 @@ static int OnAccChanged(WPARAM wParam, LPARAM lParam)
 {
 	PROTOACCOUNT *pa = (PROTOACCOUNT*)lParam;
 
-	switch( wParam ) {
+	switch (wParam) {
 	case PRAC_ADDED:
 		LoadAccountInfo(pa);
 		break;
 
 	case PRAC_REMOVED:
-		{
-			int idx;
-			protoPicCacheEntry tmp;
-			tmp.szProtoname = mir_strdup(pa->szModuleName);
-			if ((idx = g_ProtoPictures.getIndex( &tmp )) != -1)
-				g_ProtoPictures.remove( idx );
-			if ((idx = g_MyAvatars.getIndex( &tmp )) != -1)
-				g_MyAvatars.remove( idx );
-		}
-		break;
+	{
+		int idx;
+		protoPicCacheEntry tmp;
+		tmp.szProtoname = mir_strdup(pa->szModuleName);
+		if ((idx = g_ProtoPictures.getIndex(&tmp)) != -1)
+			g_ProtoPictures.remove(idx);
+		if ((idx = g_MyAvatars.getIndex(&tmp)) != -1)
+			g_MyAvatars.remove(idx);
+	}
+	break;
 	}
 
 	return 0;
 }
 
-static int ContactSettingChanged(WPARAM wParam, LPARAM lParam)
+static int ContactSettingChanged(WPARAM hContact, LPARAM lParam)
 {
-	DBCONTACTWRITESETTING *cws = (DBCONTACTWRITESETTING *) lParam;
+	DBCONTACTWRITESETTING *cws = (DBCONTACTWRITESETTING *)lParam;
 	if (cws == NULL || g_shutDown)
 		return 0;
 
-	if (wParam == 0) {
+	if (hContact == 0)
 		if (!strcmp(cws->szSetting, "AvatarFile") || !strcmp(cws->szSetting, "PictObject") || !strcmp(cws->szSetting, "AvatarHash") || !strcmp(cws->szSetting, "AvatarSaved"))
-			ReportMyAvatarChanged((WPARAM) cws->szModule, 0);
-		return 0;
-	}
+			ReportMyAvatarChanged((WPARAM)cws->szModule, 0);
 
-	if (g_MetaAvail && !strcmp(cws->szModule, g_szMetaName)) {
-		if (lstrlenA(cws->szSetting) > 6 && !strncmp(cws->szSetting, "Status", 5))
-			MetaChanged(wParam, 0);
-	}
 	return 0;
 }
 
-static int ContactDeleted(WPARAM wParam, LPARAM lParam)
+static int ContactDeleted(WPARAM wParam, LPARAM)
 {
-	DeleteAvatarFromCache((HANDLE)wParam, TRUE);
+	DeleteAvatarFromCache(wParam, TRUE);
 	return 0;
 }
 
-static int ShutdownProc(WPARAM wParam, LPARAM lParam)
+static int ShutdownProc(WPARAM, LPARAM)
 {
 	g_shutDown = true;
 	SetEvent(hLoaderEvent);
@@ -266,7 +235,7 @@ void InternalDrawAvatar(AVATARDRAWREQUEST *r, HBITMAP hbm, LONG bmWidth, LONG bm
 	HRGN rgn = 0, oldRgn = 0;
 	int targetWidth = r->rcDraw.right - r->rcDraw.left;
 	int targetHeight = r->rcDraw.bottom - r->rcDraw.top;
-	BLENDFUNCTION bf = {0};
+	BLENDFUNCTION bf = { 0 };
 
 	hdcAvatar = CreateCompatibleDC(r->hTargetDC);
 	hbmMem = (HBITMAP)SelectObject(hdcAvatar, hbm);
@@ -278,12 +247,12 @@ void InternalDrawAvatar(AVATARDRAWREQUEST *r, HBITMAP hbm, LONG bmWidth, LONG bm
 	else if (bmHeight >= bmWidth) {
 		dScale = targetHeight / (float)bmHeight;
 		newHeight = targetHeight;
-		newWidth = (int) (bmWidth * dScale);
+		newWidth = (int)(bmWidth * dScale);
 	}
 	else {
 		dScale = targetWidth / (float)bmWidth;
 		newWidth = targetWidth;
-		newHeight = (int) (bmHeight * dScale);
+		newHeight = (int)(bmHeight * dScale);
 	}
 
 	topoffset = targetHeight > newHeight ? (targetHeight - newHeight) / 2 : 0;
@@ -291,10 +260,9 @@ void InternalDrawAvatar(AVATARDRAWREQUEST *r, HBITMAP hbm, LONG bmWidth, LONG bm
 
 	// create the region for the avatar border - use the same region for clipping, if needed.
 
-	oldRgn = CreateRectRgn(0,0,1,1);
+	oldRgn = CreateRectRgn(0, 0, 1, 1);
 
-	if (GetClipRgn(r->hTargetDC, oldRgn) != 1)
-	{
+	if (GetClipRgn(r->hTargetDC, oldRgn) != 1) {
 		DeleteObject(oldRgn);
 		oldRgn = NULL;
 	}
@@ -314,14 +282,16 @@ void InternalDrawAvatar(AVATARDRAWREQUEST *r, HBITMAP hbm, LONG bmWidth, LONG bm
 	//else
 	//	FillRect(r->hTargetDC, &r->rcDraw, (HBRUSH)GetStockObject(BLACK_BRUSH));
 
-	if (r->dwFlags & AVDRQ_FORCEFASTALPHA && !(r->dwFlags & AVDRQ_AERO) && AvsAlphaBlend) {
-		AvsAlphaBlend(
+	if (r->dwFlags & AVDRQ_FORCEFASTALPHA && !(r->dwFlags & AVDRQ_AERO)) {
+		GdiAlphaBlend(
 			r->hTargetDC, r->rcDraw.left + leftoffset, r->rcDraw.top + topoffset, newWidth, newHeight,
 			hdcAvatar, 0, 0, bmWidth, bmHeight, bf);
-	} else {
-		if ((bf.SourceConstantAlpha == 255 && bf.AlphaFormat == 0 && !(r->dwFlags & AVDRQ_FORCEALPHA) && !(r->dwFlags & AVDRQ_AERO)) || !AvsAlphaBlend) {
+	}
+	else {
+		if (bf.SourceConstantAlpha == 255 && bf.AlphaFormat == 0 && !(r->dwFlags & AVDRQ_FORCEALPHA) && !(r->dwFlags & AVDRQ_AERO)) {
 			StretchBlt(r->hTargetDC, r->rcDraw.left + leftoffset, r->rcDraw.top + topoffset, newWidth, newHeight, hdcAvatar, 0, 0, bmWidth, bmHeight, SRCCOPY);
-		} else {
+		}
+		else {
 			/*
 			* get around SUCKY AlphaBlend() rescaling quality...
 			*/
@@ -335,7 +305,7 @@ void InternalDrawAvatar(AVATARDRAWREQUEST *r, HBITMAP hbm, LONG bmWidth, LONG bm
 			HDC hdcTemp = CreateCompatibleDC(r->hTargetDC);
 			hbmTempOld = (HBITMAP)SelectObject(hdcTemp, hbmResized);
 
-			AvsAlphaBlend(
+			GdiAlphaBlend(
 				r->hTargetDC, r->rcDraw.left + leftoffset, r->rcDraw.top + topoffset, newWidth, newHeight,
 				hdcTemp, 0, 0, newWidth, newHeight, bf);
 
@@ -361,29 +331,20 @@ void InternalDrawAvatar(AVATARDRAWREQUEST *r, HBITMAP hbm, LONG bmWidth, LONG bm
 	}
 }
 
-static int ModulesLoaded(WPARAM wParam, LPARAM lParam)
+static int ModulesLoaded(WPARAM, LPARAM)
 {
 	int i;
-	DBVARIANT dbv = {0};
 	TCHAR szEventName[100];
-	int result = 0;
 
-	mir_sntprintf(szEventName, 100, _T("avs_loaderthread_%d"), GetCurrentThreadId());
+	mir_sntprintf(szEventName, SIZEOF(szEventName), _T("avs_loaderthread_%d"), GetCurrentThreadId());
 	hLoaderEvent = CreateEvent(NULL, TRUE, FALSE, szEventName);
-	SetThreadPriority( mir_forkthread(PicLoader, 0), THREAD_PRIORITY_IDLE);
+	SetThreadPriority(mir_forkthread(PicLoader, 0), THREAD_PRIORITY_IDLE);
 
 	// Folders plugin support
 	hMyAvatarsFolder = FoldersRegisterCustomPathT(LPGEN("Avatars"), LPGEN("My Avatars"), MIRANDA_USERDATAT _T("\\Avatars"));
 	hGlobalAvatarFolder = FoldersRegisterCustomPathT(LPGEN("Avatars"), LPGEN("My Global Avatar Cache"), MIRANDA_USERDATAT _T("\\Avatars"));
 
 	g_AvatarHistoryAvail = ServiceExists(MS_AVATARHISTORY_ENABLED);
-
-	g_MetaAvail = ServiceExists(MS_MC_GETPROTOCOLNAME) ? TRUE : FALSE;
-	if (g_MetaAvail) {
-		g_szMetaName = (char *)CallService(MS_MC_GETPROTOCOLNAME, 0, 0);
-		if (g_szMetaName == NULL)
-			g_MetaAvail = FALSE;
-	}
 
 	PROTOACCOUNT **accs = NULL;
 	int accCount;
@@ -394,15 +355,15 @@ static int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 		PROTOCOLDESCRIPTOR** proto;
 		int protoCount;
 		CallService(MS_PROTO_ENUMPROTOS, (WPARAM)&protoCount, (LPARAM)&proto);
-		for (i=0; i < protoCount; i++ )
-			LoadProtoInfo( proto[i] );
-		for (i=0; i < accCount; i++)
-			LoadAccountInfo( accs[i] );
+		for (i = 0; i < protoCount; i++)
+			LoadProtoInfo(proto[i]);
+		for (i = 0; i < accCount; i++)
+			LoadAccountInfo(accs[i]);
 	}
 
 	// Load global avatar
 	protoPicCacheEntry *pce = new protoPicCacheEntry;
-	CreateAvatarInCache((HANDLE)-1, pce, "");
+	CreateAvatarInCache(INVALID_CONTACT_ID, pce, "");
 	pce->szProtoname = mir_strdup("");
 	g_MyAvatars.insert(pce);
 
@@ -421,34 +382,28 @@ static int LoadAvatarModule()
 	HookEvent(ME_DB_CONTACT_SETTINGCHANGED, ContactSettingChanged);
 	HookEvent(ME_DB_CONTACT_DELETED, ContactDeleted);
 	HookEvent(ME_PROTO_ACK, ProtocolAck);
+	HookEvent(ME_MC_DEFAULTTCHANGED, MetaChanged);
+	HookEvent(ME_MC_SUBCONTACTSCHANGED, MetaChanged);
 
 	hEventChanged = CreateHookableEvent(ME_AV_AVATARCHANGED);
 	hEventContactAvatarChanged = CreateHookableEvent(ME_AV_CONTACTAVATARCHANGED);
 	hMyAvatarChanged = CreateHookableEvent(ME_AV_MYAVATARCHANGED);
 
 	InitServices();
-	InitCache();
 	InitPolls();
 
-	HMODULE hDll;
-	if (hDll = GetModuleHandle(_T("gdi32")))
-		AvsAlphaBlend = (BOOL (WINAPI *)(HDC, int, int, int, int, HDC, int, int, int, int, BLENDFUNCTION)) GetProcAddress(hDll, "GdiAlphaBlend");
-	if (AvsAlphaBlend == NULL && (hDll = LoadLibrary(_T("msimg32.dll"))))
-		AvsAlphaBlend = (BOOL (WINAPI *)(HDC, int, int, int, int, HDC, int, int, int, int, BLENDFUNCTION)) GetProcAddress(hDll, "AlphaBlend");
-
-	lstrcpyn(g_szDataPath, VARST(_T("%miranda_path%")), SIZEOF(g_szDataPath)-1);
-	g_szDataPath[MAX_PATH - 1] = 0;
+	_tcsncpy_s(g_szDataPath, SIZEOF(g_szDataPath), VARST(_T("%miranda_path%\\")), _TRUNCATE);
 	_tcslwr(g_szDataPath);
 	return 0;
 }
 
-BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD dwReason, LPVOID reserved)
+BOOL WINAPI DllMain(HINSTANCE hInstDLL, DWORD, LPVOID)
 {
 	g_hInst = hInstDLL;
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport) PLUGININFOEX * MirandaPluginInfoEx(DWORD mirandaVersion)
+extern "C" __declspec(dllexport) PLUGININFOEX * MirandaPluginInfoEx(DWORD)
 {
 	return &pluginInfoEx;
 }
@@ -456,6 +411,7 @@ extern "C" __declspec(dllexport) PLUGININFOEX * MirandaPluginInfoEx(DWORD mirand
 extern "C" int __declspec(dllexport) Load(void)
 {
 	mir_getLP(&pluginInfoEx);
+	mir_getCLI();
 
 	INT_PTR result = CALLSERVICE_NOTFOUND;
 	if (ServiceExists(MS_IMG_GETINTERFACE))
@@ -473,9 +429,6 @@ extern "C" int __declspec(dllexport) Unload(void)
 {
 	UninitPolls();
 	UnloadCache();
-
-	g_ProtoPictures.destroy();
-	g_MyAvatars.destroy();
 
 	DestroyHookableEvent(hEventChanged);
 	DestroyHookableEvent(hEventContactAvatarChanged);

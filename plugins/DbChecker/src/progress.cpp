@@ -7,7 +7,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "dbchecker.h"
 
 #define WM_PROCESSINGDONE  (WM_USER+1)
@@ -25,6 +26,7 @@ static HWND hwndStatus, hdlgProgress, hwndBar;
 static bool bShortModeDone;
 HANDLE hEventRun = NULL, hEventAbort = NULL;
 int errorCount;
+LRESULT wizardResult;
 
 void AddToStatus(int flags, const TCHAR* fmt, ...)
 {
@@ -40,13 +42,16 @@ void AddToStatus(int flags, const TCHAR* fmt, ...)
 	InvalidateRect(hwndStatus, NULL, FALSE);
 	SendMessage(hwndStatus, LB_SETTOPINDEX, i, 0);
 
-	#ifdef _DEBUG
-		OutputDebugString(str);
-		OutputDebugStringA("\n");
-	#endif
+#ifdef _DEBUG
+	OutputDebugString(str);
+	OutputDebugStringA("\n");
+#endif
 
-	if ((flags & STATUS_CLASSMASK) == STATUS_ERROR)
+	switch (flags & STATUS_CLASSMASK) {
+	case STATUS_ERROR:
+	case STATUS_FATAL:
 		errorCount++;
+	}
 }
 
 void SetProgressBar(int perThou)
@@ -69,7 +74,7 @@ INT_PTR CALLBACK ProgressDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 	if (DoMyControlProcessing(hdlg, message, wParam, lParam, &bReturn))
 		return bReturn;
 
-	switch(message) {
+	switch (message) {
 	case WM_INITDIALOG:
 		EnableWindow(GetDlgItem(GetParent(hdlg), IDOK), FALSE);
 		hdlgProgress = hdlg;
@@ -115,14 +120,14 @@ INT_PTR CALLBACK ProgressDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 		return TRUE;
 
 	case WM_DRAWITEM:
+		TCHAR str[256];
 		{
 			LPDRAWITEMSTRUCT dis = (LPDRAWITEMSTRUCT)lParam;
-			TCHAR str[256];
 			int bold = 0;
-			HFONT hoFont;
+			HFONT hoFont = NULL;
 			if ((int)dis->itemID == -1) break;
 			SendMessage(dis->hwndItem, LB_GETTEXT, dis->itemID, (LPARAM)str);
-			switch(dis->itemData&STATUS_CLASSMASK) {
+			switch (dis->itemData & STATUS_CLASSMASK) {
 			case STATUS_MESSAGE:
 				SetTextColor(dis->hDC, RGB(0, 0, 0));
 				break;
@@ -142,7 +147,7 @@ INT_PTR CALLBACK ProgressDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 				break;
 			}
 			if (bold) hoFont = (HFONT)SelectObject(dis->hDC, hBoldFont);
-			ExtTextOut(dis->hDC, dis->rcItem.left, dis->rcItem.top, ETO_CLIPPED|ETO_OPAQUE, &dis->rcItem, str, (UINT)_tcslen(str), NULL);
+			ExtTextOut(dis->hDC, dis->rcItem.left, dis->rcItem.top, ETO_CLIPPED | ETO_OPAQUE, &dis->rcItem, str, (UINT)_tcslen(str), NULL);
 			if (bold) SelectObject(dis->hDC, hoFont);
 		}
 		return TRUE;
@@ -154,6 +159,8 @@ INT_PTR CALLBACK ProgressDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 			EnableWindow(GetDlgItem(GetParent(hdlg), IDOK), FALSE);
 			SetDlgItemText(GetParent(hdlg), IDCANCEL, TranslateT("&Finish"));
 			bShortModeDone = true;
+			if (bAutoExit)
+				PostMessage(GetParent(hdlg), WM_COMMAND, IDCANCEL, 0);
 		}
 		else {
 			AddToStatus(STATUS_SUCCESS, TranslateT("Click Next to continue"));
@@ -176,7 +183,11 @@ INT_PTR CALLBACK ProgressDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 
 	case WZN_CANCELCLICKED:
 		if (bShortModeDone) {
-			EndDialog( GetParent(hdlg), 1);
+			if (!errorCount) {
+				if (bLaunchMiranda)
+					CallService(MS_DB_SETDEFAULTPROFILE, (WPARAM)opts.filename, 0);
+				wizardResult = 1;
+			}
 			return TRUE;
 		}
 
@@ -193,7 +204,7 @@ INT_PTR CALLBACK ProgressDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 		return TRUE;
 
 	case WM_COMMAND:
-		switch(LOWORD(wParam)) {
+		switch (LOWORD(wParam)) {
 		case IDC_BACK:
 			ResetEvent(hEventRun);
 			if (!IsWindowEnabled(GetDlgItem(GetParent(hdlg), IDOK))) {
@@ -210,11 +221,13 @@ INT_PTR CALLBACK ProgressDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 			else
 				PostMessage(GetParent(hdlg), WZM_GOTOPAGE, IDD_CLEANING, (LPARAM)CleaningDlgProc);
 			break;
+
 		case IDOK:
 			PostMessage(GetParent(hdlg), WZM_GOTOPAGE, IDD_FINISHED, (LPARAM)FinishedDlgProc);
 			break;
 		}
 		break;
+
 	case WM_DESTROY:
 		if (hEventAbort) {
 			CloseHandle(hEventAbort);

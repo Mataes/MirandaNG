@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
-all portions of this codebase are copyrighted to the people 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -38,22 +39,22 @@ static INT_PTR ReadUrlCommand(WPARAM, LPARAM lParam)
 	return 0;
 }
 
-static int UrlEventAdded(WPARAM wParam, LPARAM lParam)
+static int UrlEventAdded(WPARAM hContact, LPARAM lParam)
 {
 	DBEVENTINFO dbei = { sizeof(dbei) };
-	db_event_get((HANDLE)lParam, &dbei);
-	if (dbei.flags&(DBEF_SENT|DBEF_READ) || dbei.eventType != EVENTTYPE_URL)
+	db_event_get(lParam, &dbei);
+	if (dbei.flags & (DBEF_SENT|DBEF_READ) || dbei.eventType != EVENTTYPE_URL)
 		return 0;
 
 	SkinPlaySound("RecvUrl");
 
 	TCHAR szTooltip[256];
-	mir_sntprintf(szTooltip, SIZEOF(szTooltip), TranslateT("URL from %s"), pcli->pfnGetContactDisplayName((HANDLE)wParam, 0));
+	mir_sntprintf(szTooltip, SIZEOF(szTooltip), TranslateT("URL from %s"), pcli->pfnGetContactDisplayName(hContact, 0));
 
 	CLISTEVENT cle = { sizeof(cle) };
 	cle.flags = CLEF_TCHAR;
-	cle.hContact = (HANDLE)wParam;
-	cle.hDbEvent = (HANDLE)lParam;
+	cle.hContact = hContact;
+	cle.hDbEvent = lParam;
 	cle.hIcon = LoadSkinIcon(SKINICON_EVENT_URL);
 	cle.pszService = "SRUrl/ReadUrl";
 	cle.ptszTooltip = szTooltip;
@@ -74,8 +75,8 @@ static void RestoreUnreadUrlAlerts(void)
 	cle.pszService = "SRUrl/ReadUrl";
 	cle.flags = CLEF_TCHAR;
 
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
-		HANDLE hDbEvent = db_event_firstUnread(hContact);
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+		MEVENT hDbEvent = db_event_firstUnread(hContact);
 		while (hDbEvent) {
 			DBEVENTINFO dbei = { sizeof(dbei) };
 			db_event_get(hDbEvent, &dbei);
@@ -88,7 +89,7 @@ static void RestoreUnreadUrlAlerts(void)
 				cle.ptszTooltip = toolTip;
 				CallService(MS_CLIST_ADDEVENT, 0, (LPARAM)&cle);
 			}
-			hDbEvent = db_event_next(hDbEvent);
+			hDbEvent = db_event_next(hContact, hDbEvent);
 		}
 	}
 }
@@ -96,8 +97,8 @@ static void RestoreUnreadUrlAlerts(void)
 static int ContactSettingChanged(WPARAM wParam, LPARAM lParam)
 {
 	DBCONTACTWRITESETTING *cws = (DBCONTACTWRITESETTING*)lParam;
-	char *szProto = GetContactProto((HANDLE)wParam);
-	if (lstrcmpA(cws->szModule, "CList") && (szProto == NULL || lstrcmpA(cws->szModule, szProto)))
+	char *szProto = GetContactProto(wParam);
+	if (mir_strcmp(cws->szModule, "CList") && (szProto == NULL || mir_strcmp(cws->szModule, szProto)))
 		return 0;
 
 	WindowList_Broadcast(hUrlWindowList, DM_UPDATETITLE, 0, 0);
@@ -107,7 +108,7 @@ static int ContactSettingChanged(WPARAM wParam, LPARAM lParam)
 static int SRUrlPreBuildMenu(WPARAM wParam, LPARAM)
 {
 	bool bEnabled = false;
-	char *szProto = GetContactProto((HANDLE)wParam);
+	char *szProto = GetContactProto(wParam);
 	if (szProto != NULL)
 		if (CallProtoService(szProto, PS_GETCAPS, PFLAGNUM_1, 0) & PF1_URLSEND)
 			bEnabled = true;
@@ -121,7 +122,7 @@ static int SRUrlModulesLoaded(WPARAM, LPARAM)
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.position = -2000040000;
 	mi.icolibItem = GetSkinIconHandle(SKINICON_EVENT_URL);
-	mi.pszName = LPGEN("Web Page Address (&URL)");
+	mi.pszName = LPGEN("Web page address (&URL)");
 	mi.pszService = MS_URL_SENDURL;
 	hSRUrlMenuItem = Menu_AddContactMenuItem(&mi);
 
@@ -137,15 +138,16 @@ static int SRUrlShutdown(WPARAM, LPARAM)
 	if (hContactDeleted)
 		UnhookEvent(hContactDeleted);
 
-	if (hUrlWindowList)
-		WindowList_BroadcastAsync(hUrlWindowList, WM_CLOSE, 0, 0);
-
+	if (hUrlWindowList) {
+		WindowList_Broadcast(hUrlWindowList, WM_CLOSE, 0, 0);
+		WindowList_Destroy(hUrlWindowList);
+	}
 	return 0;
 }
 
 int UrlContactDeleted(WPARAM wParam, LPARAM)
 {
-	HWND h = WindowList_Find(hUrlWindowList, (HANDLE)wParam);
+	HWND h = WindowList_Find(hUrlWindowList, wParam);
 	if (h)
 		SendMessage(h, WM_CLOSE, 0, 0);
 
@@ -154,7 +156,7 @@ int UrlContactDeleted(WPARAM wParam, LPARAM)
 
 int LoadSendRecvUrlModule(void)
 {
-	hUrlWindowList = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST, 0, 0);
+	hUrlWindowList = WindowList_Create();
 	HookEvent(ME_SYSTEM_MODULESLOADED, SRUrlModulesLoaded);
 	HookEvent(ME_DB_EVENT_ADDED, UrlEventAdded);
 	HookEvent(ME_CLIST_PREBUILDCONTACTMENU, SRUrlPreBuildMenu);

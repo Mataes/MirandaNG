@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -26,7 +27,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 static bool bIsGenMenuInited;
 bool bIconsDisabled;
-static CRITICAL_SECTION csMenuHook;
+static mir_cs csMenuHook;
 
 static int NextObjectId = 0x100, NextObjectMenuItemId = CLISTMENUIDMIN;
 
@@ -50,7 +51,7 @@ static void DumpMenuItem(TMO_IntMenuItem* pParent, int level = 0)
 
 static int CompareMenus(const TIntMenuObject* p1, const TIntMenuObject* p2)
 {
-	return lstrcmpA(p1->Name, p2->Name);
+	return mir_strcmp(p1->pszName, p2->pszName);
 }
 
 LIST<TIntMenuObject> g_menus(10, CompareMenus);
@@ -112,15 +113,15 @@ PMO_IntMenuItem MO_RecursiveWalkMenu(PMO_IntMenuItem parent, pfnWalkFunc func, v
 //lparam = LPMEASUREITEMSTRUCT
 int MO_MeasureMenuItem(LPMEASUREITEMSTRUCT mis)
 {
-	// prevent win9x from ugly menus displaying when there is no icon
-	mis->itemWidth = 0;
-	mis->itemHeight = 0;
-
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	if (mis == NULL)
 		return FALSE;
+
+	// prevent win9x from ugly menus displaying when there is no icon
+	mis->itemWidth = 0;
+	mis->itemHeight = 0;
 
 	PMO_IntMenuItem pimi = MO_GetIntMenuItem((HGENMENU)mis->itemData);
 	if (pimi == NULL)
@@ -139,7 +140,7 @@ int MO_MeasureMenuItem(LPMEASUREITEMSTRUCT mis)
 //lparam = LPDRAWITEMSTRUCT
 int MO_DrawMenuItem(LPDRAWITEMSTRUCT dis)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	if (dis == NULL)
@@ -183,10 +184,8 @@ int MO_DrawMenuItem(LPDRAWITEMSTRUCT dis)
 
 int MO_RemoveAllObjects()
 {
-	int i;
-	for (i=0; i < g_menus.getCount(); i++)
+	for (int i=0; i < g_menus.getCount(); i++)
 		delete g_menus[i];
-
 	g_menus.destroy();
 	return 0;
 }
@@ -194,7 +193,7 @@ int MO_RemoveAllObjects()
 //wparam = MenuObjectHandle
 INT_PTR MO_RemoveMenuObject(WPARAM wParam, LPARAM)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	mir_cslock lck(csMenuHook);
@@ -202,7 +201,7 @@ INT_PTR MO_RemoveMenuObject(WPARAM wParam, LPARAM)
 	if (objidx == -1)
 		return -1;
 
-	delete g_menus[ objidx ];
+	delete g_menus[objidx];
 	g_menus.remove(objidx);
 	return 0;
 }
@@ -211,7 +210,7 @@ INT_PTR MO_RemoveMenuObject(WPARAM wParam, LPARAM)
 //lparam = vKey
 INT_PTR MO_ProcessHotKeys(HANDLE menuHandle, INT_PTR vKey)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	mir_cslock lck(csMenuHook);
@@ -222,9 +221,9 @@ INT_PTR MO_ProcessHotKeys(HANDLE menuHandle, INT_PTR vKey)
 	for (PMO_IntMenuItem pimi = g_menus[objidx]->m_items.first; pimi != NULL; pimi = pimi->next) {
 		if (pimi->mi.hotKey == 0) continue;
 		if (HIWORD(pimi->mi.hotKey) != vKey) continue;
-		if ( !(LOWORD(pimi->mi.hotKey) & MOD_ALT) != !(GetKeyState(VK_MENU) & 0x8000)) continue;
-		if ( !(LOWORD(pimi->mi.hotKey) & MOD_CONTROL) != !(GetKeyState(VK_CONTROL) & 0x8000)) continue;
-		if ( !(LOWORD(pimi->mi.hotKey) & MOD_SHIFT) != !(GetKeyState(VK_SHIFT) & 0x8000)) continue;
+		if (!(LOWORD(pimi->mi.hotKey) & MOD_ALT) != !(GetKeyState(VK_MENU) & 0x8000)) continue;
+		if (!(LOWORD(pimi->mi.hotKey) & MOD_CONTROL) != !(GetKeyState(VK_CONTROL) & 0x8000)) continue;
+		if (!(LOWORD(pimi->mi.hotKey) & MOD_SHIFT) != !(GetKeyState(VK_SHIFT) & 0x8000)) continue;
 
 		MO_ProcessCommand(pimi, 0);
 		return TRUE;
@@ -235,7 +234,7 @@ INT_PTR MO_ProcessHotKeys(HANDLE menuHandle, INT_PTR vKey)
 
 INT_PTR MO_GetProtoRootMenu(WPARAM wParam, LPARAM lParam)
 {
-	char* szProto = (char*)wParam;
+	char *szProto = (char*)wParam;
 	if (szProto == NULL)
 		return 0;
 
@@ -250,7 +249,7 @@ INT_PTR MO_GetProtoRootMenu(WPARAM wParam, LPARAM lParam)
 
 	TIntMenuObject* pmo = g_menus[objidx];
 	for (PMO_IntMenuItem p = pmo->m_items.first; p != NULL; p = p->next)
-		if ( !lstrcmpA(p->UniqName, szProto))
+		if (!mir_strcmp(p->UniqName, szProto))
 			return (INT_PTR)p;
 
 	return NULL;
@@ -261,12 +260,12 @@ INT_PTR MO_GetProtoRootMenu(WPARAM wParam, LPARAM lParam)
 INT_PTR MO_GetMenuItem(WPARAM wParam, LPARAM lParam)
 {
 	PMO_MenuItem mi = (PMO_MenuItem)lParam;
-	if ( !bIsGenMenuInited || mi == NULL)
+	if (!bIsGenMenuInited || mi == NULL)
 		return -1;
 
 	PMO_IntMenuItem pimi = MO_GetIntMenuItem((HGENMENU)wParam);
 	mir_cslock lck(csMenuHook);
-	if ( !pimi)
+	if (pimi == NULL)
 		return -1;
 
 	*mi = pimi->mi;
@@ -283,7 +282,7 @@ static int FindDefaultItem(PMO_IntMenuItem pimi, void*)
 
 INT_PTR MO_GetDefaultMenuItem(WPARAM wParam, LPARAM)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	PMO_IntMenuItem pimi = MO_GetIntMenuItem((HGENMENU)wParam);
@@ -297,13 +296,13 @@ int MO_ModifyMenuItem(PMO_IntMenuItem menuHandle, PMO_MenuItem pmi)
 {
 	int oldflags;
 
-	if ( !bIsGenMenuInited || pmi == NULL || pmi->cbSize != sizeof(TMO_MenuItem))
+	if (!bIsGenMenuInited || pmi == NULL || pmi->cbSize != sizeof(TMO_MenuItem))
 		return -1;
 
 	mir_cslock lck(csMenuHook);
 
 	PMO_IntMenuItem pimi = MO_GetIntMenuItem((HGENMENU)menuHandle);
-	if ( !pimi)
+	if (pimi == NULL)
 		return -1;
 
 	if (pmi->flags & CMIM_NAME) {
@@ -355,7 +354,7 @@ int MO_ModifyMenuItem(PMO_IntMenuItem menuHandle, PMO_MenuItem pmi)
 //NULL on error.
 INT_PTR MO_MenuItemGetOwnerData(WPARAM wParam, LPARAM)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	mir_cslock lck(csMenuHook);
@@ -391,7 +390,7 @@ static int FindMenuByCommand(PMO_IntMenuItem pimi, void* pCommand)
 
 int MO_ProcessCommandBySubMenuIdent(int menuID, int command, LPARAM lParam)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	PMO_IntMenuItem pimi;
@@ -409,10 +408,10 @@ int MO_ProcessCommandBySubMenuIdent(int menuID, int command, LPARAM lParam)
 
 INT_PTR MO_ProcessCommandByMenuIdent(WPARAM wParam, LPARAM lParam)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
-	PMO_IntMenuItem pimi;
+	PMO_IntMenuItem pimi = NULL;
 	{
 		mir_cslock lck(csMenuHook);
 		for (int i=0; i < g_menus.getCount(); i++)
@@ -425,7 +424,7 @@ INT_PTR MO_ProcessCommandByMenuIdent(WPARAM wParam, LPARAM lParam)
 
 int MO_ProcessCommand(PMO_IntMenuItem aHandle, LPARAM lParam)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	PMO_IntMenuItem pimi;
@@ -435,7 +434,7 @@ int MO_ProcessCommand(PMO_IntMenuItem aHandle, LPARAM lParam)
 			return -1;
 	}
 
-	char *srvname = pimi->parent->ExecService;
+	LPCSTR srvname = pimi->parent->ExecService;
 	void *ownerdata = pimi->mi.ownerdata;
 	CallService(srvname, (WPARAM)ownerdata, lParam);
 	return 1;
@@ -443,12 +442,12 @@ int MO_ProcessCommand(PMO_IntMenuItem aHandle, LPARAM lParam)
 
 int MO_SetOptionsMenuItem(PMO_IntMenuItem aHandle, int setting, INT_PTR value)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	mir_cslock lck(csMenuHook);
 	PMO_IntMenuItem pimi = MO_GetIntMenuItem(aHandle);
-	if ( !pimi)
+	if (pimi == NULL)
 		return -1;
 
 	if (setting == OPT_MENUITEMSETUNIQNAME) {
@@ -461,7 +460,7 @@ int MO_SetOptionsMenuItem(PMO_IntMenuItem aHandle, int setting, INT_PTR value)
 
 int MO_SetOptionsMenuObject(HANDLE handle, int setting, INT_PTR value)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	mir_cslock lck(csMenuHook);
@@ -496,24 +495,24 @@ int MO_SetOptionsMenuObject(HANDLE handle, int setting, INT_PTR value)
 	return res;
 }
 
-//wparam = 0;
+//wparam = LPCSTR szDisplayName;
 //lparam = PMenuParam;
 //result = MenuObjectHandle
-INT_PTR MO_CreateNewMenuObject(WPARAM, LPARAM lParam)
+INT_PTR MO_CreateNewMenuObject(WPARAM wParam, LPARAM lParam)
 {
-	PMenuParam pmp = (PMenuParam)lParam;
-	if ( !bIsGenMenuInited || pmp == NULL)
+	TMenuParam *pmp = (TMenuParam *)lParam;
+	if (!bIsGenMenuInited || pmp == NULL)
 		return -1;
 
 	mir_cslock lck(csMenuHook);
 
 	TIntMenuObject* p = new TIntMenuObject();
 	p->id = NextObjectId++;
-	p->Name = mir_strdup(pmp->name);
+	p->pszName = mir_strdup(pmp->name);
+	p->ptszDisplayName = mir_a2t(LPCSTR(wParam));
 	p->CheckService = mir_strdup(pmp->CheckService);
 	p->ExecService = mir_strdup(pmp->ExecService);
-	p->m_hMenuIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON),
-		(IsWinVerXPPlus() ? ILC_COLOR32 : ILC_COLOR16) | ILC_MASK, 15, 100);
+	p->m_hMenuIcons = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), ILC_COLOR32 | ILC_MASK, 15, 100);
 	g_menus.insert(p);
 	return p->id;
 }
@@ -536,7 +535,7 @@ INT_PTR MO_RemoveMenuItem(WPARAM wParam, LPARAM)
 {
 	mir_cslock lck(csMenuHook);
 	PMO_IntMenuItem pimi = MO_GetIntMenuItem((HGENMENU)wParam);
-	if ( !pimi)
+	if (pimi == NULL)
 		return -1;
 
 	if (pimi->submenu.first) {
@@ -590,7 +589,6 @@ void KillModuleMenus(int hLangpack)
 
 	for (int k=0; k < param.arItems.getCount(); k++)
 		MO_RemoveMenuItem((WPARAM)param.arItems[k], 0);
-	param.arItems.destroy();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -619,11 +617,11 @@ static int GetNextObjectMenuItemId()
 //return MenuItemHandle
 PMO_IntMenuItem MO_AddNewMenuItem(HANDLE menuobjecthandle, PMO_MenuItem pmi)
 {
-	if ( !bIsGenMenuInited || pmi == NULL || pmi->cbSize != sizeof(TMO_MenuItem))
+	if (!bIsGenMenuInited || pmi == NULL || pmi->cbSize != sizeof(TMO_MenuItem))
 		return NULL;
 
 	//old mode
-	if ( !(pmi->flags & CMIF_ROOTHANDLE))
+	if (!(pmi->flags & CMIF_ROOTHANDLE))
 		return MO_AddOldNewMenuItem(menuobjecthandle, pmi);
 
 	mir_cslock lck(csMenuHook);
@@ -668,7 +666,7 @@ PMO_IntMenuItem MO_AddNewMenuItem(HANDLE menuobjecthandle, PMO_MenuItem pmi)
 	else
 		p->owner = &pmo->m_items;
 
-	if ( !p->owner->first)
+	if (!p->owner->first)
 		p->owner->first = p;
 	if (p->owner->last)
 		p->owner->last->next = p;
@@ -690,7 +688,7 @@ int FindRoot(PMO_IntMenuItem pimi, void* param)
 
 PMO_IntMenuItem MO_AddOldNewMenuItem(HANDLE menuobjecthandle, PMO_MenuItem pmi)
 {
-	if ( !bIsGenMenuInited || pmi == NULL)
+	if (!bIsGenMenuInited || pmi == NULL)
 		return NULL;
 
 	int objidx = GetMenuObjbyId((int)menuobjecthandle);
@@ -720,8 +718,7 @@ PMO_IntMenuItem MO_AddOldNewMenuItem(HANDLE menuobjecthandle, PMO_MenuItem pmi)
 
 		if (oldroot == NULL) {
 			//not found, creating root
-			TMO_MenuItem tmi = { 0 };
-			tmi = *pmi;
+			TMO_MenuItem tmi = *pmi;
 			tmi.flags |= CMIF_ROOTHANDLE;
 			tmi.ownerdata = 0;
 			tmi.root = NULL;
@@ -741,8 +738,7 @@ PMO_IntMenuItem MO_AddOldNewMenuItem(HANDLE menuobjecthandle, PMO_MenuItem pmi)
 
 static int WhereToPlace(HMENU hMenu, PMO_MenuItem mi)
 {
-	MENUITEMINFO mii = { 0 };
-	mii.cbSize = MENUITEMINFO_V4_SIZE;
+	MENUITEMINFO mii = { sizeof(mii) };
 	mii.fMask = MIIM_SUBMENU | MIIM_DATA;
 	for (int i = GetMenuItemCount(hMenu)-1; i >= 0; i--) {
 		GetMenuItemInfo(hMenu, i, TRUE, &mii);
@@ -761,8 +757,7 @@ static int WhereToPlace(HMENU hMenu, PMO_MenuItem mi)
 
 static DWORD GetMenuItemType(HMENU hMenu, int uItem)
 {
-	MENUITEMINFO mii = { 0 };
-	mii.cbSize = MENUITEMINFO_V4_SIZE;
+	MENUITEMINFO mii = { sizeof(mii) };
 	mii.fMask = MIIM_TYPE;
 	GetMenuItemInfo(hMenu, uItem, TRUE, &mii);
 	return mii.fType;
@@ -770,8 +765,7 @@ static DWORD GetMenuItemType(HMENU hMenu, int uItem)
 
 static UINT GetMenuItemTypeData(HMENU hMenu, int uItem, PMO_IntMenuItem& p)
 {
-	MENUITEMINFO mii = { 0 };
-	mii.cbSize = MENUITEMINFO_V4_SIZE;
+	MENUITEMINFO mii = { sizeof(mii) };
 	mii.fMask = MIIM_DATA | MIIM_TYPE;
 	GetMenuItemInfo(hMenu, uItem, TRUE, &mii);
 	p = MO_GetIntMenuItem((HGENMENU)mii.dwItemData);
@@ -780,8 +774,7 @@ static UINT GetMenuItemTypeData(HMENU hMenu, int uItem, PMO_IntMenuItem& p)
 
 static void InsertSeparator(HMENU hMenu, int uItem)
 {
-	MENUITEMINFO mii;
-	mii.cbSize = MENUITEMINFO_V4_SIZE;
+	MENUITEMINFO mii = { sizeof(mii) };
 	mii.fMask = MIIM_TYPE;
 	mii.fType = MFT_SEPARATOR;
 	InsertMenuItem(hMenu, uItem, TRUE, &mii);
@@ -799,7 +792,7 @@ static void InsertMenuItemWithSeparators(HMENU hMenu, int uItem, MENUITEMINFO *l
 		if (p != NULL && fType != MFT_SEPARATOR) {
 			if ((p->mi.position / SEPARATORPOSITIONINTERVAL) != (pimi->mi.position / SEPARATORPOSITIONINTERVAL)) {
 				//but might be supposed to be after the next one instead
-				if ( !(uItem < GetMenuItemCount(hMenu) && GetMenuItemType(hMenu, uItem) == MFT_SEPARATOR))
+				if (!(uItem < GetMenuItemCount(hMenu) && GetMenuItemType(hMenu, uItem) == MFT_SEPARATOR))
 					InsertSeparator(hMenu, uItem);
 				uItem++;
 			}
@@ -819,7 +812,7 @@ static void InsertMenuItemWithSeparators(HMENU hMenu, int uItem, MENUITEMINFO *l
 
 	int count = GetMenuItemCount(hMenu);
 	if (count != 0 && (count % 33) == 0 && pimi->mi.root != NULL) {
-		if ( !(mii.fMask & MIIM_FTYPE))
+		if (!(mii.fMask & MIIM_FTYPE))
 			mii.fType = 0;
 		mii.fMask |= MIIM_FTYPE;
 		mii.fType |= MFT_MENUBARBREAK;
@@ -838,7 +831,7 @@ static void InsertMenuItemWithSeparators(HMENU hMenu, int uItem, MENUITEMINFO *l
 
 INT_PTR MO_BuildMenu(WPARAM wParam, LPARAM lParam)
 {
-	if ( !bIsGenMenuInited)
+	if (!bIsGenMenuInited)
 		return -1;
 
 	mir_cslock lck(csMenuHook);
@@ -907,7 +900,7 @@ HMENU BuildRecursiveMenu(HMENU hMenu, PMO_IntMenuItem pRootMenu, ListParam *para
 			DBVARIANT dbv = { 0 };
 			int pos;
 			char MenuNameItems[256];
-			mir_snprintf(MenuNameItems, SIZEOF(MenuNameItems), "%s_Items", pmo->Name);
+			mir_snprintf(MenuNameItems, SIZEOF(MenuNameItems), "%s_Items", pmo->pszName);
 
 			char menuItemName[256];
 			GetMenuItemName(pmi, menuItemName, sizeof(menuItemName));
@@ -918,14 +911,14 @@ HMENU BuildRecursiveMenu(HMENU hMenu, PMO_IntMenuItem pRootMenu, ListParam *para
 				db_set_b(NULL, MenuNameItems, DBString, 1);
 
 			pmi->OverrideShow = TRUE;
-			if ( !db_get_b(NULL, MenuNameItems, DBString, 1)) {
+			if (!db_get_b(NULL, MenuNameItems, DBString, 1)) {
 				pmi->OverrideShow = FALSE;
 				continue;  // find out what value to return if not getting added
 			}
 
 			// mi.pszName
 			mir_snprintf(DBString, SIZEOF(DBString), "%s_name", menuItemName);
-			if ( !db_get_ts(NULL, MenuNameItems, DBString, &dbv)) {
+			if (!db_get_ts(NULL, MenuNameItems, DBString, &dbv)) {
 				if (_tcslen(dbv.ptszVal) > 0)
 					replaceStrT(pmi->CustomName, dbv.ptszVal);
 				db_free(&dbv);
@@ -945,28 +938,19 @@ HMENU BuildRecursiveMenu(HMENU hMenu, PMO_IntMenuItem pRootMenu, ListParam *para
 		if (rootlevel != (int)pmi->mi.root)
 			continue;
 
-		MENUITEMINFO mii = { 0 };
-		mii.dwItemData = (LPARAM)pmi;
-
 		int i = WhereToPlace(hMenu, mi);
 
-		if ( !IsWinVer98Plus()) {
-			mii.cbSize = MENUITEMINFO_V4_SIZE;
-			mii.fMask = MIIM_DATA | MIIM_TYPE | MIIM_ID;
-			mii.fType = MFT_STRING;
-		}
-		else {
-			mii.cbSize = sizeof(mii);
-			mii.fMask = MIIM_DATA | MIIM_ID | MIIM_STRING;
-			if (pmi->iconId != -1) {
-				mii.fMask |= MIIM_BITMAP;
-				if (IsWinVerVistaPlus() && isThemeActive()) {
-					if (pmi->hBmp == NULL)
-						pmi->hBmp = ConvertIconToBitmap(NULL, pmi->parent->m_hMenuIcons, pmi->iconId);
-					mii.hbmpItem = pmi->hBmp;
-				}
-				else mii.hbmpItem = HBMMENU_CALLBACK;
+		MENUITEMINFO mii = { sizeof(mii) };
+		mii.dwItemData = (LPARAM)pmi;
+		mii.fMask = MIIM_DATA | MIIM_ID | MIIM_STRING;
+		if (pmi->iconId != -1) {
+			mii.fMask |= MIIM_BITMAP;
+			if (IsWinVerVistaPlus() && IsThemeActive()) {
+				if (pmi->hBmp == NULL)
+					pmi->hBmp = ConvertIconToBitmap(NULL, pmi->parent->m_hMenuIcons, pmi->iconId);
+				mii.hbmpItem = pmi->hBmp;
 			}
+			else mii.hbmpItem = HBMMENU_CALLBACK;
 		}
 
 		mii.fMask |= MIIM_STATE;
@@ -1053,17 +1037,17 @@ static int MO_RegisterIcon(PMO_IntMenuItem pmi, void*)
 	TCHAR *uname = (pmi->UniqName) ? mir_a2t(pmi->UniqName) : mir_tstrdup(pmi->CustomName),
 		*descr = GetMenuItemText(pmi);
 
-	if ( !uname && !descr)
+	if (!uname && !descr)
 		return FALSE;
 
-	if ( !pmi->hIcolibItem) {
+	if (!pmi->hIcolibItem) {
 		HICON hIcon = ImageList_GetIcon(pmi->parent->m_hMenuIcons, pmi->iconId, 0);
 
 		TCHAR sectionName[256];
-		mir_sntprintf(sectionName, SIZEOF(sectionName), LPGENT("Menu Icons") _T("/%s"), (TCHAR*)_A2T(pmi->parent->Name));
+		mir_sntprintf(sectionName, SIZEOF(sectionName), LPGENT("Menu icons") _T("/%s"), TranslateTS(pmi->parent->ptszDisplayName));
 
 		char iconame[256];
-		mir_snprintf(iconame, sizeof(iconame), "genmenu_%s_%s", pmi->parent->Name, uname && *uname ? uname : descr);
+		mir_snprintf(iconame, SIZEOF(iconame), "genmenu_%s_%s", pmi->parent->pszName, uname && *uname ? uname : descr);
 
 		// remove '&'
 		if (descr) {
@@ -1111,15 +1095,15 @@ int RegisterAllIconsInIconLib()
 	return 0;
 }
 
-int TryProcessDoubleClick(HANDLE hContact)
+int TryProcessDoubleClick(MCONTACT hContact)
 {
 	int iMenuID = GetMenuObjbyId((int)hContactMenuObject);
 	if (iMenuID != -1) {
-		NotifyEventHooks(hPreBuildContactMenuEvent, (WPARAM)hContact, 0);
+		NotifyEventHooks(hPreBuildContactMenuEvent, hContact, 0);
 
 		PMO_IntMenuItem pimi = (PMO_IntMenuItem)MO_GetDefaultMenuItem((WPARAM)g_menus[ iMenuID ]->m_items.first, 0);
 		if (pimi != NULL) {
-			MO_ProcessCommand(pimi, (LPARAM)hContact);
+			MO_ProcessCommand(pimi, hContact);
 			return 0;
 		}
 	}
@@ -1165,11 +1149,10 @@ static INT_PTR SRVMO_SetOptionsMenuItem(WPARAM, LPARAM lParam)
 
 int InitGenMenu()
 {
-	InitializeCriticalSection(&csMenuHook);
 	CreateServiceFunction(MO_BUILDMENU, MO_BuildMenu);
 
 	CreateServiceFunction(MO_PROCESSCOMMAND, (MIRANDASERVICE)MO_ProcessCommand);
-	CreateServiceFunction(MO_CREATENEWMENUOBJECT, MO_CreateNewMenuObject);
+	CreateServiceFunction("MO/CreateNewMenuObject", MO_CreateNewMenuObject);
 	CreateServiceFunction(MO_REMOVEMENUITEM, MO_RemoveMenuItem);
 	CreateServiceFunction(MO_ADDNEWMENUITEM, (MIRANDASERVICE)MO_AddNewMenuItem);
 	CreateServiceFunction(MO_MENUITEMGETOWNERDATA, MO_MenuItemGetOwnerData);
@@ -1181,7 +1164,7 @@ int InitGenMenu()
 	CreateServiceFunction(MO_REMOVEMENUOBJECT, MO_RemoveMenuObject);
 	CreateServiceFunction(MO_GETPROTOROOTMENU, MO_GetProtoRootMenu);
 
-	CreateServiceFunction(MO_SETOPTIONSMENUOBJECT, SRVMO_SetOptionsMenuObject);
+	CreateServiceFunction(MO_SRV_SETOPTIONSMENUOBJECT, SRVMO_SetOptionsMenuObject);
 	CreateServiceFunction(MO_SETOPTIONSMENUITEM, SRVMO_SetOptionsMenuItem);
 
 	bIconsDisabled = db_get_b(NULL, "CList", "DisableMenuIcons", 0) != 0;
@@ -1196,13 +1179,9 @@ int InitGenMenu()
 int UnitGenMenu()
 {
 	if (bIsGenMenuInited) {
-		{
-			mir_cslock lck(csMenuHook);
-			MO_RemoveAllObjects();
-			bIsGenMenuInited = false;
-		}
-
-		DeleteCriticalSection(&csMenuHook);
+		mir_cslock lck(csMenuHook);
+		MO_RemoveAllObjects();
+		bIsGenMenuInited = false;
 	}
 	return 0;
 }
@@ -1221,16 +1200,18 @@ TIntMenuObject::~TIntMenuObject()
 	FreeAndNil((void**)&onAddService);
 	FreeAndNil((void**)&CheckService);
 	FreeAndNil((void**)&ExecService);
-	FreeAndNil((void**)&Name);
+	FreeAndNil((void**)&ptszDisplayName);
+	FreeAndNil((void**)&pszName);
 
 	ImageList_Destroy(m_hMenuIcons);
 }
 
-void TIntMenuObject::freeItem(TMO_IntMenuItem* p)
+void TIntMenuObject::freeItem(TMO_IntMenuItem *p)
 {
 	if (FreeService)
 		CallService(FreeService, (WPARAM)p, (LPARAM)p->mi.ownerdata);
 
+	p->signature = 0;
 	FreeAndNil((void**)&p->mi.pszName);
 	FreeAndNil((void**)&p->UniqName);
 	FreeAndNil((void**)&p->CustomName);

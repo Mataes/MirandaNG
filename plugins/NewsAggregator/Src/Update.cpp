@@ -20,19 +20,19 @@ Boston, MA 02111-1307, USA.
 #include "common.h"
 
 // check if Feed is currently updating
-BOOL ThreadRunning;
+bool ThreadRunning;
 UPDATELIST *UpdateListHead = NULL;
 UPDATELIST *UpdateListTail = NULL;
 
 // main auto-update timer
-VOID CALLBACK timerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+void CALLBACK timerProc(HWND, UINT, UINT_PTR, DWORD)
 {
 	// only run if it is not current updating and the auto update option is enabled
 	if (!ThreadRunning && !Miranda_Terminated()) {
-		BOOL HaveUpdates = FALSE;
-		for (HANDLE hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
+		bool HaveUpdates = FALSE;
+		for (MCONTACT hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
 			if (db_get_dw(hContact, MODULE, "UpdateTime", DEFAULT_UPDATE_TIME)) {
-				double diff = difftime(time(NULL), db_get_dw(hContact, MODULE, "LastCheck", 0));
+				double diff = difftime(time(NULL), (time_t)db_get_dw(hContact, MODULE, "LastCheck", 0));
 				if (db_get_b(NULL, MODULE, "AutoUpdate", 1) != 0 && diff >= db_get_dw(hContact, MODULE, "UpdateTime", DEFAULT_UPDATE_TIME) * 60) {
 					UpdateListAdd(hContact);
 					HaveUpdates = TRUE;
@@ -40,13 +40,13 @@ VOID CALLBACK timerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 			}
 		}
 		if (!ThreadRunning && HaveUpdates)
-			mir_forkthread(UpdateThreadProc, (LPVOID)FALSE);
+			mir_forkthread(UpdateThreadProc, 0);
 	}
 }
 
 // temporary timer for first run
 // when this is run, it kill the old startup timer and create the permenant one above
-VOID CALLBACK timerProc2(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+void CALLBACK timerProc2(HWND, UINT, UINT_PTR, DWORD)
 {
 	KillTimer(NULL, timerId);
 	ThreadRunning = FALSE;
@@ -58,7 +58,7 @@ VOID CALLBACK timerProc2(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 	}
 }
 
-void UpdateListAdd(HANDLE hContact)
+void UpdateListAdd(MCONTACT hContact)
 {
 	UPDATELIST *newItem = (UPDATELIST*)mir_alloc(sizeof(UPDATELIST));
 	newItem->hContact = hContact;
@@ -74,9 +74,9 @@ void UpdateListAdd(HANDLE hContact)
 	ReleaseMutex(hUpdateMutex);
 }
 
-HANDLE UpdateGetFirst()
+MCONTACT UpdateGetFirst()
 {
-	HANDLE hContact = NULL;
+	MCONTACT hContact = NULL;
 
 	WaitForSingleObject(hUpdateMutex, INFINITE);
 
@@ -112,7 +112,7 @@ void DestroyUpdateList(void)
 	ReleaseMutex(hUpdateMutex);
 }
 
-void UpdateThreadProc(LPVOID AvatarCheck)
+void UpdateThreadProc(void *AvatarCheck)
 {
 	WaitForSingleObject(hUpdateMutex, INFINITE);
 	if (ThreadRunning) {
@@ -122,13 +122,18 @@ void UpdateThreadProc(LPVOID AvatarCheck)
 	ThreadRunning = TRUE;	// prevent 2 instance of this thread running
 	ReleaseMutex(hUpdateMutex);
 
+	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
 	// update news by getting the first station from the queue until the queue is empty
-	while (UpdateListHead != NULL && !Miranda_Terminated())
-		if ((BOOL)AvatarCheck)
+	while (UpdateListHead != NULL && !Miranda_Terminated()) {
+		if (AvatarCheck != NULL)
 			CheckCurrentFeedAvatar(UpdateGetFirst());
 		else
 			CheckCurrentFeed(UpdateGetFirst());
+	}
 
 	// exit the update thread
 	ThreadRunning = FALSE;
+
+	CoUninitialize();
 }

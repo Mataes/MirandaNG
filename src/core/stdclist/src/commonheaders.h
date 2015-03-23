@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -36,6 +37,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <io.h>
 #include <string.h>
 #include <direct.h>
+#include <Uxtheme.h>
+#include <shlwapi.h>
 
 #include <win2k.h>
 #include <newpluginapi.h>
@@ -61,13 +64,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // shared vars
 extern HINSTANCE g_hInst;
+extern CLIST_INTERFACE coreCli;
 
-/* most free()'s are invalid when the code is executed from a dll, so this changes
- all the bad free()'s to good ones, however it's still incorrect code. The reasons for not
- changing them include:
-
-  * db_free has a CallService() lookup
-  * free() is executed in some large loops to do with clist creation of group data
-  * easy search and replace
-
-*/
+void LoadClcOptions(HWND hwnd, struct ClcData *dat, BOOL bFirst);

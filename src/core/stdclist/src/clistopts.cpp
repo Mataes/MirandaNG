@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
-all portions of this codebase are copyrighted to the people 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -27,19 +28,20 @@ static INT_PTR CALLBACK DlgProcGenOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 	switch (msg) {
 	case WM_USER + 1:
 		{
-			HANDLE hContact = (HANDLE) wParam;
+			MCONTACT hContact = wParam;
 			DBCONTACTWRITESETTING *ws = (DBCONTACTWRITESETTING *) lParam;
-			if (hContact == NULL && ws != NULL && ws->szModule != NULL && ws->szSetting != NULL
-				&& lstrcmpiA(ws->szModule, "CList") == 0 && lstrcmpiA(ws->szSetting, "UseGroups") == 0 && IsWindowVisible(hwndDlg)) {
-					CheckDlgButton(hwndDlg, IDC_DISABLEGROUPS, ws->value.bVal == 0);
-				}
-				break;
+			if (hContact == NULL && ws != NULL && ws->szModule != NULL && ws->szSetting != NULL && 
+				 mir_strcmpi(ws->szModule, "CList") == 0 && mir_strcmpi(ws->szSetting, "UseGroups") == 0 && IsWindowVisible(hwndDlg))
+			{
+				CheckDlgButton(hwndDlg, IDC_DISABLEGROUPS, ws->value.bVal == 0 ? BST_CHECKED : BST_UNCHECKED);
+			}
 		}
+		break;
+
 	case WM_DESTROY:
-		{
-			UnhookEvent((HANDLE) GetWindowLongPtr(hwndDlg, GWLP_USERDATA));
-			break;
-		}
+		UnhookEvent((HANDLE) GetWindowLongPtr(hwndDlg, GWLP_USERDATA));
+		break;
+
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
 		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR) HookEventMessage(ME_DB_CONTACT_SETTINGCHANGED, hwndDlg, WM_USER + 1));
@@ -97,9 +99,9 @@ static INT_PTR CALLBACK DlgProcGenOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 			SETTING_TRAYICON_DEFAULT) == SETTING_TRAYICON_MULTI ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hwndDlg, IDC_DISABLEBLINK,
 			db_get_b(NULL, "CList", "DisableTrayFlash", 0) == 1 ? BST_CHECKED : BST_UNCHECKED);
-		EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKTIME), !IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
-		EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKSPIN), !IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
-		EnableWindow(GetDlgItem(hwndDlg, IDC_STMSDELAY), !IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
+		EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKTIME), BST_UNCHECKED == IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
+		EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKSPIN), BST_UNCHECKED == IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
+		EnableWindow(GetDlgItem(hwndDlg, IDC_STMSDELAY), BST_UNCHECKED == IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
 		CheckDlgButton(hwndDlg, IDC_ICONBLINK, db_get_b(NULL, "CList", "NoIconBlink", 0) == 1 ? BST_CHECKED : BST_UNCHECKED);
 		if (IsDlgButtonChecked(hwndDlg, IDC_DONTCYCLE)) {
 			EnableWindow(GetDlgItem(hwndDlg, IDC_CYCLETIMESPIN), FALSE);
@@ -131,14 +133,14 @@ static INT_PTR CALLBACK DlgProcGenOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 					continue;
 				item = SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_ADDSTRING, 0, (LPARAM) accs[i]->tszAccountName);
 				SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_SETITEMDATA, item, (LPARAM) accs[i]);
-				if (dbv.type == DBVT_ASCIIZ && !lstrcmpA(dbv.pszVal, accs[i]->szModuleName))
+				if (dbv.type == DBVT_ASCIIZ && !mir_strcmp(dbv.pszVal, accs[i]->szModuleName))
 					SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_SETCURSEL, item, 0);
 			}
 			db_free(&dbv);
 		}
 		if (-1 == (int) SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_GETCURSEL, 0, 0))
 			SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_SETCURSEL, 0, 0);
-		SendDlgItemMessage(hwndDlg, IDC_BLINKSPIN, UDM_SETBUDDY, (WPARAM) GetDlgItem(hwndDlg, IDC_BLINKTIME), 0);   // set buddy                    
+		SendDlgItemMessage(hwndDlg, IDC_BLINKSPIN, UDM_SETBUDDY, (WPARAM) GetDlgItem(hwndDlg, IDC_BLINKTIME), 0);   // set buddy
 		SendDlgItemMessage(hwndDlg, IDC_BLINKSPIN, UDM_SETRANGE, 0, MAKELONG(0x3FFF, 250));
 		SendDlgItemMessage(hwndDlg, IDC_BLINKSPIN, UDM_SETPOS, 0, MAKELONG(db_get_w(NULL, "CList", "IconFlashTime", 550), 0));
 		return TRUE;
@@ -154,9 +156,9 @@ static INT_PTR CALLBACK DlgProcGenOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 			EnableWindow(GetDlgItem(hwndDlg, IDC_ALWAYSMULTI), IsDlgButtonChecked(hwndDlg, IDC_MULTITRAY));
 		}
 		if (LOWORD(wParam) == IDC_DISABLEBLINK) {
-			EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKTIME), !IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
-			EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKSPIN), !IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
-			EnableWindow(GetDlgItem(hwndDlg, IDC_STMSDELAY), !IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
+			EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKTIME), BST_UNCHECKED == IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
+			EnableWindow(GetDlgItem(hwndDlg, IDC_BLINKSPIN), BST_UNCHECKED == IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
+			EnableWindow(GetDlgItem(hwndDlg, IDC_STMSDELAY), BST_UNCHECKED == IsDlgButtonChecked(hwndDlg, IDC_DISABLEBLINK));
 		}
 		if ((LOWORD(wParam) == IDC_HIDETIME || LOWORD(wParam) == IDC_CYCLETIME) && HIWORD(wParam) != EN_CHANGE)
 			break;
@@ -211,16 +213,16 @@ static INT_PTR CALLBACK DlgProcGenOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 				db_set_b(NULL, "CList", "NoIconBlink", (BYTE) IsDlgButtonChecked(hwndDlg, IDC_ICONBLINK));
 				{
 					int cur = SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_GETCURSEL, 0, 0);
-					PROTOACCOUNT* pa = ( PROTOACCOUNT* )SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_GETITEMDATA, cur, 0 );
+					PROTOACCOUNT *pa = ( PROTOACCOUNT* )SendDlgItemMessage(hwndDlg, IDC_PRIMARYSTATUS, CB_GETITEMDATA, cur, 0 );
 					if ( pa == NULL )
 						db_unset(NULL, "CList", "PrimaryStatus");
-					else 
+					else
 						db_set_s(NULL, "CList", "PrimaryStatus", pa->szModuleName );
 				}
 
 				pcli->pfnTrayIconIconsChanged();
 				pcli->pfnLoadContactTree();  /* this won't do job properly since it only really works when changes happen */
-				pcli->pfnInvalidateDisplayNameCacheEntry( INVALID_HANDLE_VALUE );        /* force reshuffle */
+				pcli->pfnInvalidateDisplayNameCacheEntry(INVALID_CONTACT_ID);        /* force reshuffle */
 				return TRUE;
 			}
 			break;
@@ -234,12 +236,11 @@ static INT_PTR CALLBACK DlgProcGenOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LP
 
 int CListOptInit(WPARAM wParam, LPARAM lParam)
 {
-	OPTIONSDIALOGPAGE odp = { 0 };
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.position = -1000000000;
 	odp.hInstance = g_hInst;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_CLIST);
-	odp.pszTitle = LPGEN("Contact List");
+	odp.pszTitle = LPGEN("Contact list");
 	odp.pfnDlgProc = DlgProcGenOpts;
 	odp.flags = ODPF_BOLDGROUPS;
 	Options_AddPage(wParam, &odp);
@@ -263,9 +264,9 @@ int CListModernOptInit(WPARAM wParam, LPARAM lParam)
 	obj.iSection = MODERNOPT_PAGE_CLIST;
 	obj.iType = MODERNOPT_TYPE_SECTIONPAGE;
 	obj.iBoldControls = iBoldControls;
-	obj.lpzClassicGroup = "Contact List";
+	obj.lpzClassicGroup = LPGEN("Contact list");
 	obj.lpzClassicPage = "List";
-	obj.lpzHelpUrl = "http://wiki.miranda-im.org/";
+	obj.lpzHelpUrl = "http://wiki.miranda-ng.org/";
 
 	obj.lpzTemplate = MAKEINTRESOURCEA(IDD_MODERNOPT_CLIST);
 	obj.pfnDlgProc = DlgProcGenOpts;

@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (с) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -21,7 +22,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 Created by Anton Senko aka ZORG , tweaked by Artem Shpynov aka FYR
-
 */
 
 #include "hdr/modern_commonheaders.h"
@@ -65,27 +65,27 @@ ROWCELL *cppInitModernRow(ROWCELL	** tabAccess)
 	int seq = 0;
 	ROWCELL * RowRoot = NULL;
 	FILE * hFile;
-	int i=0;
-	if ( !db_get_b(NULL,"ModernData","UseAdvancedRowLayout",SETTING_ROW_ADVANCEDLAYOUT_DEFAULT)) return NULL;
+	int i = 0;
+	if (!db_get_b(NULL, "ModernData", "UseAdvancedRowLayout", SETTING_ROW_ADVANCEDLAYOUT_DEFAULT)) return NULL;
 	tmplbuf = NULL;
-	if ( db_get_b(NULL,"ModernData","UseAdvancedRowLayout",SETTING_ROW_ADVANCEDLAYOUT_DEFAULT) == 1)
-		tmplbuf = db_get_sa(NULL,"ModernData","RowTemplate");
+	if (db_get_b(NULL, "ModernData", "UseAdvancedRowLayout", SETTING_ROW_ADVANCEDLAYOUT_DEFAULT) == 1)
+		tmplbuf = db_get_sa(NULL, "ModernData", "RowTemplate");
 	if (tmplbuf) {
-		rowParse(RowRoot, RowRoot, tmplbuf, i, seq,tabAccess);
+		rowParse(RowRoot, RowRoot, tmplbuf, i, seq, tabAccess);
 		mir_free(tmplbuf);
 		return RowRoot;
 	}
 	if (hFile = fopen("template.txt", "rb"))
 	{
 		fsize = _filelength(_fileno(hFile));
-		tmplbuf = (char*)malloc(fsize+1);
-		ZeroMemory(tmplbuf, fsize+1);
+		tmplbuf = (char*)malloc(fsize + 1);
+		memset(tmplbuf, 0, (fsize + 1));
 
-		for (i=0; i < fsize; i++) tmplbuf[i] = getc(hFile);
+		for (i = 0; i < fsize; i++) tmplbuf[i] = getc(hFile);
 		tmplbuf[i] = 0;
-		i=0;
-		rowParse(RowRoot, RowRoot, tmplbuf, i, seq,tabAccess);
-		db_set_s(NULL,"ModernData","RowTemplate",tmplbuf);
+		i = 0;
+		rowParse(RowRoot, RowRoot, tmplbuf, i, seq, tabAccess);
+		db_set_s(NULL, "ModernData", "RowTemplate", tmplbuf);
 		free(tmplbuf);
 		fclose(hFile);
 		return RowRoot;
@@ -102,13 +102,14 @@ void cppDeleteTree(ROWCELL	* RowRoot)
 
 int cppCalculateRowHeight(ROWCELL	*RowRoot)
 {
+	if (RowRoot == NULL)
+		return 0;
 	RowRoot->h = 0;
 	RowRoot->w = 0;
 	rowResetEmptyRects(RowRoot);
 	rowCalculateMinSize(RowRoot);
 	rowEqualize(RowRoot);
-	if (RowRoot) return RowRoot->r.bottom;
-	return 0;
+	return RowRoot->r.bottom;
 }
 void cppCalculateRowItemsPos(ROWCELL	*RowRoot, int width)
 {
@@ -125,7 +126,7 @@ void cppCalculateRowItemsPos(ROWCELL	*RowRoot, int width)
 const ROWCELL * rowAddCell(ROWCELL* &link, int cont)
 {
 	link = (ROWCELL*)malloc(sizeof(ROWCELL));
-	ZeroMemory(link, sizeof(ROWCELL));
+	memset(link, 0, sizeof(ROWCELL));
 	link->cont = cont;
 	return link;
 }
@@ -137,7 +138,7 @@ const ROWCELL * rowAddCell(ROWCELL* &link, int cont)
 //
 void rowDeleteTree(ROWCELL* cell)
 {
-	if ( !cell) return;
+	if (!cell) return;
 	if (cell->child)
 		rowDeleteTree((ROWCELL*)(cell->child));
 	if (cell->next)
@@ -164,9 +165,9 @@ char * rowParserGetNextWord(char *tbuf, int &hbuf)
 
 	int j = -1;
 
-	ZeroMemory(buf, 256);
+	memset(buf, 0, sizeof(buf));
 
-	while(tbuf[hbuf] != 0)
+	while (tbuf[hbuf] != 0)
 	{
 		ch = tbuf[hbuf];
 
@@ -179,7 +180,7 @@ char * rowParserGetNextWord(char *tbuf, int &hbuf)
 		}
 
 		// Tag-bracers found
-		if ( !(ch == '>' && j < 0)) //not single '>' found
+		if (!(ch == '>' && j < 0)) //not single '>' found
 		{
 			if ((ch == '<' || ch == '>') && j >= 0)
 			{
@@ -221,36 +222,36 @@ void rowParserGetParam(ROWCELL* &cell, char *tbuf, int &hbuf)
 	char * word = rowParserGetNextWord(tbuf, hbuf);
 	int param = 0;
 
-	if ( !_strnicmp(word, "avatar",     strlen(word))) param = TC_AVATAR;
-	else if ( !_strnicmp(word, "text1",      strlen(word))) param = TC_TEXT1;
-	else if ( !_strnicmp(word, "text2",      strlen(word))) param = TC_TEXT2;
-	else if ( !_strnicmp(word, "text3",      strlen(word))) param = TC_TEXT3;
-	else if ( !_strnicmp(word, "status",     strlen(word))) param = TC_STATUS;
-	else if ( !_strnicmp(word, "extra",      strlen(word))) param = TC_EXTRA;
-	else if ( !_strnicmp(word, "extra1",     strlen(word))) param = TC_EXTRA1;
-	else if ( !_strnicmp(word, "extra2",     strlen(word))) param = TC_EXTRA2;
-	else if ( !_strnicmp(word, "extra3",     strlen(word))) param = TC_EXTRA3;
-	else if ( !_strnicmp(word, "extra4",     strlen(word))) param = TC_EXTRA4;
-	else if ( !_strnicmp(word, "extra5",     strlen(word))) param = TC_EXTRA5;
-	else if ( !_strnicmp(word, "extra6",     strlen(word))) param = TC_EXTRA6;
-	else if ( !_strnicmp(word, "extra7",     strlen(word))) param = TC_EXTRA7;
-	else if ( !_strnicmp(word, "extra8",     strlen(word))) param = TC_EXTRA8;
-	else if ( !_strnicmp(word, "extra9",     strlen(word))) param = TC_EXTRA9;
-	else if ( !_strnicmp(word, "time",       strlen(word))) param = TC_TIME;
-	else if ( !_strnicmp(word, "space",      strlen(word))) param = TC_SPACE;
-	else if ( !_strnicmp(word, "fspace",      strlen(word))) param = TC_FIXED;
+	if (!_strnicmp(word, "avatar", strlen(word))) param = TC_AVATAR;
+	else if (!_strnicmp(word, "text1", strlen(word))) param = TC_TEXT1;
+	else if (!_strnicmp(word, "text2", strlen(word))) param = TC_TEXT2;
+	else if (!_strnicmp(word, "text3", strlen(word))) param = TC_TEXT3;
+	else if (!_strnicmp(word, "status", strlen(word))) param = TC_STATUS;
+	else if (!_strnicmp(word, "extra", strlen(word))) param = TC_EXTRA;
+	else if (!_strnicmp(word, "extra1", strlen(word))) param = TC_EXTRA1;
+	else if (!_strnicmp(word, "extra2", strlen(word))) param = TC_EXTRA2;
+	else if (!_strnicmp(word, "extra3", strlen(word))) param = TC_EXTRA3;
+	else if (!_strnicmp(word, "extra4", strlen(word))) param = TC_EXTRA4;
+	else if (!_strnicmp(word, "extra5", strlen(word))) param = TC_EXTRA5;
+	else if (!_strnicmp(word, "extra6", strlen(word))) param = TC_EXTRA6;
+	else if (!_strnicmp(word, "extra7", strlen(word))) param = TC_EXTRA7;
+	else if (!_strnicmp(word, "extra8", strlen(word))) param = TC_EXTRA8;
+	else if (!_strnicmp(word, "extra9", strlen(word))) param = TC_EXTRA9;
+	else if (!_strnicmp(word, "time", strlen(word))) param = TC_TIME;
+	else if (!_strnicmp(word, "space", strlen(word))) param = TC_SPACE;
+	else if (!_strnicmp(word, "fspace", strlen(word))) param = TC_FIXED;
 
-	else if ( !_strnicmp(word, "left",       strlen(word))) param = TC_LEFT;
-	else if ( !_strnicmp(word, "top",        strlen(word))) param = TC_TOP;
-	else if ( !_strnicmp(word, "vcenter",    strlen(word))) param = TC_VCENTER;
-	else if ( !_strnicmp(word, "hcenter",    strlen(word))) param = TC_HCENTER;
-	else if ( !_strnicmp(word, "right",      strlen(word))) param = TC_RIGHT;
-	else if ( !_strnicmp(word, "bottom",     strlen(word))) param = TC_BOTTOM;
+	else if (!_strnicmp(word, "left", strlen(word))) param = TC_LEFT;
+	else if (!_strnicmp(word, "top", strlen(word))) param = TC_TOP;
+	else if (!_strnicmp(word, "vcenter", strlen(word))) param = TC_VCENTER;
+	else if (!_strnicmp(word, "hcenter", strlen(word))) param = TC_HCENTER;
+	else if (!_strnicmp(word, "right", strlen(word))) param = TC_RIGHT;
+	else if (!_strnicmp(word, "bottom", strlen(word))) param = TC_BOTTOM;
 
-	else if ( !_strnicmp(word, "layer",      strlen(word))) cell->layer = TRUE;
+	else if (!_strnicmp(word, "layer", strlen(word))) cell->layer = TRUE;
 
-	else if ( !_strnicmp(word, "width",      strlen(word))) param = TC_WIDTH;
-	else if ( !_strnicmp(word, "height",     strlen(word))) param = TC_HEIGHT;
+	else if (!_strnicmp(word, "width", strlen(word))) param = TC_WIDTH;
+	else if (!_strnicmp(word, "height", strlen(word))) param = TC_HEIGHT;
 
 	else
 	{
@@ -258,7 +259,7 @@ void rowParserGetParam(ROWCELL* &cell, char *tbuf, int &hbuf)
 		return;
 	}
 
-	if (param>TC_TEXT3 && param != TC_SPACE) cell->hasfixed = 1;
+	if (param > TC_TEXT3 && param != TC_SPACE) cell->hasfixed = 1;
 
 	switch (param)
 	{
@@ -319,17 +320,17 @@ void rowParserGetParam(ROWCELL* &cell, char *tbuf, int &hbuf)
 // hbuf - указатель буфера
 // sequence - нужно задавать 0, это очередность нахождени€
 //
-BOOL rowParse(ROWCELL* &cell, ROWCELL* parent, char *tbuf, int &hbuf, int &sequence, ROWCELL** RowTabAccess )
+BOOL rowParse(ROWCELL* &cell, ROWCELL* parent, char *tbuf, int &hbuf, int &sequence, ROWCELL** RowTabAccess)
 {
 	char * word;
 	word = rowParserGetNextWord(tbuf, hbuf);
 	int cont;
 
-	if      (!_strnicmp(word, "<tr",   strlen(word))  || !_strnicmp(word, "<tr>",   strlen(word))) cont = TC_ROW;
-	else if ( !_strnicmp(word, "<tc",   strlen(word))  || !_strnicmp(word, "<tc>",   strlen(word))) cont = TC_COL;
-	else if ( !_strnicmp(word, "/>",     strlen(word)) || 
-		!_strnicmp(word, "</tr>",  strlen(word)) || 
-		!_strnicmp(word, "</tc>",  strlen(word))) return TRUE;
+	if (!_strnicmp(word, "<tr", strlen(word)) || !_strnicmp(word, "<tr>", strlen(word))) cont = TC_ROW;
+	else if (!_strnicmp(word, "<tc", strlen(word)) || !_strnicmp(word, "<tc>", strlen(word))) cont = TC_COL;
+	else if (!_strnicmp(word, "/>", strlen(word)) ||
+		!_strnicmp(word, "</tr>", strlen(word)) ||
+		!_strnicmp(word, "</tc>", strlen(word))) return TRUE;
 	else return FALSE;
 
 	rowAddCell(cell, cont);
@@ -337,16 +338,16 @@ BOOL rowParse(ROWCELL* &cell, ROWCELL* parent, char *tbuf, int &hbuf, int &seque
 	if (cell->type != 0 && cell->type != TC_SPACE && cell->type != TC_FIXED)
 		RowTabAccess[sequence++] = cell;
 
-	if ( !rowParse(cell->child, cell, tbuf, hbuf, sequence,RowTabAccess))
+	if (!rowParse(cell->child, cell, tbuf, hbuf, sequence, RowTabAccess))
 		return FALSE;
 
-	if ( !parent)
+	if (!parent)
 	{
 		RowTabAccess[sequence] = NULL;
 		return TRUE;
 	}
 
-	if ( !rowParse(cell->next, parent, tbuf, hbuf, sequence,RowTabAccess))
+	if (!rowParse(cell->next, parent, tbuf, hbuf, sequence, RowTabAccess))
 		return FALSE;
 
 	parent->sizing |= cell->sizing;
@@ -356,7 +357,7 @@ BOOL rowParse(ROWCELL* &cell, ROWCELL* parent, char *tbuf, int &hbuf, int &seque
 
 void rowResetEmptyRects(ROWCELL* cell)
 {
-	if ( !cell) return;
+	if (!cell) return;
 	if (cell->type == 0)
 	{
 		SetRect(&(cell->r), 0, 0, 0, 0);
@@ -379,22 +380,22 @@ void rowCalculateMinSize(ROWCELL* cell)
 	int w = 0, h = 0;
 	int wl = 0, hl = 0;
 	int fullWidth = 0;
-	if ( !cell) return;
+	if (!cell) return;
 
-	cell->r.left	 = 0;
-	cell->r.top		 = 0;
+	cell->r.left = 0;
+	cell->r.top = 0;
 
 	if (cell->type < TC_TEXT1 || cell->type > TC_TEXT3 && cell->type != TC_SPACE)
-		cell->r.right	 = cell->w;
+		cell->r.right = cell->w;
 	else
-		cell->r.right	 = 0;
+		cell->r.right = 0;
 
-	cell->r.bottom	 = cell->h;
+	cell->r.bottom = cell->h;
 
 	rowCalculateMinSize(cell->child);
 	rowCalculateMinSize(cell->next);
 
-	if ( !(curchild = cell->child)) return;
+	if (!(curchild = cell->child)) return;
 
 	if (cell->cont == TC_ROW)
 	{
@@ -406,15 +407,14 @@ void rowCalculateMinSize(ROWCELL* cell)
 			{
 				//w = max(w, curchild->r.right);
 				wl += curchild->r.right;
-				fullWidth = max(fullWidth,max(curchild->full_width,curchild->w));
+				fullWidth = max(fullWidth, max(curchild->full_width, curchild->w));
 			}
 			else
 			{
 				w += curchild->r.right;
-				fullWidth += max(curchild->full_width,curchild->w);
+				fullWidth += max(curchild->full_width, curchild->w);
 			}
-		}
-		while (curchild = curchild->next);
+		} while (curchild = curchild->next);
 	}
 
 	if (cell->cont == TC_COL)
@@ -422,7 +422,7 @@ void rowCalculateMinSize(ROWCELL* cell)
 		while (curchild)
 		{
 			w = max(w, curchild->r.right);
-			fullWidth = max(fullWidth,max(curchild->full_width,curchild->w));
+			fullWidth = max(fullWidth, max(curchild->full_width, curchild->w));
 
 			if (curchild->layer)
 			{
@@ -436,10 +436,10 @@ void rowCalculateMinSize(ROWCELL* cell)
 		}
 	}
 
-	cell->r.right  = max(max(w, cell->r.right),wl);
-	cell->r.bottom = max(max(h, cell->r.bottom),hl);
-	cell->full_width = max(fullWidth,cell->full_width);
-	cell->fixed_width = max(cell->fixed_width,cell->r.right);
+	cell->r.right = max(max(w, cell->r.right), wl);
+	cell->r.bottom = max(max(h, cell->r.bottom), hl);
+	cell->full_width = max(fullWidth, cell->full_width);
+	cell->fixed_width = max(cell->fixed_width, cell->r.right);
 	return;
 }
 
@@ -451,11 +451,11 @@ void rowCalculateMinSize(ROWCELL* cell)
 void rowEqualize(ROWCELL* cell)
 {
 	ROWCELL* curchild = NULL;
-	if ( !cell) return;
+	if (!cell) return;
 	rowEqualize(cell->child);
 	rowEqualize(cell->next);
 
-	if ( !(curchild = cell->child)) return;
+	if (!(curchild = cell->child)) return;
 
 	if (cell->cont == TC_ROW)
 	{
@@ -463,8 +463,7 @@ void rowEqualize(ROWCELL* cell)
 		{
 			if (curchild->layer) continue;
 			curchild->r.bottom = cell->r.bottom;
-		}
-		while (curchild = curchild->next);
+		} while (curchild = curchild->next);
 	}
 
 	if (cell->cont == TC_COL)
@@ -473,8 +472,7 @@ void rowEqualize(ROWCELL* cell)
 		{
 			if (curchild->layer) continue;
 			curchild->r.right = cell->r.right;
-		}
-		while (curchild = curchild->next);
+		} while (curchild = curchild->next);
 	}
 
 
@@ -491,7 +489,7 @@ void rowPlacing(pROWCELL cell)
 {
 	if (cell->type == 0) return;
 
-	switch(cell->type)
+	switch (cell->type)
 	{
 	case TC_TEXT1:
 	case TC_TEXT2:
@@ -500,27 +498,27 @@ void rowPlacing(pROWCELL cell)
 		cell->r.right += cell->r.left;
 		break;
 	default:
+	{
+		switch (cell->halign)
 		{
-			switch(cell->halign)
-			{
-			case TC_LEFT:
-				break;
-			case TC_HCENTER:
-				cell->r.left += (cell->r.right - cell->w)/2;
-				break;
-			case TC_RIGHT:
-				cell->r.left += cell->r.right - cell->w;
-			}
-			cell->r.right = cell->r.left + cell->w;
+		case TC_LEFT:
+			break;
+		case TC_HCENTER:
+			cell->r.left += (cell->r.right - cell->w) / 2;
+			break;
+		case TC_RIGHT:
+			cell->r.left += cell->r.right - cell->w;
 		}
+		cell->r.right = cell->r.left + cell->w;
+	}
 	}
 
-	switch(cell->valign)
+	switch (cell->valign)
 	{
 	case TC_TOP:
 		break;
 	case TC_VCENTER:
-		cell->r.top += (cell->r.bottom - cell->h)/2;
+		cell->r.top += (cell->r.bottom - cell->h) / 2;
 		break;
 	case TC_BOTTOM:
 		cell->r.top += cell->r.bottom - cell->h;
@@ -543,26 +541,26 @@ void rowLayerProc(pROWCELL cell, pROWCELL parent)
 	}
 	else
 	{
-		switch(cell->halign)
+		switch (cell->halign)
 		{
 		case TC_LEFT:
 			cell->r.left = parent->r.left;
 			break;
 		case TC_HCENTER:
-			cell->r.left = parent->r.left + (parent->r.right - cell->r.right)/2;
+			cell->r.left = parent->r.left + (parent->r.right - cell->r.right) / 2;
 			break;
 		case TC_RIGHT:
 			cell->r.left = parent->r.left + parent->r.right - cell->r.right;
 		}
 	}
 
-	switch(cell->valign)
+	switch (cell->valign)
 	{
 	case TC_TOP:
 		cell->r.top = parent->r.top;
 		break;
 	case TC_VCENTER:
-		cell->r.top = parent->r.top + (parent->r.bottom - cell->r.bottom)/2;
+		cell->r.top = parent->r.top + (parent->r.bottom - cell->r.bottom) / 2;
 		break;
 	case TC_BOTTOM:
 		cell->r.top = parent->r.top + parent->r.bottom - cell->r.bottom;
@@ -599,7 +597,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 
 	cell->r.right = dist;
 	dummy = dist;
-	if ( !(curchild = cell->child))
+	if (!(curchild = cell->child))
 	{
 		rowPlacing(cell);
 		return;
@@ -622,7 +620,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 
 			if (curchild->sizing)
 			{
-				autosized += max(curchild->w,curchild->full_width);
+				autosized += max(curchild->w, curchild->full_width);
 				r++;
 			}
 			else
@@ -636,10 +634,10 @@ void rowPositioning(pROWCELL cell, int &dist)
 
 		if (r == 0)
 		{
-			switch(cell->halign)
+			switch (cell->halign)
 			{
 			case TC_HCENTER:
-				x += (dist - cw)/2;// - 1;
+				x += (dist - cw) / 2;// - 1;
 				break;
 			case TC_RIGHT:
 				x += dist - cw;
@@ -651,7 +649,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 		curchild = cell->child;
 
 		size = 0;
-		while(curchild)
+		while (curchild)
 		{
 			if (curchild->layer)
 			{
@@ -668,33 +666,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 				w -= size;
 				if (curchild->sizing)
 				{
-					if ((0&!curchild->fitwidth) || r>1)  //пока отключено -проблемы с выравниванием
-					{
-						if (curchild->hasfixed)
-							fixedsized -= curchild->fixed_width;
-						switch (cell->halign)
-						{
-						case TC_RIGHT:
-							size = (w-fixedsized)-(autosized-max(curchild->full_width,curchild->w));
-							break;
-						case TC_LEFT:
-							size = min(w-fixedsized,max(curchild->full_width,curchild->w));
-							break;
-						case TC_HCENTER:
-							if (autosized) {size = max(curchild->full_width,curchild->w)*w/autosized; break;}
-						default:
-							size = w / r;
-						}
-						autosized -= (max(curchild->full_width,curchild->w));
-						if (autosized < 0) autosized = 0;
-						if (size < 0) size = 0;
-					}
-					else size = w;
-					/*  пока отключено ибо параметр вли€ет на выравнивание включаетс€ по левому краю
-					if (0  && !curchild->fitwidth)
-					if (size>max(curchild->full_width,curchild->w))
-					size = max(curchild->full_width,curchild->w);
-					*/
+					size = w;
 					r--;
 				}
 				else
@@ -703,7 +675,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 				rowPositioning(curchild, size);
 				x += size;
 
-				if ( !curchild->sizing)
+				if (!curchild->sizing)
 					size = 0;
 			}
 
@@ -729,7 +701,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 
 		if (h > size)
 		{
-			switch(cell->valign)
+			switch (cell->valign)
 			{
 			case TC_VCENTER:
 				y += (h - size) / 2;
@@ -741,7 +713,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 		}
 
 		curchild = cell->child;
-		while(curchild)
+		while (curchild)
 		{
 			if (curchild->layer)
 			{
@@ -753,7 +725,7 @@ void rowPositioning(pROWCELL cell, int &dist)
 				curchild->r.top = y;
 				y += curchild->r.bottom;
 
-				curchild->r.left  = cell->r.left;
+				curchild->r.left = cell->r.left;
 				curchild->r.right = dist;
 
 				rowPositioning(curchild, size);

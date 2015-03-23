@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -47,7 +48,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MS_PROTO_REGISTERMODULE    "Proto/RegisterModule"
 
 //adds the specified protocol module to the chain for a contact
-//wParam = (WPARAM)(HANDLE)hContact
+//wParam = (MCONTACT)hContact
 //lParam = (LPARAM)(const char*)szName
 //returns 0 on success, nonzero on failure
 //The module is added in the correct position according to the type given when
@@ -55,7 +56,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MS_PROTO_ADDTOCONTACT      "Proto/AddToContact"
 
 //removes the specified protocol module from the chain for a contact
-//wParam = (WPARAM)(HANDLE)hContact
+//wParam = (MCONTACT)hContact
 //lParam = (LPARAM)(const char*)szName
 //returns 0 on success, nonzero on failure
 #define MS_PROTO_REMOVEFROMCONTACT      "Proto/RemoveFromContact"
@@ -69,7 +70,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 __forceinline HANDLE CreateProtoServiceFunction(const char *szModule, const char *szService, MIRANDASERVICE serviceProc)
 {
 	char str[MAXMODULELABELLENGTH];
-	_snprintf(str, sizeof(str), "%s%s", szModule, szService);
+	mir_snprintf(str, sizeof(str), "%s%s", szModule, szService);
 	str[MAXMODULELABELLENGTH-1] = 0;
 	return CreateServiceFunction(str, serviceProc);
 }
@@ -100,17 +101,17 @@ __forceinline HANDLE CreateProtoServiceFunction(const char *szModule, const char
 //differences between threads the functions are in.
 #define MS_PROTO_CHAINRECV       "Proto/ChainRecv"
 
-__forceinline INT_PTR ProtoChainRecv(HANDLE hContact, char *szService, WPARAM wParam, LPARAM lParam)
+__forceinline INT_PTR ProtoChainRecv(MCONTACT hContact, char *szService, WPARAM wParam, LPARAM lParam)
 {	CCSDATA ccs = { hContact, szService, wParam, lParam };
 	return CallService(MS_PROTO_CHAINRECV, 0, (LPARAM)&ccs);
 }
 
-__forceinline INT_PTR ProtoChainRecvMsg(HANDLE hContact, PROTORECVEVENT *pre)
+__forceinline INT_PTR ProtoChainRecvMsg(MCONTACT hContact, PROTORECVEVENT *pre)
 {	CCSDATA ccs = { hContact, PSR_MESSAGE, 0, (LPARAM)pre };
 	return CallService(MS_PROTO_CHAINRECV, 0, (LPARAM)&ccs);
 }
 
-__forceinline INT_PTR ProtoChainRecvFile(HANDLE hContact, PROTORECVFILET *pre)
+__forceinline INT_PTR ProtoChainRecvFile(MCONTACT hContact, PROTORECVFILET *pre)
 {	CCSDATA ccs = { hContact, PSR_FILE, 0, (LPARAM)pre };
 	return CallService(MS_PROTO_CHAINRECV, 0, (LPARAM)&ccs);
 }

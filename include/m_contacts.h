@@ -1,5 +1,7 @@
 /*
-Miranda IM
+
+Miranda NG: the free IM client for Microsoft* Windows*
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -22,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 typedef struct {
 	int cbSize;
 	BYTE dwFlag;
-	HANDLE hContact;
+	MCONTACT hContact;
 	char *szProto;
 	BYTE type;
 	union {
@@ -34,7 +36,7 @@ typedef struct {
 	};
 } CONTACTINFO;
 
-// Types of information you can retreive by setting the dwFlag in CONTACTINFO
+// Types of information you can retrieve by setting the dwFlag in CONTACTINFO
 #define CNF_FIRSTNAME   1  // returns first name (string)
 #define CNF_LASTNAME    2  // returns last name (string)
 #define CNF_NICK        3  // returns nick name (string)
@@ -110,4 +112,3 @@ typedef struct {
 #define MS_CONTACT_GETCONTACTINFO	"Miranda/Contact/GetContactInfo"
 
 #endif // M_CONTACTS_H__
-

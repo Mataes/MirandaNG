@@ -1,8 +1,9 @@
 ﻿/*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (с) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -26,17 +27,21 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MS_SYSTEM_GET_MD5I	"Miranda/System/GetMD5I"
 
 INT_PTR ResizeDialog(WPARAM wParam, LPARAM lParam);
-int InitOpenUrl(void);
-int InitWindowList(void);
-int InitPathUtils(void);
-void FreeWindowList(void);
-int InitHyperlink(void);
-int InitColourPicker(void);
-int InitBitmapFilter(void);
+
+int  InitOpenUrl(void);
+int  InitWindowList(void);
+int  InitPathUtils(void);
+int  InitHyperlink(void);
+int  InitColourPicker(void);
+int  InitBitmapFilter(void);
 void InitXmlApi(void);
+
 void InitTimeZones(void);
-void UninitTimeZones(void);
-int InitCrypt(void);
+
+int  InitCrypt(void);
+void UninitCrypt(void);
+
+INT_PTR __cdecl svcEnterString(WPARAM, LPARAM lParam);
 
 static BOOL bModuleInitialized = FALSE;
 
@@ -70,14 +75,14 @@ static CountryListEntry countries[] = {
 	{229,    LPGEN("Benin"), "BJ"},
 	{1441,   LPGEN("Bermuda"), "BM"},
 	{975,    LPGEN("Bhutan"), "BT"},
-	{591,    LPGEN("Bolivia, Plurinational State of"), "BO"},
+	{591,    LPGEN("Bolivia"), "BO"},
 	{5997,   LPGEN("Bonaire, Sint Eustatius and Saba"), "BQ"},
 	{387,    LPGEN("Bosnia and Herzegovina"), "BA"},
 	{267,    LPGEN("Botswana"), "BW"},
 	{55,     LPGEN("Bouvet Island"), "BV"},
 	{55,     LPGEN("Brazil"), "BR"},
 	{246,    LPGEN("British Indian Ocean Territory"), "IO"},
-	{673,    LPGEN("Brunei Darussalam"), "BN"},
+	{673,    LPGEN("Brunei"), "BN"},
 	{359,    LPGEN("Bulgaria"), "BG"},
 	{226,    LPGEN("Burkina Faso"), "BF"},
 	{257,    LPGEN("Burundi"), "BI"},
@@ -94,8 +99,8 @@ static CountryListEntry countries[] = {
 	{61,     LPGEN("Cocos (Keeling) Islands"), "CC"},
 	{57,     LPGEN("Colombia"), "CO"},
 	{269,    LPGEN("Comoros"), "KM"},
-	{242,    LPGEN("Congo"), "CG"},
-	{243,    LPGEN("Congo, the Democratic Republic of the"), "CD"},
+	{242,    LPGEN("Congo, Republic of the"), "CG"},
+	{243,    LPGEN("Congo, Democratic Republic of the"), "CD"},
 	{682,    LPGEN("Cook Islands"), "CK"},
 	{506,    LPGEN("Costa Rica"), "CR"},
 	{225,    LPGEN("Cote d'Ivoire"), "CI"},
@@ -108,6 +113,7 @@ static CountryListEntry countries[] = {
 	{253,    LPGEN("Djibouti"), "DJ"},
 	{1767,   LPGEN("Dominica"), "DM"},
 	{1809,   LPGEN("Dominican Republic"), "DO"},
+	{670,    LPGEN("East Timor"), "TL"},
 	{593,    LPGEN("Ecuador"), "EC"},
 	{20,     LPGEN("Egypt"), "EG"},
 	{503,    LPGEN("El Salvador"), "SV"},
@@ -122,7 +128,7 @@ static CountryListEntry countries[] = {
 	{33,     LPGEN("France"), "FR"},
 	{594,    LPGEN("French Guiana"), "GF"},
 	{689,    LPGEN("French Polynesia"), "PF"},
-	{0xFFFE, LPGEN("French Southern Territories"), "TF"},
+	{0xFFFE, LPGEN("French Southern and Antarctic Lands"), "TF"},
 	{241,    LPGEN("Gabon"), "GA"},
 	{220,    LPGEN("Gambia"), "GM"},
 	{995,    LPGEN("Georgia"), "GE"},
@@ -141,14 +147,13 @@ static CountryListEntry countries[] = {
 	{592,    LPGEN("Guyana"), "GY"},
 	{509,    LPGEN("Haiti"), "HT"},
 	{0xFFFE, LPGEN("Heard Island and McDonald Islands"), "HM"},
-	{379,    LPGEN("Holy See (Vatican City State)"), "VA"},
 	{504,    LPGEN("Honduras"), "HN"},
 	{852,    LPGEN("Hong Kong"), "HK"},
 	{36,     LPGEN("Hungary"), "HU"},
 	{354,    LPGEN("Iceland"), "IS"},
 	{91,     LPGEN("India"), "IN"},
 	{62,     LPGEN("Indonesia"), "ID"},
-	{98,     LPGEN("Iran, Islamic Republic of"), "IR"},
+	{98,     LPGEN("Iran"), "IR"},
 	{964,    LPGEN("Iraq"), "IQ"},
 	{353,    LPGEN("Ireland"), "IE"},
 	{44,     LPGEN("Isle of Man"), "IM"},
@@ -161,11 +166,11 @@ static CountryListEntry countries[] = {
 	{76,     LPGEN("Kazakhstan"), "KZ"},
 	{254,    LPGEN("Kenya"), "KE"},
 	{686,    LPGEN("Kiribati"), "KI"},
-	{850,    LPGEN("Korea, Democratic People's Republic of"), "KP"},
-	{82,     LPGEN("Korea, Republic of"), "KR"},
+	{850,    LPGEN("North Korea"), "KP"},
+	{82,     LPGEN("South Korea"), "KR"},
 	{965,    LPGEN("Kuwait"), "KW"},
 	{996,    LPGEN("Kyrgyzstan"), "KG"},
-	{856,    LPGEN("Lao People's Democratic Republic"), "LA"},
+	{856,    LPGEN("Laos"), "LA"},
 	{371,    LPGEN("Latvia"), "LV"},
 	{961,    LPGEN("Lebanon"), "LB"},
 	{266,    LPGEN("Lesotho"), "LS"},
@@ -174,8 +179,8 @@ static CountryListEntry countries[] = {
 	{423,    LPGEN("Liechtenstein"), "LI"},
 	{370,    LPGEN("Lithuania"), "LT"},
 	{352,    LPGEN("Luxembourg"), "LU"},
-	{853,    LPGEN("Macao"), "MO"},
-	{389,    LPGEN("Macedonia, The Former Yugoslav Republic of"), "MK"},
+	{853,    LPGEN("Macau"), "MO"},
+	{389,    LPGEN("Macedonia"), "MK"},
 	{261,    LPGEN("Madagascar"), "MG"},
 	{265,    LPGEN("Malawi"), "MW"},
 	{60,     LPGEN("Malaysia"), "MY"},
@@ -189,7 +194,7 @@ static CountryListEntry countries[] = {
 	{262,    LPGEN("Mayotte"), "YT"},
 	{52,     LPGEN("Mexico"), "MX"},
 	{691,    LPGEN("Micronesia, Federated States of"), "FM"},
-	{373,    LPGEN("Moldova, Republic of"), "MD"},
+	{373,    LPGEN("Moldova"), "MD"},
 	{377,    LPGEN("Monaco"), "MC"},
 	{976,    LPGEN("Mongolia"), "MN"},
 	{382,    LPGEN("Montenegro"), "ME"},
@@ -213,20 +218,20 @@ static CountryListEntry countries[] = {
 	{968,    LPGEN("Oman"), "OM"},
 	{92,     LPGEN("Pakistan"), "PK"},
 	{680,    LPGEN("Palau"), "PW"},
-	{970,    LPGEN("Palestinian Territory, Occupied"), "PS"},
+	{970,    LPGEN("Palestinian Territories"), "PS"},
 	{507,    LPGEN("Panama"), "PA"},
 	{675,    LPGEN("Papua New Guinea"), "PG"},
 	{595,    LPGEN("Paraguay"), "PY"},
 	{51,     LPGEN("Peru"), "PE"},
 	{63,     LPGEN("Philippines"), "PH"},
-	{64,     LPGEN("Pitcairn"), "PN"},
+	{64,     LPGEN("Pitcairn Islands"), "PN"},
 	{48,     LPGEN("Poland"), "PL"},
 	{351,    LPGEN("Portugal"), "PT"},
 	{1787,   LPGEN("Puerto Rico"), "PR"},
 	{974,    LPGEN("Qatar"), "QA"},
 	{262,    LPGEN("Reunion"), "RE"},
 	{40,     LPGEN("Romania"), "RO"},
-	{7,      LPGEN("Russian Federation"), "RU"},
+	{7,      LPGEN("Russia"), "RU"},
 	{250,    LPGEN("Rwanda"), "RW"},
 	{590,    LPGEN("Saint Barthelemy"), "BL"},
 	{290,    LPGEN("Saint Helena, Ascension and Tristan da Cunha"), "SH"},
@@ -260,12 +265,11 @@ static CountryListEntry countries[] = {
 	{268,    LPGEN("Swaziland"), "SZ"},
 	{46,     LPGEN("Sweden"), "SE"},
 	{41,     LPGEN("Switzerland"), "CH"},
-	{963,    LPGEN("Syrian Arab Republic"), "SY"},
-	{886,    LPGEN("Taiwan, Province of China"), "TW"},
+	{963,    LPGEN("Syria"), "SY"},
+	{886,    LPGEN("Taiwan"), "TW"},
 	{992,    LPGEN("Tajikistan"), "TJ"},
-	{255,    LPGEN("Tanzania, United Republic of"), "TZ"},
+	{255,    LPGEN("Tanzania"), "TZ"},
 	{66,     LPGEN("Thailand"), "TH"},
-	{670,    LPGEN("Timor-Leste"), "TL"},
 	{228,    LPGEN("Togo"), "TG"},
 	{690,    LPGEN("Tokelau"), "TK"},
 	{676,    LPGEN("Tonga"), "TO"},
@@ -284,10 +288,11 @@ static CountryListEntry countries[] = {
 	{598,    LPGEN("Uruguay"), "UY"},
 	{998,    LPGEN("Uzbekistan"), "UZ"},
 	{678,    LPGEN("Vanuatu"), "VU"},
-	{58,     LPGEN("Venezuela, Bolivarian Republic of"), "VE"},
-	{84,     LPGEN("Viet Nam"), "VN"},
-	{1284,   LPGEN("Virgin Islands, British"), "VG"},
-	{1340,   LPGEN("Virgin Islands, U.S."), "VI"},
+	{379,    LPGEN("Vatican City"), "VA"},
+	{58,     LPGEN("Venezuela"), "VE"},
+	{84,     LPGEN("Vietnam"), "VN"},
+	{1284,   LPGEN("Virgin Islands (British)"), "VG"},
+	{1340,   LPGEN("Virgin Islands (United States)"), "VI"},
 	{681,    LPGEN("Wallis and Futuna"), "WF"},
 	{5289,   LPGEN("Western Sahara"), "EH"},
 	{967,    LPGEN("Yemen"), "YE"},
@@ -307,7 +312,7 @@ static INT_PTR GetCountryByNumber(WPARAM wParam, LPARAM)
 static INT_PTR GetCountryByISOCode(WPARAM wParam, LPARAM)
 {
 	for (int i = 0; i < SIZEOF(countries); i++)
-		if ( lstrcmpiA((char*)wParam, countries[i].ISOcode) == 0)
+		if ( mir_strcmpi((char*)wParam, countries[i].ISOcode) == 0)
 			return (INT_PTR)countries[i].szName;
 
 	return NULL;
@@ -351,23 +356,14 @@ static INT_PTR AssertInsideScreen(WPARAM wParam, LPARAM lParam)
 	RECT rcScreen;
 	SystemParametersInfo(SPI_GETWORKAREA, 0, &rcScreen, FALSE);
 
-	if (MyMonitorFromWindow)
-	{
-		if (MyMonitorFromRect(rc, MONITOR_DEFAULTTONULL))
-			return 0;
+	if (MonitorFromRect(rc, MONITOR_DEFAULTTONULL))
+		return 0;
 
-		MONITORINFO mi = {0};
-		HMONITOR hMonitor = MyMonitorFromRect(rc, MONITOR_DEFAULTTONEAREST);
-		mi.cbSize = sizeof(mi);
-		if (MyGetMonitorInfo(hMonitor, &mi))
-			rcScreen = mi.rcWork;
-	}
-	else
-	{
-		RECT rcDest;
-		if (IntersectRect(&rcDest, &rcScreen, rc))
-			return 0;
-	}
+	MONITORINFO mi = {0};
+	HMONITOR hMonitor = MonitorFromRect(rc, MONITOR_DEFAULTTONEAREST);
+	mi.cbSize = sizeof(mi);
+	if (GetMonitorInfo(hMonitor, &mi))
+		rcScreen = mi.rcWork;
 
 	if (rc->top >= rcScreen.bottom)
 		OffsetRect(rc, 0, rcScreen.bottom - rc->bottom);
@@ -412,7 +408,7 @@ static INT_PTR RestoreWindowPosition(WPARAM wParam, LPARAM lParam)
 	if (wParam & RWPF_NOACTIVATE)
 		wp.showCmd = SW_SHOWNOACTIVATE;
 
-	if ( !(wParam & RWPF_NOMOVE))
+	if (!(wParam & RWPF_NOMOVE))
 		AssertInsideScreen((WPARAM) &wp.rcNormalPosition, 0);
 
 	SetWindowPlacement(swp->hwnd, &wp);
@@ -453,18 +449,9 @@ static INT_PTR GenerateRandom(WPARAM wParam, LPARAM lParam)
 		pfnRtlGenRandom = (PGENRANDOM)GetProcAddress(hModule, "SystemFunction036");
 		if (pfnRtlGenRandom)
 		{
-			if ( !pfnRtlGenRandom((PVOID)lParam, wParam))
+			if (!pfnRtlGenRandom((PVOID)lParam, wParam))
 				pfnRtlGenRandom = NULL;
 		}
-	}
-	if (pfnRtlGenRandom == NULL)
-	{
-		srand(GetTickCount());
-		unsigned short* buf = (unsigned short*)lParam;
-		for (; (long)(wParam-=2) >= 0;)
-			*(buf++) = (unsigned short)rand();
-		if (lParam < 0)
-			*(char*)buf = (char)(rand() & 0xFF);
 	}
 	return 0;
 }
@@ -483,6 +470,7 @@ int LoadUtilsModule(void)
 	CreateServiceFunction(MS_UTILS_GETCOUNTRYBYISOCODE, GetCountryByISOCode);
 	CreateServiceFunction(MS_UTILS_GETCOUNTRYLIST, GetCountryList);
 	CreateServiceFunction(MS_UTILS_GETRANDOM, GenerateRandom);
+	CreateServiceFunction(MS_UTILS_ENTERSTRING, svcEnterString);
 	CreateServiceFunction(MS_SYSTEM_RESTART, RestartMiranda);
 
 	InitOpenUrl();
@@ -499,9 +487,8 @@ int LoadUtilsModule(void)
 
 void UnloadUtilsModule(void)
 {
-	if ( !bModuleInitialized)
+	if (!bModuleInitialized)
 		return;
 
-	FreeWindowList();
-	UninitTimeZones();
+	UninitCrypt();
 }

@@ -1,9 +1,10 @@
 
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-12 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -135,49 +136,62 @@ struct CountryListEntry {
 
 /******************************* Window lists *******************************/
 
-//allocate a window list   v0.1.0.1+
-//wParam = lParam = 0
-//returns a handle to the new window list
+// allocates a window list
+// wParam = lParam = 0 (unused)
+// returns a handle to the new window list
 #define MS_UTILS_ALLOCWINDOWLIST "Utils/AllocWindowList"
+__forceinline HANDLE WindowList_Create(void)
+{	return (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST, 0, 0);
+}
 
-//adds a window to the specified window list   v0.1.0.1+
-//wParam = 0
-//lParam = (LPARAM)(WINDOWLISTENTRY*)&wle
-//returns 0 on success, nonzero on failure
+// destroys a window list
+// wParam = (HANDLE) window list handle
+// lParam = 0 (unused)
+// returns a handle to the new window list
+#define MS_UTILS_DESTROYWINDOWLIST "Utils/DestroyWindowList"
+__forceinline HANDLE WindowList_Destroy(HANDLE hList)
+{	return (HANDLE)CallService(MS_UTILS_DESTROYWINDOWLIST, (WPARAM)hList, 0);
+}
+
+// adds a window to the specified window list
+// wParam = 0
+// lParam = (LPARAM)(WINDOWLISTENTRY*)&wle
+// returns 0 on success, nonzero on failure
 typedef struct {
 	HANDLE hList;
 	HWND hwnd;
-	HANDLE hContact;
+	MCONTACT hContact;
 } WINDOWLISTENTRY;
 #define MS_UTILS_ADDTOWINDOWLIST "Utils/AddToWindowList"
-__forceinline INT_PTR WindowList_Add(HANDLE hList, HWND hwnd, HANDLE hContact) {
+__forceinline INT_PTR WindowList_Add(HANDLE hList, HWND hwnd, MCONTACT hContact) {
 	WINDOWLISTENTRY wle;
 	wle.hList = hList; wle.hwnd = hwnd; wle.hContact = hContact;
 	return CallService(MS_UTILS_ADDTOWINDOWLIST, 0, (LPARAM)&wle);
 }
-//removes a window from the specified window list  v0.1.0.1+
-//wParam = (WPARAM)(HANDLE)hList
-//lParam = (LPARAM)(HWND)hwnd
-//returns 0 on success, nonzero on failure
+
+// removes a window from the specified window list
+// wParam = (WPARAM)(HANDLE)hList
+// lParam = (LPARAM)(HWND)hwnd
+// returns 0 on success, nonzero on failure
 #define MS_UTILS_REMOVEFROMWINDOWLIST "Utils/RemoveFromWindowList"
 __forceinline INT_PTR WindowList_Remove(HANDLE hList, HWND hwnd) {
 	return CallService(MS_UTILS_REMOVEFROMWINDOWLIST, (WPARAM)hList, (LPARAM)hwnd);
 }
 
-//finds a window given the hContact  v0.1.0.1+
-//wParam = (WPARAM)(HANDLE)hList
-//lParam = (WPARAM)(HANDLE)hContact
-//returns the window handle on success, or NULL on failure
+// finds a window given the hContact
+// wParam = (WPARAM)(HANDLE)hList
+// lParam = (MCONTACT)hContact
+// returns the window handle on success, or NULL on failure
 #define MS_UTILS_FINDWINDOWINLIST "Utils/FindWindowInList"
-__forceinline HWND WindowList_Find(HANDLE hList, HANDLE hContact) {
-	return (HWND)CallService(MS_UTILS_FINDWINDOWINLIST, (WPARAM)hList, (LPARAM)hContact);
+__forceinline HWND WindowList_Find(HANDLE hList, MCONTACT hContact) {
+	return (HWND)CallService(MS_UTILS_FINDWINDOWINLIST, (WPARAM)hList, hContact);
 }
 
-//broadcasts a message to all windows in a list  v0.1.0.1+
-//wParam = (WPARAM)(HANDLE)hList
-//lParam = (LPARAM)(MSG*)&msg
-//returns 0 on success, nonzero on failure
-//Only msg.message, msg.wParam and msg.lParam are used
+// sends a message to all windows in a list using SendMessage
+// wParam = (WPARAM)(HANDLE)hList
+// lParam = (LPARAM)(MSG*)&msg
+// returns 0 on success, nonzero on failure
+// Only msg.message, msg.wParam and msg.lParam are used
 #define MS_UTILS_BROADCASTTOWINDOWLIST "Utils/BroadcastToWindowList"
 __forceinline INT_PTR WindowList_Broadcast(HANDLE hList, UINT message, WPARAM wParam, LPARAM lParam) {
 	MSG msg;
@@ -185,17 +199,11 @@ __forceinline INT_PTR WindowList_Broadcast(HANDLE hList, UINT message, WPARAM wP
 	return CallService(MS_UTILS_BROADCASTTOWINDOWLIST, (WPARAM)hList, (LPARAM)&msg);
 }
 
-/*
-	Description: Broadcast a message to all windows in the given list using PostMessage()
-	Version: 0.3.0.0+
-	Inline helper: WindowList_BroadcastAsync
-
-	wParam = (WPARAM)(HANDLE)hList
-	lParam = (LPARAM)(MSG*)&msg
-
-	Returns 0 on success, nonzero on failure, this service does not fail, even if PostMessage() fails for whatever reason
-
-*/
+// sends a message to all windows in a list using PostMessage
+// wParam = (WPARAM)(HANDLE)hList
+// lParam = (LPARAM)(MSG*)&msg
+// returns 0 on success, nonzero on failure
+// Only msg.message, msg.wParam and msg.lParam are used
 #define MS_UTILS_BROADCASTTOWINDOWLIST_ASYNC "Utils/BroadcastToWindowListAsync"
 
 __forceinline INT_PTR WindowList_BroadcastAsync(HANDLE hList, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -228,12 +236,12 @@ __forceinline INT_PTR WindowList_BroadcastAsync(HANDLE hList, UINT message, WPAR
 //returns 0 on success, nonzero on failure
 typedef struct {
 	HWND hwnd;
-	HANDLE hContact;
+	MCONTACT hContact;
 	const char *szModule;		//module name to store the setting in
 	const char *szNamePrefix;	//text to prefix on "x", "width", etc, to form setting names
 } SAVEWINDOWPOS;
 #define MS_UTILS_SAVEWINDOWPOSITION  "Utils/SaveWindowPos"
-__forceinline INT_PTR Utils_SaveWindowPosition(HWND hwnd, HANDLE hContact, const char *szModule, const char *szNamePrefix) {
+__forceinline INT_PTR Utils_SaveWindowPosition(HWND hwnd, MCONTACT hContact, const char *szModule, const char *szNamePrefix) {
 	SAVEWINDOWPOS swp;
 	swp.hwnd = hwnd; swp.hContact = hContact; swp.szModule = szModule; swp.szNamePrefix = szNamePrefix;
 	return CallService(MS_UTILS_SAVEWINDOWPOSITION, 0, (LPARAM)&swp);
@@ -252,18 +260,18 @@ __forceinline INT_PTR Utils_SaveWindowPosition(HWND hwnd, HANDLE hContact, const
 #define RWPF_NOACTIVATE 4  //show but don't activate v0.3.3.0+
 #define RWPF_HIDDEN		8  //make it hidden
 #define MS_UTILS_RESTOREWINDOWPOSITION	"Utils/RestoreWindowPos"
-__forceinline INT_PTR Utils_RestoreWindowPositionEx(HWND hwnd, int flags, HANDLE hContact, const char *szModule, const char *szNamePrefix) {
+__forceinline INT_PTR Utils_RestoreWindowPositionEx(HWND hwnd, int flags, MCONTACT hContact, const char *szModule, const char *szNamePrefix) {
 	SAVEWINDOWPOS swp;
 	swp.hwnd = hwnd; swp.hContact = hContact; swp.szModule = szModule; swp.szNamePrefix = szNamePrefix;
 	return CallService(MS_UTILS_RESTOREWINDOWPOSITION, flags, (LPARAM)&swp);
 }
-__forceinline INT_PTR Utils_RestoreWindowPosition(HWND hwnd, HANDLE hContact, const char *szModule, const char *szNamePrefix) {
+__forceinline INT_PTR Utils_RestoreWindowPosition(HWND hwnd, MCONTACT hContact, const char *szModule, const char *szNamePrefix) {
 	return Utils_RestoreWindowPositionEx(hwnd, 0, hContact, szModule, szNamePrefix);
 }
-__forceinline INT_PTR Utils_RestoreWindowPositionNoSize(HWND hwnd, HANDLE hContact, const char *szModule, const char *szNamePrefix) {
+__forceinline INT_PTR Utils_RestoreWindowPositionNoSize(HWND hwnd, MCONTACT hContact, const char *szModule, const char *szNamePrefix) {
 	return Utils_RestoreWindowPositionEx(hwnd, RWPF_NOSIZE, hContact, szModule, szNamePrefix);
 }
-__forceinline INT_PTR Utils_RestoreWindowPositionNoMove(HWND hwnd, HANDLE hContact, const char *szModule, const char *szNamePrefix) {
+__forceinline INT_PTR Utils_RestoreWindowPositionNoMove(HWND hwnd, MCONTACT hContact, const char *szModule, const char *szNamePrefix) {
 	return Utils_RestoreWindowPositionEx(hwnd, RWPF_NOMOVE, hContact, szModule, szNamePrefix);
 }
 
@@ -355,14 +363,14 @@ __forceinline INT_PTR Utils_AssertInsideScreen(RECT *rc) {
 
 // variables known by the core:
 // ----------------------------
-// %miranda_profile%  -> same as MS_DB_GETPROFILEPATH, base folder for all profiles
+// %miranda_profilesdir%  -> same as MS_DB_GETPROFILEPATH, base folder for all profiles
 // %miranda_userdata% -> the active profile folder (home of the .dat file and all
 //                       profile data)
 // %miranda_path%     -> home path of the miranda installation (installation path
 //                       of miranda32/64.exe
 // %miranda_profilename% -> Name of the profile in use. Essentially, the name of the
 //                          .dat file without file name extension. Also: the folder name
-//                          relative to %miranda_profile% where all profile data is stored.
+//                          relative to %miranda_profilesdir% where all profile data is stored.
 // %miranda_logpath%     -> base folder for log files. This is \Logs relative to the
 //                          current profile folder.
 // %miranda_avatarcache% -> base folder for all protocol avatars. internal use only.
@@ -373,6 +381,7 @@ __forceinline INT_PTR Utils_AssertInsideScreen(RECT *rc) {
 // %nick%                -> a contact nick name.
 // %proto%               -> internal protocol name for a given contact. NOT the user-
 //                          defined account name.
+// %accountname%         -> user-defined account name for a given contact.
 // %userid%              -> Unique ID for a given contact (UIN, JID etc.)
 
 // the following variables are system variables - unrelated to miranda profiles.
@@ -401,7 +410,7 @@ typedef struct
 {
 	int cbSize;
 	DWORD dwFlags;
-	HANDLE hContact;
+	MCONTACT hContact;
 	REPLACEVARSARRAY *variables;
 } REPLACEVARSDATA;
 
@@ -459,5 +468,40 @@ __forceinline TCHAR* Utils_ReplaceVarsT(const TCHAR *szData) {
 	#define MS_UTILS_CREATEDIRTREET          MS_UTILS_CREATEDIRTREE
 	#define MS_UTILS_GETBITMAPFILTERSTRINGST MS_UTILS_GETBITMAPFILTERSTRINGS
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// one field form
+
+#define ESF_MULTILINE 1
+#define ESF_COMBO     2
+#define ESF_RICHEDIT  3
+#define ESF_PASSWORD  4
+
+typedef struct
+{
+	int     cbSize;         // structure size
+	int     type;           // one of ESF_* constants
+	LPCSTR  szModuleName;   // module name to save window size and combobox strings
+	LPCSTR  szDataPrefix;   // prefix for stored database variables
+	LPCTSTR caption;        // window caption
+	union {
+		LPCTSTR ptszInitVal; // initial value (note: the core DOES NOT free it)
+		LPTSTR  ptszResult;  // result entered (must be freed via mir_free)
+	};
+	int     recentCount;    // number of combobox strings to store
+	int     timeout;        // timeout for the form auto-close
+}
+ENTER_STRING;
+
+// enters one string
+// wParam = 0 (unused)
+// lParam = ENTER_STRING* (form description)
+// returns TRUE on pressing OK or FALSE if Cancel was pressed
+#define MS_UTILS_ENTERSTRING "Utils/EnterString"
+
+__forceinline BOOL EnterString(ENTER_STRING *pForm)
+{
+	return (BOOL)CallService(MS_UTILS_ENTERSTRING, 0, (LPARAM)pForm);
+}
 
 #endif // M_UTILS_H__

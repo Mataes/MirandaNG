@@ -2,16 +2,16 @@ unit zwrapper;
 
 interface
 
-function ZDecompressBuf(const inBuffer: Pointer; inSize: Integer; out outBuffer: Pointer; out outSize: Integer; outEstimate: Integer): Integer;
+function ZDecompressBuf(const inBuffer: pointer; inSize: integer; out outBuffer: pointer; out outSize: integer; outEstimate: integer): integer;
 
 implementation
 
 uses zlib;
 
-function ZDecompressBuf(const inBuffer: Pointer; inSize: Integer; out outBuffer: Pointer; out outSize: Integer; outEstimate: Integer): Integer;
+function ZDecompressBuf(const inBuffer: pointer; inSize: integer; out outBuffer: pointer; out outSize: integer; outEstimate: integer): integer;
 var
   zstream           : TZStreamRec;
-  delta             : Integer;
+  delta             : integer;
 begin
   FillChar(zstream, SizeOf(TZStreamRec), 0);
 
@@ -38,7 +38,7 @@ begin
         Inc(outSize, delta);
         ReallocMem(outBuffer, outSize);
 
-        zstream.next_out := {$IFDEF FPC}PBytef{$ENDIF}(pByte(outBuffer) + zstream.total_out);
+        zstream.next_out := {$IFDEF FPC}PBytef{$ENDIF}(PByte(outBuffer) + zstream.total_out);
         zstream.avail_out := delta;
         Result := inflate(zstream, Z_NO_FLUSH);
         if Result < 0 then Exit;

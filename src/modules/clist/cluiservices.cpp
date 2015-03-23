@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -43,7 +44,7 @@ static INT_PTR GroupAdded(WPARAM wParam, LPARAM lParam)
 		HWND hwndFocus = GetFocus();
 
 		GetClassName(hwndFocus, szFocusClass, SIZEOF(szFocusClass));
-		if ( !lstrcmp(szFocusClass, _T(CLISTCONTROL_CLASS))) {
+		if (!mir_tstrcmp(szFocusClass, _T(CLISTCONTROL_CLASS))) {
 			hItem = (HANDLE) SendMessage(hwndFocus, CLM_FINDGROUP, wParam, 0);
 			if (hItem)
 				SendMessage(hwndFocus, CLM_EDITLABEL, (WPARAM) hItem, 0);
@@ -102,7 +103,7 @@ static INT_PTR ListEndRebuild(WPARAM, LPARAM)
 		rebuild = 1;
 	}
 	if (rebuild)
-		SendMessage(cli.hwndContactTree, CLM_AUTOREBUILD, 0, 0);
+		cli.pfnInitAutoRebuild(cli.hwndContactTree);
 	return 0;
 }
 
@@ -175,21 +176,21 @@ void fnCluiProtocolStatusChanged(int, const char*)
 				x += g_IconWidth;
 			if (showOpts & 2) {
 				TCHAR tszName[64];
-				PROTOACCOUNT* pa = Proto_GetAccount(cli.menuProtos[i].szProto);
+				PROTOACCOUNT *pa = Proto_GetAccount(cli.menuProtos[i].szProto);
 				if (pa)
 					mir_sntprintf(tszName, SIZEOF(tszName), _T("%s "), pa->tszAccountName);
 				else
 					tszName[0] = 0;
 
-				if (showOpts & 4 && lstrlen(tszName) < SIZEOF(tszName)-1)
-					lstrcat(tszName, _T(" "));
-				GetTextExtentPoint32(hdc, tszName, lstrlen(tszName), &textSize);
+				if (showOpts & 4 && mir_tstrlen(tszName) < SIZEOF(tszName)-1)
+					mir_tstrcat(tszName, _T(" "));
+				GetTextExtentPoint32(hdc, tszName, (int)mir_tstrlen(tszName), &textSize);
 				x += textSize.cx;
 				x += GetSystemMetrics(SM_CXBORDER) * 4; // The SB panel doesnt allocate enough room
 			}
 			if (showOpts & 4) {
 				TCHAR* modeDescr = cli.pfnGetStatusModeDescription(CallProtoServiceInt(NULL,cli.menuProtos[i].szProto, PS_GETSTATUS, 0, 0), 0);
-				GetTextExtentPoint32(hdc, modeDescr, lstrlen(modeDescr), &textSize);
+				GetTextExtentPoint32(hdc, modeDescr, (int)mir_tstrlen(modeDescr), &textSize);
 				x += textSize.cx;
 				x += GetSystemMetrics(SM_CXBORDER) * 4; // The SB panel doesnt allocate enough room
 			}

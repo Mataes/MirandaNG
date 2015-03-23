@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -28,11 +29,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static int sttCompareHotkeys(const THotkeyItem *p1, const THotkeyItem *p2)
 {
 	int res;
-	if (res = lstrcmp(p1->ptszSection, p2->ptszSection))
+	if (res = mir_tstrcmp(p1->ptszSection, p2->ptszSection))
 		return res;
-	if (res = lstrcmp(p1->ptszDescription, p2->ptszDescription))
+	if (res = mir_tstrcmp(p1->ptszDescription, p2->ptszDescription))
 		return res;
-	if ( !p1->rootHotkey && p2->rootHotkey)
+	if (!p1->rootHotkey && p2->rootHotkey)
 		return -1;
 	if (p1->rootHotkey && !p2->rootHotkey)
 		return 1;
@@ -99,12 +100,13 @@ static LRESULT CALLBACK sttKeyboardProc(int code, WPARAM wParam, LPARAM lParam)
 
 			for (int i=0; i < hotkeys.getCount(); i++) {
 				THotkeyItem *item = hotkeys[i];
+				if (item->type != HKT_LOCAL || !item->Enabled)
+					continue;
+
 				BYTE hkMod, hkVk;
-				if (item->type != HKT_LOCAL) continue;
 				sttWordToModAndVk(item->Hotkey, &hkMod, &hkVk);
-				if ( !hkVk) continue;
-				if ( !item->Enabled) continue;
-				if (item->pszService && (vk == hkVk) && (mod == hkMod)) {
+				if (!hkVk) continue;
+				if (item->pszService && vk == hkVk && mod == hkMod) {
 					CallService(item->pszService, 0, item->lParam);
 					return TRUE;
 	}	}	}	}
@@ -127,7 +129,7 @@ static INT_PTR svcHotkeyUnsubclass(WPARAM wParam, LPARAM)
 static INT_PTR svcHotkeyRegister(WPARAM wParam, LPARAM lParam)
 {
 	HOTKEYDESC *desc = (HOTKEYDESC *)lParam;
-	if (desc->cbSize != sizeof(HOTKEYDESC) && desc->cbSize != HOTKEYDESC_SIZE_V1)
+	if (desc->cbSize != sizeof(HOTKEYDESC))
 		return 0;
 
 	THotkeyItem *item = (THotkeyItem*)mir_alloc(sizeof(THotkeyItem));
@@ -171,7 +173,7 @@ static INT_PTR svcHotkeyRegister(WPARAM wParam, LPARAM lParam)
 	item->DefHotkey = desc->DefHotKey & ~HKF_MIRANDA_LOCAL;
 	item->Hotkey = db_get_w(NULL, DBMODULENAME, item->pszName, item->DefHotkey);
 	item->type = item->pszService ?
-		(THotkeyType)db_get_b(NULL, DBMODULENAME "Types", item->pszName, 
+		(THotkeyType)db_get_b(NULL, DBMODULENAME "Types", item->pszName,
 			(desc->DefHotKey & HKF_MIRANDA_LOCAL) ? HKT_LOCAL : HKT_GLOBAL) : HKT_MANUAL;
 	item->lParam = desc->lParam;
 
@@ -187,14 +189,14 @@ static INT_PTR svcHotkeyRegister(WPARAM wParam, LPARAM lParam)
 
 	hotkeys.insert(item);
 
-	if ( !item->rootHotkey) {
+	if (!item->rootHotkey) {
 		/* try to load alternatives from db */
 		int count, i;
 		mir_snprintf(buf, SIZEOF(buf), "%s$count", item->pszName);
 		count = (int)db_get_dw(NULL, DBMODULENAME, buf, -1);
 		for (i=0; i < count; i++) {
 			mir_snprintf(buf, SIZEOF(buf), "%s$%d", item->pszName, i);
-			if ( !db_get_w(NULL, DBMODULENAME, buf, 0))
+			if (!db_get_w(NULL, DBMODULENAME, buf, 0))
 				continue;
 
 			svcHotkeyRegister(wParam, lParam);
@@ -223,10 +225,10 @@ static INT_PTR svcHotkeyUnregister(WPARAM, LPARAM lParam)
 		char *pszCurrentName = hotkeys[i]->rootHotkey ?
 			hotkeys[i]->rootHotkey->pszName :
 			hotkeys[i]->pszName;
-		if ( !pszCurrentName) continue;
+		if (!pszCurrentName) continue;
 
-		hotkeys[i]->UnregisterHotkey = 
-			!lstrcmpA(pszCurrentName, pszName)  || 
+		hotkeys[i]->UnregisterHotkey =
+			!mir_strcmp(pszCurrentName, pszName)  ||
 			!strncmp(pszCurrentName, pszNamePrefix, cbNamePrefix);
 	}
 
@@ -261,10 +263,10 @@ static INT_PTR svcHotkeyCheck(WPARAM wParam, LPARAM lParam)
 			for (i=0; i < hotkeys.getCount(); i++) {
 				THotkeyItem *item = hotkeys[i];
 				BYTE hkMod, hkVk;
-				if ((item->type != HKT_MANUAL) || lstrcmp(pszSection, item->ptszSection)) continue;
+				if ((item->type != HKT_MANUAL) || mir_tstrcmp(pszSection, item->ptszSection)) continue;
 				sttWordToModAndVk(item->Hotkey, &hkMod, &hkVk);
-				if ( !hkVk) continue;
-				if ( !item->Enabled) continue;
+				if (!hkVk) continue;
+				if (!item->Enabled) continue;
 				if ((vk == hkVk) && (mod == hkMod)) {
 					mir_free(pszSection);
 					return item->lParam;
@@ -389,7 +391,7 @@ int LoadSkinHotkeys(void)
 
 void UnloadSkinHotkeys(void)
 {
-	if ( !bModuleInitialized)
+	if (!bModuleInitialized)
 		return;
 
 	DestroyHookableEvent(hEvChanged);
@@ -397,7 +399,6 @@ void UnloadSkinHotkeys(void)
 
 	for (int i=0; i < hotkeys.getCount(); i++)
 		FreeHotkey(hotkeys[i]);
-	hotkeys.destroy();
 
 	DestroyWindow(g_hwndHotkeyHost);
 }

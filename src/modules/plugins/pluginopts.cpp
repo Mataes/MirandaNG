@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -31,11 +32,15 @@ extern MUUID miid_clist, miid_database, miid_protocol;
 HANDLE hevLoadModule, hevUnloadModule;
 bool bOldMode = false;
 
+static CMString szFilter;
+static UINT_PTR timerID;
+
 /////////////////////////////////////////////////////////////////////////////////////////
 //   Plugins options page dialog
 
-typedef struct
+struct PluginListItemData
 {
+	TCHAR fileName[MAX_PATH];
 	HINSTANCE hInst;
 	int   flags, stdPlugin;
 	char* author;
@@ -44,9 +49,14 @@ typedef struct
 	char* copyright;
 	char* homepage;
 	MUUID uuid;
-	TCHAR fileName[MAX_PATH];
+};
+
+static int sttSortPlugins(const PluginListItemData *p1, const PluginListItemData *p2)
+{
+	return _tcscmp(p1->fileName, p2->fileName);
 }
-	PluginListItemData;
+
+static LIST<PluginListItemData> arPluginList(10, sttSortPlugins);
 
 static BOOL dialogListPlugins(WIN32_FIND_DATA *fd, TCHAR *path, WPARAM, LPARAM lParam)
 {
@@ -58,7 +68,7 @@ static BOOL dialogListPlugins(WIN32_FIND_DATA *fd, TCHAR *path, WPARAM, LPARAM l
 	if (checkAPI(buf, &pi, MIRANDA_VERSION_CORE, CHECKAPI_NONE) == 0)
 		return TRUE;
 
-	PluginListItemData* dat = (PluginListItemData*)mir_alloc(sizeof(PluginListItemData));
+	PluginListItemData *dat = (PluginListItemData*)mir_alloc(sizeof(PluginListItemData));
 	dat->hInst = hInst;
 	dat->flags = pi.pluginInfo->flags;
 
@@ -70,7 +80,9 @@ static BOOL dialogListPlugins(WIN32_FIND_DATA *fd, TCHAR *path, WPARAM, LPARAM l
 			if (idx != -1 ) {
 				dat->stdPlugin |= (1 << idx);
 				break;
-	}	}	}
+			}
+		}
+	}
 
 	CharLower(fd->cFileName);
 	_tcsncpy(dat->fileName, fd->cFileName, SIZEOF(dat->fileName));
@@ -78,27 +90,26 @@ static BOOL dialogListPlugins(WIN32_FIND_DATA *fd, TCHAR *path, WPARAM, LPARAM l
 	HWND hwndList = (HWND)lParam;
 
 	LVITEM it = { 0 };
-	it.mask = LVIF_TEXT | LVIF_PARAM | LVIF_IMAGE;
-	it.iImage = (dat->flags & UNICODE_AWARE) ? 0 : 1;
+	// column  1: Checkbox +  Enable/disabled icons
+	it.mask = LVIF_PARAM | LVIF_IMAGE;
+	it.iImage = (hInst != NULL) ? 2 : 3;
+	bool bNoCheckbox = (dat->flags & STATIC_PLUGIN) != 0;
+	if (bNoCheckbox|| hasMuuid(pi, miid_clist) || hasMuuid(pi, miid_protocol))
+		it.iImage += 2;
 	it.lParam = (LPARAM)dat;
 	int iRow = ListView_InsertItem(hwndList, &it);
-
-	bool bNoCheckbox = (dat->flags & STATIC_PLUGIN) != 0;
-		//hasMuuid(pi, miid_database) || !_tcscmp(dat->fileName, _T("advaimg.dll")) || !_tcscmp(dat->fileName, _T("dbchecker.dll"));
 
 	if (isPluginOnWhiteList(fd->cFileName))
 		ListView_SetItemState(hwndList, iRow, bNoCheckbox ? 0x3000 : 0x2000, LVIS_STATEIMAGEMASK);
 
 	if (iRow != -1) {
-		it.mask = LVIF_IMAGE;
+		// column 2: Unicode/ANSI icon + filename
+		it.mask = LVIF_IMAGE | LVIF_TEXT;
 		it.iItem = iRow;
 		it.iSubItem = 1;
-		it.iImage = (hInst != NULL) ? 2 : 3;
-		if (bNoCheckbox|| hasMuuid(pi, miid_clist) || hasMuuid(pi, miid_protocol))
-			it.iImage += 2;
+		it.iImage = (dat->flags & UNICODE_AWARE) ? 0 : 1;
+		it.pszText = fd->cFileName;
 		ListView_SetItem(hwndList, &it);
-
-		ListView_SetItemText(hwndList, iRow, 2, fd->cFileName);
 
 		dat->author = mir_strdup(pi.pluginInfo->author);
 		dat->authorEmail = mir_strdup(pi.pluginInfo->authorEmail);
@@ -111,14 +122,18 @@ static BOOL dialogListPlugins(WIN32_FIND_DATA *fd, TCHAR *path, WPARAM, LPARAM l
 			memset(&dat->uuid, 0, sizeof(dat->uuid));
 
 		TCHAR *shortNameT = mir_a2t(pi.pluginInfo->shortName);
-		ListView_SetItemText(hwndList, iRow, 3, shortNameT);
-		mir_free(shortNameT);
+		// column 3: plugin short name
+		if (shortNameT) {
+			ListView_SetItemText(hwndList, iRow, 2, shortNameT);
+			mir_free(shortNameT);
+		}
 
+		// column4: version number
 		DWORD unused, verInfoSize = GetFileVersionInfoSize(buf, &unused);
 		if (verInfoSize != 0) {
 			UINT blockSize;
-			VS_FIXEDFILEINFO* fi;
-			void* pVerInfo = mir_alloc(verInfoSize);
+			VS_FIXEDFILEINFO *fi;
+			void *pVerInfo = mir_alloc(verInfoSize);
 			GetFileVersionInfo(buf, 0, verInfoSize, pVerInfo);
 			VerQueryValue(pVerInfo, _T("\\"), (LPVOID*)&fi, &blockSize);
 			mir_sntprintf(buf, SIZEOF(buf), _T("%d.%d.%d.%d"), HIWORD(fi->dwProductVersionMS),
@@ -130,9 +145,11 @@ static BOOL dialogListPlugins(WIN32_FIND_DATA *fd, TCHAR *path, WPARAM, LPARAM l
 				LOBYTE(HIWORD(pi.pluginInfo->version)), HIBYTE(LOWORD(pi.pluginInfo->version)),
 				LOBYTE(LOWORD(pi.pluginInfo->version)));
 
-		ListView_SetItemText(hwndList, iRow, 4, buf);
+		ListView_SetItemText(hwndList, iRow, 3, buf);
+		arPluginList.insert(dat);
 	}
-	else mir_free(dat);
+	else
+		mir_free(dat);
 	FreeLibrary(pi.hInst);
 	return TRUE;
 }
@@ -153,7 +170,7 @@ static void RemoveAllItems(HWND hwnd)
 	lvi.mask = LVIF_PARAM;
 	lvi.iItem = 0;
 	while (ListView_GetItem(hwnd, &lvi)) {
-		PluginListItemData* dat = (PluginListItemData*)lvi.lParam;
+		PluginListItemData *dat = (PluginListItemData*)lvi.lParam;
 		mir_free(dat->author);
 		mir_free(dat->authorEmail);
 		mir_free(dat->copyright);
@@ -161,7 +178,8 @@ static void RemoveAllItems(HWND hwnd)
 		mir_free(dat->homepage);
 		mir_free(dat);
 		lvi.iItem ++;
-}	}
+	}
+}
 
 static bool LoadPluginDynamically(PluginListItemData *dat)
 {
@@ -176,7 +194,7 @@ LBL_Error:
 		return false;
 	}
 
-	if ( !TryLoadPlugin(pPlug, true))
+	if (!TryLoadPlugin(pPlug, true))
 		goto LBL_Error;
 
 	if (CallPluginEventHook(pPlug->bpi.hInst, hModulesLoadedEvent, 0, 0) != 0)
@@ -189,11 +207,11 @@ LBL_Error:
 
 static bool UnloadPluginDynamically(PluginListItemData *dat)
 {
-	pluginEntry* p = pluginList.find((pluginEntry*)dat->fileName);
+	pluginEntry *p = pluginList.find((pluginEntry*)dat->fileName);
 	if (p) {
-		if ( !Plugin_UnloadDyn(p))
+		if (!Plugin_UnloadDyn(p))
 			return false;
-	
+
 		dat->hInst = NULL;
 	}
 	return true;
@@ -201,42 +219,90 @@ static bool UnloadPluginDynamically(PluginListItemData *dat)
 
 static LRESULT CALLBACK PluginListWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	if (msg == WM_LBUTTONDOWN) {
+	switch(msg) {
+	case WM_CHAR:
+		if (wParam == '\b') {
+			if (szFilter.GetLength() > 0)
+				szFilter.Truncate(szFilter.GetLength() - 1);
+		}
+		else {
+			szFilter.AppendChar(wParam);
+
+			for (int i = 0; i < arPluginList.getCount(); i++) {
+				PluginListItemData *p = arPluginList[i];
+				if (!_tcsnicmp(szFilter, p->fileName, szFilter.GetLength())) {
+					LVFINDINFO lvfi;
+					lvfi.flags = LVFI_PARAM;
+					lvfi.lParam = (LPARAM)p;
+					int idx = ListView_FindItem(hwnd, 0, &lvfi);
+					if (idx != -1) {
+						ListView_SetItemState(hwnd, idx, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+						ListView_EnsureVisible(hwnd, idx, FALSE);
+						if (timerID != 0)
+							KillTimer(hwnd, timerID);
+						timerID = SetTimer(hwnd, 1, 1500, 0);
+						return TRUE;
+					}
+				}
+			}
+
+			szFilter.Truncate(szFilter.GetLength() - 1);
+			MessageBeep((UINT)-1);
+		}
+		return TRUE;
+
+	case WM_TIMER:
+		if (wParam == 1) {
+			KillTimer(hwnd, timerID);
+			timerID = 0;
+			szFilter.Empty();
+		}
+		break;
+
+	case WM_LBUTTONDOWN:
 		LVHITTESTINFO hi;
-		hi.pt.x = LOWORD(lParam); hi.pt.y = HIWORD(lParam);
+		hi.pt.x = LOWORD(lParam);
+		hi.pt.y = HIWORD(lParam);
 		ListView_SubItemHitTest(hwnd, &hi);
-		if (hi.iSubItem == 1) {
+		// Dynamically load/unload a plugin
+		if ((hi.iSubItem == 0) && (hi.flags & LVHT_ONITEMICON)) {
 			LVITEM lvi = {0};
 			lvi.mask = LVIF_IMAGE | LVIF_PARAM;
 			lvi.stateMask = -1;
 			lvi.iItem = hi.iItem;
-			lvi.iSubItem = 1;
+			lvi.iSubItem = 0;
 			if (ListView_GetItem(hwnd, &lvi)) {
 				lvi.mask = LVIF_IMAGE;
-
-				PluginListItemData* dat = (PluginListItemData*)lvi.lParam;
+				PluginListItemData *dat = (PluginListItemData*)lvi.lParam;
 				if (lvi.iImage == 3) {
-					if ( LoadPluginDynamically(dat)) {
+					// load plugin
+					if (LoadPluginDynamically(dat)) {
 						lvi.iImage = 2;
 						ListView_SetItem(hwnd, &lvi);
 					}
 				}
 				else if (lvi.iImage == 2) {
-					if ( UnloadPluginDynamically(dat)) {
+					// unload plugin
+					if (UnloadPluginDynamically(dat)) {
 						lvi.iImage = 3;
 						ListView_SetItem(hwnd, &lvi);
-	}	}	}	}	}
+					}
+				}
+				LoadStdPlugins();
+			}
+		}
+	}
 
 	return mir_callNextSubclass(hwnd, PluginListWndProc, msg, wParam, lParam);
 }
 
-static int CALLBACK SortPlugins(WPARAM i1, LPARAM i2, LPARAM lParamSort)
+static int CALLBACK SortPlugins(WPARAM i1, LPARAM i2, LPARAM)
 {
 	PluginListItemData *p1 = (PluginListItemData*)i1, *p2 = (PluginListItemData*)i2;
 	return _tcscmp(p1->fileName, p2->fileName);
 }
 
-static TCHAR* latin2t(const char *p)
+static TCHAR *latin2t(const char *p)
 {
 	if (p == NULL)
 		return mir_tstrdup( _T(""));
@@ -249,11 +315,12 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 	switch (msg) {
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
+		timerID = 0;
 		{
 			HWND hwndList = GetDlgItem(hwndDlg, IDC_PLUGLIST);
 			mir_subclassWindow(hwndList, PluginListWndProc);
 
-			HIMAGELIST hIml = ImageList_Create(16, 16, ILC_MASK | (IsWinVerXPPlus()? ILC_COLOR32 : ILC_COLOR16), 4, 0);
+			HIMAGELIST hIml = ImageList_Create(16, 16, ILC_MASK | ILC_COLOR32, 4, 0);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_UNICODE);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_ANSI);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_LOADED);
@@ -268,39 +335,35 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 			col.cx = 40;
 			ListView_InsertColumn(hwndList, 0, &col);
 
-			col.pszText = _T("");
-			col.cx = 20;
+			col.pszText = TranslateT("Plugin");
+			col.cx = 180;
 			ListView_InsertColumn(hwndList, 1, &col);
 
-			col.pszText = TranslateT("Plugin");
-			col.cx = 70;
-			ListView_InsertColumn(hwndList, 2, &col);
-
 			col.pszText = TranslateT("Name");
-			col.cx = 70;//max = 220;
-			ListView_InsertColumn(hwndList, 3, &col);
+			col.cx = 180;//max = 220;
+			ListView_InsertColumn(hwndList, 2, &col);
 
 			col.pszText = TranslateT("Version");
 			col.cx = 75;
-			ListView_InsertColumn(hwndList, 4, &col);
+			ListView_InsertColumn(hwndList, 3, &col);
 
-			// XXX: Won't work on windows 95 without IE3+ or 4.70
 			ListView_SetExtendedListViewStyleEx(hwndList, 0, LVS_EX_SUBITEMIMAGES | LVS_EX_CHECKBOXES | LVS_EX_LABELTIP | LVS_EX_FULLROWSELECT);
 			// scan the plugin dir for plugins, cos
+			arPluginList.destroy();
+			szFilter.Empty();
 			enumPlugins(dialogListPlugins, (WPARAM)hwndDlg, (LPARAM)hwndList);
 			// sort out the headers
 
-			ListView_SetColumnWidth(hwndList, 2, LVSCW_AUTOSIZE); // dll name
-			int w = ListView_GetColumnWidth(hwndList, 2);
+			ListView_SetColumnWidth(hwndList, 1, LVSCW_AUTOSIZE); // dll name
+			int w = ListView_GetColumnWidth(hwndList, 1);
 			if (w > 110) {
-				ListView_SetColumnWidth(hwndList, 2, 110);
-				w = 110;
+				ListView_SetColumnWidth(hwndList, 1, w = 110);
 			}
-			int max = w < 110 ? 189+110-w:189;
+			int max = w < 110 ? 189 + 110 - w : 189;
 			ListView_SetColumnWidth(hwndList, 3, LVSCW_AUTOSIZE); // short name
-			w = ListView_GetColumnWidth(hwndList, 3);
+			w = ListView_GetColumnWidth(hwndList, 2);
 			if (w > max)
-				ListView_SetColumnWidth(hwndList, 3, max);
+				ListView_SetColumnWidth(hwndList, 2, max);
 
 			ListView_SortItems(hwndList, SortPlugins, (LPARAM)hwndDlg);
 		}
@@ -308,7 +371,7 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 
 	case WM_NOTIFY:
 		if (lParam) {
-			NMLISTVIEW *hdr = (NMLISTVIEW *) lParam;
+			NMLISTVIEW *hdr = (NMLISTVIEW *)lParam;
 			if (hdr->hdr.code == LVN_ITEMCHANGED && IsWindowVisible(hdr->hdr.hwndFrom)) {
 				if (hdr->uOldState != 0 && (hdr->uNewState == 0x1000 || hdr->uNewState == 0x2000)) {
 					HWND hwndList = GetDlgItem(hwndDlg, IDC_PLUGLIST);
@@ -316,7 +379,7 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 					LVITEM it;
 					it.mask = LVIF_PARAM | LVIF_STATE;
 					it.iItem = hdr->iItem;
-					if ( !ListView_GetItem(hwndList, &it))
+					if (!ListView_GetItem(hwndList, &it))
 						break;
 
 					PluginListItemData *dat = (PluginListItemData*)it.lParam;
@@ -325,69 +388,70 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 						return FALSE;
 					}
 					// find all another standard plugins by mask and disable them
-					if ((hdr->uNewState == 0x2000) && dat->stdPlugin != 0) 
-					for (int iRow = 0; iRow != -1; iRow = ListView_GetNextItem(hwndList, iRow, LVNI_ALL)) {
-						if (iRow == hdr->iItem) // skip the plugin we're standing on
-							continue;
-
-						LVITEM dt;
-						dt.mask = LVIF_PARAM;
-						dt.iItem = iRow;
-						if ( !ListView_GetItem(hwndList, &dt))
-							continue;
-
-						PluginListItemData* dat2 = (PluginListItemData*)dt.lParam;
-						if ( !(dat2->stdPlugin & dat->stdPlugin)) // mask differs
-							continue;
-
-						// the lParam is unset, so when the check is unset the clist block doesnt trigger
-						int lParam = dat2->stdPlugin;
-						dat2->stdPlugin = 0;
-						ListView_SetItemState(hwndList, iRow, 0x1000, LVIS_STATEIMAGEMASK);
-						dat2->stdPlugin = lParam;
+					if ((hdr->uNewState == 0x2000) && dat->stdPlugin != 0) {
+						for (int iRow = 0; iRow != -1; iRow = ListView_GetNextItem(hwndList, iRow, LVNI_ALL)) {
+							if (iRow != hdr->iItem) { // skip the plugin we're standing on
+								LVITEM dt;
+								dt.mask = LVIF_PARAM;
+								dt.iItem = iRow;
+								if (ListView_GetItem(hwndList, &dt)) {
+									PluginListItemData *dat2 = (PluginListItemData*)dt.lParam;
+									if (dat2->stdPlugin & dat->stdPlugin) {// mask differs
+										// the lParam is unset, so when the check is unset the clist block doesnt trigger
+										int lParam = dat2->stdPlugin;
+										dat2->stdPlugin = 0;
+										ListView_SetItemState(hwndList, iRow, 0x1000, LVIS_STATEIMAGEMASK);
+										dat2->stdPlugin = lParam;
+									}
+								}
+							}
+						}
 					}
 
 					if (bOldMode)
-						ShowWindow( GetDlgItem(hwndDlg, IDC_RESTART), TRUE); // this here only in "ghazan mode"
+						ShowWindow(GetDlgItem(hwndDlg, IDC_RESTART), TRUE); // this here only in "ghazan mode"
 					SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 					break;
 				}
 
 				if (hdr->iItem != -1) {
-					TCHAR buf[1024];
 					int sel = hdr->uNewState & LVIS_SELECTED;
 					HWND hwndList = GetDlgItem(hwndDlg, IDC_PLUGLIST);
 					LVITEM lvi = { 0 };
 					lvi.mask = LVIF_PARAM;
 					lvi.iItem = hdr->iItem;
 					if (ListView_GetItem(hwndList, &lvi)) {
-						PluginListItemData* dat = (PluginListItemData*)lvi.lParam;
+						PluginListItemData *dat = (PluginListItemData*)lvi.lParam;
+						
+						TCHAR buf[1024];
+						ListView_GetItemText(hwndList, hdr->iItem, 2, buf, SIZEOF(buf));
+						SetDlgItemText(hwndDlg, IDC_PLUGININFOFRAME, sel ? buf : _T(""));
 
-						ListView_GetItemText(hwndList, hdr->iItem, 1, buf, SIZEOF(buf));
-						SetWindowText( GetDlgItem(hwndDlg, IDC_PLUGININFOFRAME), sel ? buf : _T(""));
+						ptrT tszAuthor(latin2t(sel ? dat->author : NULL));
+						SetDlgItemText(hwndDlg, IDC_PLUGINAUTHOR, tszAuthor);
 
-						ptrT tszAuthor( latin2t(sel ? dat->author : NULL));
-						SetWindowText( GetDlgItem(hwndDlg, IDC_PLUGINAUTHOR), tszAuthor);
+						ptrT tszEmail(latin2t(sel ? dat->authorEmail : NULL));
+						SetDlgItemText(hwndDlg, IDC_PLUGINEMAIL, tszEmail);
 
-						ptrT tszEmail( latin2t(sel ? dat->authorEmail : NULL));
-						SetWindowText( GetDlgItem(hwndDlg, IDC_PLUGINEMAIL), tszEmail);
+						ptrT p(Langpack_PcharToTchar(dat->description));
+						SetDlgItemText(hwndDlg, IDC_PLUGINLONGINFO, sel ? p : _T(""));
 
-						ptrT p( Langpack_PcharToTchar(dat->description));
-						SetWindowText( GetDlgItem(hwndDlg, IDC_PLUGINLONGINFO), sel ? (TCHAR*)p : _T(""));
+						ptrT tszCopyright(latin2t(sel ? dat->copyright : NULL));
+						SetDlgItemText(hwndDlg, IDC_PLUGINCPYR, tszCopyright);
 
-						ptrT tszCopyright( latin2t(sel ? dat->copyright : NULL));
-						SetWindowText( GetDlgItem(hwndDlg, IDC_PLUGINCPYR), tszCopyright);
+						ptrT tszUrl(latin2t(sel ? dat->homepage : NULL));
+						SetDlgItemText(hwndDlg, IDC_PLUGINURL, tszUrl);
 
-						ptrT tszUrl( latin2t(sel ? dat->homepage : NULL));
-						SetWindowText( GetDlgItem(hwndDlg, IDC_PLUGINURL), tszUrl);
-
-						if ( !equalUUID(miid_last, dat->uuid)) {
+						if (!equalUUID(miid_last, dat->uuid)) {
 							char szUID[128];
 							uuidToString(dat->uuid, szUID, sizeof(szUID));
-							SetWindowTextA( GetDlgItem(hwndDlg, IDC_PLUGINPID), sel ? szUID : "");
+							SetDlgItemTextA(hwndDlg, IDC_PLUGINPID, sel ? szUID : "");
 						}
-						else SetWindowText( GetDlgItem(hwndDlg, IDC_PLUGINPID), sel ? TranslateT("<none>") : _T(""));
-			}	}	}
+						else
+							SetDlgItemText(hwndDlg, IDC_PLUGINPID, sel ? TranslateT("<none>") : _T(""));
+					}
+				}
+			}
 
 			if (hdr->hdr.code == PSN_APPLY) {
 				bool needRestart = false;
@@ -395,40 +459,43 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 				int bufLen = mir_sntprintf(bufRestart, SIZEOF(bufRestart), _T("%s\n"), TranslateT("Miranda NG must be restarted to apply changes for these plugins:"));
 
 				HWND hwndList = GetDlgItem(hwndDlg, IDC_PLUGLIST);
-				TCHAR buf[1024];
 				for (int iRow = 0; iRow != -1;) {
-					ListView_GetItemText(hwndList, iRow, 2, buf, SIZEOF(buf));
+					TCHAR buf[1024];
+					ListView_GetItemText(hwndList, iRow, 1, buf, SIZEOF(buf));
 					int iState = ListView_GetItemState(hwndList, iRow, LVIS_STATEIMAGEMASK);
 					SetPluginOnWhiteList(buf, (iState & 0x2000) ? 1 : 0);
 
 					if (!bOldMode && iState != 0x3000) {
-						LVITEM lvi = {0};
+						LVITEM lvi = { 0 };
 						lvi.mask = LVIF_IMAGE | LVIF_PARAM;
 						lvi.stateMask = -1;
 						lvi.iItem = iRow;
-						lvi.iSubItem = 1;
+						lvi.iSubItem = 0;
 						if (ListView_GetItem(hwndList, &lvi)) {
 							lvi.mask = LVIF_IMAGE;
 
-							PluginListItemData* dat = (PluginListItemData*)lvi.lParam;
+							PluginListItemData *dat = (PluginListItemData*)lvi.lParam;
 							if (iState == 0x2000) {
 								// enabling plugin
 								if (lvi.iImage == 3 || lvi.iImage == 5) {
 									if (lvi.iImage == 3 && LoadPluginDynamically(dat)) {
 										lvi.iImage = 2;
 										ListView_SetItem(hwndList, &lvi);
-									} else {
+									}
+									else {
 										bufLen += mir_sntprintf(bufRestart + bufLen, SIZEOF(bufRestart) - bufLen, _T(" - %s\n"), buf);
 										needRestart = true;
 									}
 								}
-							} else {
+							}
+							else {
 								// disabling plugin
 								if (lvi.iImage == 2 || lvi.iImage == 4) {
 									if (lvi.iImage == 2 && UnloadPluginDynamically(dat)) {
 										lvi.iImage = 3;
 										ListView_SetItem(hwndList, &lvi);
-									} else {
+									}
+									else {
 										bufLen += mir_sntprintf(bufRestart + bufLen, SIZEOF(bufRestart) - bufLen, _T(" - %s\n"), buf);
 										needRestart = true;
 									}
@@ -439,7 +506,9 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 
 					iRow = ListView_GetNextItem(hwndList, iRow, LVNI_ALL);
 				}
-				ShowWindow( GetDlgItem(hwndDlg, IDC_RESTART), needRestart);
+				LoadStdPlugins();
+
+				ShowWindow(GetDlgItem(hwndDlg, IDC_RESTART), needRestart);
 				if (needRestart) {
 					mir_sntprintf(bufRestart + bufLen, SIZEOF(bufRestart) - bufLen, _T("\n%s"), TranslateT("Do you want to restart it now?"));
 					if (MessageBox(NULL, bufRestart, _T("Miranda NG"), MB_ICONWARNING | MB_YESNO) == IDYES)
@@ -452,24 +521,25 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 	case WM_COMMAND:
 		if (HIWORD(wParam) == STN_CLICKED) {
 			switch (LOWORD(wParam)) {
-			case IDC_PLUGINEMAIL:
-			case IDC_PLUGINURL:
-			{
-				char buf[512];
-				char *p = &buf[7];
-				lstrcpyA(buf, "mailto:");
-				if (GetWindowTextA( GetDlgItem(hwndDlg, LOWORD(wParam)), p, SIZEOF(buf) - 7))
-					CallService(MS_UTILS_OPENURL, 0, (LPARAM) (LOWORD(wParam) == IDC_PLUGINEMAIL ? buf : p));
-				break;
-			}
 			case IDC_GETMOREPLUGINS:
 				CallService(MS_UTILS_OPENURL, 0, (LPARAM) "http://miranda-ng.org/downloads/");
 				break;
-		}	}
+
+			case IDC_PLUGINEMAIL:
+			case IDC_PLUGINURL:
+				char buf[512];
+				char *p = &buf[7];
+				mir_strcpy(buf, "mailto:");
+				if (GetDlgItemTextA(hwndDlg, LOWORD(wParam), p, SIZEOF(buf) - 7))
+					CallService(MS_UTILS_OPENURL, 0, (LPARAM)(LOWORD(wParam) == IDC_PLUGINEMAIL ? buf : p));
+				break;
+			}
+		}
 		break;
 
 	case WM_DESTROY:
-		RemoveAllItems( GetDlgItem(hwndDlg, IDC_PLUGLIST));
+		arPluginList.destroy();
+		RemoveAllItems(GetDlgItem(hwndDlg, IDC_PLUGLIST));
 		break;
 	}
 	return FALSE;
@@ -479,8 +549,7 @@ INT_PTR CALLBACK DlgPluginOpt(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lPar
 
 int PluginOptionsInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = { 0 };
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = hInst;
 	odp.pfnDlgProc = DlgPluginOpt;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_PLUGINS);

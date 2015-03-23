@@ -1,9 +1,10 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -30,19 +31,11 @@ BOOL CJabberProto::WsInit(void)
 	TCHAR name[128];
 	mir_sntprintf(name, SIZEOF(name), TranslateT("%s connection"), m_tszUserName);
 
-	NETLIBUSER nlu = {0};
-	nlu.cbSize = sizeof(nlu);
+	NETLIBUSER nlu = { sizeof(nlu) };
 	nlu.flags = NUF_OUTGOING | NUF_INCOMING | NUF_HTTPCONNS | NUF_TCHAR;	// | NUF_HTTPGATEWAY;
 	nlu.ptszDescriptiveName = name;
 	nlu.szSettingsModule = m_szModuleName;
-	//nlu.szHttpGatewayHello = "http://http.proxy.icq.com/hello";
-	//nlu.szHttpGatewayUserAgent = "Mozilla/4.08 [en] (WinNT; U ;Nav)";
-	//nlu.pfnHttpGatewayInit = JabberHttpGatewayInit;
-	//nlu.pfnHttpGatewayBegin = JabberHttpGatewayBegin;
-	//nlu.pfnHttpGatewayWrapSend = JabberHttpGatewayWrapSend;
-	//nlu.pfnHttpGatewayUnwrapRecv = JabberHttpGatewayUnwrapRecv;
 	m_hNetlibUser = (HANDLE)CallService(MS_NETLIB_REGISTERUSER, 0, (LPARAM)&nlu);
-
 	return m_hNetlibUser != NULL;
 }
 
@@ -68,7 +61,7 @@ int CJabberProto::WsSend(JABBER_SOCKET hConn, char* data, int datalen, int flags
 	int len;
 
 	if ((len = Netlib_Send(hConn, data, datalen, flags)) == SOCKET_ERROR || len != datalen) {
-		Log("Netlib_Send() failed, error=%d", WSAGetLastError());
+		debugLogA("Netlib_Send() failed, error=%d", WSAGetLastError());
 		return SOCKET_ERROR;
 	}
 	return len;
@@ -80,11 +73,11 @@ int CJabberProto::WsRecv(JABBER_SOCKET hConn, char* data, long datalen, int flag
 
 	ret = Netlib_Recv(hConn, data, datalen, flags);
 	if (ret == SOCKET_ERROR) {
-		Log("Netlib_Recv() failed, error=%d", WSAGetLastError());
+		debugLogA("Netlib_Recv() failed, error=%d", WSAGetLastError());
 		return 0;
 	}
 	if (ret == 0) {
-		Log("Connection closed gracefully");
+		debugLogA("Connection closed gracefully");
 		return 0;
 	}
 	return ret;

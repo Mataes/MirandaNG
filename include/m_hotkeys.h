@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -50,8 +51,6 @@ typedef struct
 	DWORD dwFlags;
 } HOTKEYDESC;
 
-#define HOTKEYDESC_SIZE_V1 (offsetof(HOTKEYDESC, dwFlags))
-
 #define HKF_MIRANDA_LOCAL		0x8000
 
 extern int hLangpack;
@@ -63,19 +62,19 @@ extern int hLangpack;
 
 /* CoreHotkeys/Register service
 Registers new hotkey
-  wParam = (WPARAM)0
+  wParam = 0
   lParam = (LPARAM)(HOTKEYDESC *)hotkey
 Returns 0 on failure or hotkey atom id on success
 */
 
 __forceinline INT_PTR Hotkey_Register(HOTKEYDESC *hk)
-{	
+{
 	return CallService("CoreHotkeys/Register", (WPARAM)hLangpack, (LPARAM)hk);
 }
 
 /* CoreHotkeys/Unregister service
 Unregister existing hotkey
-  wParam = (WPARAM)0
+  wParam = 0
   lParam = (LPARAM)(char *)pszName
 Returns 0 on success or nonzero otherwise
 */
@@ -91,7 +90,7 @@ Returns lParam associated with activated hotkey
 
 /* Subclass/unsubclass edit box to act as hotkey control
   wParam = (WPARAM)(HWND)hwndEdit
-  lParam = (LPARAM)0
+  lParam = 0
 Returns zero on success
 
 You will get notification with LOWORD(wParam) == 0 when users sets hotkey.

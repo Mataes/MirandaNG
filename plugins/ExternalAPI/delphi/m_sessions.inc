@@ -61,12 +61,12 @@ type
     cbSize  :int;
     szEntity:PAnsiChar;   // can be NULL
     hSession:THANDLE; // ""
-    dwMsg   :DWORD;
-    dwTo    :DWORD
-    dwFrom  :DWORD;   // SDR_*, SDR_ALL is not a good thing
+    dwMsg   :dword;
+    dwTo    :dword;
+    dwFrom  :dword;   // SDR_*, SDR_ALL is not a good thing
     wParam  :WPARAM;
     lParam  :LPARAM;
-    reserved[0..1] of DWORD; // is actually apart of the structure and is used internally
+    reserved:array [0..1] of dword; // is actually apart of the structure and is used internally
   end;
 
 {
@@ -78,7 +78,7 @@ a message to an entity by name, e.g. "ICQ" it will only goto "ICQ" and not
 to anyone else.
 }
 const
-  MS_SION_PIPE = 'Sion/PipeCall';
+  MS_SION_PIPE:PAnsiChar = 'Sion/PipeCall';
 
 {
 wParam=0
@@ -104,7 +104,7 @@ you know what your entity name is already, you should not rely on .szEntity
 being anything, but if it is there, the message is for you only and no one else
 will get it and the value of .szEntity is dependant on the message.
 }
-  MS_SION_PIPEHOOK = 'Sion/PipeHook';
+  MS_SION_PIPEHOOK:PAnsiChar = 'Sion/PipeHook';
 
 {
 wParam=0
@@ -115,14 +115,14 @@ switch threads if it needs to to send ENTITY_CREATE to both .szUI and .szProto
 }
 type
   SION_ENTITY_DESCRIPTOR = record
-    cbSize:int;
-    szUI:PAnsiChar;
-    szProto:PAnsiChar;
+    cbSize  :int;
+    szUI    :PAnsiChar;
+    szProto :PAnsiChar;
     hSession:THANDLE;	// returned if successful
   end;
 
 const
-  MS_SION_ENTITY_CREATE = 'Sion/EntityCreate';
+  MS_SION_ENTITY_CREATE:PAnsiChar = 'Sion/EntityCreate';
 
 {
 wParam=0
@@ -136,7 +136,7 @@ During handle shutdown, ENTITY_DESTROY will be sent to the protocol and then the
 note that you do not need to give .szUI or .szProto because the handle knows
 who it is binded to.
 }
-  MS_SION_ENTITY_RELEASE = 'Sion/EntityRelease';
+  MS_SION_ENTITY_RELEASE:PAnsiChar = 'Sion/EntityRelease';
 
 {
 wParam=0
@@ -144,7 +144,7 @@ lParam=HANDLE
 
 Add one to the reference count of HANDLE.
 }
-  MS_SION_ENTITY_CLONE = 'Sion/EntityClone';
+  MS_SION_ENTITY_CLONE:PAnsiChar = 'Sion/EntityClone';
 
 {
 wParam=0
@@ -166,7 +166,7 @@ type
     persist :int;     // if TRUE and data is NULL then data will not be wiped
   end;
 const
-  MS_SION_ENTITY_SETCOOKIE = 'Sion/EntitySetCookie';
+  MS_SION_ENTITY_SETCOOKIE:PAnsiChar = 'Sion/EntitySetCookie';
 
 {
 wParam=0
@@ -176,12 +176,12 @@ Given .data and SDR_code, finds the associated .hSession and returns
 a reference to it, note that .data can not be NULL, .dwSdr is used
 to match the type of cookie.
 }
-  MS_SION_ENTITY_FINDCOOKIE = 'Sion/EntityFindCookie';
+  MS_SION_ENTITY_FINDCOOKIE:PAnsiChar = 'Sion/EntityFindCookie';
 
 (*
 // -- Helper functions --
 
-__inline int Sion_PipeRegister(DWORD dwSdr,AnsiChar *szEntity,MIRANDASERVICE pfnService)
+__inline int Sion_PipeRegister(dword dwSdr,AnsiChar *szEntity,MIRANDASERVICE pfnService)
 {
 	struct PIPE_DATA pd;
 	pd.cbSize=sizeof(struct PIPE_DATA);
@@ -214,7 +214,7 @@ __inline int Sion_EntityClone(HANDLE seh)
 	return CallService(MS_SION_ENTITY_CLONE,0,(LPARAM)seh);
 }
 
-__inline void* Sion_EntityCookieGet(HANDLE seh, DWORD dwSdr)
+__inline void* Sion_EntityCookieGet(HANDLE seh, dword dwSdr)
 {
 	struct SION_ENTITY_COOKIE sec;
 	sec.cbSize=sizeof(sec);
@@ -226,7 +226,7 @@ __inline void* Sion_EntityCookieGet(HANDLE seh, DWORD dwSdr)
 	return sec.data;
 }
 
-__inline int Sion_EntityCookieSet(HANDLE seh, DWORD dwSdr, void* cookie)
+__inline int Sion_EntityCookieSet(HANDLE seh, dword dwSdr, void* cookie)
 {
 	struct SION_ENTITY_COOKIE sec;
 	sec.cbSize=sizeof(sec);
@@ -237,7 +237,7 @@ __inline int Sion_EntityCookieSet(HANDLE seh, DWORD dwSdr, void* cookie)
 	return CallService(MS_SION_ENTITY_SETCOOKIE,0,(LPARAM)&sec);
 }
 
-__inline HANDLE Sion_EntityCookieFind(DWORD dwSdr, void* cookie)
+__inline HANDLE Sion_EntityCookieFind(dword dwSdr, void* cookie)
 {
 	struct SION_ENTITY_COOKIE sec;
 	sec.cbSize=sizeof(sec);
@@ -248,8 +248,8 @@ __inline HANDLE Sion_EntityCookieFind(DWORD dwSdr, void* cookie)
 	return sec.hSession;
 }
 
-__inline int Sion_PipeBroadcast(AnsiChar* szEntity, HANDLE hSession, DWORD dwMsg, 
-	WPARAM wParam, LPARAM lParam, DWORD dwFrom, DWORD dwTo) {
+__inline int Sion_PipeBroadcast(AnsiChar* szEntity, HANDLE hSession, dword dwMsg, 
+	WPARAM wParam, LPARAM lParam, dword dwFrom, dword dwTo) {
 	struct PIPE_DATA pd;
 	pd.cbSize=sizeof(struct PIPE_DATA);
 	pd.szEntity=szEntity;
@@ -325,7 +325,7 @@ UI   : displays the modes that the channel is in, the modes still have to be abs
 PROTO: sends a CHANNEL_DONE
 UI   : the UI is now sure that no more messages are expected.
 
-UI   : sends a UI_TEXT message, with optional source HCONTACT and of course the message.
+UI   : sends a UI_TEXT message, with optional source TMCONTACT and of course the message.
 PROTO: picks up on this message and transmits it, it must return
        a HPROCESS code that is later acknowledged.
 
@@ -339,8 +339,8 @@ UI   : sends UI_IAMTYPING
 PROTO: the protocol may or may not send this message to the other parties
        but it must process it, this message is also optional.
 
-PROTO: sends UI_CONTACT_ISTYPING (source HCONTACT)
-UI   : an HCONTACT within the session is typing, the UI may elect to show this
+PROTO: sends UI_CONTACT_ISTYPING (source TMCONTACT)
+UI   : an TMCONTACT within the session is typing, the UI may elect to show this
        message in a status bar, or with a visual effect.	    	
 }
 

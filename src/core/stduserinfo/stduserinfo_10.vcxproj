@@ -75,7 +75,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;ADDCONTACTPLUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;ADDCONTACTPLUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -91,7 +91,7 @@
       <AdditionalIncludeDirectories>..\..\..\include\msapi;..\..\..\include</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>miranda32.lib;ws2_32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>miranda32.lib;ws2_32.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -107,7 +107,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;ADDCONTACTPLUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;ADDCONTACTPLUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>false</StringPooling>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -125,7 +125,7 @@
       <AdditionalIncludeDirectories>..\..\..\include\msapi;..\..\..\include</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>miranda32.lib;ws2_32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>miranda32.lib;ws2_32.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <BaseAddress>0x3ae00000</BaseAddress>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -156,7 +156,7 @@
       <AdditionalIncludeDirectories>..\..\..\include\msapi;..\..\..\include</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>miranda64.lib;ws2_32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>miranda64.lib;ws2_32.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -189,7 +189,7 @@
       <AdditionalIncludeDirectories>..\..\..\include\msapi;..\..\..\include</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>miranda64.lib;ws2_32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>miranda64.lib;ws2_32.lib;comctl32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <BaseAddress>0x3ae00000</BaseAddress>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
@@ -199,24 +199,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="commonheaders.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    <ClCompile Include="src\commonheaders.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="contactinfo.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="stdinfo.cpp" />
-    <ClCompile Include="userinfo.cpp" />
+    <ClCompile Include="src\contactinfo.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\stdinfo.cpp" />
+    <ClCompile Include="src\userinfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\stdplug.h" />
-    <ClInclude Include="commonheaders.h" />
+    <ClInclude Include="src\commonheaders.h" />
+    <ClInclude Include="src\version.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="resource.rc" />
-    <ResourceCompile Include="version.rc" />
+    <ResourceCompile Include="res\resource.rc" />
+    <ResourceCompile Include="res\version.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

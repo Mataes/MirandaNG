@@ -21,7 +21,7 @@ Boston, MA 02111-1307, USA.
 
 HGENMENU hService2[7];
 
-VOID InitMenu()
+void InitMenu()
 {
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.pszContactOwner = MODULE;
@@ -74,7 +74,7 @@ VOID InitMenu()
 	mi.pszService = MS_NEWSAGGREGATOR_CHANGEFEED;
 	hService2[6] = Menu_AddContactMenuItem(&mi);
 
-	ZeroMemory(&mi, sizeof(mi));
+	memset(&mi, 0, sizeof(mi));
 	mi.cbSize = sizeof(mi);
 	mi.flags = CMIM_ICON;
 	if (db_get_b(NULL, MODULE, "AutoUpdate", 1))

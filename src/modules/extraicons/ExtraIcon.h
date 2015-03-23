@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -22,9 +22,6 @@ Boston, MA 02111-1307, USA.
 #ifndef __EXTRAICON_H__
 #define __EXTRAICON_H__
 
-#include <string>
-#include <vector>
-
 #define EXTRAICON_TYPE_GROUP -1
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -38,12 +35,12 @@ public:
 
 	virtual void rebuildIcons() = 0;
 	virtual void applyIcons();
-	virtual void applyIcon(HANDLE hContact) =0 ;
-	virtual void onClick(HANDLE hContact) = 0;
+	virtual void applyIcon(MCONTACT hContact) =0 ;
+	virtual void onClick(MCONTACT hContact) = 0;
 
-	virtual int  setIcon(int id, HANDLE hContact, HANDLE icon) = 0;
-	virtual int  setIconByName(int id, HANDLE hContact, const char* icon) = 0;
-	virtual void storeIcon(HANDLE hContact, void *icon) {};
+	virtual int  setIcon(int id, MCONTACT hContact, HANDLE icon) = 0;
+	virtual int  setIconByName(int id, MCONTACT hContact, const char* icon) = 0;
+	virtual void storeIcon(MCONTACT hContact, void *icon) {};
 
 	virtual const char *getName() const;
 	virtual const TCHAR *getDescription() const = 0;
@@ -58,22 +55,12 @@ public:
 
 	virtual bool isEnabled() const;
 
-	/// @retun <0 if this < other, 0 if this == other, >0 if this > other
-	virtual int compare(const ExtraIcon *other) const;
-
-	bool operator==(const ExtraIcon &other) const;
-	bool operator!=(const ExtraIcon &other) const;
-	bool operator<(const ExtraIcon &other) const;
-	bool operator<=(const ExtraIcon &other) const;
-	bool operator>(const ExtraIcon &other) const;
-	bool operator>=(const ExtraIcon &other) const;
-
-	virtual int ClistSetExtraIcon(HANDLE hContact, HANDLE hImage) = 0;
+	virtual int ClistSetExtraIcon(MCONTACT hContact, HANDLE hImage) = 0;
 
 	int hLangpack;
 
 protected:
-	std::string name;
+	ptrA szName;
 
 	int slot;
 	int position;
@@ -95,15 +82,15 @@ public:
 	virtual void setDescIcon(const char *icon);
 	virtual int getType() const =0;
 
-	virtual void onClick(HANDLE hContact);
+	virtual void onClick(MCONTACT hContact);
 	virtual void setOnClick(MIRANDAHOOKPARAM OnClick, LPARAM param);
 
-	virtual int ClistSetExtraIcon(HANDLE hContact, HANDLE hImage);
+	virtual int ClistSetExtraIcon(MCONTACT hContact, HANDLE hImage);
 
 protected:
 	int id;
-	std::tstring description;
-	std::string descIcon;
+	ptrT tszDescription;
+	ptrA szDescIcon;
 	MIRANDAHOOKPARAM OnClick;
 	LPARAM onClickParam;
 };
@@ -121,10 +108,10 @@ public:
 	virtual int getType() const;
 
 	virtual void rebuildIcons();
-	virtual void applyIcon(HANDLE hContact);
+	virtual void applyIcon(MCONTACT hContact);
 
-	virtual int  setIcon(int id, HANDLE hContact, HANDLE icon);
-	virtual int  setIconByName(int id, HANDLE hContact, const char* icon);
+	virtual int  setIcon(int id, MCONTACT hContact, HANDLE icon);
+	virtual int  setIconByName(int id, MCONTACT hContact, const char* icon);
 
 private:
 	int(*RebuildIcons)(WPARAM wParam, LPARAM lParam);
@@ -145,11 +132,11 @@ public:
 	virtual int getType() const;
 
 	virtual void rebuildIcons();
-	virtual void applyIcon(HANDLE hContact);
+	virtual void applyIcon(MCONTACT hContact);
 
-	virtual int  setIcon(int id, HANDLE hContact, HANDLE icon);
-	virtual int  setIconByName(int id, HANDLE hContact, const char* icon);
-	virtual void storeIcon(HANDLE hContact, void *icon);
+	virtual int  setIcon(int id, MCONTACT hContact, HANDLE icon);
+	virtual int  setIconByName(int id, MCONTACT hContact, const char* icon);
+	virtual void storeIcon(MCONTACT hContact, void *icon);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +144,7 @@ public:
 
 class ExtraIconGroup : public ExtraIcon
 {
-	int  internalSetIcon(int id, HANDLE hContact, HANDLE icon, bool bByName);
+	int  internalSetIcon(int id, MCONTACT hContact, HANDLE icon, bool bByName);
 public:
 	ExtraIconGroup(const char *name);
 	virtual ~ExtraIconGroup();
@@ -165,29 +152,29 @@ public:
 	virtual void addExtraIcon(BaseExtraIcon *extra);
 
 	virtual void rebuildIcons();
-	virtual void applyIcon(HANDLE hContact);
-	virtual void onClick(HANDLE hContact);
+	virtual void applyIcon(MCONTACT hContact);
+	virtual void onClick(MCONTACT hContact);
 
-	virtual int  setIcon(int id, HANDLE hContact, HANDLE icon);
-	virtual int  setIconByName(int id, HANDLE hContact, const char* icon);
+	virtual int  setIcon(int id, MCONTACT hContact, HANDLE icon);
+	virtual int  setIconByName(int id, MCONTACT hContact, const char *icon);
 
-	virtual const TCHAR *getDescription() const;
-	virtual const char *getDescIcon() const;
+	virtual const TCHAR* getDescription() const;
+	virtual const char* getDescIcon() const;
 	virtual int getType() const;
 
 	virtual int getPosition() const;
 	virtual void setSlot(int slot);
 
-	std::vector<BaseExtraIcon*> items;
+	LIST<BaseExtraIcon> items;
 
-	virtual int ClistSetExtraIcon(HANDLE hContact, HANDLE hImage);
+	virtual int ClistSetExtraIcon(MCONTACT hContact, HANDLE hImage);
 
 protected:
-	std::tstring description;
+	ptrT tszDescription;
 	bool setValidExtraIcon;
 	bool insideApply;
 
-	virtual ExtraIcon *getCurrentItem(HANDLE hContact) const;
+	virtual ExtraIcon *getCurrentItem(MCONTACT hContact) const;
 };
 
 #endif // __EXTRAICON_H__

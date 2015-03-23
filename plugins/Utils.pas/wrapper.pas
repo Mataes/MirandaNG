@@ -7,7 +7,7 @@ uses windows;
 
 function CreateHiddenWindow(proc:pointer=nil):HWND;
 
-function DoInitCommonControls(dwICC:DWORD):boolean;
+function DoInitCommonControls(dwICC:dword):boolean;
 
 function GetScreenRect:TRect;
 procedure SnapToScreen(var rc:TRect;dx:integer=0;dy:integer=0{;
@@ -20,28 +20,34 @@ function StringToGUID(const astr:PAnsiChar):TGUID; overload;
 function StringToGUID(const astr:PWideChar):TGUID; overload;
 
 // Comboboxes
-function CB_SelectData(cb:HWND;data:lparam):lresult; overload;
-function CB_SelectData(Dialog:HWND;id:cardinal;data:lparam):lresult; overload;
-function CB_GetData   (cb:HWND;idx:integer=-1):lresult; overload;
-function CB_AddStrData (cb:HWND;astr:pAnsiChar;data:lparam=0;idx:integer=-1):HWND;
-function CB_AddStrDataW(cb:HWND;astr:pWideChar;data:lparam=0;idx:integer=-1):HWND;
+function CB_SelectData(cb:HWND;data:lparam):LRESULT; overload;
+function CB_SelectData(Dialog:HWND;id:cardinal;data:lparam):LRESULT; overload;
+function CB_GetData   (cb:HWND;idx:integer=-1):LRESULT;
+function CB_SetData   (cb:HWND;data:lparam;idx:integer=-1):LRESULT;
+function CB_AddStrData (cb:HWND;astr:PAnsiChar;data:lparam=0;idx:integer=-1):HWND; overload;
+function CB_AddStrData (Dialog:HWND;id:cardinal;astr:PAnsiChar;data:lparam=0;idx:integer=-1):HWND; overload;
+function CB_AddStrDataW(cb:HWND;astr:PWideChar;data:lparam=0;idx:integer=-1):HWND; overload;
+function CB_AddStrDataW(Dialog:HWND;id:cardinal;astr:PWideChar;data:lparam=0;idx:integer=-1):HWND; overload;
 
 // CommCtrl - ListView
-Procedure ListView_GetItemTextA(hwndLV:hwnd;i:WPARAM;iSubItem:integer;pszText:Pointer;cchTextMax:integer);
-Procedure ListView_GetItemTextW(hwndLV:hwnd;i:WPARAM;iSubItem:integer;pszText:Pointer;cchTextMax:integer);
-function  LV_GetLParam  (list:HWND;item:integer=-1):lresult;
-function  LV_SetLParam  (list:HWND;lParam:LPARAM;item:integer=-1):lresult;
-function  LV_ItemAtPos(wnd:HWND;pt:TPOINT;var SubItem:dword):Integer; overload;
-function  LV_ItemAtPos(wnd:HWND;x,y:integer;var SubItem:dword):Integer; overload;
-procedure LV_SetItem (handle:hwnd;str:PAnsiChar;item:integer;subitem:integer=0);
-procedure LV_SetItemW(handle:hwnd;str:PWideChar;item:integer;subitem:integer=0);
-function  LV_MoveItem(list:hwnd;direction:integer;item:integer=-1):integer;
-function  LV_GetColumnCount(list:HWND):lresult;
+Procedure ListView_GetItemTextA(list:HWND;i:WPARAM;iSubItem:integer;pszText:pointer;cchTextMax:integer);
+Procedure ListView_GetItemTextW(list:HWND;i:WPARAM;iSubItem:integer;pszText:pointer;cchTextMax:integer);
+function  LV_GetLParam  (list:HWND;item:integer=-1):LRESULT;
+function  LV_SetLParam  (list:HWND;lParam:LPARAM;item:integer=-1):LRESULT;
+function  LV_ItemAtPos(list:HWND;pt:TPOINT;var subitem:dword):integer; overload;
+function  LV_ItemAtPos(list:HWND;x,y:integer;var subitem:dword):integer; overload;
+procedure LV_SetItem (list:HWND;str:PAnsiChar;item:integer;subitem:integer=0);
+procedure LV_SetItemW(list:HWND;str:PWideChar;item:integer;subitem:integer=0);
+function  LV_MoveItem(list:HWND;direction:integer;item:integer=-1):integer;
+function  LV_GetColumnCount(list:HWND):LRESULT;
 function  LV_CheckDirection(list:HWND):integer; // bit 0 - can move up, bit 1 - down
 
 // CommDLG - Dialogs
+
 function ShowDlg (dst:PAnsiChar;fname:PAnsiChar=nil;Filter:PAnsiChar=nil;open:boolean=true):boolean;
 function ShowDlgW(dst:PWideChar;fname:PWideChar=nil;Filter:PWideChar=nil;open:boolean=true):boolean;
+
+procedure GetUnitSize(wnd:HWND; var baseUnitX, baseUnitY: integer);
 
 implementation
 
@@ -70,7 +76,7 @@ const
   hiddenwindow:HWND = 0;
   hwndcount:integer=0;
 
-function HiddenWindProc(wnd:HWnd; msg:UINT;wParam:WPARAM;lParam:LPARAM):lresult; stdcall;
+function HiddenWindProc(wnd:HWND; msg:uint;wParam:WPARAM;lParam:LPARAM):LRESULT; stdcall;
 begin
   if msg=WM_CLOSE then
   begin
@@ -116,7 +122,7 @@ begin
 end;
 //----- End of hidden window functions -----
 
-function DoInitCommonControls(dwICC:DWORD):boolean;
+function DoInitCommonControls(dwICC:dword):boolean;
 var
   ICC: TInitCommonControlsEx;
 begin
@@ -166,7 +172,7 @@ begin
     a:=SendMessageW(wnd,WM_GETTEXTLENGTH,0,0)+1;
     if a>1 then
     begin
-      mGetMem(pWideChar(result),a*SizeOf(WideChar));
+      mGetMem(PWideChar(result),a*SizeOf(WideChar));
       SendMessageW(wnd,WM_GETTEXT,a,lparam(result));
     end;
   end;
@@ -179,7 +185,7 @@ end;
 
 //----- Combobox functions -----
 
-function CB_SelectData(cb:HWND;data:lparam):lresult; overload;
+function CB_SelectData(cb:HWND;data:lparam):LRESULT; overload;
 var
   i:integer;
 begin
@@ -195,12 +201,12 @@ begin
   result:=SendMessage(cb,CB_SETCURSEL,result,0);
 end;
 
-function CB_SelectData(Dialog:HWND;id:cardinal;data:lparam):lresult; overload;
+function CB_SelectData(Dialog:HWND;id:cardinal;data:lparam):LRESULT; overload;
 begin
   result:=CB_SelectData(GetDlgItem(Dialog,id),data);
 end;
 
-function CB_GetData(cb:HWND;idx:integer=-1):lresult;
+function CB_GetData(cb:HWND;idx:integer=-1):LRESULT;
 begin
   if idx<0 then
     idx:=SendMessage(cb,CB_GETCURSEL,0,0);
@@ -210,7 +216,17 @@ begin
     result:=SendMessage(cb,CB_GETITEMDATA,idx,0);
 end;
 
-function CB_AddStrData(cb:HWND;astr:pAnsiChar;data:lparam=0;idx:integer=-1):HWND;
+function CB_SetData(cb:HWND;data:lparam;idx:integer=-1):LRESULT;
+begin
+  if idx<0 then
+    idx:=SendMessage(cb,CB_GETCURSEL,0,0);
+  if idx<0 then
+    result:=0
+  else
+    result:=SendMessage(cb,CB_SETITEMDATA,idx,0);
+end;
+
+function CB_AddStrData(cb:HWND;astr:PAnsiChar;data:lparam=0;idx:integer=-1):HWND;
 begin
   result:=cb;
   if idx<0 then
@@ -220,7 +236,12 @@ begin
   SendMessageA(cb,CB_SETITEMDATA,idx,data);
 end;
 
-function CB_AddStrDataW(cb:HWND;astr:pWideChar;data:lparam=0;idx:integer=-1):HWND;
+function CB_AddStrData(Dialog:HWND;id:cardinal;astr:PAnsiChar;data:lparam=0;idx:integer=-1):HWND;
+begin
+  result:=CB_AddStrData(GetDlgItem(Dialog,id),astr,data,idx);
+end;
+
+function CB_AddStrDataW(cb:HWND;astr:PWideChar;data:lparam=0;idx:integer=-1):HWND;
 begin
   result:=cb;
   if idx<0 then
@@ -228,6 +249,11 @@ begin
   else
     idx:=SendMessageW(cb,CB_INSERTSTRING,idx,lparam(astr));
   SendMessage(cb,CB_SETITEMDATA,idx,data);
+end;
+
+function CB_AddStrDataW(Dialog:HWND;id:cardinal;astr:PWideChar;data:lparam=0;idx:integer=-1):HWND;
+begin
+  result:=CB_AddStrDataW(GetDlgItem(Dialog,id),astr,data,idx);
 end;
 
 function StringToGUID(const astr:PAnsiChar):TGUID;
@@ -254,41 +280,41 @@ var
 begin
   result:=EmptyGUID;
   if StrLenW(astr)<>38 then exit;
-  result.D1:=HexToInt(pWideChar(@astr[01]),8);
-  result.D2:=HexToInt(pWideChar(@astr[10]),4);
-  result.D3:=HexToInt(pWideChar(@astr[15]),4);
+  result.D1:=HexToInt(PWideChar(@astr[01]),8);
+  result.D2:=HexToInt(PWideChar(@astr[10]),4);
+  result.D3:=HexToInt(PWideChar(@astr[15]),4);
 
-  result.D4[0]:=HexToInt(pWideChar(@astr[20]),2);
-  result.D4[1]:=HexToInt(pWideChar(@astr[22]),2);
+  result.D4[0]:=HexToInt(PWideChar(@astr[20]),2);
+  result.D4[1]:=HexToInt(PWideChar(@astr[22]),2);
   for i:=2 to 7 do
   begin
-    result.D4[i]:=HexToInt(pWideChar(@astr[21+i*2]),2);
+    result.D4[i]:=HexToInt(PWideChar(@astr[21+i*2]),2);
   end;
 end;
 
 //----- ListView functions -----
 
-Procedure ListView_GetItemTextA(hwndLV:hwnd;i:WPARAM;iSubItem:integer;pszText:Pointer;cchTextMax:integer);
+Procedure ListView_GetItemTextA(list:HWND;i:WPARAM;iSubItem:integer;pszText:pointer;cchTextMax:integer);
 Var
   lvi:LV_ITEMA;
 Begin
   lvi.iSubItem  :=iSubItem;
   lvi.cchTextMax:=cchTextMax;
   lvi.pszText   :=pszText;
-  SendMessageA(hwndLV,LVM_GETITEMTEXT,i,LPARAM(@lvi));
+  SendMessageA(list,LVM_GETITEMTEXT,i,LPARAM(@lvi));
 end;
 
-Procedure ListView_GetItemTextW(hwndLV:hwnd;i:WPARAM;iSubItem:integer;pszText:Pointer;cchTextMax:integer);
+Procedure ListView_GetItemTextW(list:HWND;i:WPARAM;iSubItem:integer;pszText:pointer;cchTextMax:integer);
 Var
   lvi:LV_ITEMW;
 Begin
   lvi.iSubItem  :=iSubItem;
   lvi.cchTextMax:=cchTextMax;
   lvi.pszText   :=pszText;
-  SendMessageW(hwndLV,LVM_GETITEMTEXT,i,LPARAM(@lvi));
+  SendMessageW(list,LVM_GETITEMTEXT,i,LPARAM(@lvi));
 end;
 
-procedure LV_SetItem(handle:hwnd;str:PAnsiChar;item:integer;subitem:integer=0);
+procedure LV_SetItem(list:HWND;str:PAnsiChar;item:integer;subitem:integer=0);
 var
   li:LV_ITEMA;
 begin
@@ -297,10 +323,10 @@ begin
   li.pszText :=str;
   li.iItem   :=item;
   li.iSubItem:=subitem;
-  SendMessageA(handle,LVM_SETITEMA,0,lparam(@li));
+  SendMessageA(list,LVM_SETITEMA,0,lparam(@li));
 end;
 
-procedure LV_SetItemW(handle:hwnd;str:PWideChar;item:integer;subitem:integer=0);
+procedure LV_SetItemW(list:HWND;str:PWideChar;item:integer;subitem:integer=0);
 var
   li:LV_ITEMW;
 begin
@@ -309,10 +335,10 @@ begin
   li.pszText :=str;
   li.iItem   :=item;
   li.iSubItem:=subitem;
-  SendMessageW(handle,LVM_SETITEMW,0,lparam(@li));
+  SendMessageW(list,LVM_SETITEMW,0,lparam(@li));
 end;
 
-function LV_GetLParam(list:HWND;item:integer=-1):lresult;
+function LV_GetLParam(list:HWND;item:integer=-1):LRESULT;
 var
   li:LV_ITEMW;
 begin
@@ -328,11 +354,13 @@ begin
   li.iItem   :=item;
   li.mask    :=LVIF_PARAM;
   li.iSubItem:=0;
-  SendMessageW(list,LVM_GETITEMW,0,lparam(@li));
-  result:=li.lParam;
+  if SendMessageW(list,LVM_GETITEMW,0,lparam(@li))=0 then
+    result:=-1
+  else
+    result:=li.lParam;
 end;
 
-function LV_SetLParam(list:HWND;lParam:LPARAM;item:integer=-1):lresult;
+function LV_SetLParam(list:HWND;lParam:LPARAM;item:integer=-1):LRESULT;
 var
   li:LV_ITEMW;
 begin
@@ -353,28 +381,28 @@ begin
   result:=lParam;
 end;
 
-function LV_ItemAtPos(wnd:HWND;Pt:TPOINT;var SubItem:dword):Integer;
+function LV_ItemAtPos(list:HWND;Pt:TPOINT;var subitem:dword):integer;
 var
   HTI:LV_HITTESTINFO;
 begin
   HTI.pt.x := pt.X;
   HTI.pt.y := pt.Y;
-  SendMessage(wnd,LVM_SUBITEMHITTEST,0,lparam(@HTI));
+  SendMessage(list,LVM_SUBITEMHITTEST,0,lparam(@HTI));
   Result :=HTI.iItem;
-  if @SubItem<>nil then
-    SubItem:=HTI.iSubItem;
+  if @subitem<>nil then
+    subitem:=HTI.iSubItem;
 end;
 
-function LV_ItemAtPos(wnd:HWND;x,y:integer;var SubItem:dword):Integer; overload;
+function LV_ItemAtPos(list:HWND;x,y:integer;var subitem:dword):integer; overload;
 var
   HTI:LV_HITTESTINFO;
 begin
   HTI.pt.x := x;
   HTI.pt.y := y;
-  SendMessage(wnd,LVM_SUBITEMHITTEST,0,lparam(@HTI));
+  SendMessage(list,LVM_SUBITEMHITTEST,0,lparam(@HTI));
   Result :=HTI.iItem;
-  if @SubItem<>nil then
-    SubItem:=HTI.iSubItem;
+  if @subitem<>nil then
+    subitem:=HTI.iSubItem;
 end;
 
 function LV_Compare(lParam1,lParam2,param:LPARAM):integer; stdcall;
@@ -396,7 +424,7 @@ begin
   end;
 end;
 
-function LV_MoveItem(list:hwnd;direction:integer;item:integer=-1):integer;
+function LV_MoveItem(list:HWND;direction:integer;item:integer=-1):integer;
 begin
   if ((direction>0) and (item=(SendMessage(list,LVM_GETITEMCOUNT,0,0)-1))) or
      ((direction<0) and (item=0)) then
@@ -411,7 +439,7 @@ begin
   result:=item+direction;
 end;
 
-function LV_GetColumnCount(list:HWND):lresult;
+function LV_GetColumnCount(list:HWND):LRESULT;
 begin
   result:=SendMessage(SendMessage(list,LVM_GETHEADER,0,0),HDM_GETITEMCOUNT,0,0);
 end;
@@ -456,6 +484,11 @@ function ShowDlg(dst:PAnsiChar;fname:PAnsiChar=nil;Filter:PAnsiChar=nil;open:boo
 var
   NameRec:OpenFileNameA;
 begin
+  if dst=nil then
+  begin
+    result:=false;
+    exit;
+  end;
   FillChar(NameRec,SizeOf(NameRec),0);
   with NameRec do
   begin
@@ -485,6 +518,11 @@ function ShowDlgW(dst:PWideChar;fname:PWideChar=nil;Filter:PWideChar=nil;open:bo
 var
   NameRec:OpenFileNameW;
 begin
+  if dst=nil then
+  begin
+    result:=false;
+    exit;
+  end;
   FillChar(NameRec,SizeOf(NameRec),0);
   with NameRec do
   begin
@@ -508,6 +546,25 @@ begin
     result:=GetOpenFileNameW({$IFDEF FPC}@{$ENDIF}NameRec)
   else
     result:=GetSaveFileNameW({$IFDEF FPC}@{$ENDIF}NameRec)
+end;
+
+procedure GetUnitSize(wnd:HWND; var baseUnitX, baseUnitY: integer);
+var
+  dc  :HDC;
+  hfo :HFONT;
+  tm  :TTEXTMETRIC;
+  size:TSIZE;
+  tmp :PWideChar;
+begin
+  dc:=GetDC(wnd);
+  hfo:=SelectObject(dc,SendMessage(wnd,WM_GETFONT,0,0));
+  GetTextMetrics(dc,tm);
+  tmp:='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  GetTextExtentPoint32W(dc,tmp,52,size);
+  SelectObject(dc,hfo);
+  ReleaseDC(wnd,dc);
+  baseUnitX:=(size.cx div 26+1) div 2;
+  baseUnitY:=tm.tmHeight;
 end;
 
 end.

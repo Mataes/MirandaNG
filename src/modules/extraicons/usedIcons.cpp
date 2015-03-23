@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -25,37 +25,35 @@ Boston, MA 02111-1307, USA.
 
 struct Icon
 {
-	string name;
+	char *name;
 	int refCount;
 	HANDLE hImage;
 
 	Icon(const char *icolibName) :
-		name(icolibName), refCount(0), hImage(INVALID_HANDLE_VALUE)
+		name( mir_strdup(icolibName)), refCount(0), hImage(INVALID_HANDLE_VALUE)
 	{
+	}
+
+	~Icon()
+	{	mir_free(name);
 	}
 };
 
-static vector<Icon> usedIcons;
+static int SortFunc(const Icon *p1, const Icon *p2)
+{
+	return strcmp(p1->name, p2->name);
+}
+
+static OBJLIST<Icon> usedIcons(50, SortFunc);
 
 static Icon* FindIcon(const char *icolibName)
 {
-	Icon *icon = NULL;
-
-	for (unsigned int i = 0; i < usedIcons.size(); i++) {
-		Icon *tmp = &usedIcons[i];
-		if (tmp->name == icolibName) {
-			icon = tmp;
-			break;
-		}
-	}
-
-	if (icon == NULL) {
-		usedIcons.push_back( Icon(icolibName));
-		icon = &usedIcons[usedIcons.size() - 1];
-	}
+	Icon *icon = usedIcons.find((Icon*)&icolibName);
+	if (icon == NULL)
+		usedIcons.insert(icon = new Icon(icolibName));
 
 	if (icon->hImage == INVALID_HANDLE_VALUE) {
-		HICON hIcon = Skin_GetIcon(icon->name.c_str());
+		HICON hIcon = Skin_GetIcon(icon->name);
 		if (hIcon != NULL) {
 			icon->hImage = ExtraIcon_Add(hIcon);
 			Skin_ReleaseIcon(hIcon);
@@ -79,25 +77,18 @@ HANDLE AddIcon(const char *icolibName)
 
 void RemoveIcon(const char *icolibName)
 {
-	for (unsigned int i = 0; i < usedIcons.size(); i++) {
-		Icon *icon = &usedIcons[i];
-		if (icon->name != icolibName)
-			continue;
-
+	Icon *icon = usedIcons.find((Icon*)&icolibName);
+	if (icon != NULL)
 		icon->refCount--;
-		break;
-	}
-}
-
-static bool NotUsedIcon(const Icon &icon)
-{
-	return icon.refCount <= 0;
 }
 
 void ResetIcons()
 {
-	usedIcons.erase(std::remove_if(usedIcons.begin(), usedIcons.end(), NotUsedIcon), usedIcons.end());
-
-	for (unsigned int i = 0; i < usedIcons.size(); i++)
-		usedIcons[i].hImage = INVALID_HANDLE_VALUE;
+	for (int i = usedIcons.getCount()-1; i >= 0; i--) {
+		Icon &p = usedIcons[i];
+		if (p.refCount <= 0)
+			usedIcons.remove(i);
+		else
+			p.hImage = INVALID_HANDLE_VALUE;
+	}
 }

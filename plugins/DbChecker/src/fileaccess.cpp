@@ -16,6 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "dbchecker.h"
 
 INT_PTR CALLBACK FileAccessDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -24,13 +25,13 @@ INT_PTR CALLBACK FileAccessDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARA
 	if (DoMyControlProcessing(hdlg, message, wParam, lParam, &bReturn))
 		return bReturn;
 
-	switch(message) {
+	switch (message) {
 	case WM_INITDIALOG:
 		if (bShortMode)
 			EnableWindow(GetDlgItem(GetParent(hdlg), IDC_BACK), FALSE);
-		CheckDlgButton(hdlg, IDC_CHECKONLY, opts.bCheckOnly);
-		CheckDlgButton(hdlg, IDC_BACKUP, opts.bBackup);
-		CheckDlgButton(hdlg, IDC_AGGRESSIVE, opts.bAggressive);
+		CheckDlgButton(hdlg, IDC_CHECKONLY, opts.bCheckOnly ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hdlg, IDC_BACKUP, opts.bBackup ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hdlg, IDC_AGGRESSIVE, opts.bAggressive ? BST_CHECKED : BST_UNCHECKED);
 		SendMessage(hdlg, WM_COMMAND, MAKEWPARAM(IDC_CHECKONLY, BN_CLICKED), 0);
 		TranslateDialogDefault(hdlg);
 		return TRUE;
@@ -43,7 +44,7 @@ INT_PTR CALLBACK FileAccessDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARA
 		break;
 
 	case WM_COMMAND:
-		switch(LOWORD(wParam)) {
+		switch (LOWORD(wParam)) {
 		case IDC_BACK:
 			PostMessage(GetParent(hdlg), WZM_GOTOPAGE, IDD_SELECTDB, (LPARAM)SelectDbDlgProc);
 			break;
@@ -56,8 +57,8 @@ INT_PTR CALLBACK FileAccessDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARA
 			break;
 
 		case IDC_CHECKONLY:
-			EnableWindow(GetDlgItem(hdlg, IDC_BACKUP), !IsDlgButtonChecked(hdlg, IDC_CHECKONLY));
-			EnableWindow(GetDlgItem(hdlg, IDC_STBACKUP), !IsDlgButtonChecked(hdlg, IDC_CHECKONLY));
+			EnableWindow(GetDlgItem(hdlg, IDC_BACKUP), BST_UNCHECKED == IsDlgButtonChecked(hdlg, IDC_CHECKONLY));
+			EnableWindow(GetDlgItem(hdlg, IDC_STBACKUP), BST_UNCHECKED == IsDlgButtonChecked(hdlg, IDC_CHECKONLY));
 			break;
 		}
 		break;

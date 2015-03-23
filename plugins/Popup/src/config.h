@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define __config_h__
 
 typedef struct tagPOPUPOPTIONS {
-//==Page General====
+	//==Page General====
 	//Timeout
 	BYTE InfiniteDelay;
 	int Seconds;
@@ -52,7 +52,7 @@ typedef struct tagPOPUPOPTIONS {
 	BYTE DisableWhenFullscreen;
 	//others
 	BYTE debug;
-//==Page Skins====
+	//==Page Skins====
 	LPTSTR SkinPack;
 	BYTE DisplayTime;
 	BYTE DropShadow;
@@ -60,13 +60,13 @@ typedef struct tagPOPUPOPTIONS {
 	BYTE EnableAeroGlass;
 	BYTE UseWinColors;
 	BYTE UseMText;
-//==Page Actions====
+	//==Page Actions====
 	DWORD actions;
 	//Mouse Override
 	int overrideLeft;
 	int overrideRight;
 	int overrideMiddle;
-//==Page Advanced====
+	//==Page Advanced====
 	//History
 	BYTE EnableHistory;
 	WORD HistorySize;
@@ -80,7 +80,6 @@ typedef struct tagPOPUPOPTIONS {
 	//Monitor
 	BYTE Monitor;
 	//Transparency
-	BYTE Enable9xTransparency;
 	BYTE UseTransparency;
 	BYTE Alpha;
 	BYTE OpaqueOnHover;
@@ -128,6 +127,7 @@ void LoadOptions();
 //===== General Plugin =====
 extern HINSTANCE hInst;
 extern HANDLE hMainThread;
+extern HANDLE hEventNotify;
 extern HANDLE hSemaphore;
 extern BOOL closing;
 extern HANDLE folderId;
@@ -138,8 +138,6 @@ extern HANDLE htuTitle;
 
 extern BOOL gbPopupLoaded;
 extern BOOL gbHppInstalled;
-extern LPCSTR gszMetaProto;
-
 
 //===== Brushes, Colours and Fonts =====
 extern HBITMAP hbmNoAvatar;
@@ -188,7 +186,7 @@ struct DWM_BLURBEHIND
 	BOOL fTransitionOnMaximized;
 };
 
-extern HRESULT	(WINAPI *MyDwmEnableBlurBehindWindow)(HWND hWnd, DWM_BLURBEHIND *pBlurBehind);
+extern HRESULT(WINAPI *MyDwmEnableBlurBehindWindow)(HWND hWnd, DWM_BLURBEHIND *pBlurBehind);
 
 typedef struct TestStruct{
 	int cbSize;

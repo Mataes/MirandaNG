@@ -43,13 +43,13 @@ PLUGININFOEX pluginInfoEx = {
 	{0x56cc3f29, 0xccbf, 0x4546, {0xa8, 0xba, 0x98, 0x56, 0x24, 0x8a, 0x41, 0x2a}}
 };
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+bool WINAPI DllMain(HINSTANCE hinstDLL, DWORD, LPVOID)
 {
 	hInst = hinstDLL;
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
+extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD)
 {
 	return &pluginInfoEx;
 }
@@ -65,13 +65,13 @@ extern "C" __declspec(dllexport) int Load(void)
 	HookEvent(ME_SYSTEM_PRESHUTDOWN, NewsAggrPreShutdown);
 
 	hUpdateMutex = CreateMutex(NULL, FALSE, NULL);
-	hChangeFeedDlgList = (HANDLE) CallService(MS_UTILS_ALLOCWINDOWLIST,0,0);
+	hChangeFeedDlgList = WindowList_Create();
 
 	// register weather protocol
 	PROTOCOLDESCRIPTOR pd = { PROTOCOLDESCRIPTOR_V3_SIZE };
 	pd.szName = MODULE;
 	pd.type = PROTOTYPE_VIRTUAL;
-	CallService(MS_PROTO_REGISTERMODULE,0,(LPARAM)&pd);
+	CallService(MS_PROTO_REGISTERMODULE, 0, (LPARAM)&pd);
 
 	CreateProtoServiceFunction(MODULE, PS_GETNAME, NewsAggrGetName);
 	CreateProtoServiceFunction(MODULE, PS_GETCAPS, NewsAggrGetCaps);
@@ -89,11 +89,24 @@ extern "C" __declspec(dllexport) int Load(void)
 	CreateServiceFunction(MS_NEWSAGGREGATOR_CHECKFEED, CheckFeed);
 	CreateServiceFunction(MS_NEWSAGGREGATOR_CHANGEFEED, ChangeFeed);
 	CreateServiceFunction(MS_NEWSAGGREGATOR_ENABLED, EnableDisable);
+
+	HOTKEYDESC hkd = { sizeof(hkd) };
+	hkd.dwFlags = HKD_TCHAR;
+	hkd.pszName = "NewsAggregator/CheckAllFeeds";
+	hkd.ptszDescription = LPGENT("Check All Feeds");
+	hkd.ptszSection = LPGENT("News Aggregator");
+	hkd.pszService = MS_NEWSAGGREGATOR_CHECKALLFEEDS;
+	hkd.DefHotKey = HOTKEYCODE(HOTKEYF_CONTROL+HKCOMB_A, 'O') | HKF_MIRANDA_LOCAL;
+	Hotkey_Register(&hkd);
+
+	InitIcons();
+
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
+	WindowList_Destroy(hChangeFeedDlgList);
 	DestroyUpdateList();
 	CloseHandle(hUpdateMutex);
 	return 0;

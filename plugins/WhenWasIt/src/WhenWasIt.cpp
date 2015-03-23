@@ -27,7 +27,17 @@ HWND hUpcomingDlg = NULL;
 HANDLE hAddBirthdayWndsList = NULL;
 int hLangpack;
 
+HANDLE hmCheckBirthdays = NULL;
+HANDLE hmBirthdayList = NULL;
+HANDLE hmRefreshDetails = NULL;
+HANDLE hmAddChangeBirthday = NULL;
+HANDLE hmImportBirthdays = NULL;
+HANDLE hmExportBirthdays = NULL;
+
+
 CommonData commonData = {0};
+
+CLIST_INTERFACE *pcli;
 
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
@@ -53,6 +63,7 @@ extern "C" int __declspec(dllexport) Load(void)
 	Log("%s", "Entering function " __FUNCTION__);
 
 	mir_getLP(&pluginInfo);
+	mir_getCLI();
 
 	INITCOMMONCONTROLSEX icex;
 	icex.dwSize = sizeof(icex);
@@ -67,10 +78,64 @@ extern "C" int __declspec(dllexport) Load(void)
 	Log("%s", "Hooking events ...");	
 	HookEvents();
 	
-	hAddBirthdayWndsList = (HANDLE) CallService(MS_UTILS_ALLOCWINDOWLIST, 0, 0);
+	hAddBirthdayWndsList = WindowList_Create();
+
+	CLISTMENUITEM cl = { sizeof(cl) };
+	cl.position = 10000000;
+	cl.pszPopupName = LPGEN("Birthdays (When Was It)");
+
+	cl.pszService = MS_WWI_CHECK_BIRTHDAYS;
+	cl.icolibItem = hCheckMenu;
+	cl.pszName = LPGEN("Check for birthdays");
+	hmCheckBirthdays = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_LIST_SHOW;
+	cl.pszName = LPGEN("Birthday list");
+	cl.icolibItem = hListMenu;
+	hmBirthdayList = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_REFRESH_USERDETAILS;
+	cl.position = 10100000;
+	cl.pszName = LPGEN("Refresh user details");
+	cl.icolibItem = hRefreshUserDetails;
+	hmRefreshDetails = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_IMPORT_BIRTHDAYS;
+	cl.position = 10200000;
+	cl.pszName = LPGEN("Import birthdays");
+	cl.icolibItem = hImportBirthdays;
+	hmImportBirthdays = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_EXPORT_BIRTHDAYS;
+	cl.pszName = LPGEN("Export birthdays");
+	cl.icolibItem = hExportBirthdays;
+	hmExportBirthdays = Menu_AddMainMenuItem(&cl);
+	
+	cl.pszService = MS_WWI_ADD_BIRTHDAY;
+	cl.position = 10000000;
+	cl.icolibItem = hAddBirthdayContact;
+	cl.pszName = LPGEN("Add/change user &birthday");
+	hmAddChangeBirthday = Menu_AddContactMenuItem(&cl);
+
+	// Register hotkeys
+	HOTKEYDESC hotkey = { sizeof(hotkey) };
+	hotkey.pszSection = LPGEN("Birthdays");
+
+	hotkey.pszName = "wwi_birthday_list";
+	hotkey.pszDescription = LPGEN("Birthday list");
+	hotkey.pszService = MS_WWI_LIST_SHOW;
+	Hotkey_Register(&hotkey);
+		
+	hotkey.pszName = "wwi_check_birthdays";
+	hotkey.pszDescription = LPGEN("Check for birthdays");
+	hotkey.pszService = MS_WWI_CHECK_BIRTHDAYS;
+	Hotkey_Register(&hotkey);
+	
+	
+	SkinAddNewSoundExT(BIRTHDAY_NEAR_SOUND, LPGENT("WhenWasIt"), LPGENT("Birthday near"));
+	SkinAddNewSoundExT(BIRTHDAY_TODAY_SOUND, LPGENT("WhenWasIt"), LPGENT("Birthday today"));
 	
 	Log("%s", "Leaving function " __FUNCTION__);
-	
 	return 0;
 }
 
@@ -85,6 +150,7 @@ extern "C" int __declspec(dllexport) Unload()
 		SendMessage(hUpcomingDlg, WM_CLOSE, 0, 0);
 	
 	WindowList_Broadcast(hAddBirthdayWndsList, WM_CLOSE, 0, 0);
+	WindowList_Destroy(hAddBirthdayWndsList);
 
 	Log("%s", "Killing timers ...");
 	KillTimers();

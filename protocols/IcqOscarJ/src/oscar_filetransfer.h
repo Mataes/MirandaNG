@@ -6,6 +6,7 @@
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2010 Joe Kucera
+// Copyright © 2012-2014 Miranda NG Team
 // 
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,16 +21,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-//
 // -----------------------------------------------------------------------------
 //  DESCRIPTION:
 //
 //  OSCAR File-Transfers headers
-//
 // -----------------------------------------------------------------------------
+
 #ifndef __OSCAR_FILETRANSFER_H
 #define __OSCAR_FILETRANSFER_H
-
 
 #define FT_MAGIC_ICQ    0x00
 #define FT_MAGIC_OSCAR  0x4F
@@ -62,7 +61,7 @@ char *FindFilePathContainer(const char **files, int iFile, char *szContainer);
 
 struct oscar_filetransfer: public basic_filetransfer
 {
-	HANDLE hContact;
+	MCONTACT hContact;
 	int flags; // combination of OFTF_*
 	int containerCount;
 	char **file_containers;
@@ -101,7 +100,7 @@ struct oscar_filetransfer: public basic_filetransfer
 	BYTE rawDummy[69];
 	BYTE rawMacInfo[16];
 	WORD wEncoding, wSubEncoding;
-	WORD cbRawFileName;
+	size_t cbRawFileName;
 	char *rawFileName;
 	// helper data
 	DWORD64 qwFileBytesDone;
@@ -123,7 +122,7 @@ void SafeReleaseFileTransfer(void **ft);
 
 struct oscar_connection 
 {
-	HANDLE hContact;
+	MCONTACT hContact;
 	HANDLE hConnection;
 	int status;
 	DWORD dwUin;

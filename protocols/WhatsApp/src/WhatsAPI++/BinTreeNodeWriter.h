@@ -30,16 +30,16 @@ using namespace std;
 
 #include <map>
 
-class WAConnection;
+class BinTreeNodeWriter
+{
+	friend class WAConnection;
 
-class BinTreeNodeWriter {
-private:
-	WAConnection* conn;
-	map<string,int> tokenMap;
+	WAConnection *conn;
 	ISocketConnection *realOut;
 	ByteArrayOutputStream *out;
-	IMutex* mutex;
-	int dataBegin;
+	IMutex *mutex;
+	int  dataBegin;
+	bool bSecure, bFlush;
 
 	void writeListStart(int i);
 	void writeInt8(int v);
@@ -47,25 +47,25 @@ private:
 	void writeInt16(int v, ByteArrayOutputStream* out);
 	void writeInt16(int v);
 	void writeAttributes(std::map<string, string>* attributes);
-	void writeString(const std::string& tag);
-	void writeJid(std::string* user, const std::string& server);
+	void writeString(const std::string &tag);
+	void writeJid(std::string* user, const std::string &server);
 	void writeToken(int intValue);
 	void writeBytes(unsigned char* bytes, int length);
 	void writeInt24(int v);
-    void writeInternal(ProtocolTreeNode* node);
-    void writeDummyHeader();
-    void processBuffer();
+	void writeInternal(const ProtocolTreeNode &node);
+	void writeDummyHeader();
+	void processBuffer();
 
 public:
-	BinTreeNodeWriter(WAConnection* conn, ISocketConnection* connection, const char** dictionary, const int dictionarysize, IMutex* mutex);
+	BinTreeNodeWriter(WAConnection* conn, ISocketConnection* connection, IMutex* mutex);
+	~BinTreeNodeWriter();
+
 	void streamStart(std::string domain, std::string resource);
 	void flushBuffer(bool flushNetwork);
-	void flushBuffer(bool flushNetwork, int startingOffset);
 	void streamEnd();
-	void write(ProtocolTreeNode* node);
-	void write(ProtocolTreeNode* node, bool needsFlush);
+	void write(const ProtocolTreeNode &node);
 
-	virtual ~BinTreeNodeWriter();
+	void setSecure() { bSecure = true; }
 };
 
 #endif /* BINTREENODEWRITER_H_ */

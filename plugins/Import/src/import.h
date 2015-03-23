@@ -2,7 +2,7 @@
 
 Import plugin for Miranda NG
 
-Copyright (C) 2012 George Hazan
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -42,6 +42,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <m_icolib.h>
 #include <m_clist.h>
 #include <m_db_int.h>
+#include <m_metacontacts.h>
 
 #include "version.h"
 #include "resource.h"
@@ -62,7 +63,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define PROGM_SETPROGRESS  (WM_USER+10)   //wParam=0..100
 #define PROGM_ADDMESSAGE   (WM_USER+11)   //lParam=(char*)szText
-#define SetProgress(n)  SendMessage(hdlgProgress,PROGM_SETPROGRESS,n,0)
 
 #define ICQOSCPROTONAME  "ICQ"
 #define MSNPROTONAME     "MSN"
@@ -92,27 +92,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define IOPT_CONTACTS   4096
 #define IOPT_GROUPS     8192
 
-void AddMessage( const TCHAR* fmt, ... );
-
-void mySet( HANDLE hContact, const char* module, const char* var, DBVARIANT* dbv );
+void AddMessage(const TCHAR* fmt, ...);
 
 INT_PTR CALLBACK WizardIntroPageProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
-INT_PTR CALLBACK ProgressPageProc(HWND hdlg,UINT message,WPARAM wParam,LPARAM lParam);
+INT_PTR CALLBACK ProgressPageProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK MirandaPageProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
-INT_PTR CALLBACK MirandaOptionsPageProc(HWND hdlg,UINT message,WPARAM wParam,LPARAM lParam);
-INT_PTR CALLBACK MirandaAdvOptionsPageProc(HWND hdlg,UINT message,WPARAM wParam,LPARAM lParam);
+INT_PTR CALLBACK MirandaOptionsPageProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK MirandaAdvOptionsPageProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK FinishedPageProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
 
-BOOL IsProtocolLoaded(char* pszProtocolName);
-BOOL IsDuplicateEvent(HANDLE hContact, DBEVENTINFO dbei);
+bool IsDuplicateEvent(MCONTACT hContact, DBEVENTINFO dbei);
 
-int CreateGroup(const TCHAR* name, HANDLE hContact);
+int CreateGroup(const TCHAR* name, MCONTACT hContact);
 
 extern HINSTANCE hInst;
-extern HANDLE hIcoHandle;
-extern HWND hdlgProgress;
-extern void (*DoImport)(HWND);
+extern HWND hdlgProgress, hwndAccMerge;
 extern int nImportOption;
 extern int nCustomOptions;
 extern TCHAR importFile[];
 extern time_t dwSinceDate;
+
+HICON  GetIcon(int iIconId);
+HANDLE GetIconHandle(int iIconId);
+void   RegisterIcons(void);

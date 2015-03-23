@@ -1,11 +1,12 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007-09  Maxim Mluhov
-Copyright (C) 2007-09  Victor Pavlychko
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007-09  Maxim Mluhov
+Copyright (c) 2007-09  Victor Pavlychko
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -324,9 +325,6 @@ private:
 
 	static INT_PTR CALLBACK GlobalDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	static int GlobalDlgResizer(HWND hwnd, LPARAM lParam, UTILRESIZECONTROL *urc);
-
-	typedef HRESULT (STDAPICALLTYPE *pfnEnableThemeDialogTexture)(HWND,DWORD);
-	static pfnEnableThemeDialogTexture MyEnableThemeDialogTexture;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -460,7 +458,7 @@ class CCtrlClc: public CCtrlBase
 public:
 	CCtrlClc(CDlgBase* dlg, int ctrlId);
 
-	void AddContact(HANDLE hContact);
+	void AddContact(MCONTACT hContact);
 	void AddGroup(HANDLE hGroup);
 	void AutoRebuild();
 	void DeleteItem(HANDLE hItem);
@@ -468,7 +466,7 @@ public:
 	void EndEditLabel(bool save);
 	void EnsureVisible(HANDLE hItem, bool partialOk);
 	void Expand(HANDLE hItem, DWORD flags);
-	HANDLE FindContact(HANDLE hContact);
+	HANDLE FindContact(MCONTACT hContact);
 	HANDLE FindGroup(HANDLE hGroup);
 	COLORREF GetBkColor();
 	bool GetCheck(HANDLE hItem);
@@ -1243,7 +1241,7 @@ public:
 
 	__inline PROTO_INTERFACE *GetProtoInterface() { return m_proto_interface; }
 
-	void SetStatusText(TCHAR *statusText);
+	void SetStatusText(const TCHAR *statusText);
 
 protected:
 	PROTO_INTERFACE *m_proto_interface;
@@ -1257,7 +1255,7 @@ protected:
 	virtual void OnProtoCheckOnline(WPARAM, LPARAM) {}
 
 private:
-	void UpdateProtoTitle(TCHAR *szText = NULL);
+	void UpdateProtoTitle(const TCHAR *szText = NULL);
 	void UpdateStatusBar();
 };
 

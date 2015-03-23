@@ -1,88 +1,18 @@
-#muuid {14331048-5a73-4fdb-b909-2d7e1825a012}
+﻿#muuid {14331048-5a73-4fdb-b909-2d7e1825a012}
 ;============================================================
-;  File: spamotron.dll
-;  Module: Spam-o-tron
-;  Versions: 0.4.6
-;  URL: http://vu1tur.eu.org/spamotron/
+;  File: Spamotron.dll
+;  Plugin: Spam-o-tron
+;  Version: 0.0.4.7
 ;  Authors: vu1tur
 ;============================================================
 [Anti-spam plugin with captcha and Bayes filtering.]
 Антиспам плагин с капчей и Байесовской фильтрацией.
-
-; Settings tab
-[Settings]
-Настройки
-[Enabled accounts:]
-Включить для:
-[Auto approve on:]
-Автоподтверждение при:
-[Outgoing message]
-Исходящем сообщении
-[Incoming message with any word from list:]
-Входящем сообщении с любым из слов:
-[Hide contact until verified]
-Прятать контакт до подтверждения
-[Add permanently to list on verified]
-Добавлять в контакт лист при подтверждении
-[Log actions to system history]
-Вести журнал действий
-[Flood protection]
-Защита от флуда
-[Do not send more than]
-Не отправлять более
-[messages to one contact per day]
-контрольных вопросов контакту в день
-[Do not reply to the same message more than]
-Не отвечать на сообщения-дубли больше
-[times a day]
-раз в день
-[Do not reply to messages with words in this list:]
-Черный список слов во входящих сообщениях:
-
-; Messages tab
-[Messages]
-Сообщения
-[Mode:]
-Режим:
-[Simple]
-Простой
-[Math expression]
-Математический
-[Round-robin]
-Циклический
-[Random]
-Случайный
-[will be saved in %mathexpr%]
-находится в %mathexpr%
-[Case-sensitive]
-Учитывать регистр
-[Send challenge on incoming message:]
-Отправлять контрольный вопрос при входящем сообщении:
-[Responses: (saved in %response%, %response-n% variables)]
-Ответы: (находятся в переменных %response%, %response-n%)
-[Will be automatically evaluated from %mathexpr%]
-Будет автоматически вычислен исходя из %mathexpr%
-[Reply on success:]
-Уведомлять при подтверждении:
-[Send challenge on authorization request:]
-Отправлять контрольный вопрос при запросе авторизации:
-[Keep blocked messages in contact history]
-Хранить заблокированные сообщения в истории
-[and mark them unread after approval]
-и помечать непрочитанными при подтверждении
-[Reset to defaults]
-По умолчанию
-
-
-; Bayes tab
-[Bayes]
-Байес
 [Enabled]
 Включен
-[Learned spam messages:]
-Спам сообщений в базе:
 [Learned ham messages:]
-Не спам сообщений в базе:
+Не спамерских сообщений в базе:
+[Learned spam messages:]
+Спамерских сообщений в базе:
 [Filtering options]
 Настройки фильтрации:
 [Do not send challenge request if message score above]
@@ -91,8 +21,8 @@
 Одобрять контакт при спам-рейтинге ниже
 [and learn as ham]
 и считать не спамом
-[Do not enable any of these options until Spam-o-tron have learned at least 20 of ham and 50 of spam messages.]
-Не включайте эти опции, пока в базе не будет как минимум 20 не спам и 50 спам сообщений.
+[Do not enable any of these options until Spam-o-tron has learned at least 20 of ham and 50 of spam messages.]
+Не включайте эти опции, пока в базе не будет как минимум 20 не спамерских и 50 спамерских сообщений.
 [Learning options]
 Опции обучения
 [Auto-learn messages from approved contacts as ham]
@@ -111,36 +41,80 @@
 Не спам
 [Analyze]
 Проверить
-[Message score]
-Спам-рейтинг
-
-; Popups tab
+[Settings]
+Настройки
+[Enabled accounts:]
+Включить для:
+[Auto approve on:]
+Автоподтверждение при:
+[Outgoing message]
+Исходящем сообщении
+[Incoming message with any word from list:]
+Входящем сообщении с любым из слов:
+[Hide contact until verified]
+Прятать контакт до подтверждения
+[Add permanently to list on verified]
+Добавлять контакт при подтверждении
+[Log actions to system history]
+Вести журнал действий
+[Flood protection]
+Защита от флуда
+[Do not send more than]
+Не отправлять более
+[messages to one contact per day]
+контрольных вопросов контакту в день
+[Do not reply to the same message more than]
+Не отвечать на сообщения-дубли больше
+[times a day]
+раз в день
+[Do not reply to messages with words in this list:]
+Черный список слов во входящих сообщениях:
+[Mode:]
+Режим:
+[Case-sensitive]
+Учитывать регистр
+[will be saved in %mathexpr%]
+находится в %mathexpr%
+[Send challenge on incoming message:]
+Отправлять контрольный вопрос при входящем сообщении:
+[Responses: (saved in %response%, %response-n% variables)]
+Ответы: (находятся в переменных %response%, %response-n%)
+[Reply on success:]
+Уведомлять при подтверждении:
+[Send challenge on authorization request:]
+Отправлять контрольный вопрос при запросе авторизации:
+[Keep blocked messages in contact history]
+Хранить заблокированные сообщения в истории
+[and mark them unread after approval]
+и помечать непрочитанными при подтверждении
+[Reset to defaults]
+По умолчанию
 [Enable popup notifications]
 Включить уведомления всплывающими окнами
 [Appearance]
 Внешний вид
+[Foreground]
+Текст
+[Background]
+Фон
+[Timeout (sec)]
+Время (сек)
 [Contact blocked]
 Контакт заблокирован
 [Contact approved]
 Контакт подтвержден
 [Challenge sent]
 Отправлен вопрос
-[Foreground]
-Текст
-[Background]
-Фон
-[Timeout]
-Время
 [Default colors]
 Цвета по умолчанию
 [Windows colors]
 Цвета Windows
 [Default timeout]
-По умолчанию
+Время по умолчанию
 [Preview]
 Предпросмотр
-
-; Default Messages
+[Bayes database path]
+Расположение базы Байеса
 [Spam-o-tron needs to verify you're not a bot. Reply with "%response%" without quotes.]
 Cообщение временно заблокировано. Напишите "%response%" без кавычек.
 [Spam-o-tron needs to verify you're not a bot. Reply with a result of expression %mathexpr%.]
@@ -151,8 +125,34 @@ Cообщение временно заблокировано. Напишите 
 Запрос авторизации временно заблокирован. Напишите "%response%" без кавычек.
 [Spam-o-tron delayed authorization request. First reply with a result of expression %mathexpr%.]
 Запрос авторизации временно заблокирован. Сколько будет %mathexpr%?
-
-; Notifications
+[Simple]
+Простой
+[Math expression]
+Математический
+[Round-robin]
+Циклический
+[Random]
+Случайный
+[Will be automatically evaluated from %mathexpr%]
+Будет автоматически вычислен исходя из %mathexpr%
+[Invalid regular expression.\nKeeping previous value.]
+Ошибка в регулярном выражении.\nБудет использовано старое значение.
+[Message score]
+Спам-рейтинг
+[Message sessions]
+Беседы
+[Messages]
+Сообщения
+[Bayes]
+Байес
+[Popups]
+Всплывающие окна
+[Message blocked due to preview action]
+Сообщение заблокировано для примера
+[Contact approved due to preview action]
+Контакт подтвержден для примера
+[Challenge sent to preview contact]
+Отправка контрольного вопроса для примера
 [Contact %s approved.]
 Контакт %s подтвержден.
 [Message from %s rejected because it reached a maximum for challenge requests per day.]
@@ -165,12 +165,11 @@ Cообщение временно заблокировано. Напишите 
 Сообщение от %s заблокировано, т.к. у него высокая вероятность спама.
 [Sending plain challenge to %s.]
 Отправка контрольного вопроса %s.
-[Sending math expression challenge to %s.]
+[Sending round-robin challenge to %s.]
 Отправка контрольного вопроса %s.
+[Sending random challenge to %s.]
+Отправка случайного контрольного вопроса %s.
+[Sending math expression challenge to %s.]
+Отправка математического контрольного вопроса %s.
 [Their message was]
 Сообщение было
-
-[Invalid regular expression.\nKeeping previous value.]
-Ошибка в регулярном выражении.\nБудет использовано старое значение.
-[Bayes database path]
-Расположение базы Байеса

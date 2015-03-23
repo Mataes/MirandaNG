@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,6 +21,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
+#define PF1_ANYSEARCH (PF1_BASICSEARCH | PF1_EXTSEARCHUI | PF1_SEARCHBYEMAIL | PF1_SEARCHBYNAME | PF1_EXTSEARCH)
 
 struct ListSearchResult
 {
@@ -44,7 +47,6 @@ struct FindAddDlgData
 	int notSearchedYet;
 	struct ProtoSearchInfo *search;
 	int searchCount;
-	HBITMAP hBmpSortUp, hBmpSortDown;
 	int throbbing;
 	int pivot;
 	HWND hwndAdvSearch;

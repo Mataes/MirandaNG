@@ -1,34 +1,29 @@
 // ---------------------------------------------------------------------------80
 //                ICQ plugin for Miranda Instant Messenger
 //                ________________________________________
-// 
+//
 // Copyright © 2000-2001 Richard Hughes, Roland Rabien, Tristan Van de Vreede
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2009 Joe Kucera
-// 
+// Copyright © 2012-2014 Miranda NG Team
+//
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
 // as published by the Free Software Foundation; either version 2
 // of the License, or (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
-#include "icqoscar.h"
 
+#include "icqoscar.h"
 
 INT_PTR CALLBACK LoginPasswdDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -46,13 +41,13 @@ INT_PTR CALLBACK LoginPasswdDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 		{
 			DWORD dwUin = ppro->getContactUin(NULL);
 
-			char pszUIN[MAX_PATH], str[MAX_PATH];
-			mir_snprintf(pszUIN, 128, ICQTranslateUtfStatic(LPGEN("Enter a password for UIN %u:"), str, MAX_PATH), dwUin);
-			SetDlgItemTextUtf(hwndDlg, IDC_INSTRUCTION, pszUIN);
+			TCHAR pszUIN[MAX_PATH];
+			mir_sntprintf(pszUIN, SIZEOF(pszUIN), TranslateT("Enter a password for UIN %u:"), dwUin);
+			SetDlgItemText(hwndDlg, IDC_INSTRUCTION, pszUIN);
 
 			SendDlgItemMessage(hwndDlg, IDC_LOGINPW, EM_LIMITTEXT, PASSWORDMAXLEN - 1, 0);
 
-			CheckDlgButton(hwndDlg, IDC_SAVEPASS, ppro->getByte("RememberPass", 0));
+			CheckDlgButton(hwndDlg, IDC_SAVEPASS, ppro->getByte("RememberPass", 0) ? BST_CHECKED : BST_UNCHECKED);
 		}
 		break;
 
@@ -71,7 +66,7 @@ INT_PTR CALLBACK LoginPasswdDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARA
 			ppro->m_bRememberPwd = (BYTE)IsDlgButtonChecked(hwndDlg, IDC_SAVEPASS);
 			ppro->setByte("RememberPass", ppro->m_bRememberPwd);
 
-			GetDlgItemTextA(hwndDlg, IDC_LOGINPW, ppro->m_szPassword, sizeof(ppro->m_szPassword));
+			GetDlgItemTextA(hwndDlg, IDC_LOGINPW, ppro->m_szPassword, SIZEOF(ppro->m_szPassword));
 
 			ppro->icq_login(ppro->m_szPassword);
 

@@ -12,21 +12,21 @@ tstring &GetDlgItemString(HWND hwnd, int id)
 	return s;
 }
 
-bool IsExistMyMessage(HANDLE hContact)
+bool IsExistMyMessage(MCONTACT hContact)
 {
-	HANDLE hDbEvent = db_event_first(hContact);
+	MEVENT hDbEvent = db_event_first(hContact);
 	while(hDbEvent){
 		DBEVENTINFO dbei = { sizeof(dbei) };
 		if (db_event_get(hDbEvent, &dbei))
 			break;
 
-		if(dbei.flags & DBEF_SENT){
+		if (dbei.flags & DBEF_SENT){
 			// mark contact as Answered
 			db_set_b(hContact, pluginName, answeredSetting, 1);
 			// ...let the event go its way
 			return true;
 		}
-		hDbEvent = db_event_next(hDbEvent);
+		hDbEvent = db_event_next(hContact, hDbEvent);
 	}
 	return false;
 }
@@ -41,12 +41,12 @@ void SetDlgItemString(HWND hwndDlg, UINT idItem, std::wstring const &str)
 	SetDlgItemTextW(hwndDlg, idItem, str.c_str());
 }
 
-tstring variables_parse(tstring const &tstrFormat, HANDLE hContact){
+tstring variables_parse(tstring const &tstrFormat, MCONTACT hContact){
 	if (ServiceExists(MS_VARS_FORMATSTRING)) {
 		FORMATINFO fi;
 		tstring tstrResult;
 
-		ZeroMemory(&fi, sizeof(fi));
+		memset(&fi, 0, sizeof(fi));
 		fi.cbSize = sizeof(fi);
 		fi.tszFormat = _tcsdup(tstrFormat.c_str());
 		fi.hContact = hContact;

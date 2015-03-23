@@ -1,0 +1,433 @@
+﻿#muuid {32579908-724b-467f-adad-22b6359a749a}
+;============================================================
+;  File: VKontakte.dll
+;  Plugin: VKontakte protocol
+;  Version: 0.1.0.51
+;  Authors: Miranda NG Team
+;============================================================
+[VKontakte protocol support for Miranda NG.]
+Поддержка протокола ВКонтакте в Miranda NG.
+[[img] BBCode support for image]
+Поддержка BB-кода [img] для изображений
+[off]
+отключена
+[for original size images]
+для оригинального размера
+[for preview max 130px*130px]
+для предпросмотра в 130px*130px
+[for preview max 604px*604px]
+для предпросмотра в 604px*604px
+[BBCode support on news and event notifications]
+Поддержка BB-кодов для новостей и уведомлений
+[basic ([b], [i], [u], [s])]
+базовая ([b], [i], [u], [s])
+[advanced (+[url], [size], [color])]
+продвинутая (+[url], [size], [color])
+[Use this setting also for attachments on news and notifications]
+Использовать эту настройку также для вложений в новостях и уведомлениях
+[Other]
+Другое
+[BBCode support on attachments]
+Поддержка BB-кодов для вложений
+[Process stickers as smileys]
+Обрабатывать стикеры как смайлы
+[News and event notifications]
+Новости и уведомления
+[WARNING: Causes excessive network traffic!!!]
+Предупреждение: высокое потребление сетевого трафика!!!
+[Enable news feeds]
+Включить ленту новостей
+[Interval for news updates (min):]
+Интервал обновлений новостей (мин):
+[Enable event notifications]
+Включить уведомления
+[Interval for notification updates (min):]
+Интервал обновлений уведомлений (мин):
+[Mark notification as viewed on receive]
+Помечать уведомления, как просмотренные при получении
+[Special contact always enabled]
+Псевдоконтакт всегда включён
+[Autoclear news and notification history]
+Автоочистка истории новостей и уведомлений
+[News types]
+Типы новостей
+[Wall posts]
+Записи на стене
+[Photos]
+Фотографии
+[Photos tags]
+Отметки на фотографиях
+[Wall photos]
+Фотографии на стене
+[News sources]
+Источники новостей
+[Friends]
+Друзья
+[Groups]
+Группы
+[Include banned sources]
+Включать забаненные источники
+[Pages]
+Страницы
+[Subscriptions to users]
+Подписки на пользователей
+[No reposts]
+Без репостов
+[Notifications types]
+Типы уведомлений
+[Comments]
+Комментарии
+[Likes]
+Лайки
+[Reposts]
+Репосты
+[Mentions in comments]
+Упоминания в комментариях
+[E-mail or phone number:]
+E-mail или номер телефона:
+[Password:]
+Пароль:
+[Open VKontakte site]
+Открыть страницу ВКонтакте
+[Advanced]
+Дополнительно
+[Hide chats on startup]
+Не открывать окна комнат чата при входе
+[Always notify as unread for all incoming message]
+Помечать все входящие сообщения как "Непрочитанное"
+[Force invisible status upon user activity]
+Переводить статус контакта в невидимый при его активности
+[Invisible interval timeout (min):]
+Интервал перевода в "невидимый" (мин):
+[Use non-standard urlEncode for sent messages (less traffic)]
+Использовать нестандартный urlEncode для сообщений (экономия трафика)
+[When I ban user...]
+При бане пользователя...
+[Report abuse]
+Пожаловаться на пользователя
+[Clear server history]
+Очистить историю на сайте
+[Remove from friend list]
+Удалить из списка друзей
+[Remove from contact list]
+Удалить из списка контактов
+[Broadcast music...]
+Трансляция музыки...
+[as regular status for unknown music and audio status otherwise]
+как обычный статус для неизвестных композиций, иначе как аудио статус
+[as audio status only]
+только как аудио статус
+[as regular status only]
+только как обычный статус
+[Login settings]
+Настройки входа
+[Local settings]
+Локальные настройки
+[Contact list group:]
+Группа в списке контактов:
+[Server-side delivery confirmation]
+Подтверждение доставки со стороны сервера
+[Use local time for received messages]
+Локальное время для принятых сообщений
+[Automatically wipe local contacts missing in your friend list]
+Автоматически удалять локальные контакты, которых нет в списке друзей
+[Mark message as read...]
+Помечать сообщение прочитанным...
+[on read]
+при прочтении
+[on receive]
+при получении
+[on reply]
+при ответе
+[on typing]
+при наборе текста
+[Sync history on protocol online...]
+Синхронизация истории при подключении протокола к сети...
+[automatically]
+автоматически
+[for last 1 day]
+за последний день
+[for last 3 days]
+за последние 3 дня
+[Bots challenge test]
+Защита от ботов
+[Instruction:]
+Инструкция
+[Submit]
+Принять
+[Cancel]
+Отмена
+[Invite user to chat]
+Пригласить пользователя в чат
+[Choose one of your contacts to be invited:]
+Выбор пользователя для приглашения в чат:
+[Create group chat]
+Cоздать комнату чата
+[Mark users you want to invite to a new chat]
+Отметить пользователей для приглашения в комнату чата
+[New chat's title:]
+Звголовок новой комнаты
+[Share]
+Поделиться
+[Only for friends]
+Только друзьям
+[Attention]
+Внимание
+[Captcha form icon]
+Значок формы с капчей
+[Notification icon]
+Значок уведомления
+[Read message icon]
+Значок прочтённого сообщения
+[Visit profile icon]
+Значок профиля на сайте
+[Load server history icon]
+Значок загрузки истории с сайта
+[Add to friend list icon]
+Значок добавления в список друзей
+[Delete from friend list icon]
+Значок удаления из списка друзей
+[Report abuse icon]
+Значок жалобы на пользователя
+[Ban user icon]
+Значок бана пользователя
+[Broadcast icon]
+Значок трансляции
+[Status icon]
+Значок статуса
+[Wall message icon]
+Значок сообщения на стене
+[Protocols]
+Протоколы
+[VKontakte]
+ВКонтакте
+[Access denied! Data will not be sent or received.]
+Отказ в доступе! Данные не будут приняты или отправлены.
+[Error]
+Ошибка
+[Error %d. Data will not be sent or received.]
+Ошибка %d. Данные не будут приняты или отправлены.
+[One of the parameters specified was missing or invalid]
+Один из заданных параметров отсутствует или неверен
+[Access to adding post denied]
+Превышен лимит на число публикаций в сутки
+[Enter confirmation code]
+Введите код подтверждения
+[Message read: %s]
+Сообщение прочтено в: %s
+[commented on your post]
+оставил комментарий к вашей записи
+[commented on your photo]
+оставил комментарий к вашей фотографии
+[commented on your video]
+оставил комментарий к вашему видео
+[replied to your comment]
+ответил на ваш комментарий
+[replied to your comment to photo]
+ответил на ваш комментарий к фотографии
+[replied to your comment to video]
+ответил на ваш комментарий к видео
+[replied to your topic]
+ответил в вашей теме
+[liked your post]
+понравилась ваша запись
+[liked your comment]
+понравился ваш комментарий
+[liked your photo]
+понравилась ваша фотография
+[liked your video]
+понравилось ваше видео
+[liked your comment to photo]
+понравился ваш комментарий к фотографии
+[liked your comment to video]
+понравился ваш комментарий к видео
+[liked your comment to topic]
+понравился ваш комментарий к теме
+[shared your post]
+поделился вашей записью
+[shared your photo]
+поделился вашей фотографией
+[shared your video]
+поделился вашим видео
+[Photo]
+Фото
+[Attachments:]
+Вложения:
+[Audio]
+Аудио
+[Video]
+Видео
+[Document]
+Документ
+[Wall post]
+Запись на стене
+[Link]
+Ссылка
+[Image]
+Изображение
+[Unsupported or unknown attachment type: %s]
+Неподдерживаемый или неизвестный тип вложения: %s
+[(Unknown contact)]
+(Неизвестный контакт)
+[Message from]
+Сообщение от
+[at]
+в
+[Enter the text you see]
+Введите текст, который видите
+[Participants]
+Участники
+[Owners]
+Владельцы
+[Unknown]
+Неизвестный
+[Enter new chat title]
+Введите новый заголовок чата
+[This chat is going to be destroyed forever with all its contents. This action cannot be undone. Are you sure?]
+Этот чат будет удалён со всеми входящими в него контактами. Это действие не может быть отменено. Вы уверены, что хотите продолжить?
+[Warning]
+Предупреждение
+[I'm back]
+Я вернулся
+[You've been kicked by ]
+Вы были выкинуты пользователем\s
+[Chat]
+Чат
+[&Invite a user]
+&Пригласить пользователя
+[View/change &title]
+Просмотр/смена &заголовка
+[&Destroy room]
+&Удалить комнату чата
+[&User details]
+Информация о &контакте
+[&Kick]
+&Выкинуть
+[User was tagged in these photos:]
+Пользователь был отмечен на этих фотографиях
+[News from %s\n%s]
+Новость от %s\n%s
+[\tRepost from %s\n%s]
+\tРепост от %s\n%s
+[Video description:]
+Описание видео
+[Post text:]
+Текст записи:
+[Topic text:]
+Текст темы:
+[Couldn't save file]
+Невозможно сохранить файл
+[Invalid album id]
+Неверный ID альбома
+[Invalid server]
+Неверный сервер
+[Invalid hash]
+Неверный хэш
+[Invalid audio]
+Неподходящий тип аудио
+[The audio file was removed by the copyright holder and cannot be reuploaded]
+Аудиозапись была удалена правообладателем и не может быть загружена заново
+[Invalid filename]
+Неверное имя файла
+[Invalid filesize]
+Неверный размер файла
+[Unknown error occurred]
+Неизвестная ошибка
+[File upload error]
+Ошибка загрузки файла
+[Are you sure to reload all messages from vk.com?\nLocal contact history will be deleted and reloaded from the server.\nIt may take a long time.\nDo you want to continue?]
+Вы уверены, что хотите загрузить все сообщения с сайта vk.com?\nЛокальная история контакта будет удалена и загружена с сервера.\nЭто может занять много времени.\nВы уверены, что хотите продолжить?
+[Attention!]
+Внимание!
+[Network]
+Сеть
+[Account]
+Учётная запись
+[News and notifications]
+Новости и уведомления
+[View]
+Вид
+[%s server connection]
+Подключение к серверу %s
+[Create new chat]
+Создать новый чат
+[Status message]
+Сообщение статуса
+[Send message to my wall]
+Опубликовать на своей стене
+[Load news from VK]
+Загрузить новости с VK
+[Visit profile]
+Профиль на сайте
+[Send message to user\'s wall]
+Сообщение на стене
+[Add as friend]
+Добавить в друзья
+[Delete from friend list]
+Удалить из списка друзей
+[Ban user]
+Забанить пользователя
+[Destroy room]
+Удалить комнату чата
+[Open broadcast]
+Открыть трансляцию
+[Reload messages from vk.com...]
+Загрузить историю с сайта...
+[for last week]
+за последнюю неделю
+[for last 30 days]
+за последние 30 дней
+[for last 90 days]
+за последние 90 дней
+[for all time]
+с самого начала
+[Errors]
+Ошибки
+[Notification]
+Уведомдение
+[User %s added as friend]
+Пользователь %s добавлен в друзья
+[You cannot add yourself as friend]
+Вы не можете добавить себя в друзья
+[Cannot add this user to friends as they have put you on their blacklist]
+Невозможно добавить пользователя в друзья, так как вы находитесь в его чёрном списке
+[Cannot add this user to friends as you put him on blacklist]
+Невозможно добавить пользователя в друзья, так как он находится в вашем чёрном списке
+[Loading status message from vk.com.\nThis may take some time.]
+Загрузка сообщения статуса с vk.com.\nЭто может занять некоторое время.
+[Waiting...]
+Ожидание...
+[Enter new status message]
+Введите новое сообщение статуса
+[Please authorize me to add you to my friend list.]
+Пожалуйста, разрешите мне добавить вас в список друзей.
+[Are you sure to delete %s from your friend list?]
+Вы уверены, что хотите удалить %s из списка друзей?
+[User %s was deleted from your friend list]
+Контакт %s был удалён из вашего списка друзей
+[Your request to the user %s was deleted]
+Ваш запрос пользователю %s удалён
+[Friend request from the user %s declined]
+Запрос дружбы от пользователя %s отклонён
+[Friend request suggestion for the user %s deleted]
+Рекомендация добавить в друзья пользователя %s удалена
+[User or request was not deleted]
+Пользователь или запрос не были удалены
+[ report abuse on him/her]
+ отправит жалобу на пользователя
+[ clear server history with him/her]
+ удалит историю с пользователем на сайте
+[ remove him/her from your friend list]
+ удалит пользователя из друзей
+[ remove him/her from your contact list]
+ удалит пользователя из списка контактов
+[Are you sure to ban %s? %s%sContinue?]
+Вы уверены, что хотите забанить %s? %s%sПродолжить?
+[\nIt will also]
+\nЭто также
+[Are you sure to report abuse on %s?]
+Вы уверены, что хотите отправить жалобу на %s?
+[Wall message for]
+Сообщение на стене пользователя
+[Attention! Message body or url should not be empty!]
+Внимание! Текст сообщения или ссылка не могут быть пустыми!

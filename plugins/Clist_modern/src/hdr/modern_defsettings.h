@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2007 Artem Shpynov 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
+Copyright 2007 Artem Shpynov
 
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
@@ -29,7 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #pragma once
 
-#define SETTING_ENABLESKINEDITOR_DEFAULT        0 //"ModernData", "EnableSkinEditor"
 #define SETTING_TOOLWINDOW_DEFAULT              1 //"CList","ToolWindow"
 #define SETTING_ONTOP_DEFAULT                   0 //"CList","OnTop"
 #define SETTING_MIN2TRAY_DEFAULT                1 //"CList","Min2Tray"
@@ -37,7 +37,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SETTING_HIDEEMPTYGROUPS_DEFAULT         0 //"CList","HideEmptyGroups"
 #define SETTING_USEGROUPS_DEFAULT               1 //"CList","UseGroups"
 #define SETTING_PLACEOFFLINETOROOT_DEFAULT      0 //"CList","PlaceOfflineToRoot"
-#define SETTING_ALWAYSPRIMARY_DEFAULT           0 //! "CList","AlwaysPrimary"
 #define SETTING_DISABLETRAYFLASH_DEFAULT        0 //! "CList","DisableTrayFlash"
 #define SETTING_ICONFLASHTIME_DEFAULT         550 //! "CList","IconFlashTime"
 #define SETTING_THINBORDER_DEFAULT              0 //! "CList","ThinBorder"
@@ -218,12 +217,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SETTING_CYCLETIME_DEFAULT                   4 //"CList","CycleTime"
 #define SETTING_TRAYICON_DEFAULT                    SETTING_TRAYICON_SINGLE //"CList","TrayIcon"
 #define SETTING_ALWAYSSTATUS_DEFAULT              0 //"CList","AlwaysStatus"
-#define SETTING_ALWAYSMULTI_DEFAULT               0 //"CList","AlwaysMulti"
 
 #define SETTING_BLENDINACTIVESTATE_DEFAULT  0 //"CLC","BlendInActiveState"
 
 #define CLCDEFAULT_MODERN_SELTEXTCOLOUR     (g_CluiData.fDisableSkinEngine?GetSysColor(COLOR_HIGHLIGHTTEXT):RGB(0,0,128))
-#define CLCDEFAULT_MODERN_HOTTEXTCOLOUR     (g_CluiData.fDisableSkinEngine?(IsWinVer98Plus()?CLCDEFAULT_MODERN_SELTEXTCOLOUR:GetSysColor(COLOR_HOTLIGHT)):RGB(0,0,255))
+#define CLCDEFAULT_MODERN_HOTTEXTCOLOUR     (g_CluiData.fDisableSkinEngine ? CLCDEFAULT_MODERN_SELTEXTCOLOUR : RGB(0,0,255))
 #define CLCDEFAULT_MODERN_QUICKSEARCHCOLOUR RGB(255,255,0)
 #define CLCDEFAULT_NOVSCROLL         0 //"CLC","NoVScrollBar"
 #define CLCDEFAULT_INFOTIPTIME       750 //"! "CLC","InfoTipHoverTime"
@@ -241,4 +239,4 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SETTINGS_BARAUTOSIZE_DEFAULT	1  //"ModernToolBar", "option_Bar0_Autosize"
 #define SETTINGS_BARMULTILINE_DEFAULT	1  //"ModernToolBar", "option_Bar0_Multiline"
 
-#define SETTING_ENABLESOUNDS_DEFAULT 1 // !"Skin", "UseSound", 
+#define SETTING_ENABLESOUNDS_DEFAULT 1 // !"Skin", "UseSound",

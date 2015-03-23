@@ -73,7 +73,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\..\include;..\..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;KEEPSTATUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;KEEPSTATUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -88,14 +88,13 @@
       <AdditionalIncludeDirectories>..\..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;wininet.lib;UxTheme.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
       <BaseAddress>0x11cd0000</BaseAddress>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\..\bin10\lib</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>wininet.dll</DelayLoadDLLs>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -104,7 +103,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..\..\include;..\..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;KEEPSTATUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;KEEPSTATUS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -120,7 +119,7 @@
       <AdditionalIncludeDirectories>..\..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;wininet.lib;UxTheme.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -129,7 +128,6 @@
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\..\bin10\lib</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>wininet.dll</DelayLoadDLLs>
       <AdditionalOptions>/PDBALTPATH:%_PDB%</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
@@ -155,14 +153,13 @@
     </Link>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <AdditionalDependencies>ws2_32.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;wininet.lib;UxTheme.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <BaseAddress>0x11cd0000</BaseAddress>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\..\bin10\lib</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>wininet.dll</DelayLoadDLLs>
       <AdditionalOptions>/PDBALTPATH:%_PDB%</AdditionalOptions>
     </Link>
     <ResourceCompile>
@@ -183,14 +180,13 @@
       <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;wininet.lib;UxTheme.lib;Iphlpapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <BaseAddress>0x11cd0000</BaseAddress>
       <AdditionalLibraryDirectories>$(ProfileDir)..\..\..\bin10\lib</AdditionalLibraryDirectories>
-      <DelayLoadDLLs>wininet.dll</DelayLoadDLLs>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>..\..\..\include\msapi</AdditionalIncludeDirectories>

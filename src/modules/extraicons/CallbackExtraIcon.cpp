@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -23,10 +23,10 @@ Boston, MA 02111-1307, USA.
 
 #include "extraicons.h"
 
-CallbackExtraIcon::CallbackExtraIcon(int id, const char *name, const TCHAR *description, const char *descIcon,
-		MIRANDAHOOK RebuildIcons, MIRANDAHOOK ApplyIcon, MIRANDAHOOKPARAM OnClick, LPARAM param) :
-	BaseExtraIcon(id, name, description, descIcon, OnClick, param), RebuildIcons(RebuildIcons), ApplyIcon(ApplyIcon),
-			needToRebuild(true)
+CallbackExtraIcon::CallbackExtraIcon(int _id, const char *_name, const TCHAR *_description, const char *_descIcon,
+		MIRANDAHOOK _RebuildIcons, MIRANDAHOOK _ApplyIcon, MIRANDAHOOKPARAM _OnClick, LPARAM _param) :
+	BaseExtraIcon(_id, _name, _description, _descIcon, _OnClick, _param),
+	RebuildIcons(_RebuildIcons), ApplyIcon(_ApplyIcon), needToRebuild(true)
 {
 }
 
@@ -41,17 +41,16 @@ int CallbackExtraIcon::getType() const
 
 void CallbackExtraIcon::rebuildIcons()
 {
-	if (!isEnabled())
-	{
+	if (!isEnabled()) {
 		needToRebuild = true;
 		return;
 	}
-	needToRebuild = false;
 
+	needToRebuild = false;
 	RebuildIcons(0, 0);
 }
 
-void CallbackExtraIcon::applyIcon(HANDLE hContact)
+void CallbackExtraIcon::applyIcon(MCONTACT hContact)
 {
 	if (!isEnabled() || hContact == NULL)
 		return;
@@ -59,10 +58,10 @@ void CallbackExtraIcon::applyIcon(HANDLE hContact)
 	if (needToRebuild)
 		rebuildIcons();
 
-	ApplyIcon((WPARAM) hContact, 0);
+	ApplyIcon(hContact, 0);
 }
 
-int CallbackExtraIcon::setIcon(int id, HANDLE hContact, HANDLE icon)
+int CallbackExtraIcon::setIcon(int id, MCONTACT hContact, HANDLE icon)
 {
 	if (!isEnabled() || hContact == NULL || id != this->id)
 		return -1;
@@ -70,7 +69,7 @@ int CallbackExtraIcon::setIcon(int id, HANDLE hContact, HANDLE icon)
 	return ClistSetExtraIcon(hContact, icon);
 }
 
-int CallbackExtraIcon::setIconByName(int id, HANDLE hContact, const char *icon)
+int CallbackExtraIcon::setIconByName(int id, MCONTACT hContact, const char *icon)
 {
 	return -1;
 }

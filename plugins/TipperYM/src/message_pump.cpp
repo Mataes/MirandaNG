@@ -20,11 +20,7 @@ Boston, MA 02111-1307, USA.
 
 #include "common.h"
 
-BOOL (WINAPI *MySetLayeredWindowAttributes)(HWND,COLORREF,BYTE,DWORD) = 0;
-BOOL (WINAPI *MyUpdateLayeredWindow)(HWND hwnd, HDC hdcDST, POINT *pptDst, SIZE *psize, HDC hdcSrc, POINT *pptSrc, COLORREF crKey, BLENDFUNCTION *pblend, DWORD dwFlags) = 0;
-BOOL (WINAPI *MyAnimateWindow)(HWND hWnd,DWORD dwTime,DWORD dwFlags) = 0;
-HMONITOR (WINAPI *MyMonitorFromPoint)(POINT, DWORD);
-BOOL (WINAPI *MyGetMonitorInfo)(HMONITOR, LPMONITORINFO);
+HMODULE hDwmapiDll = 0;
 HRESULT (WINAPI *MyDwmEnableBlurBehindWindow)(HWND hWnd, DWM_BLURBEHIND *pBlurBehind) = 0;
 
 unsigned int uintMessagePumpThreadId = 0;
@@ -53,14 +49,14 @@ bool NeedWaitForContent(CLCINFOTIPEX *clcitex)
 
 	if (opt.bWaitForContent && IsContactTooltip(clcitex))
 	{
-		char *szProto = GetContactProto(clcitex->hItem);
+		char *szProto = GetContactProto((MCONTACT)clcitex->hItem);
 		if (!szProto) return false;
 
 		if (opt.bWaitForStatusMsg && !bStatusMsgReady)
 		{
-			db_unset(clcitex->hItem, MODULE, "TempStatusMsg");
-			if (CanRetrieveStatusMsg(clcitex->hItem, szProto) &&
-				CallContactService(clcitex->hItem, PSS_GETAWAYMSG, 0, 0))
+			db_unset((MCONTACT)clcitex->hItem, MODULE, "TempStatusMsg");
+			if (CanRetrieveStatusMsg((MCONTACT)clcitex->hItem, szProto) &&
+				CallContactService((MCONTACT)clcitex->hItem, PSS_GETAWAYMSG, 0, 0))
 			{
 				if (WaitForContentTimerID)
 					KillTimer(0, WaitForContentTimerID);
@@ -74,7 +70,7 @@ bool NeedWaitForContent(CLCINFOTIPEX *clcitex)
 			CallProtoService(szProto, PS_GETAVATARCAPS, AF_ENABLED, 0))
 		{
 			DBVARIANT dbv;
-			if (!db_get_s(clcitex->hItem, "ContactPhoto", "File", &dbv))
+			if (!db_get_s((MCONTACT)clcitex->hItem, "ContactPhoto", "File", &dbv))
 			{
 				if (!strstr(dbv.pszVal, ".xml"))
 				{
@@ -142,14 +138,12 @@ unsigned int CALLBACK MessagePumpThread(void *param)
 				}
 				case MUM_DELETEPOPUP:
 				{
-					if (hwndTip)
-					{
+					if (hwndTip) {
 						MyDestroyWindow(hwndTip);
 						hwndTip = 0;
 					}
 
-					if (clcitex)
-					{
+					if (clcitex) {
 						mir_free(clcitex);
 						clcitex = 0;
 					}
@@ -160,23 +154,17 @@ unsigned int CALLBACK MessagePumpThread(void *param)
 				}
 				case MUM_GOTSTATUS:
 				{
-					HANDLE hContact = (HANDLE)hwndMsg.wParam;
+					MCONTACT hContact = (MCONTACT)hwndMsg.wParam;
 					TCHAR *swzMsg = (TCHAR *)hwndMsg.lParam;
 
-					if (opt.bWaitForContent &&
-						bStatusMsgReady == false &&
-						clcitex &&
-						clcitex->hItem == hContact)
-					{
-						if (WaitForContentTimerID)
-						{
+					if (opt.bWaitForContent && bStatusMsgReady == false && clcitex && clcitex->hItem == (HANDLE)hContact) {
+						if (WaitForContentTimerID) {
 							KillTimer(0, WaitForContentTimerID);
 							WaitForContentTimerID = 0;
 						}
 
-						if (swzMsg)
-						{
-							db_set_ts(clcitex->hItem, MODULE, "TempStatusMsg", swzMsg);
+						if (swzMsg) {
+							db_set_ts((MCONTACT)clcitex->hItem, MODULE, "TempStatusMsg", swzMsg);
 							mir_free(swzMsg);
 						}
 
@@ -184,7 +172,7 @@ unsigned int CALLBACK MessagePumpThread(void *param)
 						PostMPMessage(MUM_CREATEPOPUP, 0, 0);
 					}
 					else if (!opt.bWaitForContent && hwndTip)
-						SendMessage(hwndTip, PUM_SETSTATUSTEXT, (WPARAM)hContact, (LPARAM)swzMsg);
+						SendMessage(hwndTip, PUM_SETSTATUSTEXT, hContact, (LPARAM)swzMsg);
 					else if (swzMsg)
 						mir_free(swzMsg);
 
@@ -198,12 +186,8 @@ unsigned int CALLBACK MessagePumpThread(void *param)
 				}
 				case MUM_GOTAVATAR:
 				{
-					HANDLE hContact = (HANDLE)hwndMsg.wParam;
-
-					if (opt.bWaitForContent &&
-						bAvatarReady == false &&
-						clcitex &&
-						clcitex->hItem == hContact)
+					MCONTACT hContact = (MCONTACT)hwndMsg.wParam;
+					if (opt.bWaitForContent && bAvatarReady == false && clcitex && clcitex->hItem == (HANDLE)hContact)
 					{
 						if (WaitForContentTimerID)
 						{
@@ -248,16 +232,7 @@ void InitMessagePump()
 	wcl.lpszClassName = POP_WIN_CLASS;
 	RegisterClassEx(&wcl);
 
-	HMODULE hUserDll = LoadLibrary(_T("user32.dll"));
-	if (hUserDll) {
-		MySetLayeredWindowAttributes = (BOOL (WINAPI *)(HWND,COLORREF,BYTE,DWORD))GetProcAddress(hUserDll, "SetLayeredWindowAttributes");
-		MyUpdateLayeredWindow = (BOOL (WINAPI *)(HWND hwnd, HDC hdcDST, POINT *pptDst, SIZE *psize, HDC hdcSrc, POINT *pptSrc, COLORREF crKey, BLENDFUNCTION *pblend, DWORD dwFlags))GetProcAddress(hUserDll, "UpdateLayeredWindow");
-		MyAnimateWindow =(BOOL (WINAPI*)(HWND,DWORD,DWORD))GetProcAddress(hUserDll, "AnimateWindow");
-		MyMonitorFromPoint = (HMONITOR (WINAPI*)(POINT, DWORD))GetProcAddress(hUserDll, "MonitorFromPoint");
-		MyGetMonitorInfo = (BOOL (WINAPI*)(HMONITOR, LPMONITORINFO))GetProcAddress(hUserDll, "GetMonitorInfoW");
-	}
-
-	HMODULE hDwmapiDll = LoadLibrary(_T("dwmapi.dll"));
+	hDwmapiDll = LoadLibrary(_T("dwmapi.dll"));
 	if (hDwmapiDll)
 		MyDwmEnableBlurBehindWindow = (HRESULT (WINAPI *)(HWND, DWM_BLURBEHIND *))GetProcAddress(hDwmapiDll, "DwmEnableBlurBehindWindow");
 
@@ -268,6 +243,7 @@ void DeinitMessagePump()
 {
 	PostMPMessage(WM_QUIT, 0, 0);
 	UnregisterClass(POP_WIN_CLASS, hInst);
+	FreeLibrary(hDwmapiDll);
 }
 
 INT_PTR ShowTip(WPARAM wParam, LPARAM lParam)
@@ -347,27 +323,24 @@ int HideTipHook(WPARAM wParam, LPARAM lParam)
 
 int ProtoAck(WPARAM wParam, LPARAM lParam)
 {
-	ACKDATA *ack = (ACKDATA *)lParam;
+	ACKDATA *ack = (ACKDATA*)lParam;
 	if (ack->result != ACKRESULT_SUCCESS)
 		return 0;
 
 	if (ack->type == ACKTYPE_AWAYMSG) {
-		TCHAR* tszMsg = ( TCHAR* )ack->lParam;
-		if ( lstrlen(tszMsg))
+		TCHAR *tszMsg = (TCHAR*)ack->lParam;
+		if (mir_tstrlen(tszMsg))
 			PostMPMessage(MUM_GOTSTATUS, (WPARAM)ack->hContact, (LPARAM)mir_tstrdup(tszMsg));
 	}
 	else if (ack->type == ICQACKTYPE_XSTATUS_RESPONSE)
-	{
 		PostMPMessage(MUM_GOTXSTATUS, (WPARAM)ack->hContact, 0);
-	}
 
 	return 0;
 }
 
-int AvatarChanged(WPARAM wParam, LPARAM lParam)
+int AvatarChanged(WPARAM hContact, LPARAM lParam)
 {
-	HANDLE hContact = (HANDLE)wParam;
-	PostMPMessage(MUM_GOTAVATAR, (WPARAM)hContact, 0);
+	PostMPMessage(MUM_GOTAVATAR, hContact, 0);
 	return 0;
 }
 

@@ -15,7 +15,7 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+   */
 
 #include "commonheaders.h"
 
@@ -37,12 +37,12 @@ INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
-			case IDC_AUTHICON:
-			case IDC_GRANTICON:
-			case IDC_ENABLEMENUITEM:
-			case IDC_ICONSFORRECENT:
-				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-				break;
+		case IDC_AUTHICON:
+		case IDC_GRANTICON:
+		case IDC_ENABLEMENUITEM:
+		case IDC_ICONSFORRECENT:
+			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+			break;
 		}
 		break;
 
@@ -55,8 +55,8 @@ INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 				bContactMenuItem = IsDlgButtonChecked(hwndDlg, IDC_ENABLEMENUITEM);
 				bIconsForRecentContacts = IsDlgButtonChecked(hwndDlg, IDC_ICONSFORRECENT);
 
-				for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
-					onExtraImageApplying((WPARAM)hContact,0);
+				for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
+					onExtraImageApplying((WPARAM)hContact, 0);
 
 				//Store options values to DB
 				db_set_b(NULL, MODULENAME, "EnableAuthIcon", bUseAuthIcon);
@@ -64,15 +64,14 @@ INT_PTR CALLBACK DlgProcOptions(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 				db_set_b(NULL, MODULENAME, "MenuItem", bContactMenuItem);
 				db_set_b(NULL, MODULENAME, "EnableOnlyForRecent", bIconsForRecentContacts);
 				return TRUE;
-			}
+		}
 	}
 	return FALSE;
 }
 
-int onOptInitialise(WPARAM wParam, LPARAM lParam)
+int onOptInitialise(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = { 0 };
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = g_hInst;
 	odp.pszGroup = LPGEN("Icons");
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_AUTHSTATE_OPT);
@@ -80,6 +79,5 @@ int onOptInitialise(WPARAM wParam, LPARAM lParam)
 	odp.pfnDlgProc = DlgProcOptions;
 	odp.flags = ODPF_BOLDGROUPS;
 	Options_AddPage(wParam, &odp);
-
 	return 0;
 }

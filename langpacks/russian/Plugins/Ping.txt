@@ -7,7 +7,6 @@
 ;============================================================
 [Ping labelled IP addresses or domain names.]
 Пингует IP адрес или доменное имя.
-;file \plugins\Ping\res\ping.rc
 [Delay between pings (secs):]
 Задержка между пингами (сек):
 [Timeout]
@@ -36,7 +35,7 @@
 Интерфейс
 [Do not change icon when testing]
 Не менять значок при тестировании
-[Use the Customize/Fonts options to change text size and colour.]
+[Use the Customize/Fonts options to change text size and color.]
 Настройка шрифтов в "Тонкая настройка->Шрифты и цвета"
 [Indent:]
 Отступ:
@@ -45,7 +44,7 @@
 [Repeats for success/failure:]
 Повторять до результата:
 [Attach to contact list]
-Добавить в список
+Добавить в список контактов
 [Use CSV format]
 Формат CSV
 [Add]
@@ -60,6 +59,8 @@
 Вниз
 [Edit Host]
 Править хост
+[Cancel]
+Отмена
 [Address:]
 Адрес:
 [Label:]
@@ -96,14 +97,14 @@ TCP соединение
 Настройки...
 [Hosts...]
 Хосты...
-;file \plugins\Ping\src\menu.cpp
-[PING]
+[Ping]
 Пинг
-[Enable All Pings]
-Включить все пинги
-[Disable All Pings]
-Выключить все пинги
-;file \plugins\Ping\src\options.cpp
+[Text Files (*.txt)]
+Текстовые файлы (*.txt)
+[All Files]
+Все файлы
+[Open log file]
+Открыть журнал
 [<none>]
 <нет>
 [<all>]
@@ -112,12 +113,16 @@ TCP соединение
 Настройки
 [Hosts]
 Хосты
-;file \plugins\Ping\src\ping.cpp
 [Ping Plugin]
 Плагин пинг
-[Failed to initialize. Plugin disabled.]
-Ошибка инициализации. Плагин отключён.
-;file \plugins\Ping\src\pinggraph.cpp
+[Responding]
+Отвечает
+[Not Responding]
+Не отвечает
+[Testing]
+Тестирование
+[Disabled]
+Выключен
 [Show grid lines]
 Показывать линии
 [Show stats]
@@ -130,11 +135,16 @@ TCP соединение
 МАКС %hd мс
 [MIN %hd ms]
 МИН %hd мс
-;file \plugins\Ping\src\pingthread.cpp
-[%s - setting status of protocol '%s' (%d)]
-%d - установка статуса протокола '%s' (%d)
+[Ping Graph]
+Граф пингов
+[%s - setting status of protocol '%S' (%d)]
+%s - установка статуса протокола '%S' (%d)
+[Ping Reply]
+Пинг ответ
 [%s - reply, %d]
 %s - ответ, %d
+[Ping Timeout]
+Таймаут пингов
 [%s - timeout]
 %s - таймаут
 [Disable]
@@ -143,23 +153,13 @@ TCP соединение
 включён
 [double clicked]
 двойное нажатие
-[Ping]
-Пинг
 [Show/Hide &Ping Window]
-Показать/скрыть окно
-;file \plugins\Ping\src\rawping.cpp
+Показать/скрыть &окно
+[List]
+Список
 [Host %s requests that you reduce the amount of traffic you are sending.]
 Хост %s требует уменьшить количество посылаемого вами трафика.
-;file \plugins\Ping\src\utils.cpp
 [Unknown Address]
 Неизвестный адрес
 [Unknown]
 Неизвестно
-[Responding]
-Отвечает
-[Not Responding]
-Не отвечает
-[Testing]
-Тестирование
-[Disabled]
-Выключен

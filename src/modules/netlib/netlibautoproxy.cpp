@@ -1,7 +1,9 @@
 /*
-Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2010-2011 Miranda IM project,
+Miranda NG: the free IM client for Microsoft* Windows*
+
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -167,14 +169,14 @@ bool NetlibGetIeProxyConn(NetlibConnection *nlc, bool forceHttps)
 	if ((nlc->nloc.flags & (NLOCF_HTTP | NLOCF_HTTPGATEWAY) && nlc->nloc.flags & NLOCF_SSL) ||
 		nlc->nloc.wPort == 443 || forceHttps)
 	{
-		mir_snprintf(szUrl, sizeof(szUrl), "https://%s", nlc->nloc.szHost);
+		mir_snprintf(szUrl, SIZEOF(szUrl), "https://%s", nlc->nloc.szHost);
 		usingSsl = true;
 	}
 	else if (nlc->nloc.flags & (NLOCF_HTTPGATEWAY | NLOCF_HTTP) || nlc->usingHttpGateway)
-		mir_snprintf(szUrl, sizeof(szUrl), "http://%s", nlc->nloc.szHost);
+		mir_snprintf(szUrl, SIZEOF(szUrl), "http://%s", nlc->nloc.szHost);
 	else
 	{
-		mir_snprintf(szUrl, sizeof(szUrl), "%s", nlc->nloc.szHost);
+		strncpy_s(szUrl, nlc->nloc.szHost, _TRUNCATE);
 		noHttp = true;
 	}
 
@@ -236,9 +238,9 @@ static void NetlibInitAutoProxy(void)
 {
 	if (bAutoProxyInit) return;
 
-	if ( !hModJS)
+	if (!hModJS)
 	{
-		if ( !(hModJS = LoadLibraryA("jsproxy.dll")))
+		if (!(hModJS = LoadLibraryA("jsproxy.dll")))
 			return;
 
 		pInternetInitializeAutoProxyDll = (pfnInternetInitializeAutoProxyDll)
@@ -271,7 +273,7 @@ static void NetlibIeProxyThread(void *arg)
 	IeProxyParam *param = (IeProxyParam*)arg;
 	param->szProxy = NULL;
 
-	if ( !bAutoProxyInit) {
+	if (!bAutoProxyInit) {
 		WaitForSingleObject(hIeProxyMutex, INFINITE);
 		NetlibInitAutoProxy();
 		ReleaseMutex(hIeProxyMutex);
@@ -373,10 +375,10 @@ void NetlibLoadIeProxy(void)
 	bEnabled = bEnabled && tResult == ERROR_SUCCESS;
 
 	tValueLen = SIZEOF(szAutoUrlStr);
-	tResult = RegQueryValueExA(hSettings, "AutoConfigUrl", NULL, NULL, (BYTE*)szAutoUrlStr, &tValueLen);
+	RegQueryValueExA(hSettings, "AutoConfigUrl", NULL, NULL, (BYTE*)szAutoUrlStr, &tValueLen);
 
 	tValueLen = SIZEOF(szProxyBypassStr);
-	tResult = RegQueryValueExA(hSettings, "ProxyOverride", NULL, NULL, (BYTE*)szProxyBypassStr, &tValueLen);
+	RegQueryValueExA(hSettings, "ProxyOverride", NULL, NULL, (BYTE*)szProxyBypassStr, &tValueLen);
 
 	RegCloseKey(hSettings);
 
@@ -445,7 +447,6 @@ void NetlibUnloadIeProxy(void)
 	for (i=0; i < proxyBypass.getCount(); i++)
 		mir_free(proxyBypass[i]);
 
-	proxyBypass.destroy();
 	mir_free(abuf.lpszScriptBuffer);
 
 	CloseHandle(hIeProxyMutex);

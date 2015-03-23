@@ -3,39 +3,32 @@
 
 struct send_direct
 {
-	send_direct(HANDLE hContact,const std::string &msg, HANDLE msgid, bool isChat = false)
-      : hContact(hContact), msg(msg), msgid(msgid)
-      {}
-	HANDLE hContact;
+	send_direct(MCONTACT hContact, const std::string &msg, HANDLE msgid, bool isChat = false) :
+		hContact(hContact), msg(msg), msgid(msgid)
+		{}
+
+	MCONTACT hContact;
 	std::string msg;
 	HANDLE msgid;
 };
 
-struct send_typing
-{
-	send_typing(HANDLE hContact,const int status) : hContact(hContact), status(status) {}
-	HANDLE hContact;
-	int status;
-};
-
 struct input_box
 {
-   tstring text;
-   tstring title;
-   tstring defaultValue;
-   int limit;
+	tstring text;
+	tstring title;
+	tstring defaultValue;
+	int limit;
 
-   void (__cdecl WhatsAppProto::*thread)(void*);
-   WhatsAppProto* proto;
-   void* userData;
+	void(__cdecl WhatsAppProto::*thread)(void*);
+	WhatsAppProto *proto;
+	void *userData;
 };
 
 struct input_box_ret // has to be deleted by input-box handler
 {
-   void* userData; // has to be deleted by input-box handler
-   char* value; // mir_free() has to be called by input-box handler
+	void *userData; // has to be deleted by input-box handler
+	char *value; // mir_free() has to be called by input-box handler
 };
-
 
 
 #endif // ENTITIES_H

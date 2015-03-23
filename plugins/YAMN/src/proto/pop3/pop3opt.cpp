@@ -24,9 +24,9 @@ INT_PTR CALLBACK DlgProcYAMNOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam)
 		CheckDlgButton(hDlg,IDC_LONGDATE,(optDateTime&SHOWDATELONG) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg,IDC_SMARTDATE,(optDateTime&SHOWDATENOTODAY) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg,IDC_NOSECONDS,(optDateTime&SHOWDATENOSECONDS) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg,IDC_MAINMENU,db_get_b(NULL, YAMN_DBMODULE, YAMN_SHOWMAINMENU, 1));
-		CheckDlgButton(hDlg,IDC_YAMNASPROTO,db_get_b(NULL, YAMN_DBMODULE, YAMN_SHOWASPROTO, 1));
-		CheckDlgButton(hDlg,IDC_CLOSEONDELETE,db_get_b(NULL, YAMN_DBMODULE, YAMN_CLOSEDELETE, 0));
+		CheckDlgButton(hDlg,IDC_MAINMENU,db_get_b(NULL, YAMN_DBMODULE, YAMN_SHOWMAINMENU, 1) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hDlg,IDC_YAMNASPROTO,db_get_b(NULL, YAMN_DBMODULE, YAMN_SHOWASPROTO, 1) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hDlg,IDC_CLOSEONDELETE,db_get_b(NULL, YAMN_DBMODULE, YAMN_CLOSEDELETE, 0) ? BST_CHECKED : BST_UNCHECKED);
 		break;
 
 	case WM_COMMAND:
@@ -120,7 +120,7 @@ INT_PTR CALLBACK DlgProcPluginOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam
 			{
 				char str[1024];
 				GetDlgItemTextA(hDlg,IDC_STWWW,str,SIZEOF(str));
-				CallService(MS_UTILS_OPENURL,1,(LPARAM)str);
+				CallService(MS_UTILS_OPENURL,OUF_NEWWINDOW,(LPARAM)str);
 				break;
 			}
 
@@ -162,8 +162,7 @@ INT_PTR CALLBACK DlgProcPluginOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lParam
 
 int YAMNOptInitSvc(WPARAM wParam,LPARAM lParam)
 {
-	OPTIONSDIALOGPAGE odp={0};
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = YAMNVar.hInst;
 	odp.pszGroup = LPGEN("Network");
 	odp.pszTitle = LPGEN("YAMN");
@@ -184,7 +183,7 @@ int YAMNOptInitSvc(WPARAM wParam,LPARAM lParam)
 	odp.pfnDlgProc = DlgProcPluginOpt;
 	Options_AddPage(wParam, &odp);
 
-	if ( ServiceExists(MS_POPUP_ADDPOPUP)) {
+	if ( ServiceExists(MS_POPUP_ADDPOPUPT)) {
 		odp.pszGroup = LPGEN("Popups");
 		odp.pszTab = LPGEN("YAMN");
 		odp.pszTemplate = MAKEINTRESOURCEA(IDD_POP3ACCOUNTPOPUP);
@@ -398,11 +397,11 @@ BOOL DlgShowAccount(HWND hDlg,WPARAM wParam,LPARAM lParam)
 		for (i=0;i<=CPLENSUPP;i++)
 			if ((i<CPLENSUPP) && (CodePageNamesSupp[i].CP==ActualAccount->CP))
 			{
-				SendMessage(GetDlgItem(hDlg,IDC_COMBOCP),CB_SETCURSEL,(WPARAM)i,0);
+				SendDlgItemMessage(hDlg, IDC_COMBOCP, CB_SETCURSEL, (WPARAM)i, 0);
 				break;
 			}
 		if (i==CPLENSUPP)
-			SendMessage(GetDlgItem(hDlg,IDC_COMBOCP),CB_SETCURSEL,(WPARAM)CPDEFINDEX,0);
+			SendDlgItemMessage(hDlg, IDC_COMBOCP, CB_SETCURSEL, (WPARAM)CPDEFINDEX, 0);
 
 		CheckDlgButton(hDlg,IDC_CHECK,ActualAccount->Flags & YAMN_ACC_ENA ? BST_CHECKED : BST_UNCHECKED); 
 		CheckDlgButton(hDlg,IDC_CHECKSND,ActualAccount->NewMailN.Flags & YAMN_ACC_SND ? BST_CHECKED : BST_UNCHECKED); 
@@ -472,7 +471,7 @@ BOOL DlgShowAccount(HWND hDlg,WPARAM wParam,LPARAM lParam)
 		SetDlgItemInt(hDlg,IDC_EDITPOPS,0,FALSE);
 		SetDlgItemInt(hDlg,IDC_EDITNPOPS,0,FALSE);
 		SetDlgItemInt(hDlg,IDC_EDITFPOPS,0,FALSE);
-		SendMessage(GetDlgItem(hDlg,IDC_COMBOCP),CB_SETCURSEL,(WPARAM)CPDEFINDEX,0);
+		SendDlgItemMessage(hDlg, IDC_COMBOCP, CB_SETCURSEL, (WPARAM)CPDEFINDEX, 0);
 		CheckDlgButton(hDlg,IDC_CHECK,BST_CHECKED);
 		CheckDlgButton(hDlg,IDC_CHECKSND,BST_CHECKED);
 		CheckDlgButton(hDlg,IDC_CHECKMSG,BST_UNCHECKED);
@@ -588,7 +587,7 @@ INT_PTR CALLBACK DlgProcPOP3AccStatusOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM
 			if (ActualAccount != NULL)
 			{
 				DlgShowAccountStatus(hDlg,(WPARAM)M_SHOWACTUAL,(LPARAM)ActualAccount);
-				DlgEnableAccountStatus(hDlg,(WPARAM)TRUE,(LPARAM)TRUE);
+				DlgEnableAccountStatus(hDlg,TRUE,TRUE);
 			}
 			else
 			{
@@ -663,7 +662,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 
 			EnableWindow(GetDlgItem(hDlg,IDC_BTNDEL),FALSE);
 
-			DlgEnableAccount(hDlg,(WPARAM)FALSE,(LPARAM)FALSE);
+			DlgEnableAccount(hDlg,FALSE,FALSE);
 			DlgShowAccount(hDlg,(WPARAM)M_SHOWDEFAULT,0);
 
 			#ifdef DEBUG_SYNCHRO
@@ -685,12 +684,12 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 			SendDlgItemMessage(hDlg, IDC_COMBOCP, CB_ADDSTRING, 0, (LPARAM)TranslateT("Default"));
 			for (i=1; i < CPLENSUPP; i++) {
 				CPINFOEX info; GetCPInfoEx(CodePageNamesSupp[i].CP,0,&info);
-				size_t len = lstrlen(info.CodePageName+7);
+				size_t len = mir_tstrlen(info.CodePageName+7);
 				info.CodePageName[len+6]=0;
 				SendDlgItemMessage(hDlg,IDC_COMBOCP,CB_ADDSTRING,0,(LPARAM)(info.CodePageName+7));
 			}
 
-			SendMessage(GetDlgItem(hDlg,IDC_COMBOCP),CB_SETCURSEL,(WPARAM)CPDEFINDEX,0);
+			SendDlgItemMessage(hDlg, IDC_COMBOCP, CB_SETCURSEL, (WPARAM)CPDEFINDEX, 0);
 			ActualAccount=NULL;			
 			TranslateDialogDefault(hDlg);
 			SendMessage(GetParent(hDlg),PSM_UNCHANGED,(WPARAM)hDlg,0);
@@ -735,25 +734,25 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 					ActualAccount=NULL;
 					DlgSetItemText(hDlg,(WPARAM)IDC_STTIMELEFT,0);
 							
-					if (GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,sizeof(DlgInput)))
-						DlgEnableAccount(hDlg,(WPARAM)TRUE,(LPARAM)FALSE);
+					if (GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,SIZEOF(DlgInput)))
+						DlgEnableAccount(hDlg,TRUE,FALSE);
 					else
-						DlgEnableAccount(hDlg,(WPARAM)FALSE,(LPARAM)FALSE);
+						DlgEnableAccount(hDlg,FALSE,FALSE);
 					break;
 
 				case CBN_KILLFOCUS:
-					GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,sizeof(DlgInput));
+					GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,SIZEOF(DlgInput));
 					if (NULL==(ActualAccount=(HPOP3ACCOUNT)CallService(MS_YAMN_FINDACCOUNTBYNAME,(WPARAM)POP3Plugin,(LPARAM)DlgInput))) {
 						DlgSetItemText(hDlg,(WPARAM)IDC_STTIMELEFT,0);
 						EnableWindow(GetDlgItem(hDlg,IDC_BTNDEL),FALSE);
-						if (lstrlenA(DlgInput))
-							DlgEnableAccount(hDlg,(WPARAM)TRUE,(LPARAM)TRUE);
+						if (mir_strlen(DlgInput))
+							DlgEnableAccount(hDlg,TRUE,TRUE);
 						else
-							DlgEnableAccount(hDlg,(WPARAM)FALSE,(LPARAM)FALSE);
+							DlgEnableAccount(hDlg,FALSE,FALSE);
 					}
 					else {
 						DlgShowAccount(hDlg,(WPARAM)M_SHOWACTUAL,(LPARAM)ActualAccount);
-						DlgEnableAccount(hDlg,(WPARAM)TRUE,(LPARAM)TRUE);
+						DlgEnableAccount(hDlg,TRUE,TRUE);
 						EnableWindow(GetDlgItem(hDlg,IDC_BTNDEL),TRUE);
 					}
 					break;
@@ -768,7 +767,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 					}
 					else {
 						DlgShowAccount(hDlg,(WPARAM)M_SHOWACTUAL,(LPARAM)ActualAccount);
-						DlgEnableAccount(hDlg,(WPARAM)TRUE,(LPARAM)FALSE);
+						DlgEnableAccount(hDlg,TRUE,FALSE);
 						EnableWindow(GetDlgItem(hDlg,IDC_BTNDEL),TRUE);
 					}
 					break;
@@ -852,7 +851,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 			case IDC_BTNADD:
 				DlgSetItemText(hDlg,(WPARAM)IDC_STTIMELEFT,0);
 				DlgShowAccount(hDlg,(WPARAM)M_SHOWDEFAULT,0);
-				DlgEnableAccount(hDlg,(WPARAM)TRUE,(LPARAM)TRUE);
+				DlgEnableAccount(hDlg,TRUE,TRUE);
 				EnableWindow(GetDlgItem(hDlg,IDC_BTNDEL),FALSE);
 				DlgSetItemTextT(hDlg, IDC_EDITNAME, TranslateT("New Account"));
 				{
@@ -893,7 +892,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 				break;
 
 			case IDC_BTNDEL:
-				GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,sizeof(DlgInput));
+				GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,SIZEOF(DlgInput));
 				EnableWindow(GetDlgItem(hDlg,IDC_BTNDEL),FALSE);
 				if ((CB_ERR==(Result=SendDlgItemMessage(hDlg,IDC_COMBOACCOUNT,CB_GETCURSEL,0,0)))
 					|| (NULL==(ActualAccount=(HPOP3ACCOUNT)CallService(MS_YAMN_FINDACCOUNTBYNAME,(WPARAM)POP3Plugin,(LPARAM)DlgInput))))
@@ -905,7 +904,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 				DlgSetItemTextT(hDlg, IDC_STTIMELEFT, TranslateT("Please wait while no account is in use."));
 
 				if (ActualAccount->hContact != NULL)
-					CallService(MS_DB_CONTACT_DELETE,(WPARAM)(HANDLE) ActualAccount->hContact, 0);
+					CallService(MS_DB_CONTACT_DELETE, ActualAccount->hContact, 0);
 
 				CallService(MS_YAMN_DELETEACCOUNT,(WPARAM)POP3Plugin,(LPARAM)ActualAccount);
 					
@@ -913,7 +912,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 
 				SendDlgItemMessage(hDlg,IDC_COMBOACCOUNT,CB_DELETESTRING,(WPARAM)Result,0);
 				DlgSetItemText(hDlg,(WPARAM)IDC_COMBOACCOUNT,0);
-				DlgEnableAccount(hDlg,(WPARAM)FALSE,0);
+				DlgEnableAccount(hDlg,FALSE,0);
 				DlgShowAccount(hDlg,(WPARAM)M_SHOWDEFAULT,0);
 				break;
 
@@ -940,7 +939,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 				size_t Length,index;
 				UINT Port,Interval;
 
-				if ( GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT, Text, sizeof(Text))) {
+				if ( GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT, Text, SIZEOF(Text))) {
 					Check = (IsDlgButtonChecked(hDlg,IDC_CHECK)==BST_CHECKED);
 					CheckSSL = (IsDlgButtonChecked(hDlg,IDC_CHECKSSL)==BST_CHECKED);
 					CheckNoTLS = (IsDlgButtonChecked(hDlg,IDC_CHECKNOTLS)==BST_CHECKED);
@@ -976,15 +975,15 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 						break;
 					}
 
-					GetDlgItemTextA(hDlg, IDC_EDITAPP, Text, sizeof(Text));
+					GetDlgItemTextA(hDlg, IDC_EDITAPP, Text, SIZEOF(Text));
 					if (CheckApp && !(Length = strlen(Text))) {
 						MessageBox(hDlg,TranslateT("Please select application to run"),TranslateT("Input error"),MB_OK);
 						break;
 					}
 
-					GetDlgItemTextA(hDlg, IDC_COMBOACCOUNT, Text, sizeof(Text));
+					GetDlgItemTextA(hDlg, IDC_COMBOACCOUNT, Text, SIZEOF(Text));
 					if ( !( Length = strlen(Text))) {
-						GetDlgItemTextA(hDlg,IDC_EDITNAME, Text, sizeof(Text));
+						GetDlgItemTextA(hDlg,IDC_EDITNAME, Text, SIZEOF(Text));
 						if ( !(Length = strlen( Text )))
 							break;
 					}
@@ -1037,7 +1036,7 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 						DebugLog(SynchroFile,"Options:APPLY:ActualAccountSO-write enter\n");
 					#endif
 				        
-					GetDlgItemTextA(hDlg, IDC_EDITNAME, Text, sizeof(Text));
+					GetDlgItemTextA(hDlg, IDC_EDITNAME, Text, SIZEOF(Text));
 					if ( !(Length = strlen( Text )))
 						break;
 					if (NULL != ActualAccount->Name)
@@ -1045,19 +1044,19 @@ INT_PTR CALLBACK DlgProcPOP3AccOpt(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPara
 					ActualAccount->Name = new char[ strlen(Text)+1];
 					strcpy(ActualAccount->Name,Text);
 				        
-					GetDlgItemTextA(hDlg,IDC_EDITSERVER,Text,sizeof(Text));
+					GetDlgItemTextA(hDlg,IDC_EDITSERVER,Text,SIZEOF(Text));
 					if (NULL != ActualAccount->Server->Name)
 						delete[] ActualAccount->Server->Name;
 					ActualAccount->Server->Name=new char[ strlen(Text)+1];
 					strcpy(ActualAccount->Server->Name,Text);
 				        
-					GetDlgItemTextA(hDlg,IDC_EDITLOGIN,Text,sizeof(Text));
+					GetDlgItemTextA(hDlg,IDC_EDITLOGIN,Text,SIZEOF(Text));
 					if (NULL != ActualAccount->Server->Login)
 						delete[] ActualAccount->Server->Login;
 					ActualAccount->Server->Login=new char[ strlen(Text)+1];
 					strcpy(ActualAccount->Server->Login,Text);
 				        
-					GetDlgItemTextA(hDlg,IDC_EDITPASS,Text,sizeof(Text));
+					GetDlgItemTextA(hDlg,IDC_EDITPASS,Text,SIZEOF(Text));
 					if (NULL != ActualAccount->Server->Passwd)
 						delete[] ActualAccount->Server->Passwd;
 					ActualAccount->Server->Passwd=new char[ strlen(Text)+1];
@@ -1185,7 +1184,7 @@ INT_PTR CALLBACK DlgProcPOP3AccPopup(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPa
 	{
 		case WM_INITDIALOG:
 		{
-			DlgEnableAccountPopup(hDlg,(WPARAM)FALSE,(LPARAM)FALSE);
+			DlgEnableAccountPopup(hDlg,FALSE,FALSE);
 			DlgShowAccountPopup(hDlg,(WPARAM)M_SHOWDEFAULT,0);
 			//DlgShowAccountColors(hDlg,0,(LPARAM)ActualAccount);
 			#ifdef DEBUG_SYNCHRO
@@ -1237,12 +1236,12 @@ INT_PTR CALLBACK DlgProcPOP3AccPopup(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPa
 					SendDlgItemMessage(hDlg,IDC_COMBOACCOUNT,CB_SETCURSEL,(WPARAM)index,(LPARAM)ActualAccount->Name);
 					DlgShowAccount(hDlg,(WPARAM)M_SHOWACTUAL,(LPARAM)ActualAccount);
 					DlgShowAccountColors(hDlg,0,(LPARAM)ActualAccount);
-					DlgEnableAccountPopup(hDlg,(WPARAM)TRUE,(LPARAM)FALSE);
+					DlgEnableAccountPopup(hDlg,TRUE,FALSE);
 				}
 				else
 				{
 					DlgShowAccountPopup(hDlg,(WPARAM)M_SHOWDEFAULT,0);
-					DlgEnableAccountPopup(hDlg,(WPARAM)FALSE,(LPARAM)FALSE);
+					DlgEnableAccountPopup(hDlg,FALSE,FALSE);
 				}
 
 			}
@@ -1259,20 +1258,20 @@ INT_PTR CALLBACK DlgProcPOP3AccPopup(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPa
 					{
 
 						case CBN_KILLFOCUS:
-							GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,sizeof(DlgInput));
+							GetDlgItemTextA(hDlg,IDC_COMBOACCOUNT,DlgInput,SIZEOF(DlgInput));
 							if (NULL==(ActualAccount=(HPOP3ACCOUNT)CallService(MS_YAMN_FINDACCOUNTBYNAME,(WPARAM)POP3Plugin,(LPARAM)DlgInput)))
 							{
 								DlgSetItemText(hDlg,(WPARAM)IDC_STTIMELEFT,0);
-								if (lstrlenA(DlgInput))
-									DlgEnableAccountPopup(hDlg,(WPARAM)TRUE,(LPARAM)TRUE);
+								if (mir_strlen(DlgInput))
+									DlgEnableAccountPopup(hDlg,TRUE,TRUE);
 								else
-									DlgEnableAccountPopup(hDlg,(WPARAM)FALSE,(LPARAM)FALSE);
+									DlgEnableAccountPopup(hDlg,FALSE,FALSE);
 							}
 							else
 							{
 								DlgShowAccount(hDlg,(WPARAM)M_SHOWACTUAL,(LPARAM)ActualAccount);
 								DlgShowAccountColors(hDlg,0,(LPARAM)ActualAccount);
-								DlgEnableAccountPopup(hDlg,(WPARAM)TRUE,(LPARAM)TRUE);
+								DlgEnableAccountPopup(hDlg,TRUE,TRUE);
 							}
 							break;
 						case CBN_SELCHANGE:
@@ -1286,7 +1285,7 @@ INT_PTR CALLBACK DlgProcPOP3AccPopup(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPa
 							{
 								DlgShowAccount(hDlg,(WPARAM)M_SHOWACTUAL,(LPARAM)ActualAccount);
 								DlgShowAccountColors(hDlg,0,(LPARAM)ActualAccount);
-								DlgEnableAccountPopup(hDlg,(WPARAM)TRUE,(LPARAM)FALSE);
+								DlgEnableAccountPopup(hDlg,TRUE,FALSE);
 							}
 							break;
 					}
@@ -1330,22 +1329,19 @@ INT_PTR CALLBACK DlgProcPOP3AccPopup(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPa
 					BOOL TesterFC = (IsDlgButtonChecked(hDlg,IDC_CHECKFCOL)==BST_CHECKED);
 					BOOL TesterNC = (IsDlgButtonChecked(hDlg,IDC_CHECKNCOL)==BST_CHECKED);
 					
-					ZeroMemory(&Tester,sizeof(Tester));
-					ZeroMemory(&TesterF,sizeof(TesterF));
-					ZeroMemory(&TesterF,sizeof(TesterN));
-					Tester.lchContact=NULL;
-					TesterF.lchContact=NULL;
-					TesterN.lchContact=NULL;
+					memset(&Tester, 0, sizeof(Tester));
+					memset(&TesterF, 0, sizeof(TesterF));
+					memset(&TesterN, 0, sizeof(TesterN));
 					Tester.lchIcon=g_LoadIconEx(2);
 					TesterF.lchIcon=g_LoadIconEx(3);
 					TesterN.lchIcon=g_LoadIconEx(1);
 
-					lstrcpyn(Tester.lptzContactName,TranslateT("Account Test"),MAX_CONTACTNAME);
-					lstrcpyn(TesterF.lptzContactName,TranslateT("Account Test (failed)"),MAX_CONTACTNAME);
-					lstrcpyn(TesterN.lptzContactName,TranslateT("Account Test"),MAX_CONTACTNAME);
-					lstrcpyn(Tester.lptzText,TranslateT("You have N new mail messages"),MAX_SECONDLINE);
-					lstrcpyn(TesterF.lptzText,TranslateT("Connection failed message"),MAX_SECONDLINE);
-					lstrcpyn(TesterN.lptzText,TranslateT("No new mail message"),MAX_SECONDLINE);
+					mir_tstrncpy(Tester.lptzContactName,TranslateT("Account Test"),MAX_CONTACTNAME);
+					mir_tstrncpy(TesterF.lptzContactName,TranslateT("Account Test (failed)"),MAX_CONTACTNAME);
+					mir_tstrncpy(TesterN.lptzContactName,TranslateT("Account Test"),MAX_CONTACTNAME);
+					mir_tstrncpy(Tester.lptzText,TranslateT("You have N new mail messages"),MAX_SECONDLINE);
+					mir_tstrncpy(TesterF.lptzText,TranslateT("Connection failed message"),MAX_SECONDLINE);
+					mir_tstrncpy(TesterN.lptzText,TranslateT("No new mail message"),MAX_SECONDLINE);
 					if (TesterC)
 					{
 						Tester.colorBack=SendDlgItemMessage(hDlg,IDC_CPB,CPM_GETCOLOUR,0,0);
@@ -1438,7 +1434,7 @@ INT_PTR CALLBACK DlgProcPOP3AccPopup(HWND hDlg,UINT msg,WPARAM wParam,LPARAM lPa
 							BOOL CheckPopN;
 							UINT Time,TimeN,TimeF;
 
-							if (GetDlgItemText(hDlg,IDC_COMBOACCOUNT,Text,sizeof(Text)/sizeof(TCHAR)))
+							if (GetDlgItemText(hDlg,IDC_COMBOACCOUNT,Text,SIZEOF(Text)))
 							{
 								CheckPopup = (IsDlgButtonChecked(hDlg,IDC_CHECKPOP)==BST_CHECKED);
 								CheckPopupW = (IsDlgButtonChecked(hDlg,IDC_CHECKCOL)==BST_CHECKED);

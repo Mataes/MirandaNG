@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -24,11 +25,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "commonheaders.h"
 
 HINSTANCE g_hInst = 0;
-CLIST_INTERFACE* pcli = NULL;
+CLIST_INTERFACE* pcli = NULL, coreCli;
 HIMAGELIST himlCListClc = NULL;
 int hLangpack;
-
-BOOL(WINAPI * MySetLayeredWindowAttributes) (HWND, COLORREF, BYTE, DWORD) = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // external functions
@@ -136,11 +135,10 @@ extern "C" __declspec(dllexport) int CListInitialise()
 	mir_getLP( &pluginInfo );
 	mir_getCLI();
 
+	coreCli = *pcli;
 	pcli->hInst = g_hInst;
 	pcli->pfnPaintClc = PaintClc;
-
-	MySetLayeredWindowAttributes = (BOOL(WINAPI *) (HWND, COLORREF, BYTE, DWORD)) GetProcAddress(
-		LoadLibraryA("user32.dll"), "SetLayeredWindowAttributes");
+	pcli->pfnLoadClcOptions = LoadClcOptions;
 
 	CreateServiceFunction(MS_CLIST_GETSTATUSMODE, GetStatusMode);
 

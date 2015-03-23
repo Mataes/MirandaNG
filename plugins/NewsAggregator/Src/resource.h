@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
-// Включаемый файл, созданный в Microsoft Visual C++.
-// Используется d:\Miranda NG\plugins\NewsAggregator\res\Resource.rc
+// Microsoft Visual C++ generated include file.
+// Used by c:\Temp\Miranda NG\plugins\NewsAggregator\res\Resource.rc
 //
 #define IDD_OPTIONS                     101
 #define IDD_AUTHENTICATION              102

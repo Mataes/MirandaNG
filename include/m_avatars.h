@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-12 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -42,7 +43,7 @@ protocols which do not report avatar capabilities via PF4_AVATARS or for protoco
 have been disabled in the option dialog). It also does not actively fetch avatars for
 protocols which are in invisible status mode (may cause privacy issues and some protocols
 like MSN don't allow any outbound client communication when in invisible status mode)
-unless AF_FETCHALWAYS is set.
+unless AF_FETCHIFPROTONOTVISIBLE is set.
 
 - TODO
 - maintain recent avatars (store the last hashes to avoid re-fetching)
@@ -55,6 +56,8 @@ unless AF_FETCHALWAYS is set.
 #ifndef _M_AVATARS_H
 #define _M_AVATARS_H
 
+#include <m_core.h>
+
 #define AVS_BITMAP_VALID 1
 #define AVS_BITMAP_EXPIRED 2        // the bitmap has been expired from the cache. (unused, currently.
 #define AVS_HIDEONCLIST 4
@@ -64,21 +67,23 @@ unless AF_FETCHALWAYS is set.
 #define AVS_PROTOPIC 16             // picture is a protocol picture
 #define AVS_CUSTOMTRANSPBKG 32      // Bitmap was changed to set the background color transparent
 #define AVS_HASTRANSPARENCY 64      // Bitmap has at least one pixel transparent
-#define AVS_OWNAVATAR 128			// is own avatar entry
+#define AVS_OWNAVATAR 128           // is own avatar entry
 #define AVS_NOTREADY  4096
 
-typedef struct avatarCacheEntry {
-	DWORD cbSize;                   // set to sizeof(struct)
-	HANDLE hContact;                // contacts handle, 0, if it is a protocol avatar
-	HBITMAP hbmPic;                 // bitmap handle of the picutre itself
-	DWORD dwFlags;                  // see above for flag values
-	LONG bmHeight, bmWidth;         // bitmap dimensions
-	DWORD t_lastAccess;             // last access time (currently unused, but plugins should still
+typedef struct avatarCacheEntry
+{
+	DWORD cbSize;                    // set to sizeof(struct)
+	MCONTACT hContact;               // contacts handle, 0, if it is a protocol avatar
+	HBITMAP hbmPic;                  // bitmap handle of the picutre itself
+	DWORD dwFlags;                   // see above for flag values
+	LONG bmHeight, bmWidth;          // bitmap dimensions
+	DWORD t_lastAccess;              // last access time (currently unused, but plugins should still
                                     // use it whenever they access the avatar. may be used in the future
-	                                // to implement cache expiration
-	LPVOID lpDIBSection;			// unused field
-	TCHAR szFilename[MAX_PATH];		// filename of the avatar (absolute path)
-} AVATARCACHEENTRY;
+	                                 // to implement cache expiration
+	LPVOID lpDIBSection;             // unused field
+	TCHAR szFilename[MAX_PATH];      // filename of the avatar (absolute path)
+}
+	AVATARCACHEENTRY;
 
 #define AVDRQ_FALLBACKPROTO            0x0001        // use the protocol picture as fallback (currently not used)
 #define AVDRQ_FAILIFNOTCACHED          0x0002        // don't create a cache entry if it doesn't already exist. (currently not working)
@@ -95,21 +100,22 @@ typedef struct avatarCacheEntry {
 
 // request to draw a contacts picture. See MS_AV_DRAWAVATAR service description
 
-typedef struct _avatarDrawRequest {
-	DWORD  cbSize;                  // set this to sizeof(AVATARDRAWREQUEST) - mandatory, service will return failure code if
-	                                // cbSize is wrong
-	HANDLE hContact;                // the contact for which the avatar should be drawn. set it to 0 to draw a protocol picture
-	HDC    hTargetDC;               // target device context
-	RECT   rcDraw;                  // target rectangle. The avatar will be centered within the rectangle and scaled to fit.
-	DWORD  dwFlags;                 // flags (see above for valid bitflags)
-	DWORD  dwReserved;              // for future use
-	DWORD  dwInternal;              // don't use it
-	COLORREF clrBorder;             // color for the border  (used with AVDRQ_DRAWBORDER)
-	UCHAR  radius;                  // radius (used with AVDRQ_ROUNDEDCORNER)
-	UCHAR  alpha;                   // alpha value for semi-transparent avatars (valid values form 1 to 255, if it is set to 0
-	                                // the avatar won't be transparent.
-	char   *szProto;                // only used when AVDRQ_PROTOPICT or AVDRQ_OWNPIC is set
-} AVATARDRAWREQUEST;
+typedef struct _avatarDrawRequest
+{
+	DWORD    cbSize;                 // set this to sizeof(AVATARDRAWREQUEST) - mandatory, service will return failure code if cbSize is wrong
+	MCONTACT hContact;               // the contact for which the avatar should be drawn. set it to 0 to draw a protocol picture
+	HDC      hTargetDC;              // target device context
+	RECT     rcDraw;                 // target rectangle. The avatar will be centered within the rectangle and scaled to fit.
+	DWORD    dwFlags;                // flags (see above for valid bitflags)
+	DWORD    dwReserved;             // for future use
+	DWORD    dwInternal;             // don't use it
+	COLORREF clrBorder;              // color for the border  (used with AVDRQ_DRAWBORDER)
+	UCHAR    radius;                 // radius (used with AVDRQ_ROUNDEDCORNER)
+	UCHAR    alpha;                  // alpha value for semi-transparent avatars (valid values form 1 to 255, if it is set to 0
+	                                 // the avatar won't be transparent.
+	char    *szProto;                // only used when AVDRQ_PROTOPICT or AVDRQ_OWNPIC is set
+}
+	AVATARDRAWREQUEST;
 
 #define CACHE_BLOCKSIZE 20
 
@@ -209,7 +215,7 @@ typedef struct _avatarDrawRequest {
 
 typedef struct _contactAvatarChangedNotification {
 	int      cbSize;             // sizeof()
-	HANDLE   hContact;           // this might have to be set by the caller too
+	MCONTACT hContact;           // this might have to be set by the caller too
 	int      format;             // PA_FORMAT_*
 	TCHAR    filename[MAX_PATH]; // full path to filename which contains the avatar
 	TCHAR    hash[128];          // avatar hash
@@ -217,7 +223,7 @@ typedef struct _contactAvatarChangedNotification {
 
 // fired when the contacts avatar is changed by the contact
 // wParam = hContact
-// lParam = struct CONTACTAVATARCHANGENOTIFICATION *cacn
+// lParam = struct CONTACTAVATARCHANGEDNOTIFICATION *cacn
 // the event CAN pass a NULL pointer in lParam which means that the contact deleted its avatar
 
 #define ME_AV_CONTACTAVATARCHANGED "SV_Avatars/ContactAvatarChanged"
@@ -235,47 +241,10 @@ typedef struct _contactAvatarChangedNotification {
 
 #define MS_AV_REPORTMYAVATARCHANGED "SV_Avatars/ReportMyAvatarChanged"
 
-
-
-// Bitmap services //////////////////////////////////////////////////////////////////////
-
-// Load an image
-// wParam = NULL
-// lParam = filename
-#define MS_AV_LOADBITMAP32 "SV_Avatars/LoadBitmap32"
-
-// Save an HBITMAP to an image
-// wParam = HBITMAP
-// lParam = full path of filename
-#define MS_AV_SAVEBITMAP  "SV_Avatars/SaveBitmap"
-#define MS_AV_SAVEBITMAPW "SV_Avatars/SaveBitmapW"
-
-#ifdef _UNICODE
-
-#define MS_AV_SAVEBITMAPT MS_AV_SAVEBITMAPW
-
-#else
-
-#define MS_AV_SAVEBITMAPT MS_AV_SAVEBITMAP
-
-#endif
-
-// Returns != 0 if can save that type of image, = 0 if cant
-// wParam = 0
-// lParam = PA_FORMAT_*   // image format
-#define MS_AV_CANSAVEBITMAP "SV_Avatars/CanSaveBitmap"
-
-// Returns a copy of the bitmap with the size especified or the original bitmap if nothing has to be changed
-// wParam = ResizeBitmap *
-// lParam = NULL
-#define MS_AV_RESIZEBITMAP "SV_Avatars/ResizeBitmap"
-
 /*
 * flags for internal use ONLY
 */
 
-#define MC_ISMASTERCONTACT 0x01
-#define MC_ISSUBCONTACT    0x02
 #define AVH_MUSTNOTIFY     0x04             // node->dwFlags (loader thread must notify avatar history about change/delete event)
 #define AVS_DELETENODEFOREVER 0x08
 
@@ -349,10 +318,15 @@ return=0 for sucess
 // return = the time, in ms
 #define AF_DELAYAFTERFAIL 7
 
-// Fetching avatars is always possible and allowed
+// Fetching avatars is allowed when protocol's status is invisible
 // lParam = 0
-// return = 1 (always) or 0 (depending on our or contacts status mode)
-#define AF_FETCHALWAYS 8
+// return = 1 (allowed) or 0 (depending on our protocol status mode)
+#define AF_FETCHIFPROTONOTVISIBLE 8
+
+// Fetching avatars is allowed when contact is in offline status
+// lParam = 0
+// return = 1 (allowed) or 0 (depending on remote contact status mode)
+#define AF_FETCHIFCONTACTOFFLINE 9
 
 
 /*

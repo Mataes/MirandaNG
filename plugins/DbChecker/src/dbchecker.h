@@ -30,12 +30,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <m_database.h>
 #include <m_db_int.h>
 #include <m_langpack.h>
+#include <win2k.h>
 
 #include "resource.h"
 #include "version.h"
-
-#define WinVerMajor()      LOBYTE(LOWORD(GetVersion()))
-#define IsWinVerXPPlus()   (WinVerMajor()>=5 && LOWORD(GetVersion())!=5)
 
 #define WZM_GOTOPAGE   (WM_USER+1)
 #define WZN_PAGECHANGING  (WM_USER+1221)
@@ -59,7 +57,8 @@ extern HINSTANCE hInst;
 extern DbToolOptions opts;
 extern HANDLE hEventRun, hEventAbort;
 extern int errorCount;
-extern bool bServiceMode, bLaunchMiranda, bShortMode;
+extern LRESULT wizardResult;
+extern bool bServiceMode, bLaunchMiranda, bShortMode, bAutoExit;
 
 int DoMyControlProcessing(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam, INT_PTR *bReturn);
 
@@ -72,9 +71,7 @@ INT_PTR CALLBACK FinishedDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM 
 INT_PTR CALLBACK WelcomeDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
 INT_PTR CALLBACK OpenErrorDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
 
-void OpenDatabase(HWND hdlg, INT iNextPage);
-
-#define SIZEOF(X) (sizeof(X)/sizeof(X[0]))
+int OpenDatabase(HWND hdlg, INT iNextPage);
 
 #define STATUS_CLASSMASK  0x0f
 void AddToStatus(int flags, const TCHAR* fmt, ...);

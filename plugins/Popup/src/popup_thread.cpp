@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,23 +23,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "headers.h"
 #include <process.h>
-//#include <list>
 
-// globals
+//  globals
 static int    gIdleRequests = 0;
 static bool   gTerminating = false;
-static HANDLE hThreadMutex = NULL;
 static HWND   gHwndManager = 0;
 static int    gLockCount = 0;
 static volatile int nPopups = 0;
+static HANDLE hThread = 0;
 
 static LIST<PopupWnd2> popupList(3);
 
-// forwards
+//  forwards
 enum
-{ 
-	// message id's
-	UTM_PT_FIRST = WM_USER+1607,
+{
+	//  message id's
+	UTM_PT_FIRST = WM_USER + 1607,
 	UTM_STOP_THREAD,
 	UTM_ADD_WINDOW,
 	UTM_UPDATE_WINDOW,
@@ -57,30 +56,30 @@ bool UpdatePopupPosition(PopupWnd2 *prev, PopupWnd2 *wnd)
 
 	int POPUP_SPACING = PopupOptions.spacing;
 
-	POINT pos;
-	SIZE prevSize = {0}, curSize = wnd->getSize();
+	POINT pos = { 0 };
+	SIZE prevSize = { 0 };
 	if (prev)
 		prevSize = prev->getSize();
 
-	//we have only one monitor (cant check it together with 1.if)
+	// we have only one monitor (cant check it together with 1.if)
 	RECT rc;
-	if ( GetSystemMetrics(SM_CMONITORS) == 1)
+	if (GetSystemMetrics(SM_CMONITORS) == 1)
 		SystemParametersInfo(SPI_GETWORKAREA, 0, &rc, 0);
-	else { //Multimonitor stuff (we have more then 1)
+	else { // Multimonitor stuff (we have more then 1)
 		HWND hWnd;
 		if (PopupOptions.Monitor == MN_MIRANDA)
-			hWnd = (HWND)CallService(MS_CLUI_GETHWND,0,0);
-		else // PopupOptions.Monitor == MN_ACTIVE
+			hWnd = (HWND)CallService(MS_CLUI_GETHWND, 0, 0);
+		else //  PopupOptions.Monitor == MN_ACTIVE
 			hWnd = GetForegroundWindow();
 
 		HMONITOR hMonitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTOPRIMARY);
 
-		MONITORINFOEX mnti; 
+		MONITORINFOEX mnti;
 		mnti.cbSize = sizeof(MONITORINFOEX);
-		if ( GetMonitorInfo(hMonitor, &mnti) == TRUE)
-			CopyMemory(&rc, &(mnti.rcWork), sizeof(RECT));
+		if (GetMonitorInfo(hMonitor, &mnti) == TRUE)
+			memcpy(&rc, &(mnti.rcWork), sizeof(RECT));
 		else
-			SystemParametersInfo(SPI_GETWORKAREA,0,&rc,0);
+			SystemParametersInfo(SPI_GETWORKAREA, 0, &rc, 0);
 	}
 
 	rc.left += PopupOptions.gapLeft - POPUP_SPACING;
@@ -135,7 +134,7 @@ void RepositionPopups()
 {
 	PopupWnd2 *prev = 0;
 	if (PopupOptions.ReorderPopups) {
-		for (int i=0; i < popupList.getCount(); ++i) {
+		for (int i = 0; i < popupList.getCount(); ++i) {
 			UpdatePopupPosition(prev, popupList[i]);
 			prev = popupList[i];
 		}
@@ -153,7 +152,7 @@ static LRESULT CALLBACK PopupThreadManagerWndProc(HWND hwnd, UINT message, WPARA
 	case UTM_STOP_THREAD:
 		gTerminating = true;
 		if (db_get_b(NULL, MODULNAME, "FastExit", 0))
-			for (int i=0; i < popupList.getCount(); ++i)
+			for (int i = 0; i < popupList.getCount(); ++i)
 				PUDeletePopup(popupList[i]->getHwnd());
 		PostQuitMessage(0);
 		break;
@@ -161,7 +160,7 @@ static LRESULT CALLBACK PopupThreadManagerWndProc(HWND hwnd, UINT message, WPARA
 	case UTM_ADD_WINDOW:
 		if (gTerminating)
 			break;
-		UpdatePopupPosition(popupList.getCount() ? popupList[popupList.getCount()-1] : 0, wnd);
+		UpdatePopupPosition(popupList.getCount() ? popupList[popupList.getCount() - 1] : 0, wnd);
 		popupList.insert(wnd);
 		++nPopups;
 		wnd->callMethodAsync(&PopupWnd2::m_show, 0);
@@ -179,15 +178,15 @@ static LRESULT CALLBACK PopupThreadManagerWndProc(HWND hwnd, UINT message, WPARA
 		break;
 
 	case UTM_REMOVE_WINDOW:
-		{
-			for (int i=popupList.getCount()-1; i >= 0; i--)
-				if (popupList[i] == wnd)
-					popupList.remove(i);
-		}
-		RepositionPopups();
-		--nPopups;
-		delete wnd;
-		break;
+	{
+		for (int i = popupList.getCount() - 1; i >= 0; i--)
+			if (popupList[i] == wnd)
+				popupList.remove(i);
+	}
+	RepositionPopups();
+	--nPopups;
+	delete wnd;
+	break;
 
 	case UTM_LOCK_QUEUE:
 		++gLockCount;
@@ -202,17 +201,10 @@ static LRESULT CALLBACK PopupThreadManagerWndProc(HWND hwnd, UINT message, WPARA
 	return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-// thread func
-static void __cdecl PopupThread(void *arg)
+//  thread func
+static unsigned __stdcall PopupThread(void *)
 {
-	// grab the mutex
-	if ( WaitForSingleObject(hThreadMutex, INFINITE) != WAIT_OBJECT_0) {
-		// other thread is already running
-		_endthread();
-		return;
-	}
-
-	// Create manager window
+	//  Create manager window
 	DWORD err;
 	WNDCLASSEX wcl;
 	wcl.cbSize = sizeof(wcl);
@@ -226,7 +218,7 @@ static void __cdecl PopupThread(void *arg)
 	wcl.hbrBackground = (HBRUSH)GetStockObject(LTGRAY_BRUSH);
 	wcl.lpszMenuName = NULL;
 	wcl.lpszClassName = _T("PopupThreadManagerWnd");
-	wcl.hIconSm = (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_POPUP), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR); 
+	wcl.hIconSm = (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_POPUP), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
 	g_wndClass.cPopupThreadManagerWnd = RegisterClassEx(&wcl);
 	err = GetLastError();
 	if (!g_wndClass.cPopupThreadManagerWnd) {
@@ -236,7 +228,7 @@ static void __cdecl PopupThread(void *arg)
 	}
 
 	gHwndManager = CreateWindow(_T("PopupThreadManagerWnd"), NULL, 0, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, HWND_DESKTOP, NULL, hInst, NULL);
-	SetWindowPos(gHwndManager, 0, 0, 0, 0, 0, SWP_NOZORDER|SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_DEFERERASE|SWP_NOSENDCHANGING|SWP_HIDEWINDOW);
+	SetWindowPos(gHwndManager, 0, 0, 0, 0, 0, SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_DEFERERASE | SWP_NOSENDCHANGING | SWP_HIDEWINDOW);
 
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0)) {
@@ -245,7 +237,7 @@ static void __cdecl PopupThread(void *arg)
 	}
 
 	DestroyWindow(gHwndManager); gHwndManager = NULL;
-	ReleaseMutex(hThreadMutex);
+	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -253,8 +245,8 @@ static void __cdecl PopupThread(void *arg)
 
 void LoadPopupThread()
 {
-	hThreadMutex = CreateMutex(NULL, FALSE, NULL);
-	mir_forkthread(PopupThread, NULL);
+	unsigned threadId;
+	hThread = mir_forkthreadex(PopupThread, NULL, &threadId);
 }
 
 void StopPopupThread()
@@ -264,11 +256,11 @@ void StopPopupThread()
 
 void UnloadPopupThread()
 {
-	// We won't waint for thread to exit, Miranda's thread unsind mechanism will do that for us.
-	WaitForSingleObject(hThreadMutex, INFINITE);
-	CloseHandle(hThreadMutex);
+	//  We won't waint for thread to exit, Miranda's thread unsind mechanism will do that for us.
+	WaitForSingleObject(hThread, INFINITE);
+	CloseHandle(hThread);
 
-	for (int i=0; i < popupList.getCount(); ++i)
+	for (int i = 0; i < popupList.getCount(); ++i)
 		delete popupList[i];
 	popupList.destroy();
 }

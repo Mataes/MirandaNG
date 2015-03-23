@@ -1,32 +1,28 @@
 // ---------------------------------------------------------------------------80
 //                ICQ plugin for Miranda Instant Messenger
 //                ________________________________________
-// 
+//
 // Copyright © 2000-2001 Richard Hughes, Roland Rabien, Tristan Van de Vreede
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2010 Joe Kucera
-// 
+// Copyright © 2012-2014 Miranda NG Team
+//
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
 // as published by the Free Software Foundation; either version 2
 // of the License, or (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
+
 #ifndef __ICQ_SERVLIST_H
 #define __ICQ_SERVLIST_H
 
@@ -53,19 +49,19 @@
 struct CIcqProto;
 // callback prototypes for pending operation mechanism:
 typedef int (__cdecl CIcqProto::*PENDING_GROUP_CALLBACK)(const char* pszGroup, WORD wGroupId, LPARAM lParam, int nResult);
-typedef int (__cdecl CIcqProto::*PENDING_CONTACT_CALLBACK)(HANDLE hContact, WORD wContactId, WORD wGroupId, LPARAM lParam, int nResult);
+typedef int (__cdecl CIcqProto::*PENDING_CONTACT_CALLBACK)(MCONTACT hContact, WORD wContactId, WORD wGroupId, LPARAM lParam, int nResult);
 
 // cookie struct for SSI actions
 struct cookie_servlist_action
 {
-	HANDLE hContact;
-  char *szGroup;
+	MCONTACT hContact;
+	char *szGroup;
 	WORD wContactId;
 	WORD wGroupId;
 	char *szGroupName;
 	WORD wNewContactId;
 	WORD wNewGroupId;
-	int dwAction; 
+	int dwAction;
 	LPARAM lParam;
 	int dwGroupCount;
 	cookie_servlist_action **pGroupItems;
@@ -159,7 +155,7 @@ struct servlistpendingoperation
 struct servlistpendingitem
 {
   int nType;
-  HANDLE hContact;
+  MCONTACT hContact;
   char* szGroup;
   WORD wContactID;
   WORD wGroupID;

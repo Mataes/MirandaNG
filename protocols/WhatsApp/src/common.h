@@ -1,7 +1,7 @@
 /*
 
 WhatsApp plugin for Miranda NG
-Copyright © 2013 Uli Hecht
+Copyright © 2013-14 Uli Hecht
 
 */
 
@@ -47,6 +47,7 @@ Copyright © 2013 Uli Hecht
 #include <m_database.h>
 #include <m_history.h>
 #include <m_idle.h>
+#include <m_imgsrvc.h>
 #include <m_ignore.h>
 #include <m_langpack.h>
 #include <m_message.h>
@@ -58,6 +59,7 @@ Copyright © 2013 Uli Hecht
 #include <m_protoint.h>
 #include <m_protomod.h>
 #include <m_skin.h>
+#include <m_string.h>
 #include <statusmodes.h>
 #include <m_userinfo.h>
 #include <m_addcontact.h>
@@ -67,9 +69,6 @@ Copyright © 2013 Uli Hecht
 #include <m_hotkeys.h>
 #include <m_folders.h>
 #include <m_json.h>
-#include "WhatsAPI++/WAConnection.h"
-
-class WhatsAppProto;
 
 #include "constants.h"
 #include "utils.h"

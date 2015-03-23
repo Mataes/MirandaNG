@@ -17,16 +17,16 @@
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+	*/
 
 #ifndef UTILS_H
 #define UTILS_H
 
-TCHAR *db2t(DBVARIANT *dbv);
-int DBGetStringDefault(HANDLE hContact, const char *szModule, const char *szSetting, TCHAR *setting, int size, const TCHAR *defaultValue);
-void HigherLower(int maxValue, int minValue);
+bool CheckMsgWnd(MCONTACT hContact);
+int DBGetStringDefault(MCONTACT hContact, const char *szModule, const char *szSetting, TCHAR *setting, int size, const TCHAR *defaultValue);
 void ShowLog(TCHAR *file);
 BOOL StatusHasAwayMessage(char *szProto, int status);
 void LogToFile(TCHAR *stzText);
+void AddCR(CMString &str, const TCHAR *statusmsg);
 
 #endif

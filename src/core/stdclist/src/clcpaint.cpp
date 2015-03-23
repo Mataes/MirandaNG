@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -131,18 +132,12 @@ static int GetRealStatus(struct ClcContact *contact, int status)
 		return status;
 
 	for (int i = 0; i < pcli->hClcProtoCount; i++)
-		if (!lstrcmpA(pcli->clcProto[i].szProto, szProto))
+		if (!mir_strcmp(pcli->clcProto[i].szProto, szProto))
 			return pcli->clcProto[i].dwStatus;
 
 	return status;
 }
 
-static HMODULE themeAPIHandle = NULL; // handle to uxtheme.dll
-static HANDLE(WINAPI * MyOpenThemeData) (HWND, LPCWSTR);
-static HRESULT(WINAPI * MyCloseThemeData) (HANDLE);
-static HRESULT(WINAPI * MyDrawThemeBackground) (HANDLE, HDC, int, int, const RECT *, const RECT *);
-
-#define MGPROC(x) GetProcAddress(themeAPIHandle,x)
 void PaintClc(HWND hwnd, struct ClcData *dat, HDC hdc, RECT * rcPaint)
 {
 	HDC hdcMem;
@@ -325,14 +320,14 @@ void PaintClc(HWND hwnd, struct ClcData *dat, HDC hdc, RECT * rcPaint)
 				ChangeToFont(hdcMem, dat, FONTID_OFFLINE, &fontHeight);
 			else
 				ChangeToFont(hdcMem, dat, FONTID_CONTACTS, &fontHeight);
-			GetTextExtentPoint32(hdcMem, group->cl.items[group->scanIndex]->szText, lstrlen(group->cl.items[group->scanIndex]->szText), &textSize);
+			GetTextExtentPoint32(hdcMem, group->cl.items[group->scanIndex]->szText, (int)mir_tstrlen(group->cl.items[group->scanIndex]->szText), &textSize);
 			width = textSize.cx;
 			if (group->cl.items[group->scanIndex]->type == CLCIT_GROUP) {
 				szCounts = pcli->pfnGetGroupCountsText(dat, group->cl.items[group->scanIndex]);
 				if (szCounts[0]) {
 					GetTextExtentPoint32A(hdcMem, " ", 1, &spaceSize);
 					ChangeToFont(hdcMem, dat, FONTID_GROUPCOUNTS, &fontHeight);
-					GetTextExtentPoint32A(hdcMem, szCounts, lstrlenA(szCounts), &countsSize);
+					GetTextExtentPoint32A(hdcMem, szCounts, (int)mir_strlen(szCounts), &countsSize);
 					width += spaceSize.cx + countsSize.cx;
 				}
 			}
@@ -357,34 +352,18 @@ void PaintClc(HWND hwnd, struct ClcData *dat, HDC hdc, RECT * rcPaint)
 			//checkboxes
 			if (checkboxWidth) {
 				RECT rc;
-				HANDLE hTheme = NULL;
-
-				// THEME
-				if (IsWinVerXPPlus()) {
-					if (!themeAPIHandle) {
-						themeAPIHandle = GetModuleHandleA("uxtheme");
-						if (themeAPIHandle) {
-							MyOpenThemeData = (HANDLE(WINAPI *) (HWND, LPCWSTR)) MGPROC("OpenThemeData");
-							MyCloseThemeData = (HRESULT(WINAPI *) (HANDLE)) MGPROC("CloseThemeData");
-							MyDrawThemeBackground =
-								(HRESULT(WINAPI *) (HANDLE, HDC, int, int, const RECT *, const RECT *)) MGPROC("DrawThemeBackground");
-						}
-					}
-					// Make sure all of these methods are valid (i would hope either all or none work)
-					if (MyOpenThemeData && MyCloseThemeData && MyDrawThemeBackground)
-						hTheme = MyOpenThemeData(hwnd, L"BUTTON");
-				}
+				HANDLE hTheme = OpenThemeData(hwnd, L"BUTTON");
 				rc.left = dat->leftMargin + indent * dat->groupIndent;
 				rc.right = rc.left + dat->checkboxSize;
 				rc.top = y + ((dat->rowHeight - dat->checkboxSize) >> 1);
 				rc.bottom = rc.top + dat->checkboxSize;
 				if (hTheme)
-					MyDrawThemeBackground(hTheme, hdcMem, BP_CHECKBOX, group->cl.items[group->scanIndex]->flags & CONTACTF_CHECKED ? (hottrack ? CBS_CHECKEDHOT : CBS_CHECKEDNORMAL) : (hottrack ? CBS_UNCHECKEDHOT : CBS_UNCHECKEDNORMAL), &rc, &rc);
+					DrawThemeBackground(hTheme, hdcMem, BP_CHECKBOX, group->cl.items[group->scanIndex]->flags & CONTACTF_CHECKED ? (hottrack ? CBS_CHECKEDHOT : CBS_CHECKEDNORMAL) : (hottrack ? CBS_UNCHECKEDHOT : CBS_UNCHECKEDNORMAL), &rc, &rc);
 				else
 					DrawFrameControl(hdcMem, &rc, DFC_BUTTON, DFCS_BUTTONCHECK | DFCS_FLAT | (group->cl.items[group->scanIndex]->flags & CONTACTF_CHECKED ? DFCS_CHECKED : 0) | (hottrack ? DFCS_HOT : 0));
 
-				if (hTheme && MyCloseThemeData) {
-					MyCloseThemeData(hTheme);
+				if (hTheme) {
+					CloseThemeData(hTheme);
 					hTheme = NULL;
 				}
 			}
@@ -445,7 +424,7 @@ void PaintClc(HWND hwnd, struct ClcData *dat, HDC hdc, RECT * rcPaint)
 				rc.right = rc.left + ((clRect.right - rc.left - textSize.cx) >> 1) - 3;
 				DrawEdge(hdcMem, &rc, BDR_SUNKENOUTER, BF_RECT);
 				TextOut(hdcMem, rc.right + 3, y + ((dat->rowHeight - fontHeight) >> 1), group->cl.items[group->scanIndex]->szText,
-					lstrlen(group->cl.items[group->scanIndex]->szText));
+					(int)mir_tstrlen(group->cl.items[group->scanIndex]->szText));
 				rc.left = rc.right + 6 + textSize.cx;
 				rc.right = clRect.right;
 				DrawEdge(hdcMem, &rc, BDR_SUNKENOUTER, BF_RECT);
@@ -461,7 +440,7 @@ void PaintClc(HWND hwnd, struct ClcData *dat, HDC hdc, RECT * rcPaint)
 					if (rc.right < rc.left + 4)
 						rc.right = clRect.right + 1;
 					else
-						TextOutA(hdcMem, rc.right, rc.top + groupCountsFontTopShift, szCounts, lstrlenA(szCounts));
+						TextOutA(hdcMem, rc.right, rc.top + groupCountsFontTopShift, szCounts, (int)mir_strlen(szCounts));
 					ChangeToFont(hdcMem, dat, FONTID_GROUPS, &fontHeight);
 					if (selected)
 						SetTextColor(hdcMem, dat->selTextColour);
@@ -469,12 +448,12 @@ void PaintClc(HWND hwnd, struct ClcData *dat, HDC hdc, RECT * rcPaint)
 						SetHotTrackColour(hdcMem, dat);
 					rc.right--;
 					ExtTextOut(hdcMem, rc.left, rc.top, ETO_CLIPPED, &rc, group->cl.items[group->scanIndex]->szText,
-						lstrlen(group->cl.items[group->scanIndex]->szText), NULL);
+						(int)mir_tstrlen(group->cl.items[group->scanIndex]->szText), NULL);
 				}
 				else
 					TextOut(hdcMem, dat->leftMargin + indent * dat->groupIndent + checkboxWidth + dat->iconXSpace,
-					y + ((dat->rowHeight - fontHeight) >> 1), group->cl.items[group->scanIndex]->szText,
-					lstrlen(group->cl.items[group->scanIndex]->szText));
+						y + ((dat->rowHeight - fontHeight) >> 1), group->cl.items[group->scanIndex]->szText,
+						(int)mir_tstrlen(group->cl.items[group->scanIndex]->szText));
 				if (dat->exStyle & CLS_EX_LINEWITHGROUPS) {
 					rc.top = y + (dat->rowHeight >> 1);
 					rc.bottom = rc.top + 2;
@@ -491,21 +470,21 @@ void PaintClc(HWND hwnd, struct ClcData *dat, HDC hdc, RECT * rcPaint)
 				rc.top = y + ((dat->rowHeight - fontHeight) >> 1);
 				rc.right = (clRect.right - clRect.left);
 				rc.bottom = rc.top;
-				DrawText(hdcMem, szText, lstrlen(szText), &rc, DT_EDITCONTROL | DT_NOPREFIX | DT_NOCLIP | DT_WORD_ELLIPSIS | DT_SINGLELINE);
+				DrawText(hdcMem, szText, -1, &rc, DT_EDITCONTROL | DT_NOPREFIX | DT_NOCLIP | DT_WORD_ELLIPSIS | DT_SINGLELINE);
 			}
 
 			if (selected) {
 				if (group->cl.items[group->scanIndex]->type != CLCIT_DIVIDER) {
 					TCHAR *szText = group->cl.items[group->scanIndex]->szText;
 					RECT rc;
-					int qlen = lstrlen(dat->szQuickSearch);
+					size_t qlen = mir_tstrlen(dat->szQuickSearch);
 					SetTextColor(hdcMem, dat->quickSearchColour);
 					rc.left = dat->leftMargin + indent * dat->groupIndent + checkboxWidth + dat->iconXSpace;
 					rc.top = y + ((dat->rowHeight - fontHeight) >> 1);
 					rc.right = (clRect.right - clRect.left);
 					rc.bottom = rc.top;
 					if (qlen)
-						DrawText(hdcMem, szText, qlen, &rc, DT_EDITCONTROL | DT_NOPREFIX | DT_NOCLIP | DT_WORD_ELLIPSIS | DT_SINGLELINE);
+						DrawText(hdcMem, szText, (int)qlen, &rc, DT_EDITCONTROL | DT_NOPREFIX | DT_NOCLIP | DT_WORD_ELLIPSIS | DT_SINGLELINE);
 				}
 			}
 		}

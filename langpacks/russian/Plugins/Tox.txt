@@ -1,0 +1,121 @@
+﻿#muuid {00272a3e-f5fa-4090-8b67-3e62ac1ee0b4}
+;============================================================
+;  File: Tox.dll
+;  Plugin: Tox protocol
+;  Version: 0.11.0.8
+;  Authors: Miranda NG Team
+;============================================================
+[Tox protocol support for Miranda NG.]
+Поддержка протокола Tox в Miranda NG.
+[Name:]
+Имя:
+[Password:]
+Пароль:
+[Default group:]
+Группа:
+[Import tox profile]
+Импорт профиля Tox
+[Tox profile contains your ID and friend list.\r\nYou may import existing profile from other tox client.]
+Профиль Tox содержит ваш ID и список друзей.\r\nВы можете импортировать существующий профиль из другого клиента Tox.
+[Connection settings]
+Настройки подключения
+[Disable UDP (force Tox to use TCP)]
+Отключить UDP (принудительно использовать TCP)
+[Disable IPv6]
+Отключить IPv6
+[If this field contains tox address (76 hex characters), you will be prompted to add it in your friend list. Otherwise, Miranda will search this query via tox dns discovery.]
+При введении в поле поиска адреса tox (76 hex символов), будет выдан запрос на добавление в список друзей. Иначе поиск будет произведён при помощи dns сервиса обнаружения Tox.
+[Dns name:]
+DNS имя:
+[Enter password]
+Введите пароль
+[Save password]
+Сохранить пароль
+[Cancel]
+Отмена
+[Tox profile is encrypted. Enter the password to continue.]
+Профиль Tox зашифрован. Введите пароль, чтобы продолжить.
+[Add]
+Добавить
+[IPv4 address/ Host]
+IPv4 адрес/ Хост
+[IPv6 address (optional)]
+IPv6 адрес (необязательно)
+[Port]
+Порт
+[Public key]
+Открытый ключ
+[Multimedia]
+Мультимедиа
+[Audio input device]
+Устройство аудиовхода
+[Audio output device]
+Устройство аудиовыхода
+[Filter audio]
+Фильтр аудио
+[Video input device]
+Устройство видеовхода
+[Invite contacts to chat room]
+Пригласить пользователей в комнату чата
+[&Invite]
+&Пригласить
+[&Cancel]
+О&тмена
+[Groupchat]
+Чат
+[Profiles folder]
+Папка профилей
+[Protocol icon]
+Значок протокола
+[Protocols]
+Протоколы
+[Request authorization]
+Запросить авторизацию
+[Grant authorization]
+Авторизовать
+[Copy Tox ID]
+Копировать Tox ID
+[%s connection]
+%s подключение
+[Tox profile]
+Профиль Tox
+[All files]
+Все файлы
+[Select tox profile]
+Выберите профиль Tox
+[You have existing profile. Do you want remove it with all tox contacts and history and continue import?]
+Найден уже существующий профиль. Вы уверены, что хотите удалить его вместе с историей и контактами Tox и продолжить импорт?
+[Tox profile import]
+Импорт профиля Tox
+[Add node]
+Добавление ноды
+[Change node]
+Изменение ноды
+[Enter IPv4]
+Введите IPv4
+[Error]
+Ошибка
+[Enter public key]
+Введите открытый ключ
+[Common nodes]
+Общие ноды
+[nodes]
+ноды
+[Are you sure?]
+Вы уверены?
+[Node deleting]
+Удаление ноды
+[Network]
+Сеть
+[Account]
+Учётная запись
+[Nodes]
+Ноды
+[Action]
+Действие
+[You cannot add yourself to your contact list]
+Невозможно добавить себя в список контактов
+[Contact already in your contact list]
+Контакт уже в вашем списке контактов
+[Query]
+Запрос

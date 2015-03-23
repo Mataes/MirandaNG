@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,16 +26,3 @@ void InitIcons(void);
 HANDLE GetIconHandle(const char *name);
 
 void InitContactMenus(void);
-void UninitContactMenus(void);
-
-/* Contact menu item indexes */
-#define CMI_VISIT_PROFILE 0
-#define CMI_VISIT_FRIENDSHIP 1
-#define CMI_AUTH_REVOKE 2
-#define CMI_AUTH_ASK 3
-#define CMI_AUTH_GRANT 4
-#define CMI_AUTH_CANCEL 5
-#define CMI_POKE 6
-#define CMI_POST_STATUS 7
-
-#define CMITEMS_COUNT 8

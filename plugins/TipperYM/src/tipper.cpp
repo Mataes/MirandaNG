@@ -22,8 +22,6 @@ Boston, MA 02111-1307, USA.
 
 HMODULE hInst;
 
-char szMetaModuleName[256] = {0};
-
 FontIDT fontTitle, fontLabels, fontValues, fontTrayTitle;
 ColourIDT colourBg, colourBorder, colourAvatarBorder, colourDivider, colourSidebar;
 HFONT hFontTitle, hFontLabels, hFontValues, hFontTrayTitle;
@@ -37,6 +35,7 @@ HANDLE hReloadFonts = NULL;
 HANDLE hFolderChanged, hSkinFolder;
 TCHAR SKIN_FOLDER[256];
 
+CLIST_INTERFACE *pcli = NULL;
 FI_INTERFACE *fii = NULL;
 TIME_API tmi;
 int hLangpack;
@@ -59,7 +58,7 @@ PLUGININFOEX pluginInfoEx =
 bool WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	hInst = hinstDLL;
-    return TRUE;
+	return TRUE;
 }
 
 extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
@@ -92,9 +91,8 @@ int ReloadFont(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-
 // hack to hide tip when clist hides from timeout
-int SettingChanged(WPARAM wParam, LPARAM lParam)
+int SettingChanged(WPARAM hContact, LPARAM lParam)
 {
 	DBCONTACTWRITESETTING *dcws = (DBCONTACTWRITESETTING *)lParam;
 	if (strcmp(dcws->szModule, "CList") != 0 || strcmp(dcws->szSetting, "State") != 0)
@@ -111,9 +109,9 @@ int SettingChanged(WPARAM wParam, LPARAM lParam)
 int EventDeleted(WPARAM wParam, LPARAM lParam)
 {
 	DBEVENTINFO dbei = { sizeof(dbei) };
-	if ( !db_event_get((HANDLE)lParam, &dbei))
+	if (!db_event_get(lParam, &dbei))
 		if (dbei.eventType == EVENTTYPE_MESSAGE)
-			db_unset((HANDLE)wParam, MODULE, "LastCountTS");
+			db_unset(wParam, MODULE, "LastCountTS");
 
 	return 0;
 }
@@ -274,11 +272,6 @@ int ModulesLoaded(WPARAM, LPARAM)
 
 	// set Miranda start timestamp
 	db_set_dw(0, MODULE, "MirandaStartTS", (DWORD)time(0));
-
-	// get MetaContacts module name
-	if (ServiceExists(MS_MC_GETPROTOCOLNAME))
-		strcpy(szMetaModuleName, (char *)CallService(MS_MC_GETPROTOCOLNAME, 0, 0));
-
 	return 0;
 }
 
@@ -308,8 +301,9 @@ HANDLE hEventPreShutdown, hEventModulesLoaded;
 extern "C" int __declspec(dllexport) Load(void)
 {
 	CallService(MS_IMG_GETINTERFACE, FI_IF_VERSION, (LPARAM)&fii);
-	mir_getTMI(&tmi);
 	mir_getLP(&pluginInfoEx);
+	mir_getCLI();
+	mir_getTMI(&tmi);
 
 	if (ServiceExists(MS_LANGPACK_GETCODEPAGE))
 		iCodePage = CallService(MS_LANGPACK_GETCODEPAGE, 0, 0);

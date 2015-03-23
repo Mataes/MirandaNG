@@ -110,15 +110,15 @@ INT_PTR WeatherLoadIcon(WPARAM wParam,LPARAM lParam)
 static void __cdecl AckThreadProc(HANDLE param)
 {
 	Sleep(100);
-	ProtoBroadcastAck(WEATHERPROTONAME, param, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE) 1, 0);
+	ProtoBroadcastAck(WEATHERPROTONAME, (MCONTACT)param, ACKTYPE_GETINFO, ACKRESULT_SUCCESS, (HANDLE)1, 0);
 }
 
 // nothing to do here because weather proto do not need to retrieve contact info form network
 // so just return a 0
-INT_PTR WeatherGetInfo(WPARAM wParam,LPARAM lParam)
+INT_PTR WeatherGetInfo(WPARAM,LPARAM lParam)
 {
 	CCSDATA *ccs = (CCSDATA *) lParam;
-	mir_forkthread(AckThreadProc, ccs->hContact);
+	mir_forkthread(AckThreadProc, (void*)ccs->hContact);
 	return 0;
 }
 
@@ -133,7 +133,7 @@ INT_PTR WeatherGetAvatarInfo(WPARAM wParam, LPARAM lParam)
 	unsigned  i;
 	PROTO_AVATAR_INFORMATIONT* ai = ( PROTO_AVATAR_INFORMATIONT* )lParam;
 
-	GetModuleFileName(GetModuleHandle(NULL), szSearchPath, sizeof(szSearchPath));
+	GetModuleFileName(GetModuleHandle(NULL), szSearchPath, SIZEOF(szSearchPath));
 	chop = _tcsrchr(szSearchPath, '\\');
 
 	if (chop) *chop = '\0';
@@ -163,7 +163,7 @@ INT_PTR WeatherGetAvatarInfo(WPARAM wParam, LPARAM lParam)
 }
 
 
-void AvatarDownloaded(HANDLE hContact)
+void AvatarDownloaded(MCONTACT hContact)
 {
 	PROTO_AVATAR_INFORMATIONT AI = {0};
 	AI.cbSize = sizeof(AI);
@@ -176,16 +176,16 @@ void AvatarDownloaded(HANDLE hContact)
 }
 
 
-static void __cdecl WeatherGetAwayMsgThread(HANDLE hContact)
+static void __cdecl WeatherGetAwayMsgThread(void *hContact)
 {
 	Sleep(100);
 
 	DBVARIANT dbv;
-	if ( !db_get_ts(hContact, "CList", "StatusMsg", &dbv)) {
-		ProtoBroadcastAck(WEATHERPROTONAME, hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)1, (LPARAM)dbv.ptszVal);
+	if (!db_get_ts((MCONTACT)hContact, "CList", "StatusMsg", &dbv)) {
+		ProtoBroadcastAck(WEATHERPROTONAME, (MCONTACT)hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)1, (LPARAM)dbv.ptszVal);
 		db_free( &dbv );
 	}
-	else ProtoBroadcastAck(WEATHERPROTONAME, hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)1, 0);
+	else ProtoBroadcastAck(WEATHERPROTONAME, (MCONTACT)hContact, ACKTYPE_AWAYMSG, ACKRESULT_SUCCESS, (HANDLE)1, 0);
 }
 
 static INT_PTR WeatherGetAwayMsg(WPARAM wParam, LPARAM lParam)
@@ -194,7 +194,7 @@ static INT_PTR WeatherGetAwayMsg(WPARAM wParam, LPARAM lParam)
 	if (ccs == NULL)
 		return 0;
 
-	mir_forkthread(WeatherGetAwayMsgThread, ccs->hContact);
+	mir_forkthread(WeatherGetAwayMsgThread, (void*)ccs->hContact);
 	return 1;
 }
 
@@ -242,7 +242,7 @@ void UpdateMenu(BOOL State)
 
 	mi.flags = CMIM_ICON | CMIM_NAME;
 	Menu_ModifyItem(hEnableDisableMenu, &mi);
-	CallService(MS_TTB_SETBUTTONSTATE, (WPARAM)hTBButton, !State ? TTBST_PUSHED : TTBST_RELEASED);
+	CallService(MS_TTB_SETBUTTONSTATE, (WPARAM)hTBButton, !State ? TTBST_PUSHED : 0);
 
 }
 

@@ -89,11 +89,11 @@ char *StrReplace(char *source, const char *what, const char *withWhat)
 {
 	size_t whatLen = strlen(what);
 	size_t withWhatLen = strlen(withWhat);
-	
+
 	char *pos;
 	while ((pos = strstr(source, what))) {
 		size_t minLen = min(whatLen, withWhatLen);
-		StrCopy(source, pos - source, withWhat, minLen); 
+		StrCopy(source, pos - source, withWhat, minLen);
 		size_t index = pos - source + minLen;
 		if (whatLen > withWhatLen)
 			StrDelete(source, index, whatLen - withWhatLen);
@@ -113,7 +113,7 @@ wchar_t *StrReplace(wchar_t *source, const wchar_t *what, const wchar_t *withWha
 	wchar_t *pos;
 	while ((pos = wcsstr(source, what))) {
 		size_t minLen = min(whatLen, withWhatLen);
-		StrCopy(source, pos - source, withWhat, minLen); 
+		StrCopy(source, pos - source, withWhat, minLen);
 		size_t index = pos - source + minLen;
 		if (whatLen > withWhatLen)
 			StrDelete(source, index, whatLen - withWhatLen);
@@ -128,7 +128,7 @@ wchar_t *StrReplace(wchar_t *source, const wchar_t *what, const wchar_t *withWha
 char *StrTrim(char *szText, const char *szTrimChars)
 {
 	size_t i = strlen(szText) - 1;
-	while ((i >= 0) && (strchr(szTrimChars, szText[i])))
+	while (i >= 0 && strchr(szTrimChars, szText[i]))
 		szText[i--] = '\0';
 
 	i = 0;
@@ -144,7 +144,7 @@ char *StrTrim(char *szText, const char *szTrimChars)
 wchar_t *StrTrim(wchar_t *szText, const wchar_t *szTrimChars)
 {
 	size_t i = wcslen(szText) - 1;
-	while ((i >= 0) && (wcschr(szTrimChars, szText[i])))
+	while (i >= 0 && wcschr(szTrimChars, szText[i]))
 		szText[i--] = '\0';
 
 	i = 0;
@@ -162,7 +162,7 @@ void RemoveDirectories(TCHAR *path)
 	TCHAR *pos;
 	TCHAR *buffer = NEWWSTR_ALLOCA(path);
 	if (!(GetFileAttributes(buffer) & FILE_ATTRIBUTE_REPARSE_POINT))
-		 RemoveDirectory(buffer);
+		RemoveDirectory(buffer);
 	while (pos = _tcsrchr(buffer, '\\')) {
 		pos[0] = '\0';
 		if (!(GetFileAttributes(buffer) & FILE_ATTRIBUTE_REPARSE_POINT))
@@ -173,7 +173,7 @@ void RemoveDirectories(TCHAR *path)
 int DirectoryExists(TCHAR *path)
 {
 	TCHAR buffer[4096];
-	GetCurrentDirectory( SIZEOF(buffer), buffer);
+	GetCurrentDirectory(SIZEOF(buffer), buffer);
 	int res = SetCurrentDirectory(path);
 	SetCurrentDirectory(buffer);
 	return res;
@@ -183,7 +183,7 @@ int GetStringFromDatabase(char *szSettingName, const wchar_t *szError, TCHAR *sz
 {
 	size_t len;
 	DBVARIANT dbv;
-	if ( db_get_ws(NULL, ModuleName, szSettingName, &dbv) == 0) {
+	if (db_get_ws(NULL, ModuleName, szSettingName, &dbv) == 0) {
 		size_t tmp = _tcslen(dbv.ptszVal);
 		len = (tmp < size - 1) ? tmp : size - 1;
 		_tcsncpy(szResult, dbv.ptszVal, len);

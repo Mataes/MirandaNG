@@ -1,33 +1,30 @@
-/*
- * astyle --force-indent=tab=4 --brackets=linux --indent-switches
- *		  --pad=oper --one-line=keep-blocks  --unpad=paren
- *
- * Miranda NG: the free IM client for Microsoft* Windows*
- *
- * Copyright 2000-2009 Miranda ICQ/IM project,
- * all portions of this codebase are copyrighted to the people
- * listed in contributors.txt.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * you should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- * part of tabSRMM messaging plugin for Miranda.
- *
- * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
- *
- * the info area for both im and chat sessions
- */
+/////////////////////////////////////////////////////////////////////////////////////////
+// Miranda NG: the free IM client for Microsoft* Windows*
+//
+// Copyright (ñ) 2012-15 Miranda NG project,
+// Copyright (c) 2000-09 Miranda ICQ/IM project,
+// all portions of this codebase are copyrighted to the people
+// listed in contributors.txt.
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// you should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+// part of tabSRMM messaging plugin for Miranda.
+//
+// (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
+//
+// the info area for both im and chat sessions
 
 #ifndef __INFOPANEL_H
 #define __INFOPANEL_H
@@ -67,38 +64,38 @@ class CTip
 {
 public:
 	enum {
-		TOP_BORDER		= 25,
-		LEFT_BORDER		= 2,
-		RIGHT_BORDER	= 2,
-		BOTTOM_BORDER	= 1,
-		LEFT_BAR_WIDTH	= 20
+		TOP_BORDER = 25,
+		LEFT_BORDER = 2,
+		RIGHT_BORDER = 2,
+		BOTTOM_BORDER = 1,
+		LEFT_BAR_WIDTH = 20
 	};
 
-	CTip													(const HWND hwndParent, const HANDLE hContact, const TCHAR *pszText = 0, const CInfoPanel *panel = 0);
+	CTip(const HWND hwndParent, const MCONTACT hContact, const TCHAR *pszText = 0, const CInfoPanel *panel = 0);
 	~CTip()
 	{
 		mir_free(m_pszText);
 	}
-	void						show						(const RECT& rc, POINT& pt, const HICON hIcon = 0, const TCHAR *szTitle = 0);
-	const HWND					getHwnd						() const { return(m_hwnd); }
+	void						show(const RECT& rc, POINT& pt, const HICON hIcon = 0, const TCHAR *szTitle = 0);
+	const HWND					getHwnd() const { return(m_hwnd); }
 
-	static void					registerClass				();
+	static void					registerClass();
 private:
 
-	       INT_PTR CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-	static INT_PTR CALLBACK WndProcStub(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	INT_PTR CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK WndProcStub(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK RichEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-	HWND    m_hwnd;            // our window handle
-	HWND    m_hRich;           // handle of the rich edit child
-	HWND    m_hwndParent;      // parent window (used for position calculations and to send notifications)
-	HANDLE  m_hContact;        // contact handle
-	char   *m_pszText;         // the richedit text
-	SIZE    m_szRich;          // size of the richedit control (height auto-calculated to make it fit the text)
-	RECT    m_rcRich;          // adjusted rectangle for the richedit control (client coordinates)
-	HICON   m_hIcon;           // optional icon to show in the title line
-	LPCTSTR m_szTitle;         // optional text to show in the title
-	int     m_leftWidth;
+	HWND     m_hwnd;            // our window handle
+	HWND     m_hRich;           // handle of the rich edit child
+	HWND     m_hwndParent;      // parent window (used for position calculations and to send notifications)
+	MCONTACT m_hContact;        // contact handle
+	char    *m_pszText;         // the richedit text
+	SIZE     m_szRich;          // size of the richedit control (height auto-calculated to make it fit the text)
+	RECT     m_rcRich;          // adjusted rectangle for the richedit control (client coordinates)
+	HICON    m_hIcon;           // optional icon to show in the title line
+	LPCTSTR  m_szTitle;         // optional text to show in the title
+	int      m_leftWidth;
 
 	const CInfoPanel *m_panel; // the info panel parent (if any)
 };
@@ -117,14 +114,14 @@ public:
 		LEFT_OFFSET_LOGO = 3
 	};
 	enum {
-		HOVER_NICK   = 1,
+		HOVER_NICK = 1,
 		HOVER_STATUS = 2,
-		HOVER_UIN    = 4
+		HOVER_UIN = 4
 	};
 	enum {
-		HTNICK    = 1,
-		HTUIN     = 2,
-		HTSTATUS  = 3,
+		HTNICK = 1,
+		HTUIN = 2,
+		HTSTATUS = 3,
 		HTNIRVANA = 0
 	};
 
@@ -199,11 +196,11 @@ private:
 	bool  m_fDialogCreated;
 	TWindowData *m_dat;         // this one OWNS us...
 	LONG  m_height;             // height (determined by position of IDC_PANELSPLITTER)
-	LONG  m_defaultHeight, 
-	      m_defaultMUCHeight;   // global values for the info bar height
+	LONG  m_defaultHeight,
+		m_defaultMUCHeight;   // global values for the info bar height
 	HWND  m_hwndConfig;         // window handle of the config dialog window
 	HFONT m_configDlgFont,
-	      m_configDlgBoldFont;
+		m_configDlgBoldFont;
 	SIZE  m_szNick;             // rectangle where the nick has been rendered,
 	/*
 	 * these are used to store rectangles important to mouse tracking.

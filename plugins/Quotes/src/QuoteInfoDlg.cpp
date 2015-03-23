@@ -12,23 +12,23 @@ extern HGENMENU g_hMenuRefresh;
 #define WINDOW_PREFIX_INFO "Quote Info"
 
 
-namespace 
+namespace
 {
-	HANDLE g_hContact;
+	MCONTACT g_hContact;
 
-	inline bool IsMyContact(HANDLE hContact)
+	inline bool IsMyContact(MCONTACT hContact)
 	{
 		CQuotesProviders::TQuotesProviderPtr pProvider = CModuleInfo::GetQuoteProvidersPtr()->GetContactProviderPtr(hContact);
 		return (NULL != pProvider);
 	}
 
-	inline HANDLE get_contact(HWND hWnd)
+	inline MCONTACT get_contact(HWND hWnd)
 	{
-		return reinterpret_cast<HANDLE>(GetWindowLongPtr(hWnd,GWLP_USERDATA));
+		return MCONTACT(GetWindowLongPtr(hWnd, GWLP_USERDATA));
 	}
 
 
-	bool get_fetch_time(time_t& rTime,HANDLE hContact)
+	bool get_fetch_time(time_t& rTime, MCONTACT hContact)
 	{
 		DBVARIANT dbv;
 		if (db_get(hContact, QUOTES_PROTOCOL_NAME, DB_STR_QUOTE_FETCH_TIME, &dbv) || (DBVT_DWORD != dbv.type))
@@ -38,104 +38,97 @@ namespace
 		return true;
 	}
 
-	INT_PTR CALLBACK QuoteInfoDlgProcImpl(HANDLE hContact,HWND hdlg,UINT msg,WPARAM wParam,LPARAM lParam)
+	INT_PTR CALLBACK QuoteInfoDlgProcImpl(MCONTACT hContact, HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
-		switch(msg)
+		switch (msg)
 		{
 		case WM_INITDIALOG:
+		{
+			assert(hContact);
+
+			TranslateDialogDefault(hdlg);
+
+			tstring sDescription = GetContactName(hContact);
+			::SetDlgItemText(hdlg, IDC_STATIC_QUOTE_NAME, sDescription.c_str());
+
+			double dRate = 0.0;
+			if (true == Quotes_DBReadDouble(hContact, QUOTES_PROTOCOL_NAME, DB_STR_QUOTE_PREV_VALUE, dRate))
 			{
-				assert(hContact);
-
-				TranslateDialogDefault(hdlg);
-
-				tstring sDescription = GetContactName(hContact);
-				::SetDlgItemText(hdlg,IDC_STATIC_QUOTE_NAME,sDescription.c_str());
-
-				double dRate = 0.0;
-				if(true == Quotes_DBReadDouble(hContact,QUOTES_PROTOCOL_NAME,DB_STR_QUOTE_PREV_VALUE,dRate))
-				{
-					tostringstream o;
-					o.imbue(GetSystemLocale());
-					o << dRate;
-
-					::SetDlgItemText(hdlg,IDC_EDIT_PREVIOUS_RATE,o.str().c_str());
-				}
-
-				dRate = 0.0;
-				if(true == Quotes_DBReadDouble(hContact,QUOTES_PROTOCOL_NAME,DB_STR_QUOTE_CURR_VALUE,dRate))
-				{
-					tostringstream o;
-					o.imbue(GetSystemLocale());
-					o << dRate;
-
-					::SetDlgItemText(hdlg,IDC_EDIT_RATE,o.str().c_str());
-				}
-
-				time_t nFetchTime;
-				if(true == get_fetch_time(nFetchTime,hContact))
-				{
-					TCHAR szTime[50];
-					if(0 == _tctime_s(szTime,50,&nFetchTime))
-					{
-						szTime[::_tcslen(szTime)-1] = _T('\0');
-						::SetDlgItemText(hdlg,IDC_EDIT_RATE_FETCH_TIME,szTime);
-					}
-				}
-
-				CQuotesProviders::TQuotesProviderPtr pProvider = CModuleInfo::GetQuoteProvidersPtr()->GetContactProviderPtr(hContact);
-
-				const IQuotesProvider::CProviderInfo& pi = pProvider->GetInfo();
 				tostringstream o;
-				o << TranslateT("Info provided by") << _T(" <a href=\"") << pi.m_sURL << _T("\">") << pi.m_sName << _T("</a>");
+				o.imbue(GetSystemLocale());
+				o << dRate;
 
-				::SetDlgItemText(hdlg,IDC_SYSLINK_PROVIDER,o.str().c_str());
+				::SetDlgItemText(hdlg, IDC_EDIT_PREVIOUS_RATE, o.str().c_str());
 			}
-			return TRUE;
-		case WM_NOTIFY:
+
+			dRate = 0.0;
+			if (true == Quotes_DBReadDouble(hContact, QUOTES_PROTOCOL_NAME, DB_STR_QUOTE_CURR_VALUE, dRate))
 			{
-				LPNMHDR pNMHDR = reinterpret_cast<LPNMHDR>(lParam);
-				switch(pNMHDR->code)
+				tostringstream o;
+				o.imbue(GetSystemLocale());
+				o << dRate;
+
+				::SetDlgItemText(hdlg, IDC_EDIT_RATE, o.str().c_str());
+			}
+
+			time_t nFetchTime;
+			if (true == get_fetch_time(nFetchTime, hContact))
+			{
+				TCHAR szTime[50];
+				if (0 == _tctime_s(szTime, 50, &nFetchTime))
 				{
-				case NM_CLICK:
-					if(IDC_SYSLINK_PROVIDER == wParam)
-					{
-						PNMLINK pNMLink = reinterpret_cast<PNMLINK>(pNMHDR);
-						::ShellExecute(hdlg,_T("open"),pNMLink->item.szUrl,NULL,NULL,SW_SHOWNORMAL);					
-					}
-					break;
+					szTime[::_tcslen(szTime) - 1] = _T('\0');
+					::SetDlgItemText(hdlg, IDC_EDIT_RATE_FETCH_TIME, szTime);
 				}
 			}
-			break;
+
+			CQuotesProviders::TQuotesProviderPtr pProvider = CModuleInfo::GetQuoteProvidersPtr()->GetContactProviderPtr(hContact);
+
+			const IQuotesProvider::CProviderInfo& pi = pProvider->GetInfo();
+			tostringstream o;
+			o << TranslateT("Info provided by") << _T(" <a href=\"") << pi.m_sURL << _T("\">") << pi.m_sName << _T("</a>");
+
+			::SetDlgItemText(hdlg, IDC_SYSLINK_PROVIDER, o.str().c_str());
+		}
+		return TRUE;
+		case WM_NOTIFY:
+		{
+			LPNMHDR pNMHDR = reinterpret_cast<LPNMHDR>(lParam);
+			switch (pNMHDR->code)
+			{
+			case NM_CLICK:
+				if (IDC_SYSLINK_PROVIDER == wParam)
+				{
+					PNMLINK pNMLink = reinterpret_cast<PNMLINK>(pNMHDR);
+					::ShellExecute(hdlg, _T("open"), pNMLink->item.szUrl, NULL, NULL, SW_SHOWNORMAL);
+				}
+				break;
+			}
+		}
+		break;
 		}
 		return FALSE;
 	}
 
-	INT_PTR CALLBACK QuoteInfoDlgProc(HWND hdlg,UINT msg,WPARAM wParam,LPARAM lParam)
+	INT_PTR CALLBACK QuoteInfoDlgProc(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
-		return QuoteInfoDlgProcImpl(g_hContact,hdlg,msg,wParam,lParam);
+		return QuoteInfoDlgProcImpl(g_hContact, hdlg, msg, wParam, lParam);
 	}
 }
 
-int QuotesEventFunc_OnUserInfoInit(WPARAM wp,LPARAM lp)
+int QuotesEventFunc_OnUserInfoInit(WPARAM wp, LPARAM lp)
 {
-	HANDLE hContact = reinterpret_cast<HANDLE>(lp);
-	if(NULL == hContact)
-	{
+	MCONTACT hContact = MCONTACT(lp);
+	if (NULL == hContact)
 		return 0;
-	}
 
-
-	if(false == IsMyContact(hContact))
-	{
+	if (false == IsMyContact(hContact))
 		return 0;
-	}
 
 	g_hContact = hContact;
 
-	OPTIONSDIALOGPAGE odp = {0};
-	odp.cbSize = sizeof( odp );
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = g_hInstance;
-
 	odp.hIcon = Quotes_LoadIconEx(ICON_STR_MAIN);
 	odp.pfnDlgProc = QuoteInfoDlgProc;
 	odp.position = -2000000000;
@@ -146,10 +139,10 @@ int QuotesEventFunc_OnUserInfoInit(WPARAM wp,LPARAM lp)
 }
 
 
-INT_PTR QuotesMenu_EditSettings(WPARAM wp,LPARAM lp)
+INT_PTR QuotesMenu_EditSettings(WPARAM wp, LPARAM)
 {
-	HANDLE hContact = reinterpret_cast<HANDLE>(wp);
-	if(NULL == hContact)
+	MCONTACT hContact = MCONTACT(wp);
+	if (NULL == hContact)
 	{
 		return 0;
 	}
@@ -161,34 +154,34 @@ INT_PTR QuotesMenu_EditSettings(WPARAM wp,LPARAM lp)
 
 namespace
 {
-	bool get_log_file(HANDLE hContact,tstring& rsLogfile)
+	bool get_log_file(MCONTACT hContact, tstring& rsLogfile)
 	{
 		rsLogfile = GetContactLogFileName(hContact);
 		return ((rsLogfile.empty()) ? false : true);
 	}
 }
 
-INT_PTR QuotesMenu_OpenLogFile(WPARAM wp,LPARAM lp)
+INT_PTR QuotesMenu_OpenLogFile(WPARAM wp, LPARAM)
 {
-	HANDLE hContact = reinterpret_cast<HANDLE>(wp);
-	if(NULL == hContact)
+	MCONTACT hContact = MCONTACT(wp);
+	if (NULL == hContact)
 	{
 		return 0;
 	}
 
 	tstring sLogFileName;
-	if ((true == get_log_file(hContact,sLogFileName)) && (false == sLogFileName.empty()))
+	if ((true == get_log_file(hContact, sLogFileName)) && (false == sLogFileName.empty()))
 	{
-		::ShellExecute(NULL,_T("open"),sLogFileName.c_str(),NULL,NULL,SW_SHOWNORMAL);
+		::ShellExecute(NULL, _T("open"), sLogFileName.c_str(), NULL, NULL, SW_SHOWNORMAL);
 	}
 
 	return 0;
 }
 
-INT_PTR QuotesMenu_RefreshContact(WPARAM wp,LPARAM lp)
+INT_PTR QuotesMenu_RefreshContact(WPARAM wp, LPARAM)
 {
-	HANDLE hContact = reinterpret_cast<HANDLE>(wp);
-	if(NULL == hContact)
+	MCONTACT hContact = MCONTACT(wp);
+	if (NULL == hContact)
 	{
 		return 0;
 	}
@@ -206,42 +199,41 @@ INT_PTR QuotesMenu_RefreshContact(WPARAM wp,LPARAM lp)
 
 namespace
 {
-	INT_PTR CALLBACK QuoteInfoDlgProc1(HWND hdlg,UINT msg,WPARAM wParam,LPARAM lParam)
+	INT_PTR CALLBACK QuoteInfoDlgProc1(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
-		HANDLE hContact = NULL;
-		switch(msg)
-		{
+		MCONTACT hContact = NULL;
+		switch (msg) {
 		case WM_INITDIALOG:
-			{
-				hContact = reinterpret_cast<HANDLE>(lParam);
-				HANDLE hWL = CModuleInfo::GetInstance().GetWindowList(WINDOW_PREFIX_INFO,false);
-				assert(hWL);
-				WindowList_Add(hWL,hdlg,hContact);
+		{
+			hContact = MCONTACT(lParam);
+			HANDLE hWL = CModuleInfo::GetInstance().GetWindowList(WINDOW_PREFIX_INFO, false);
+			assert(hWL);
+			WindowList_Add(hWL, hdlg, hContact);
 
-				::SetWindowLongPtr(hdlg,GWLP_USERDATA,reinterpret_cast<LONG>(hContact));
-				Utils_RestoreWindowPositionNoSize(hdlg,hContact,QUOTES_MODULE_NAME,WINDOW_PREFIX_INFO);
-				::ShowWindow(hdlg,SW_SHOW);
-			}
-			break;
+			::SetWindowLongPtr(hdlg, GWLP_USERDATA, hContact);
+			Utils_RestoreWindowPositionNoSize(hdlg, hContact, QUOTES_MODULE_NAME, WINDOW_PREFIX_INFO);
+			::ShowWindow(hdlg, SW_SHOW);
+		}
+		break;
 		case WM_CLOSE:
 			DestroyWindow(hdlg);
 			return FALSE;
 		case WM_DESTROY:
+		{
+			MCONTACT hContact = get_contact(hdlg);
+			if (hContact)
 			{
-				HANDLE hContact = get_contact(hdlg);
-				if(hContact)
-				{
-					SetWindowLongPtr(hdlg,GWLP_USERDATA,0);
+				SetWindowLongPtr(hdlg, GWLP_USERDATA, 0);
 
-					HANDLE hWL = CModuleInfo::GetInstance().GetWindowList(WINDOW_PREFIX_INFO,false);
-					assert(hWL);
-					WindowList_Remove(hWL,hdlg);
-					Utils_SaveWindowPosition(hdlg,hContact,QUOTES_MODULE_NAME,WINDOW_PREFIX_INFO);
-				}
+				HANDLE hWL = CModuleInfo::GetInstance().GetWindowList(WINDOW_PREFIX_INFO, false);
+				assert(hWL);
+				WindowList_Remove(hWL, hdlg);
+				Utils_SaveWindowPosition(hdlg, hContact, QUOTES_MODULE_NAME, WINDOW_PREFIX_INFO);
 			}
-			return FALSE;
+		}
+		return FALSE;
 		case WM_COMMAND:
-			if(LOWORD(wParam) == IDOK) 
+			if (LOWORD(wParam) == IDOK)
 			{
 				::DestroyWindow(hdlg);
 				return FALSE;
@@ -252,77 +244,72 @@ namespace
 			break;
 		}
 
-		return QuoteInfoDlgProcImpl(hContact,hdlg,msg,wParam,lParam);
+		return QuoteInfoDlgProcImpl(hContact, hdlg, msg, wParam, lParam);
 	}
 }
 
-int Quotes_OnContactDoubleClick(WPARAM wp,LPARAM/* lp*/)
+int Quotes_OnContactDoubleClick(WPARAM wp, LPARAM/* lp*/)
 {
-	HANDLE hContact = reinterpret_cast<HANDLE>(wp);
-	if(CModuleInfo::GetQuoteProvidersPtr()->GetContactProviderPtr(hContact))
+	MCONTACT hContact = MCONTACT(wp);
+	if (CModuleInfo::GetQuoteProvidersPtr()->GetContactProviderPtr(hContact))
 	{
-		HANDLE hWL = CModuleInfo::GetInstance().GetWindowList(WINDOW_PREFIX_INFO,true);
+		HANDLE hWL = CModuleInfo::GetInstance().GetWindowList(WINDOW_PREFIX_INFO, true);
 		assert(hWL);
-		HWND hWnd = WindowList_Find(hWL,hContact);
-		if(NULL != hWnd) 
-		{
+		HWND hWnd = WindowList_Find(hWL, hContact);
+		if (NULL != hWnd) {
 			SetForegroundWindow(hWnd);
 			SetFocus(hWnd);
 		}
-		else if(true == IsMyContact(hContact))
-		{
-			CreateDialogParam(g_hInstance,MAKEINTRESOURCE(IDD_DIALOG_QUOTE_INFO_1),NULL,QuoteInfoDlgProc1,reinterpret_cast<LPARAM>(hContact));
-		}
+		else if (true == IsMyContact(hContact))
+			CreateDialogParam(g_hInstance, MAKEINTRESOURCE(IDD_DIALOG_QUOTE_INFO_1), NULL, QuoteInfoDlgProc1, LPARAM(hContact));
 
 		return 1;
 	}
-	else
-	{
-		return 0;
-	}
+
+	return 0;
 }
 
 namespace
 {
-	void enable_menu(HGENMENU hMenu,bool bEnable)
+	void enable_menu(HGENMENU hMenu, bool bEnable)
 	{
 		CLISTMENUITEM clmi = { sizeof(clmi) };
 		clmi.flags = CMIM_FLAGS;
-		if(false == bEnable)
+		if (false == bEnable)
 			clmi.flags |= CMIF_GRAYED;
 
 		Menu_ModifyItem(hMenu, &clmi);
 	}
 }
 
-int Quotes_PrebuildContactMenu(WPARAM wp,LPARAM lp)
+int Quotes_PrebuildContactMenu(WPARAM wp, LPARAM)
 {
-	enable_menu(g_hMenuEditSettings,false);
-	enable_menu(g_hMenuOpenLogFile,false);
+	enable_menu(g_hMenuEditSettings, false);
+	enable_menu(g_hMenuOpenLogFile, false);
 #ifdef CHART_IMPLEMENT
 	enable_menu(g_hMenuChart,false);
 #endif
-	enable_menu(g_hMenuRefresh,false);
-	
-	HANDLE hContact = reinterpret_cast<HANDLE>(wp);
-	if(NULL == hContact)
+	enable_menu(g_hMenuRefresh, false);
+
+	MCONTACT hContact = MCONTACT(wp);
+	if (NULL == hContact)
 	{
 		return 0;
 	}
 
-	enable_menu(g_hMenuEditSettings,true);
+	enable_menu(g_hMenuEditSettings, true);
 
-	enable_menu(g_hMenuRefresh,true);
+	enable_menu(g_hMenuRefresh, true);
 
 	tstring sLogFileName;
-	bool bThereIsLogFile = (true == get_log_file(hContact,sLogFileName))
-		&& (false == sLogFileName.empty()) && (0 == _taccess(sLogFileName.c_str(),04));
-	if(true == bThereIsLogFile)
+	bool bThereIsLogFile = (true == get_log_file(hContact, sLogFileName))
+		&& (false == sLogFileName.empty()) && (0 == _taccess(sLogFileName.c_str(), 04));
+	if (true == bThereIsLogFile)
 	{
 #ifdef CHART_IMPLEMENT
 		enable_menu(g_hMenuChart,true);
 #endif
-		enable_menu(g_hMenuOpenLogFile,true);
+		enable_menu(g_hMenuOpenLogFile, true);
 	}
 
 	return 0;

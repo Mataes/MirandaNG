@@ -2,7 +2,7 @@
 ;============================================================
 ;  File: ShlExt.dll
 ;  Plugin: Shell extension
-;  Version: 2.2.0.2
+;  Version: 2.2.0.3
 ;  Authors: Sam Kothari, Miranda NG Team
 ;============================================================
 [Windows Explorer extension for Miranda NG.]
@@ -28,7 +28,7 @@
 [Do not show status icons in menus]
 Не показывать в меню значки статуса
 [Do not show contacts that are offline, even if my contact list does]
-Не показывать контакты, не находящиеся в сети
+Не показывать контакты, которые находятся не в сети
 [Problem, registration missing/deleted.]
 Проблема! Интеграция в оболочку отсутствует!
 [Successfully created shell registration.]
@@ -38,9 +38,11 @@
 [Approved]
 Разрешено
 [Are you sure? This will remove all the settings stored in your database and all registry entries created for shlext to work with Explorer]
-Вы уверены? Это удалит все настройки данного плагин в вашем профиле и все ключи реестра, отвечающие за его интеграцию в оболочку ОС.
+Вы уверены? Это удалит все настройки данного плагина в вашем профиле и все ключи реестра, отвечающие за его интеграцию в оболочку ОС.
 [Disable/Remove shlext]
 Отключить/Удалить shlext
+[Services]
+Службы
 [Recently]
 Последние
 [Clear entries]

@@ -1,164 +1,160 @@
 ﻿#muuid {e7c48bab-8ace-4cb3-8446-d4b73481f497}
 ;============================================================
 ;  File: MRA.dll
-;  Plugin: MRA
-;  Version: 2.1.0.5
-;  Authors: Ivan Rozhuk
+;  Plugin: MRA protocol
+;  Version: 2.1.0.10
+;  Authors: Rozhuk Ivan
 ;============================================================
 [Miranda Mail.ru Agent protocol plugin.]
 Поддержка протокола Mail.ru Агент (MRA) в Miranda NG.
+[E-mail:]
+Почта:
+[Password:]
+Пароль:
 [Create a new Mail.ru account]
 Создать новую учётную запись Mail.ru
-[Display &Inbox]
-Открыть входящие
-[Display &Inbox status]
-Показать состояние ящика
-[Send SMS]
-Отправить SMS
-[Edit &Profile]
-Редактировать анкету
-[My Album]
-Мой альбом
-[My Blog]
-Мой блог
-[My Video]
-Моё видео
-[My Answers]
-Мои ответы
-[My World]
-Мой мир
-[Zhuki]
-Жуки
-[Web search]
-Поиск в вебе
-[Update all users info]
-Обновить информацию всех пользователей
-[Check updates users avatars]
-Проверить обновления образов пользователей
-[Request authorization for all]
-Запросить авторизацию у всех
-[&Send postcard]
-Отправить открытку
-[&View Album]
-Посмотреть альбом
-[&Read Blog]
-Блог
-[View Video]
-Посмотреть видео
-[Answers]
-Ответы
-[World]
-Мир
-[Mail box deleted]
-Почтовый ящик удалён
-[Contact not on server]
-Контакт отсутствует на сервере
-[Not authorized]
-Не авторизован
-[Phone/SMS only contact]
-Телефонный/SMS контакт
-[plugin connections]
-соединения плагина
-[From: %S\r\nSubject: %S\r\n%s]
-От: %S\r\nТема: %S\r\n%s
-[Unread mail is available: %lu/%lu messages]
-Непрочитанная почта: %lu/%lu сообщений
-[No unread mail is available\r\nTotal messages: %lu]
-Непрочитанной почты нет\r\nВсего сообщений: %lu
-[Server error: cant get MPOP key for web authorize]
-Ошибка сервера: не возможно получить MPOP ключ для веб авторизации
-[Offline message processing error, message will not deleted from server]
-Ошибка при обработке оффлайнового сообщения, оно не будет удалено с сервера
-[Undefined message deliver error, time out]
-Неизвестная ошибка при доставке сообщения, время ожидания истекло
-[Please, setup e-mail in options]
-Пожалуйста, введите e-mail в настройках
-[Please, setup password in options]
-Пожалуйста, введите пароль в настройках
-[Can't connect to MRIM server, error]
-Невозможно подключится к серверу сообщений, ошибка
-[NLB data corrupted]
-Данные от сервера балансировки нагрузки повреждены
-[Can't get data for NLB, error]
-Невозможно получить данные от сервера балансировки нагрузки, ошибка
-[Can't connect to NLB server, error]
-Невозможно подключится к серверу балансировки нагрузки, ошибка
-[Disconnected, socket error]
-Отключено, ошибка сокета
-[Disconnected, socket read error]
-Отключено, ошибка сокета при получении данных
-[Logon error: invalid login/password]
-Ошибка при проверки имени пользователя/пароля
-[Another user connected with your login]
-Пользователь отключён из-за параллельного входа с его логином
-[Message rejected - no such user]
-Сообщение не доставлено - пользователь не существует
-[Offline messages limit exceeded]
-Превышен предел хранимых сообщений
-[Message is too large]
-Слишком большое сообщение
-[User does not accept offline messages]
-Пользователь не может принимать сообщения когда его нет в сети
-[User does not accept offline flash animation]
-Пользователь не может принимать мульты когда его нет в сети
-[Undefined message deliver error, code: %lu]
-Сообщение не доставлено, неизвестная ошибка, код: %lu
-[MRIM_CS_MESSAGE_STATUS: not found in queue]
-MRIM_CS_MESSAGE_STATUS: не найден в очереди
-[Data been sent are invalid]
-Переданные данные были некорректны
-[User does not registred]
-Пользователь не зарегистрирован
-[Invalid user name]
-Некорректное имя пользователя
-[User allready added]
-Пользователь уже есть в контакт-листе
-[Group limit is 20]
-Превышено максимально допустимое количество групп (20)
-[MRIM_CS_*_CONTACT_ACK: not found in queue]
-MRIM_CS_*_CONTACT_ACK: не найден в очереди
-[MRIM_ANKETA_INFO: not found in queue]
-MRIM_ANKETA_INFO: не найдено в очереди
-[MRIM_CS_SMS_ACK: not found in queue]
-MRIM_CS_SMS_ACK: не найден в очереди
-[File transfer: error]
-Передача файлов: ошибка
-[File transfer: incompatible versions]
-Передача файлов: не совместимые версии
-[MRIM_CS_FILE_TRANSFER_ACK: unknown error, code: %lu]
-MRIM_CS_FILE_TRANSFER_ACK: неизвестная ошибка, код: %lu
-[MRIM_CS_*_CONTACT_ACK: unknown server error, code: %lu]
-MRIM_CS_*_CONTACT_ACK: неизвестная ошибка сервера, код: %lu
-[MRIM_CS_GAME: unknown internal game message code: %lu]
-MRIM_CS_GAME: неизвестный внутренний код игрового сообщения: %lu
-[MRIM_CS_CONTACT_LIST2: unknown server error, code: %lu]
-MRIM_CS_CONTACT_LIST2: неизвестная ошибка сервера, код: %lu
-[MRIM_CS_CONTACT_LIST2: bad contact list]
-MRIM_CS_CONTACT_LIST2: найденный контакт-лист некорректен
-[MRIM_CS_CONTACT_LIST2: internal server error]
-MRIM_CS_CONTACT_LIST2: внутренняя ошибка сервера
-[Mail.ru System notify]
-Системное уведомление от администрации Mail.ru
-[Avatars: can't add request to queue, error]
-Аватары: невозможно добавить запрос в очередь, ошибка
-[Avatars: can't connect to server, error]
-Аватары: невозможно подключится к серверу, ошибка
-[Avatars: error on send HTTP request]
-Аватары: ошибка при отправке HTTP запроса
-[Avatars: error on receive HTTP answer]
-Аватары: ошибка при получении HTTP ответа
-[Avatars: cant open file %S, error %lu: %s]
-Аватары: невозможно открыть файл %S, ошибка %lu: %s
-[Avatars: error on receive file data]
-Аватары: ошибка при получении содержимого файла
-[Avatars: cant write file data, error]
-Аватары: невозможно записать данные в файл, ошибка
-[Avatars: server return HTTP code: %lu]
-Аватары: сервер вернул HTTP код: %lu
-[You cannot send when you are offline.]
-Вы не можете отправлять сообщения пока не подключились.
-[Cant allocate buffer for convert to unicode.]
-Не удалось выделить буфер для преобразования в юникод
+[Configuration]
+Конфигурация
+[Login Server:]
+Сервер:
+[Port:]
+Порт:
+[Default]
+По умолчанию
+[Automatically request authorization on logon]
+Автоматически запрашивать авторизацию при подключении
+[Automatically add contacts to server list on logon]
+Автоматически добавлять контакты на сервер при подключении
+[Automatically grant authorization to users in contact list]
+Автоматически авторизовывать пользователей из списка контактов
+[Automatically grant authorization to new users]
+Автоматически авторизовывать новых пользователей
+[Automatic authorization on Mail.ru web services]
+Автоматическая авторизация на веб сервисах Mail.ru
+[Notify me when a message delivery has failed]
+Уведомить меня, если сообщение не доставлено
+[Notify about new mail if increment]
+Уведомлять о почте, только если счётчик увеличился
+[Notify about new mail tray icon]
+Показывать значок в трее при наличии новой почты
+[Click to Inbox]
+Проверить почту щелчком
+[Show received formatted text (receive RTF)]
+Показывать принятый форматированный текст
+[Send formatted text (send RTF)]
+Отправлять форматированный текст
+[Background color]
+Цвет фона
+[Font]
+Шрифт
+[Summary]
+Резюме
+[Nickname:]
+Ник:
+[First name:]
+Имя:
+[Last name:]
+Фамилия:
+[Gender:]
+Пол:
+[Age:]
+Возраст:
+[from:]
+От:
+[to:]
+до:
+[Birthday:]
+День рождения:
+[Zodiac:]
+Зодиак:
+[Location]
+Место
+[Country:]
+Страна:
+[State:]
+Штат:
+[Search online users only]
+Искать только подключённых
+[City:]
+Город:
+[Remember]
+Напоминание
+[Enable avatars support (loading)]
+Включить поддержку образов (загружать)
+[Server:]
+Сервер:
+[Updates check interval, min]
+Интервал проверки обновлений, минут
+[Return absolute path]
+Возвращать абсолютный путь
+[Delete avatar file with contact]
+Удалять файл образа вместе с контактом
+[Use keep-alive connections]
+Использовать постоянные соединения (keep-alive)
+[Files exchange]
+Обмен файлами
+[No out connection on send]
+Запретить исходящие подключения при отправке
+[No out connection on receive]
+Запретить исходящие подключения при получении
+[Out connections: ignore additional ports (443, 2041)]
+Исходящие подключения: игнорировать доп. порты (443, 2041)
+[Hide my IP addresses]
+Скрывать мои IP адреса
+[Add extra address]
+Добавить дополнительные адреса
+[Your host (or router):]
+Ваш хост (или роутер):
+[File send block size:]
+Размер блока при отправке:
+[512 - 65536 bytes]
+512 - 65536 байт
+[Enable direct connections]
+Разрешить прямые подключения
+[Enable MRIM proxy connections]
+Разрешить использование MRIM прокси
+[Mail.ru Agent]
+Протокол Mail.ru Агент
+[Full e-mail:]
+Полный e-mail:
+[Example: Petrov_Ivan@mail.ru]
+Пример: Petrov_Ivan@mail.ru
+[Create a new Mail.ru account using the Mail.ru website]
+Зарегистрироваться в Mail.ru
+[Retrieve a lost password]
+Забыли пароль?
+[Leave empty if you don't want to change password]
+Оставьте пустым, если не желаете менять пароль
+[Popup type]
+Тип окна
+[Popup settings]
+Настройки всплывающего окна
+[Enable]
+Включено
+[&Use Windows colors]
+&Цвета Windows
+[Back Color]
+Цвет фона
+[Text Color]
+Цвет текста
+[Timeout]
+Таймаут
+[Previe&w]
+&Тест
+[Custom Status "%s" Details]
+xСтатус "%s"
+[Closing in %d]
+Закрыть (%d)
+[Title:]
+Заголовок:
+[Message:]
+Диалог:
+[Cancel]
+Отмена
+[Notify]
+Уведомление
+[Written:]
+Написал:
 [Select e-mail]
 Выбор электронной почты
 [Male]
@@ -213,131 +209,254 @@ MRIM_CS_CONTACT_LIST2: внутренняя ошибка сервера
 Водолей
 [Pisces]
 Рыбы
+[Avatars' plugin connections]
+Подключение аватаров
+[Avatars: server return HTTP code: %lu]
+Аватары: сервер вернул HTTP код: %lu
+[Avatars: can't open file %s, error]
+Аватары: невозможно открыть %s, ошибка
+[CHAT plugin is required for conferences. Install it before chatting]
+Для конференций требуется модуль Chat или tabSRMM 1.0+.
+[invite sender]
+отправитель приглашения
+[invite new members]
+позвать новых участников
 [Your contact wakes you]
 Ваш собеседник будит вас
-[invisible status changed]
-статус невидимости изменился
-[Files exchange: cant create listen soscket, will try connect to remonte host. Error]
-Обмен файлами: не могу создать слушающий сокет, попробую подключится к удалённом компьютеру. Ошибка
-[MraFilesQueueConnectionReceived: connection accepted, but pExtra=NULL, this is miranda bug.]
-MraFilesQueueConnectionReceived: входящее подключение принято, но pExtra=NULL, это ошибка в Miranda.
-[Receive files: error]
-Получение файлов: ошибка
-[Receive files: error on receive file data]
-Получение файлов: ошибка при получении содержимого файла
-[Receive files: cant write file data, error]
-Получение файлов: невозможно записать данные в файл, ошибка
-[Receive files: cant allocate disk space for file, size %lu bytes, error %lu: %s]
-Получение файлов: не удалось выделить место на диске для файла, размером %lu байт, ошибка %lu: %s
-[Receive files: cant open file %S, error %lu: %s]
-Получение файлов: невозможно открыть файл %S, ошибка %lu: %s
-[Receive files: request for file %S not sended, error %lu: %s]
-Получение файлов: запрос на получение файла %S не отправлен, ошибка %lu: %s
-[Send files: file send request not received, error]
-Отправка файлов: запрос на отправку файла не получен, ошибка
-[Send files: error on send file data]
-Отправка файлов: ошибка при отправке содержимого файла
-[Send files: cant read file data, error]
-Отправка файлов: невозможно прочитать содержимое файла, ошибка
-[Send files: cant open file %S, error %lu: %s]
-Отправка файлов: невозможно открыть файл %S, ошибка %lu: %s
+[Display &Inbox]
+Открыть &входящие
+[Display &Inbox status]
+Показать состояние &ящика
+[Edit &Profile]
+Редактировать &анкету
+[My Album]
+Мой альбом
+[My Blog Status]
+Статус в блоге
+[My Video]
+Моё видео
+[My Answers]
+Мои ответы
+[My World]
+Мой мир
+[Web search]
+Поиск в вебе
+[Update all users info]
+Обновить информацию всех пользователей
+[Check users avatars updates]
+Проверить обновления образов пользователей
+[Request authorization for all]
+Запросить авторизацию у всех
+[Request authorization]
+Запросить авторизацию
+[Grant authorization]
+Авторизовать
+[&Send E-Mail]
+&Отправить E-Mail
+[&Send postcard]
+&Отправить открытку
+[&View Album]
+&Посмотреть альбом
+[Reply Blog Status]
+Ответ на статус в блоге
+[View Video]
+Посмотреть видео
+[Answers]
+Ответы
+[World]
+Мир
+[Send &Nudge]
+&Встряхнуть
+[Mail box deleted]
+Почтовый ящик удалён
+[Contact not on server]
+Контакт отсутствует на сервере
+[Not authorized]
+Не авторизован
+[Phone/SMS only contact]
+Телефонный/SMS контакт
+[Blog status message]
+Сообщение статуса в блоге
+[New E-mail available in Inbox]
+Новая почта в папке "Входящие"
+[Please authorize me]
+Пожалуйста, авторизуй
+[Receive files: can't allocate disk space for file, size %lu bytes, error]
+Передача файлов: невозможно выделить место на диске, размер %lu байт, ошибка
+[Receive files: can't open file %s, error]
+Передача файлов: невозможно открыть файл %s, ошибка
+[Receive files: request for file %s not sent, error]
+Передача файлов: запрос для файла %s не отправлен, ошибка
+[Send files: can't open file %s, error]
+Отправка файлов: невозможно открыть файл %s, ошибка
 [Send files: requested file: %S - not found in send files list.]
 Отправка файлов: запрошенный файл: %S - не найден среди файлов подготовленных к отправке
-[Send files: bad file send request - invalid header]
-Отправка файлов: запрос на передачу файла - ошибочный заголовок
-[Send files: bad file send request - to small packet]
-Отправка файлов: запрос на передачу файла - слишком маленький с запросом
-[Create a new Mail.ru account using the Mail.ru website]
-Зарегистрироваться в Mail.ru
-[Retrieve a lost password]
-Забыли пароль?
-[Example: Petrov_Ivan@mail.ru]
-Пример: Petrov_Ivan@mail.ru
-[Enable avatars support (loading)]
-Включить поддержку образов (загружать)
-[Use keep-alive connections]
-Использовать постоянные соединения (keep-alive)
-[Updates check interval, min]
-Интервал проверки обновлений, минут
-[Return absolute path]
-Возвращать абсолютный путь
-[Delete avatar file with contact]
-Удалять файл образа вместе с контактом
-[Automatically request authorization on logon]
-Автоматически запрашивать авторизацию при подключении
-[Automatically add contacts to server list on logon]
-Автоматически добавлять контакты на сервер при подключении
-[Automatically grant authorization to users in contact list]
-Автоматически авторизовывать пользователей из списка
-[Automatically grant authorization to new users]
-Автоматически авторизовывать новых пользователей
-[Hide menu items for non-MRA contacts]
-Скрывать опции меню для не MRA контактов
-[Notify about new mail if increment]
-Уведомлять только о новой почте
-[Notify about new mail tray icon]
-Показывать значок в трее при приходе почты
-[Click to Inbox]
-Проверить почту щелчком
-[Show received formatted text (receive RTF)]
-Показывать принятый форматированный текст
-[Send formatted text (send RTF)]
-Отправлять Форматированный текст
-[Files exchange]
-Обмен файлами
-[Enable direct connections]
-Разрешить прямые подключения
-[No out connection on send]
-Запретить исходящие подключения при отправке
-[No out connection on receive]
-Запретить исходящие подключения при получении
-[Out connections: ignory additional ports (443, 2041)]
-Исходящие подключения: игнорировать доп. порты (443, 2041)
-[Hide my IP addresses]
-Скрывать мои IP адреса
-[Add extra address]
-Добавить дополнительные адреса
-[Enable MRIM proxy connections]
-Разрешить использование MRIM прокси
-[File send block size:]
-Размер блока при отправке:
-[512 - 65536 bytes]
-512 - 65536 байт
-[Popup type]
-Тип окна
-[Popup settings]
-Настройки всплывающего окна
+[Protocols]
+Протоколы
+[MRA]
+Протокол Mail.ru Агент
+[Main Menu]
+Главное меню
+[Contact Menu]
+Меню контакта
+[Extra status]
+Дополнительный статус
+[Custom Status]
+xСтатус
+[None]
+Нет
+[Debug]
+Отладка
+[Information]
+Информация
+[Question]
+Вопрос
+[Warning]
+Предупреждение
+[Error]
+Ошибка
 [NewMail]
 Новая почта
-; X Statuses
+[Popups]
+Всплывающие окна
+[%s connection]
+%s подключение
+[Mail.ru xStatus]
+Mail.ru xСтатус
+[Mail.ru extra info]
+Mail.ru дополнительно
+[E-mail address]
+Адрес e-mail
+[Unread mail is available: %lu/%lu messages]
+Непрочитанная почта: %lu/%lu сообщений
+[From: %S\r\nSubject: %S\r\n%s]
+От: %S\r\nТема: %S\r\n%s
+[No unread mail is available\r\nTotal messages: %lu]
+Непрочитанной почты нет\r\nВсего сообщений: %lu
+[Closing in %ld]
+Закрыто %ld
+[Reply to %s blog status]
+Ответить на статус блога %s
+[Set my blog status]
+Статус моего блога
+[Written]
+Написал
+[Are you sure?]
+Вы уверены?
+[Services...]
+Службы...
+[Network]
+Сеть
+[Account]
+Учётная запись
+[Connections]
+Соединения
+[Files]
+Файлы
+[Avatars]
+Аватары
+[Please, setup e-mail in options]
+Пожалуйста, введите e-mail в настройках
+[Please, setup password in options]
+Пожалуйста, введите пароль в настройках
+[Thread creation failure]
+Ошибка создания потока
+[Logon error: invalid login/password]
+Ошибка при проверки имени пользователя/пароля
+[MRIM_CS_MESSAGE_STATUS: not found in queue]
+MRIM_CS_MESSAGE_STATUS: не найден в очереди
+[Server error: can't get MPOP key for web authorize]
+Ошибка сервера: не возможно получить MPOP ключ для веб авторизации
+[MRIM_CS_FILE_TRANSFER_ACK: unknown error, code: %lu]
+MRIM_CS_FILE_TRANSFER_ACK: неизвестная ошибка, код: %lu
+[invisible status changed]
+статус невидимости изменился
+[MRIM_CS_*_CONTACT_ACK: unknown server error, code: %lu]
+MRIM_CS_*_CONTACT_ACK: неизвестная ошибка сервера, код: %lu
+[MRIM_CS_*_CONTACT_ACK: not found in queue]
+MRIM_CS_*_CONTACT_ACK: не найден в очереди
+[MRIM_ANKETA_INFO: not found in queue]
+MRIM_ANKETA_INFO: не найдено в очереди
+[MRIM_CS_GAME: unknown internal game message code: %lu]
+MRIM_CS_GAME: неизвестный внутренний код игрового сообщения: %lu
+[MRIM_CS_CONTACT_LIST2: unknown server error, code: %lu]
+MRIM_CS_CONTACT_LIST2: неизвестная ошибка сервера, код: %lu
+[MRIM_CS_SMS_ACK: not found in queue]
+MRIM_CS_SMS_ACK: не найден в очереди
+[Mail.ru System notify]
+Системное уведомление от администрации Mail.ru
+[Sick]
+Болен
+[Home]
+Дом
+[Eating]
+Кушаю
 [Compass]
 Компас
+[On WC]
+В туалете
+[Cooking]
+Готовлю еду
 [Walking]
 Гуляю
+[Alien]
+Инопланетянин
 [Shrimp]
 Креветка
 [Got lost]
 Заблудился
+[Crazy]
+Сумасшедший
+[Duck]
+В ванной
+[Playing]
+Играю
+[Smoking]
+Курю
+[Office]
+Офис
+[Meeting]
+Встреча
+[Beer]
+Пью пиво
+[Coffee]
+Пью кофе
+[Working]
+Работаю
+[Relaxing]
+Расслабляюсь
+[On the phone]
+На телефоне
 [In institute]
 В институте
 [At school]
 В школе
 [Wrong number]
 Ошиблись номером
+[Laughing]
+Смеюсь
 [Malicious]
 Ехидный
 [Imp]
 Чертенок
 [Blind]
 Слепой
+[Disappointed]
+Разочарованный
 [Almost crying]
 Сдерживаю слезы
 [Fearful]
 Испуган
+[Angry]
+Злюсь
 [Vampire]
 Вампир
 [Ass]
 Задница
+[Love]
+Любовь
+[Sleeping]
+Сплю
 [Cool!]
 Класс!
 [Peace!]
@@ -360,35 +479,7 @@ MraFilesQueueConnectionReceived: входящее подключение при�
 Белка
 [Star]
 Звезда
-[Provides support for Mail.ru agent Instant Messenger protocol]
-Поддержка протокола Mail.ru Агента
-[MRA]
-Протокол Mail.ru Агент
-[MRA Avatars plugin connections]
-MRA подключение для аватаров
-[MRA Avatars]
-MRA Аватары
-[MRA plugin connections]
-MRA подключение
-[AvatarsPath]
-Путь к аватарам
-[The changes you have made require you to reconnect to the network before they take effect]
-Сделанные вами изменения вступят в силу после следующего входа в сеть (Mail.ru Агент)
-[Connections]
-Соединения
-[Leave empty if you dont want change password]
-Оставьте пустым если не хотите менять пароль
-[Notify me when a message delivery has failed]
-Уведомить меня, если сообщение не доставлено
-[Extra status]
-Дополнительный статус
-[Protocols]
-Протоколы
-[My Blog Status]
-Статус в блоге
-[Blog status message]
-Сообщение статуса в блоге
-[Reply Blog Status]
-Ответ на статус в блоге
-[Avatars' plugin connections]
-Подключение аватаров
+[Music]
+Музыка
+[Dating]
+Знакомства

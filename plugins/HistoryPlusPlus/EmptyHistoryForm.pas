@@ -54,37 +54,29 @@ type
   TEmptyHistoryFrm = class(TForm)
     btYes: TButton;
     btNo: TButton;
-    paContacts: TPanel;
     paButtons: TPanel;
     Image: TImage;
     Text: TLabel;
-    cbInclude: TCheckBox;
-    btCancel: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FormShow(Sender: TObject);
     procedure btYesClick(Sender: TObject);
   private
-    FContact: THandle;
-    FContacts: Array of THandle;
-    FPasswordMode: Boolean;
+    FContact: TMCONTACT;
     procedure TranslateForm;
     procedure PrepareForm;
-    procedure SetContact(const Value: THandle);
-    procedure SetPasswordMode(const Value: Boolean);
-    procedure EmptyHistory(hContact: THandle);
+    procedure SetContact(const Value: TMCONTACT);
+    procedure EmptyHistory(hContact: TMCONTACT);
   protected
     function GetFormText: String;
   public
-    property Contact: THandle read FContact write SetContact;
-    property PasswordMode: Boolean read FPasswordMode write SetPasswordMode;
+    property Contact: TMCONTACT read FContact write SetContact;
   end;
 
 implementation
 
 uses
   Math, SysUtils, HistoryForm,
-  PassForm, {PassCheckForm,}
   hpp_global, hpp_forms, hpp_contacts, hpp_database, hpp_bookmarks;
 
 {$R *.dfm}
@@ -105,7 +97,7 @@ end;
 
 function TEmptyHistoryFrm.GetFormText: String;
 var
-  DividerLine, ButtonCaptions, IncludeContacts: String;
+  DividerLine, ButtonCaptions: String;
   I: integer;
 begin
   DividerLine := StringOfChar('-', 27) + sLineBreak;
@@ -114,19 +106,8 @@ begin
       ButtonCaptions := ButtonCaptions +
                         TButton(Components[I]).Caption + StringOfChar(' ', 3);
   ButtonCaptions := StringReplace(ButtonCaptions,'&','', [rfReplaceAll]);
-  if paContacts.Visible then
-  begin
-    if cbInclude.Checked then
-      IncludeContacts := '[x]'
-    else
-      IncludeContacts := '[ ]';
-    IncludeContacts := sLineBreak + IncludeContacts + ' ' + cbInclude.Caption + sLineBreak;
-  end
-  else
-    IncludeContacts := '';
   Result := DividerLine + Caption + sLineBreak +
             DividerLine + Text.Caption + sLineBreak +
-            IncludeContacts +
             DividerLine + ButtonCaptions + sLineBreak +
             DividerLine;
 end;
@@ -134,10 +115,8 @@ end;
 procedure TEmptyHistoryFrm.TranslateForm;
 begin
   Caption           := TranslateUnicodeString(Caption);
-  cbInclude.Caption := TranslateUnicodeString(cbInclude.Caption);
   btYes.Caption     := TranslateUnicodeString(btYes.Caption);
   btNo.Caption      := TranslateUnicodeString(btNo.Caption);
-  btCancel.Caption  := TranslateUnicodeString(btCancel.Caption);
 end;
 
 procedure TEmptyHistoryFrm.PrepareForm;
@@ -169,40 +148,16 @@ begin
   IconTextWidth := Image.Width + HorzSpacing + TextRect.Right;
   IconTextHeight := Max(Image.Height,TextRect.Bottom);
 
-  if PasswordMode then
-    ButtonGroupWidth := ButtonWidth
-  else
-    ButtonGroupWidth := ButtonWidth*2 + ButtonSpacing;
+  ButtonGroupWidth := ButtonWidth*2 + ButtonSpacing;
 
   BorderWidth := VertSpacing;
   ClientWidth := Max(IconTextWidth, ButtonGroupWidth);
-  if paContacts.Visible then
-  begin
-    ContRect := Rect(0,0,0,0);
-    DrawTextW(Canvas.Handle,
-      PChar(cbInclude.Caption), -1,
-      ContRect, DT_CALCRECT or DT_LEFT or DT_SINGLELINE or
-      DrawTextBiDiModeFlagsReadingOnly);
-    Inc(ContRect.Right, HorzSpacing*4);
-    cbInclude.SetBounds((ClientWidth - ContRect.Right) div 2,0,
-      ContRect.Right, ContRect.Bottom);
-    paContacts.Height := cbInclude.Height + VertSpacing;
-    ClientHeight := IconTextHeight + VertSpacing + paContacts.Height + paButtons.Height;
-  end
-  else
-    ClientHeight := IconTextHeight + VertSpacing + paButtons.Height;
+  ClientHeight := IconTextHeight + VertSpacing + paButtons.Height;
   Text.SetBounds(Image.Width + HorzSpacing, 0,
     TextRect.Right, TextRect.Bottom);
 
-  if PasswordMode then
-  begin
-    btCancel.SetBounds((ClientWidth - ButtonGroupWidth) div 2,0, ButtonWidth, ButtonHeight);
-  end
-  else
-  begin
-    btYes.SetBounds((ClientWidth - ButtonGroupWidth) div 2,0, ButtonWidth, ButtonHeight);
-    btNo.SetBounds(btYes.Left + btYes.Width + ButtonSpacing,0, ButtonWidth, ButtonHeight);
-  end;
+  btYes.SetBounds((ClientWidth - ButtonGroupWidth) div 2,0, ButtonWidth, ButtonHeight);
+  btNo.SetBounds(btYes.Left + btYes.Width + ButtonSpacing,0, ButtonWidth, ButtonHeight);
 end;
 
 procedure TEmptyHistoryFrm.FormShow(Sender: TObject);
@@ -233,59 +188,22 @@ begin
   end;
 end;
 
-procedure TEmptyHistoryFrm.SetContact(const Value: THandle);
+procedure TEmptyHistoryFrm.SetContact(const Value: TMCONTACT);
 var
-  hContact: THandle;
+  hContact: TMCONTACT;
   Proto: AnsiString;
   i,num: Integer;
 begin
   FContact := Value;
-  SetLength(FContacts,0);
-  GetContactProto(FContact,hContact,Proto);
-  if Value <> hContact then
-  begin
-    num := CallService(MS_MC_GETNUMCONTACTS,FContact,0);
-    for i := 0 to num-1 do
-    begin
-      hContact := CallService(MS_MC_GETSUBCONTACT,FContact,i);
-      if hContact <> THandle(-1) then
-      begin
-        SetLength(FContacts,Length(FContacts)+1);
-        FContacts[High(FContacts)] := hContact;
-      end;
-    end;
-  end;
-  if Assigned(Owner) and (Owner is THistoryFrm) then
-    PasswordMode := THistoryFrm(Owner).PasswordMode
-  else
-    PasswordMode := (not IsPasswordBlank(GetPassword)) and IsUserProtected(FContact);
-  paContacts.Visible := not PasswordMode and (Length(FContacts) > 0);
+  Image.Picture.Icon.Handle := LoadIcon(0, IDI_QUESTION);
+  Text.Caption :=
+    TranslateW('Do you really want to delete ALL items for this contact?')+#10#13+
+    #10#13+
+    TranslateW('Note: It can take several minutes for large histories');
+  btYes.Default := true;
 end;
 
-procedure TEmptyHistoryFrm.SetPasswordMode(const Value: Boolean);
-begin
-  FPasswordMode := Value;
-  if PasswordMode then
-  begin
-    Image.Picture.Icon.Handle := LoadIcon(0, IDI_EXCLAMATION);
-    Text.Caption := TranslateW('History of this contact is password protected');
-  end
-  else
-  begin
-    Image.Picture.Icon.Handle := LoadIcon(0, IDI_QUESTION);
-    Text.Caption :=
-      TranslateW('Do you really want to delete ALL items for this contact?')+#10#13+
-      #10#13+
-      TranslateW('Note: It can take several minutes for large histories');
-  end;
-  btYes.Visible := not FPasswordMode;
-  btYes.Default := not FPasswordMode;
-  btNo.Visible := not FPasswordMode;
-  btCancel.Visible := FPasswordMode;
-  btCancel.Default := FPasswordMode;
-end;
-
-procedure TEmptyHistoryFrm.EmptyHistory(hContact: THandle);
+procedure TEmptyHistoryFrm.EmptyHistory(hContact: TMCONTACT);
 var
   hDBEvent,prevhDbEvent: THandle;
 begin
@@ -294,7 +212,7 @@ begin
   SetSafetyMode(False);
   while hDBEvent <> 0 do
   begin
-    prevhDbEvent := db_event_prev(hDBEvent);
+    prevhDbEvent := db_event_prev(hContact,hDBEvent);
     if db_event_delete(hContact,hDBEvent) = 0 then
       hDBEvent := prevhDbEvent
     else
@@ -304,16 +222,11 @@ begin
 end;
 
 procedure TEmptyHistoryFrm.btYesClick(Sender: TObject);
-var
-  i: Integer;
 begin
   if Assigned(Owner) and (Owner is THistoryFrm) then
     THistoryFrm(Owner).EmptyHistory
   else
     EmptyHistory(FContact);
-  if paContacts.Visible and cbInclude.Checked then
-    for i := 0 to High(FContacts) do
-      EmptyHistory(FContacts[i]);
 end;
 
 end.

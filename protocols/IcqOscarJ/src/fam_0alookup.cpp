@@ -6,6 +6,7 @@
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2010 Joe Kucera
+// Copyright © 2012-2014 Miranda NG Team
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,16 +21,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
-void CIcqProto::handleLookupFam(BYTE *pBuffer, WORD wBufferLength, snac_header* pSnacHeader)
+void CIcqProto::handleLookupFam(BYTE *pBuffer, size_t wBufferLength, snac_header* pSnacHeader)
 {
 	switch (pSnacHeader->wSubtype) {
 
@@ -38,19 +34,17 @@ void CIcqProto::handleLookupFam(BYTE *pBuffer, WORD wBufferLength, snac_header* 
 		break;
 
 	case ICQ_ERROR:
-		{ 
+		{
 			WORD wError;
-			cookie_search *pCookie;
-
 			if (wBufferLength >= 2)
 				unpackWord(&pBuffer, &wError);
-			else 
+			else
 				wError = 0;
 
-			if (FindCookie(pSnacHeader->dwRef, NULL, (void**)&pCookie))
-			{
+			cookie_search *pCookie;
+			if (FindCookie(pSnacHeader->dwRef, NULL, (void**)&pCookie)) {
 				if (wError == 0x14)
-					NetLog_Server("Lookup: No results");
+					debugLogA("Lookup: No results");
 
 				ReleaseLookupCookie(pSnacHeader->dwRef, pCookie);
 
@@ -58,11 +52,11 @@ void CIcqProto::handleLookupFam(BYTE *pBuffer, WORD wBufferLength, snac_header* 
 			}
 
 			LogFamilyError(ICQ_LOOKUP_FAMILY, wError);
-			break;
 		}
+		break;
 
 	default:
-		NetLog_Server("Warning: Ignoring SNAC(x%02x,x%02x) - Unknown SNAC (Flags: %u, Ref: %u)", ICQ_LOOKUP_FAMILY, pSnacHeader->wSubtype, pSnacHeader->wFlags, pSnacHeader->dwRef);
+		debugLogA("Warning: Ignoring SNAC(x%02x,x%02x) - Unknown SNAC (Flags: %u, Ref: %u)", ICQ_LOOKUP_FAMILY, pSnacHeader->wSubtype, pSnacHeader->wFlags, pSnacHeader->dwRef);
 		break;
 	}
 }
@@ -72,12 +66,9 @@ void CIcqProto::ReleaseLookupCookie(DWORD dwCookie, cookie_search *pCookie)
 	FreeCookie(dwCookie);
 	SAFE_FREE(&pCookie->szObject);
 
-	if (pCookie->dwMainId && !pCookie->dwStatus)
-	{ // we need to wait for main search
+	if (pCookie->dwMainId && !pCookie->dwStatus) // we need to wait for main search
 		pCookie->dwStatus = 1;
-	}
-	else
-	{ // finish everything
+	else { // finish everything
 		if (pCookie->dwMainId)
 			ProtoBroadcastAck(NULL, ACKTYPE_SEARCH, ACKRESULT_SUCCESS, (HANDLE)pCookie->dwMainId, 0);
 		else // we are single
@@ -87,29 +78,26 @@ void CIcqProto::ReleaseLookupCookie(DWORD dwCookie, cookie_search *pCookie)
 	}
 }
 
-void CIcqProto::handleLookupEmailReply(BYTE* buf, WORD wLen, DWORD dwCookie)
+void CIcqProto::handleLookupEmailReply(BYTE* buf, size_t wLen, DWORD dwCookie)
 {
-	ICQSEARCHRESULT sr = {0};
+	ICQSEARCHRESULT sr = { 0 };
 	oscar_tlv_chain *pChain;
 	cookie_search *pCookie;
 
-	if (!FindCookie(dwCookie, NULL, (void**)&pCookie))
-	{
-		NetLog_Server("Error: Received unexpected lookup reply");
+	if (!FindCookie(dwCookie, NULL, (void**)&pCookie)) {
+		debugLogA("Error: Received unexpected lookup reply");
 		return;
 	}
 
-	NetLog_Server("SNAC(0x0A,0x3): Lookup reply");
+	debugLogA("SNAC(0x0A,0x3): Lookup reply");
 
 	sr.hdr.cbSize = sizeof(sr);
 	sr.hdr.flags = PSR_TCHAR;
 	sr.hdr.email = ansi_to_tchar(pCookie->szObject);
 
 	// Syntax check, read chain
-	if (wLen >= 4 && (pChain = readIntoTLVChain(&buf, wLen, 0)))
-	{
-		for (WORD i = 1; TRUE; i++)
-		{ // collect the results
+	if (wLen >= 4 && (pChain = readIntoTLVChain(&buf, wLen, 0))) {
+		for (WORD i = 1; TRUE; i++) { // collect the results
 			char *szUid = pChain->getString(0x01, i);
 			if (!szUid) break;
 			sr.hdr.id = ansi_to_tchar(szUid);

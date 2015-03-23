@@ -33,22 +33,22 @@ STYLE DS_SETFONT | DS_3DLOOK | DS_FIXEDSYS | DS_CENTER | WS_MINIMIZEBOX |
 	WS_THICKFRAME
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    CONTROL         "",IDC_MESSAGE,RICHEDIT_CLASS,ES_MULTILINE | 
+    CONTROL         "",IDC_MESSAGE,"RichEdit50W",ES_MULTILINE | 
 					ES_AUTOVSCROLL | ES_NOHIDESEL | ES_WANTRETURN | 
 					ES_NUMBER | WS_VSCROLL | WS_TABSTOP,0,128,127,12,
 					WS_EX_STATICEDGE
     PUSHBUTTON      "&Send",IDOK,136,126,115,14,WS_DISABLED
-    CONTROL         "",IDC_SMILEY,"MButtonClass",WS_DISABLED | WS_TABSTOP,112,108,15,13,0x18000000L
-    CONTROL         "",IDC_BOLD,"MButtonClass",WS_DISABLED | WS_TABSTOP,8,108,15,13,0x18000000L
-    CONTROL         "",IDC_ITALICS,"MButtonClass",WS_DISABLED | WS_TABSTOP,24,108,15,13,0x18000000L
-    CONTROL         "",IDC_UNDERLINE,"MButtonClass",WS_DISABLED | WS_TABSTOP,40,108,15,13,0x18000000L
-    CONTROL         "",IDC_COLOR,"MButtonClass",WS_DISABLED | WS_TABSTOP,68,108,15,13,0x18000000L
-    CONTROL         "",IDC_BKGCOLOR,"MButtonClass",WS_DISABLED | WS_TABSTOP,84,108,15,13,0x18000000L
-    CONTROL         "",IDC_HISTORY,"MButtonClass",WS_TABSTOP,188,108,15,13,0x18000000L
-    CONTROL         "",IDC_FILTER,"MButtonClass",WS_TABSTOP,220,108,15,13,0x18000000L
-    CONTROL         "",IDC_CHANMGR,"MButtonClass",WS_DISABLED | WS_TABSTOP,204,108,15,13,0x18000000L
-    CONTROL         "",IDC_SHOWNICKLIST,"MButtonClass",WS_TABSTOP,236,108,15,13,0x18000000L
-    CONTROL         "",IDC_LOG,RICHEDIT_CLASS,ES_MULTILINE | ES_AUTOVSCROLL | 
+    CONTROL         "&Emoticons",IDC_SMILEY,"MButtonClass",WS_DISABLED | WS_TABSTOP,112,108,15,13,0x18000000L
+    CONTROL         "&Bold",IDC_BOLD,"MButtonClass",WS_DISABLED | WS_TABSTOP,8,108,15,13,0x18000000L
+    CONTROL         "&Italic",IDC_ITALICS,"MButtonClass",WS_DISABLED | WS_TABSTOP,24,108,15,13,0x18000000L
+    CONTROL         "&Underline",IDC_UNDERLINE,"MButtonClass",WS_DISABLED | WS_TABSTOP,40,108,15,13,0x18000000L
+    CONTROL         "&Color",IDC_COLOR,"MButtonClass",WS_DISABLED | WS_TABSTOP,68,108,15,13,0x18000000L
+    CONTROL         "&Background color",IDC_BKGCOLOR,"MButtonClass",WS_DISABLED | WS_TABSTOP,84,108,15,13,0x18000000L
+    CONTROL         "&History",IDC_HISTORY,"MButtonClass",WS_TABSTOP,188,108,15,13,0x18000000L
+    CONTROL         "&Filter",IDC_FILTER,"MButtonClass",WS_TABSTOP,220,108,15,13,0x18000000L
+    CONTROL         "&Room settings",IDC_CHANMGR,"MButtonClass",WS_DISABLED | WS_TABSTOP,204,108,15,13,0x18000000L
+    CONTROL         "&Show/Hide nick list",IDC_SHOWNICKLIST,"MButtonClass",WS_TABSTOP,236,108,15,13,0x18000000L
+    CONTROL         "",IDC_LOG,"RichEdit50W",ES_MULTILINE | ES_AUTOVSCROLL | 
                     ES_READONLY | ES_NUMBER | WS_VSCROLL | WS_TABSTOP,8,23,
                     164,73,WS_EX_STATICEDGE
     CONTROL         "",IDC_SPLITTERX,"Static",SS_ENHMETAFILE,172,23,10,73
@@ -150,7 +150,7 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE
 EXSTYLE WS_EX_CONTROLPARENT
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    GROUPBOX        "Log Options",IDC_STATIC,1,1,294,134
+    GROUPBOX        "Log options",IDC_STATIC,1,1,294,134
     EDITTEXT        IDC_OUTSTAMP,10,19,35,14,ES_AUTOHSCROLL
     EDITTEXT        IDC_INSTAMP,60,19,35,14,ES_AUTOHSCROLL
     LTEXT           "Log timestamp",IDC_STATIC,205,11,81,8
@@ -162,7 +162,7 @@ BEGIN
     CONTROL         "Enable highlighting",IDC_HIGHLIGHT,"Button",
 					BS_AUTOCHECKBOX | WS_TABSTOP,10,46,118,10
     LTEXT           "Limit log text to (events):",IDC_STATIC,133,46,112,8
-    LTEXT           "Trim to (kB)",IDC_STATIC,248,104,38,8
+    LTEXT           "Trim to (KB)",IDC_STATIC,248,104,38,8
     EDITTEXT        IDC_LOGLIMIT,248,44,38,14,ES_RIGHT | ES_AUTOHSCROLL | 
 					ES_NUMBER
     CONTROL         "Spin1",IDC_SPIN2,"msctls_updown32",UDS_SETBUDDYINT | 
@@ -186,7 +186,7 @@ BEGIN
     GROUPBOX        "Other",IDC_STATIC,1,145,294,53
     LTEXT           "Add new rooms to group:",IDC_STATIC,11,159,132,8
     EDITTEXT        IDC_GROUP,158,158,49,14,ES_AUTOHSCROLL
-    LTEXT           "Userlist row distance (pixels):",IDC_STATIC,11,180,132,
+    LTEXT           "Nick list row distance (pixels):",IDC_STATIC,11,180,132,
 					8
     EDITTEXT        IDC_NICKROW2,158,178,29,14,ES_RIGHT | ES_AUTOHSCROLL | 
 					ES_NUMBER
@@ -202,9 +202,9 @@ FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     CONTROL         "Use same style as in the message log",IDC_RADIO1,"Button",
 					BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,33,29,225,10
-    CONTROL         "Use default colours",IDC_RADIO2,"Button",
+    CONTROL         "Use default colors",IDC_RADIO2,"Button",
 					BS_AUTORADIOBUTTON,33,62,217,10
-    CONTROL         "Use custom colours",IDC_RADIO3,"Button",
+    CONTROL         "Use custom colors",IDC_RADIO3,"Button",
 					BS_AUTORADIOBUTTON,33,95,105,10
     CONTROL         "Custom1",IDC_TEXT,"ColourPicker",WS_TABSTOP,141,93,50,
 					14,0x18000000L
@@ -277,7 +277,6 @@ BEGIN
 END
 #endif    // APSTUDIO_INVOKED
 
-
 /////////////////////////////////////////////////////////////////////////////
 //
 // Icon
@@ -287,42 +286,6 @@ END
 // remains consistent on all systems.
 IDI_TAG1                ICON                    "tag1.ico"
 IDI_TAG2                ICON                    "tag2.ico"
-#endif    // Neutral (Default) resources
-/////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////
-// Swedish resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_SVE)
-#ifdef _WIN32
-LANGUAGE LANG_SWEDISH, SUBLANG_DEFAULT
-#pragma code_page(1252)
-#endif //_WIN32
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Dialog
-//
-
-IDD_COLORCHOOSER DIALOGEX 0, 0, 198, 150
-STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | WS_POPUP | 
-	WS_VISIBLE | WS_BORDER
-EXSTYLE WS_EX_TOPMOST
-FONT 8, "MS Shell Dlg", 0, 0, 0x1
-BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,172,136,26,14,NOT WS_TABSTOP
-    CTEXT           "",IDC_COLORTEXT,0,0,197,12,SS_CENTERIMAGE
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
 IDI_BUNDERLINE          ICON                    "underline.ico"
 IDI_BBOLD               ICON                    "bold.ico"
 IDI_BITALICS            ICON                    "italics.ico"
@@ -359,33 +322,6 @@ IDI_CLOSE               ICON                    "close.ico"
 IDI_OVERLAY             ICON                    "overlay.ico"
 IDI_NICKLIST2           ICON                    "nicklist2.ico"
 IDI_FILTER2             ICON                    "filter2.ico"
-
-#ifdef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// TEXTINCLUDE
-//
-
-1 TEXTINCLUDE 
-BEGIN
-    "..\\src\\resource.h\0"
-END
-
-2 TEXTINCLUDE 
-BEGIN
-    "#include ""winres.h""\r\n"
-    "#include ""richedit.h""\r\n"
-    "\0"
-END
-
-3 TEXTINCLUDE 
-BEGIN
-    "\r\n"
-    "\0"
-END
-
-#endif    // APSTUDIO_INVOKED
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -425,7 +361,7 @@ BEGIN
         MENUITEM "Copy",                        ID_MESSAGE_COPY, GRAYED
         MENUITEM "Cut",                         ID_MESSAGE_CUT, GRAYED
         MENUITEM "Paste",                       ID_MESSAGE_PASTE
-        MENUITEM "Select All",                  ID_MESSAGE_SELECTALL
+        MENUITEM "Select all",                  ID_MESSAGE_SELECTALL
         MENUITEM SEPARATOR
         MENUITEM "Clear",                       ID_MESSAGE_CLEAR
     END
@@ -438,9 +374,8 @@ BEGIN
     END
 END
 
-#endif    // Swedish resources
+#endif    // Neutral (Default) resources
 /////////////////////////////////////////////////////////////////////////////
-
 
 
 #ifndef APSTUDIO_INVOKED

@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __avatars_gif_h__
 #define __avatars_gif_h__
 
-class GifAvatar: public PopupAvatar
+class GifAvatar : public PopupAvatar
 {
 protected:
 	avatarCacheEntry *av;
@@ -37,7 +37,7 @@ protected:
 	SIZE frameSize;
 
 public:
-	GifAvatar(HANDLE hContact);
+	GifAvatar(MCONTACT hContact);
 	virtual ~GifAvatar();
 	virtual int activeFrameDelay();
 	virtual void draw(MyBitmap *bmp, int x, int y, int w, int h, POPUPOPTIONS *options);

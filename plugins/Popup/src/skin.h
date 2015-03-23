@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -36,38 +36,38 @@ public:
 	enum
 	{
 		ST_TYPEMASK = 0x07,
-		ST_NOTHING	= 0x00,
-		ST_ICON		= 0x01,
-		ST_TEXT		= 0x02,
-		ST_TITLE	= 0x03,
-		ST_BITMAP	= 0x04,
+		ST_NOTHING = 0x00,
+		ST_ICON = 0x01,
+		ST_TEXT = 0x02,
+		ST_TITLE = 0x03,
+		ST_BITMAP = 0x04,
 		ST_MYBITMAP = 0x05,
-		ST_AVATAR   = 0x06,
-		ST_CLOCK    = 0x07,
+		ST_AVATAR = 0x06,
+		ST_CLOCK = 0x07,
 
-		ST_STRETCH	= 0x08,
-		ST_MONO		= 0x10,
-		ST_BLEND	= 0x20,
-		ST_BADPOS	= 0x40
+		ST_STRETCH = 0x08,
+		ST_MONO = 0x10,
+		ST_BLEND = 0x20,
+		ST_BADPOS = 0x40
 	};
 
 	enum
 	{
-		DF_STATIC	= 0x01,
-		DF_ANIMATE	= 0x02,
-		DF_ALL		= 0xff
+		DF_STATIC = 0x01,
+		DF_ANIMATE = 0x02,
+		DF_ALL = 0xff
 	};
 
 	enum
 	{
-		 // left, separator, digits, am/pm, right
+		// left, separator, digits, am/pm, right
 		CLOCK_LEFT = 0,
 		CLOCK_SEPARATOR = 1,
 		CLOCK_DIGITS = 2,
 		CLOCK_AM = 12,
 		CLOCK_PM = 13,
 		CLOCK_RIGHT = 14,
-		CLOCK_ITEMS = 1+1+10+2+1
+		CLOCK_ITEMS = 1 + 1 + 10 + 2 + 1
 	};
 
 	struct	SKINELEMENT
@@ -78,12 +78,7 @@ public:
 			HICON hic;
 			HBITMAP hbm;
 			MyBitmap *myBmp;
-			struct
-			{
-				COLORREF textColor;
-				HFONT hfn;
-//				int textw;
-			};
+			HFONT hfn;
 		};
 		unsigned long flags;
 		unsigned long flag_mask;
@@ -91,8 +86,9 @@ public:
 		int clocksize[CLOCK_ITEMS];
 		int clockstart[CLOCK_ITEMS];
 		int proportional;
+		COLORREF textColor;
 		SKINELEMENT *next;
-	};	
+	};
 
 	struct	RenderInfo
 	{
@@ -114,9 +110,9 @@ private:
 	char					*m_flag_names[32];
 	mutable unsigned long	m_flags;
 
-	void	loadOptions(std::istream &f);
-	SKINELEMENT	*loadObject(std::istream &f);
-	void	loadSkin(std::istream &f);
+	void	loadOptions(std::wistream &f);
+	SKINELEMENT	*loadObject(std::wistream &f);
+	void	loadSkin(std::wistream &f);
 	void	loadSkin(LPCTSTR fn);
 	void	loadSkin(LPCTSTR lpName, LPCTSTR lpType);
 
@@ -132,7 +128,7 @@ public:
 	~PopupSkin();
 
 	void	measure(HDC hdc, PopupWnd2 *wnd, int maxw, POPUPOPTIONS *options) const;
-	void	display(MyBitmap *bmp, PopupWnd2 *wnd, int maxw, POPUPOPTIONS *options, DWORD drawFlags=DF_ALL) const;
+	void	display(MyBitmap *bmp, PopupWnd2 *wnd, POPUPOPTIONS *options, DWORD drawFlags = DF_ALL) const;
 	bool	onMouseMove(PopupWnd2 *wnd, int x, int y) const;
 	bool	onMouseLeave(PopupWnd2 *wnd) const;
 
@@ -144,18 +140,18 @@ public:
 	int				useInternalClock()			const	{ return m_internalClock; }
 	int				getLegacyRegionOpacity()	const	{ return m_legacy_region_opacity; }
 	int				getShadowRegionOpacity()	const	{ return m_shadow_region_opacity; }
-	bool			isCompatible()				const	{ return (DWORD) m_popup_version <= (DWORD) pluginInfoEx.version; }
+	bool			isCompatible()				const	{ return (DWORD)m_popup_version <= (DWORD)pluginInfoEx.version; }
 
 	const LPTSTR	getName()					const	{ return m_name; }
 
-	const char		*getFlagName(int id)		const	{ return m_flag_names[id-1]; }
-	bool			getFlag(int id)				const	{ return (m_flags & (1 << (id-1))) != 0; }
+	const char		*getFlagName(int id)		const	{ return m_flag_names[id - 1]; }
+	bool			getFlag(int id)				const	{ return (m_flags & (1 << (id - 1))) != 0; }
 	void			setFlag(int id, bool val)	const
 	{
 		if (val)
-			m_flags |= 1 << (id-1);
+			m_flags |= 1 << (id - 1);
 		else
-			m_flags &= ~(1 << (id-1));
+			m_flags &= ~(1 << (id - 1));
 	}
 
 	void			saveOpts()					const;
@@ -180,7 +176,7 @@ public:
 	Skins();
 	~Skins();
 
-	bool			load(LPCTSTR dir);
+	bool			load();
 	const PopupSkin	*getSkin(LPCTSTR name);
 
 	const SKINLIST	*getSkinList()				const	{ return m_skins; }

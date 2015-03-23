@@ -1,13 +1,11 @@
 #include "headers.h"
 
-HINSTANCE hInst;
+int	hLangpack;
+HINSTANCE g_hInstance;
+TCHAR	*profilePath;
+HANDLE	hFolder;
 
-TCHAR *profilePath;
-int hLangpack;
-
-HANDLE hFolder;
-
-PLUGININFOEX pluginInfo={
+PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
 	__PLUGIN_NAME,
 	PLUGIN_MAKE_VERSION(__MAJOR_VERSION, __MINOR_VERSION, __RELEASE_NUM, __BUILD_NUM),
@@ -18,60 +16,109 @@ PLUGININFOEX pluginInfo={
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {81C220A6-0226-4Ad6-BFCA-217B17A16053}
-	{0x81c220a6, 0x226, 0x4ad6, {0xbf, 0xca, 0x21, 0x7b, 0x17, 0xa1, 0x60, 0x53}}
+	{ 0x81c220a6, 0x226, 0x4ad6, { 0xbf, 0xca, 0x21, 0x7b, 0x17, 0xa1, 0x60, 0x53 } }
 };
 
-static IconItem iconList[] = {
-	{LPGEN("Backup Profile"),     "backup", IDI_ICON1 },
-	{LPGEN("Save Profile As..."), "saveas", IDI_ICON1 }
-};
+int ModulesLoad(WPARAM, LPARAM);
+int PreShutdown(WPARAM, LPARAM);
 
-static int FoldersGetBackupPath(WPARAM, LPARAM)
+
+BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD, LPVOID)
 {
-	FoldersGetCustomPathT(hFolder, options.folder, MAX_PATH, DIR SUB_DIR);
+	g_hInstance = hInstance;
+	return TRUE;
+}
+
+extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD)
+{
+	return &pluginInfo;
+}
+
+extern "C" __declspec(dllexport) int Load(void)
+{
+	mir_getLP(&pluginInfo);
+
+	HookEvent(ME_SYSTEM_PRESHUTDOWN, PreShutdown);
+	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoad);
+
+	Icon_Register(g_hInstance, LPGEN("Database")"/"LPGEN("Database backups"), iconList, SIZEOF(iconList));
+
 	return 0;
 }
 
-static void FoldersInit(void)
+extern "C" __declspec(dllexport) int Unload(void)
 {
-	if (hFolder = FoldersRegisterCustomPathT(LPGEN("Database Backups"), LPGEN("Backup Folder"), DIR SUB_DIR)) {
-		HookEvent(ME_FOLDERS_PATH_CHANGED, FoldersGetBackupPath);
-		FoldersGetBackupPath(0, 0);
-	}
+	return 0;
 }
 
-static void MenuInit(void)
+
+
+static int FoldersGetBackupPath(WPARAM, LPARAM)
 {
-	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.flags = CMIF_TCHAR;
-	mi.hIcon = Skin_GetIcon("backup");
-	mi.ptszPopupName = LPGENT("Database");
+	FoldersGetCustomPathT(hFolder, options.folder, SIZEOF(options.folder), DIR SUB_DIR);
+	return 0;
+}
+INT_PTR ABService(WPARAM, LPARAM)
+{
+	BackupStart(NULL);
+	return 0;
+}
+INT_PTR DBSaveAs(WPARAM, LPARAM)
+{
+	TCHAR fname_buff[MAX_PATH], tszFilter[200];
+	OPENFILENAME ofn = { 0 };
+	CallService(MS_DB_GETPROFILENAMET, SIZEOF(fname_buff), (LPARAM)fname_buff);
 
-	mi.ptszName = LPGENT("Backup Profile");
-	mi.pszService = MS_AB_BACKUP;
-	mi.position = 500100000;
-	Menu_AddMainMenuItem(&mi);
+	mir_sntprintf(tszFilter, SIZEOF(tszFilter), _T("%s (*.dat)%c*.dat%c%s (*.zip)%c*.zip%c%s (*.*)%c*%c"),
+		TranslateT("Miranda NG databases"), 0, 0,
+		TranslateT("Compressed Miranda NG databases"), 0, 0,
+		TranslateT("All files"), 0, 0);
 
-	mi.hIcon = Skin_GetIcon("saveas");
-	mi.ptszName = LPGENT("Save Profile As...");
-	mi.pszService = MS_AB_SAVEAS;
-	mi.position = 500100001;
-	Menu_AddMainMenuItem(&mi);
+	ofn.lStructSize = sizeof(ofn);
+	ofn.lpstrFile = fname_buff;
+	ofn.nMaxFile = SIZEOF(fname_buff);
+	ofn.Flags = OFN_NOREADONLYRETURN | OFN_OVERWRITEPROMPT;
+	ofn.lpstrFilter = tszFilter;
+	ofn.nFilterIndex = 1;
+	ofn.lpstrDefExt = _T("dat");
+
+	if (GetSaveFileName(&ofn))
+		BackupStart(fname_buff);
+	return 0;
 }
 
-static int ModulesLoad(WPARAM, LPARAM)
+int ModulesLoad(WPARAM, LPARAM)
 {
 	profilePath = Utils_ReplaceVarsT(_T("%miranda_userdata%"));
 
-	Icon_Register(hInst, LPGEN("Database")"/"LPGEN("Database Backups"), iconList, SIZEOF(iconList));
+	if (hFolder = FoldersRegisterCustomPathT(LPGEN("Database backups"), LPGEN("Backup folder"), DIR SUB_DIR)) {
+		HookEvent(ME_FOLDERS_PATH_CHANGED, FoldersGetBackupPath);
+		FoldersGetBackupPath(0, 0);
+	}
 
-	FoldersInit();
-	LoadOptions();
-	MenuInit();
+	CreateServiceFunction(MS_AB_BACKUP, ABService);
+	CreateServiceFunction(MS_AB_SAVEAS, DBSaveAs);
+
+	CLISTMENUITEM mi = { sizeof(mi) };
+	mi.pszPopupName = LPGEN("Database");
+
+	mi.pszName = LPGEN("Backup profile");
+	mi.pszService = MS_AB_BACKUP;
+	mi.icolibItem = iconList[0].hIcolib;
+	mi.position = 500100000;
+	Menu_AddMainMenuItem(&mi);
+
+	mi.pszName = LPGEN("Save profile as...");
+	mi.pszService = MS_AB_SAVEAS;
+	mi.icolibItem = iconList[1].hIcolib;
+	mi.position = 500100001;
+	Menu_AddMainMenuItem(&mi);
 
 	HookEvent(ME_OPT_INITIALISE, OptionsInit);
-	if(options.backup_types & BT_START)
-		mir_forkthread(BackupThread, NULL);
+	LoadOptions();
+
+	if (options.backup_types & BT_START)
+		BackupStart(NULL);
 	return 0;
 }
 
@@ -79,97 +126,10 @@ static int ModulesLoad(WPARAM, LPARAM)
 // for setting changed event not cleared. the backup on exit function will write to the db, calling those hooks.
 int PreShutdown(WPARAM, LPARAM)
 {
-	if(options.backup_types & BT_EXIT)
-	{
+	if (options.backup_types & BT_EXIT) {
 		options.disable_popups = 1; // Don't try to show popups on exit
-		mir_forkthread(BackupThread, NULL);
+		BackupStart(NULL);
 	}
 	return 0;
 }
 
-void SysInit()
-{
-	mir_getLP(&pluginInfo);
-	OleInitialize(0);
-
-	CreateServiceFunction(MS_AB_BACKUP, ABService);
-	CreateServiceFunction(MS_AB_SAVEAS, DBSaveAs);
-
-	HookEvent(ME_SYSTEM_PRESHUTDOWN, PreShutdown);
-	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoad);
-}
-
-BOOL WINAPI DllMain(HINSTANCE hinstDLL,DWORD fdwReason,LPVOID lpvReserved)
-{
-	hInst = hinstDLL;
-	return TRUE;
-}
-
-extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
-{
-	return &pluginInfo;
-}
-
-extern "C" __declspec(dllexport) int Load(void)
-{
-	SysInit();
-	return 0;
-}
-
-extern "C" __declspec(dllexport) int Unload(void)
-{
-	OleUninitialize();
-	return 0;
-}
-
-void ShowPopup(TCHAR* text, TCHAR* header)
-{
-	POPUPDATAT ppd = {0};
-
-	lstrcpy(ppd.lptzText, text);
-	lstrcpy(ppd.lptzContactName, header);
-	ppd.lchIcon = Skin_GetIcon("backup");
-
-	PUAddPopupT(&ppd);
-}
-
-int CreateDirectoryTree(TCHAR *szDir)
-{
-	TCHAR szTestDir[MAX_PATH];
-
-	lstrcpyn(szTestDir, szDir, SIZEOF(szTestDir));
-	TCHAR *pszLastBackslash = _tcsrchr( szTestDir, '\\' );
-	if ( pszLastBackslash == NULL )
-		return 0;
-
-	*pszLastBackslash = '\0';
-	CreateDirectoryTree( szTestDir );
-	*pszLastBackslash = '\\';
-	return ( CreateDirectory( szTestDir, NULL ) == 0 ) ? GetLastError() : 0;
-}
-
-HWND CreateToolTip(HWND hwndParent, LPTSTR ptszText, LPTSTR ptszTitle)
-{
-	HWND hwndTT = CreateWindowEx(WS_EX_TOPMOST,
-		TOOLTIPS_CLASS, NULL,
-		WS_POPUP | TTS_NOPREFIX,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		hwndParent, NULL, hInst, NULL);
-
-	SetWindowPos(hwndTT, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-
-	TOOLINFO ti = {0};
-	ti.cbSize = sizeof(TOOLINFO);
-	ti.uFlags = TTF_SUBCLASS | TTF_CENTERTIP;
-	ti.hwnd = hwndParent;
-	ti.hinst = hInst;
-	ti.lpszText = ptszText;
-	GetClientRect (hwndParent, &ti.rect);
-	ti.rect.left = -80;
-
-	SendMessage(hwndTT, TTM_ADDTOOL, 0, (LPARAM) (LPTOOLINFO) &ti);
-	SendMessage(hwndTT, TTM_SETTITLE, 1, (LPARAM)ptszTitle);
-	SendMessage(hwndTT, TTM_SETMAXTIPWIDTH, 0, (LPARAM)650);
-	return hwndTT;
-}

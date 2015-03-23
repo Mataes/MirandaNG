@@ -1,9 +1,10 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -25,8 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 int lstrcmp_null(const TCHAR *s1, const TCHAR *s2)
 {
-	if ( !s1 && !s2) return 0;
-	if ( !s1) return -1;
-	if ( !s2) return 1;
-	return lstrcmp(s1, s2);
+	if (!s1 && !s2) return 0;
+	if (!s1) return -1;
+	if (!s2) return 1;
+	return mir_tstrcmp(s1, s2);
 }

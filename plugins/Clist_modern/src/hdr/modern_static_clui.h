@@ -1,12 +1,11 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
-
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
-
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -56,19 +55,19 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 /* Declaration of prototypes in other modules */
 
 int ClcUnloadModule();
-int ClcGetShortData(ClcData* pData, struct SHORTDATA *pShortData);
+int ClcGetShortData(ClcData* pData, SHORTDATA *pShortData);
 int ClcEnterDragToScroll(HWND hwnd, int Y);
 
-int CListMod_ContactListShutdownProc(WPARAM wParam,LPARAM lParam);
+int CListMod_ContactListShutdownProc(WPARAM wParam, LPARAM lParam);
 int CListMod_HideWindow(HWND hwndContactList, int mode);
 
 int CListSettings_GetCopyFromCache(ClcCacheEntry *pDest, DWORD flag);
 int CListSettings_SetToCache(ClcCacheEntry *pSrc, DWORD flag);
 
 int CLUIServices_LoadModule(void);
-INT_PTR CLUIServices_SortList(WPARAM wParam,LPARAM lParam);
+INT_PTR CLUIServices_SortList(WPARAM wParam, LPARAM lParam);
 
-void Docking_GetMonitorRectFromWindow(HWND hWnd,RECT *rc);
+void Docking_GetMonitorRectFromWindow(HWND hWnd, RECT *rc);
 
 int EventArea_Create(HWND hCluiWnd);
 
@@ -77,9 +76,9 @@ int ExtraImage_ExtraIDToColumnNum(int extra);
 void GroupMenus_Init();
 
 int ModernSkinButtonLoadModule();
-int ModernSkinButton_ReposButtons(HWND parent, BYTE draw,RECT *r);
+int ModernSkinButton_ReposButtons(HWND parent, BYTE draw, RECT *r);
 
-void ske_ApplyTransluency();
+void ske_ApplyTranslucency();
 HBITMAP ske_CreateDIB32(int cx, int cy);
 HBITMAP ske_CreateDIB32Point(int cx, int cy, void ** bits);
 int ske_JustUpdateWindowImage();
@@ -101,26 +100,15 @@ int CLUI_SizingOnBorder(POINT pt, int size);
 int CLUI_SmoothAlphaTransition(HWND hwnd, BYTE GoalAlpha, BOOL wParam);
 int CLUI_TestCursorOnBorders();
 
-static int CLUI_CreateTimerForConnectingIcon(WPARAM wParam,LPARAM lParam);
-static int CLUI_SmoothAlphaThreadTransition(HWND hwnd);
+static int CLUI_SmoothAlphaThreadTransition();
 
 /*      structs         */
 
-typedef struct tagPROTOTICKS{
-	int     nIconsCount;
-	int     nCycleStartTick;
-	char  * szProto;
-	int     nIndex;
-	BOOL    bTimerCreated;
-	BOOL    bGlobal;
-	HIMAGELIST himlIconList;
-} PROTOTICKS,*LPPROTOTICKS;
-
-typedef struct tagCHECKFILLING
+struct CHECKFILLING
 {
 	HDC hDC;
 	RECT rcRect;
-} CHECKFILLING;
+};
 
 int CheckFramesPos(RECT *wr);			//cluiframes.c
 int CLUIFrames_ApplyNewSizes(int mode); //cluiframes.c

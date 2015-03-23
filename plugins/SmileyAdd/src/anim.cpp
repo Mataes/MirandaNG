@@ -18,8 +18,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "general.h"
 
-Animate::Animate(SmileyType *sml, RECT& rect, HDC hdcMem, HBRUSH hbr, bool clip)
-	: m_sml(sml), m_img(NULL),
+Animate::Animate(SmileyType *sml, RECT& rect, HDC hdcMem, HBRUSH hbr, bool clip) :
+	m_sml(sml),
+	m_img(NULL),
 	m_nFramePosition(0), m_sel(false), m_clip(clip),
 	m_offset(0), m_running(false),
 	m_hdcMem(hdcMem), m_hbr(hbr)
@@ -30,7 +31,8 @@ Animate::Animate(SmileyType *sml, RECT& rect, HDC hdcMem, HBRUSH hbr, bool clip)
 
 Animate::~Animate()
 {
-	if (m_img) m_img->Release();
+	if (m_img)
+		m_img->Release();
 }
 
 
@@ -38,8 +40,7 @@ void Animate::StartAnimation(void)
 {
 	m_img = m_sml->CreateCachedImage();
 
-	if (m_img && m_img->IsAnimated())
-	{
+	if (m_img && m_img->IsAnimated()) {
 		m_img->SelectFrame(m_nFramePosition);
 		long frtm = m_img->GetFrameDelay();
 		m_counter = frtm / 10 + ((frtm % 10) >= 5);
@@ -49,8 +50,7 @@ void Animate::StartAnimation(void)
 
 void Animate::ProcessTimerTick(HWND hwnd)
 {
-	if (m_running && m_img->IsAnimated() && --m_counter <= 0)
-	{
+	if (m_running && m_img->IsAnimated() && --m_counter <= 0) {
 		m_nFramePosition = m_img->SelectNextFrame(m_nFramePosition);
 
 		long frtm = m_img->GetFrameDelay();
@@ -82,8 +82,7 @@ void Animate::DrawFrame(HDC hdc)
 
 void Animate::Draw(HDC hdc) 
 { 
-	if (m_running)
-	{
+	if (m_running) {
 		m_img->Draw(hdc, m_cliprect, m_clip);
 
 		if (m_sel)
@@ -102,16 +101,14 @@ void Animate::SetOffset(int off, int wsize)
 	m_offset = off; 
 
 	m_running = m_cliprect.top >= 0 && m_cliprect.top < wsize;
-	if (m_running)
-	{
-		if (m_img == NULL) 
-		{
+	if (m_running) {
+		if (m_img == NULL) {
 			StartAnimation();
-			if (m_img == NULL) m_running = false;
+			if (m_img == NULL)
+				m_running = false;
 		}
 	}
-	else
-	{
+	else {
 		if (m_img) m_img->Release();
 		m_img = NULL;
 	}
@@ -120,8 +117,7 @@ void Animate::SetOffset(int off, int wsize)
 
 void Animate::SetSel(int x, int y)
 {
-	m_sel = x >= m_cliprect.left && x < m_cliprect.right && 
-		y >= m_cliprect.top && y < m_cliprect.bottom;
+	m_sel = x >= m_cliprect.left && x < m_cliprect.right && y >= m_cliprect.top && y < m_cliprect.bottom;
 }
 
 

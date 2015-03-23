@@ -1,8 +1,8 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -23,35 +23,66 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "..\..\core\commonheaders.h"
 
-//VERY VERY VERY BASIC ENCRYPTION FUNCTION
+/////////////////////////////////////////////////////////////////////////////////////////
 
-void Encrypt(char*msg, BOOL up)
+static int CompareFunc(const CRYPTO_PROVIDER *p1, const CRYPTO_PROVIDER *p2)
 {
-	int jump;
-	if (up)
-		jump = 5;
+	return strcmp(p1->pszName, p2->pszName);
+}
+
+static LIST<CRYPTO_PROVIDER> arProviders(5, CompareFunc);
+
+static INT_PTR srvRegister(WPARAM wParam, LPARAM lParam)
+{
+	CRYPTO_PROVIDER *p = (CRYPTO_PROVIDER*)lParam;
+	if (p == NULL || p->dwSize != sizeof(CRYPTO_PROVIDER))
+		return 1;
+
+	CRYPTO_PROVIDER *pNew = new CRYPTO_PROVIDER(*p);
+	pNew->pszName = mir_strdup(p->pszName);
+	if (pNew->dwFlags & CPF_UNICODE)
+		pNew->ptszDescr = mir_u2t(TranslateW_LP(p->pwszDescr, wParam));
 	else
-		jump = -5;
-
-	for (int i = 0; msg[i]; i++)
-		msg[i] = msg[i] + jump;
-}
-
-static INT_PTR EncodeString(WPARAM wParam, LPARAM lParam)
-{
-	Encrypt((char*)lParam, TRUE);
+		pNew->ptszDescr = mir_a2t(TranslateA_LP(p->pszDescr, wParam));
+	arProviders.insert(pNew);
 	return 0;
 }
 
-static INT_PTR DecodeString(WPARAM wParam, LPARAM lParam)
+static INT_PTR srvEnumProviders(WPARAM wParam, LPARAM lParam)
 {
-	Encrypt((char*)lParam, FALSE);
+	if (wParam && lParam) {
+		*(int*)wParam = arProviders.getCount();
+		*(CRYPTO_PROVIDER***)lParam = arProviders.getArray();
+	}
 	return 0;
 }
+
+static INT_PTR srvGetProvider(WPARAM wParam, LPARAM lParam)
+{
+	if (lParam == 0)
+		return 0;
+
+	CRYPTO_PROVIDER tmp;
+	tmp.pszName = (LPSTR)lParam;
+	return (INT_PTR)arProviders.find(&tmp);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
 
 int InitCrypt(void)
 {
-	CreateServiceFunction(MS_DB_CRYPT_ENCODESTRING, EncodeString);
-	CreateServiceFunction(MS_DB_CRYPT_DECODESTRING, DecodeString);
+	CreateServiceFunction(MS_CRYPTO_REGISTER_ENGINE, srvRegister);
+	CreateServiceFunction(MS_CRYPTO_ENUM_PROVIDERS,  srvEnumProviders);
+	CreateServiceFunction(MS_CRYPTO_GET_PROVIDER,    srvGetProvider);
 	return 0;
+}
+
+void UninitCrypt(void)
+{
+	for (int i = 0; i < arProviders.getCount(); i++) {
+		CRYPTO_PROVIDER *p = arProviders[i];
+		mir_free(p->pszName);
+		mir_free(p->pszDescr);
+		delete p;
+	}
 }

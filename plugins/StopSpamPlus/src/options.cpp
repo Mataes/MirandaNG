@@ -1,6 +1,6 @@
 #include "headers.h"
 
-TCHAR * pluginDescription = TranslateT("No more spam! Robots can't go! Only human beings invited!\r\n\r\nThis plugin works pretty simple:\r\nWhile messages from users on your contact list go as there is no any anti-spam software, messages from unknown users are not delivered to you. But also they are not ignored, this plugin replies with a simple question, and if user gives the right answer plugin adds him to your contact list so that he can contact you.");
+TCHAR * pluginDescription = TranslateT("No more spam! Robots can't go! Only human beings invited!\r\n\r\nThis plugin works pretty simple:\r\nWhile messages from users on your contact list go as there is no any anti-spam software, messages from unknown users are not delivered to you. But also they are not ignored, this plugin replies with a simple question, and if user gives the right answer, plugin adds him to your contact list so that he can contact you.");
 TCHAR const * infTalkProtPrefix = TranslateT("StopSpam automatic message:\r\n");
 char const * answeredSetting = "Answered";
 char const * questCountSetting = "QuestionCount";
@@ -15,12 +15,12 @@ INT_PTR CALLBACK MainDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			SetDlgItemText(hwnd, ID_DESCRIPTION, pluginDescription);
 			TranslateDialogDefault(hwnd);
 			SetDlgItemInt(hwnd, ID_MAXQUESTCOUNT, plSets->MaxQuestCount.Get(), FALSE);
-			SendDlgItemMessage(hwnd, ID_INFTALKPROT, BM_SETCHECK, plSets->InfTalkProtection.Get() ? BST_CHECKED : BST_UNCHECKED, 0);
-			SendDlgItemMessage(hwnd, ID_ADDPERMANENT, BM_SETCHECK, plSets->AddPermanent.Get() ? BST_CHECKED : BST_UNCHECKED, 0);
-			SendDlgItemMessage(hwnd, ID_HANDLEAUTHREQ, BM_SETCHECK, plSets->HandleAuthReq.Get() ? BST_CHECKED : BST_UNCHECKED, 0);
-			SendDlgItemMessage(hwnd, ID_NOTCASESENS, BM_SETCHECK, plSets->AnswNotCaseSens.Get() ? BST_CHECKED : BST_UNCHECKED, 0);
-			SendDlgItemMessage(hwnd, ID_REMOVE_TMP_ALL, BM_SETCHECK, plSets->RemTmpAll.Get() ? BST_CHECKED : BST_UNCHECKED, 0);
-			SendDlgItemMessage(hwnd, ID_HISTORY_LOG, BM_SETCHECK, plSets->HistLog.Get() ? BST_CHECKED : BST_UNCHECKED, 0);
+			CheckDlgButton(hwnd, ID_INFTALKPROT, plSets->InfTalkProtection.Get() ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwnd, ID_ADDPERMANENT, plSets->AddPermanent.Get() ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwnd, ID_HANDLEAUTHREQ, plSets->HandleAuthReq.Get() ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwnd, ID_NOTCASESENS, plSets->AnswNotCaseSens.Get() ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwnd, ID_REMOVE_TMP_ALL, plSets->RemTmpAll.Get() ? BST_CHECKED : BST_UNCHECKED);
+			CheckDlgButton(hwnd, ID_HISTORY_LOG, plSets->HistLog.Get() ? BST_CHECKED : BST_UNCHECKED);
 		}
 		return TRUE;
 	case WM_COMMAND:{
@@ -48,12 +48,12 @@ INT_PTR CALLBACK MainDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			case PSN_APPLY:
 				{
 					plSets->MaxQuestCount=GetDlgItemInt(hwnd, ID_MAXQUESTCOUNT, NULL, FALSE);
-					plSets->InfTalkProtection=(BST_CHECKED == SendDlgItemMessage(hwnd, ID_INFTALKPROT, BM_GETCHECK, 0, 0));
-					plSets->AddPermanent=(BST_CHECKED == SendDlgItemMessage(hwnd, ID_ADDPERMANENT, BM_GETCHECK, 0, 0));
-					plSets->HandleAuthReq=(BST_CHECKED == SendDlgItemMessage(hwnd, ID_HANDLEAUTHREQ, BM_GETCHECK, 0, 0));
-					plSets->AnswNotCaseSens=(BST_CHECKED == SendDlgItemMessage(hwnd, ID_NOTCASESENS, BM_GETCHECK, 0, 0));
-					plSets->RemTmpAll=(BST_CHECKED == SendDlgItemMessage(hwnd, ID_REMOVE_TMP_ALL, BM_GETCHECK, 0, 0));
-					plSets->HistLog=(BST_CHECKED == SendDlgItemMessage(hwnd, ID_HISTORY_LOG, BM_GETCHECK, 0, 0));
+					plSets->InfTalkProtection=(BST_CHECKED == IsDlgButtonChecked(hwnd, ID_INFTALKPROT));
+					plSets->AddPermanent=(BST_CHECKED == IsDlgButtonChecked(hwnd, ID_ADDPERMANENT));
+					plSets->HandleAuthReq=(BST_CHECKED == IsDlgButtonChecked(hwnd, ID_HANDLEAUTHREQ));
+					plSets->AnswNotCaseSens=(BST_CHECKED == IsDlgButtonChecked(hwnd, ID_NOTCASESENS));
+					plSets->RemTmpAll=(BST_CHECKED == IsDlgButtonChecked(hwnd, ID_REMOVE_TMP_ALL));
+					plSets->HistLog=(BST_CHECKED == IsDlgButtonChecked(hwnd, ID_HISTORY_LOG));
 				}
 				return TRUE;
 			}

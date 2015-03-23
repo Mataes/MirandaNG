@@ -21,10 +21,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 HINSTANCE hInst;
 int hLangpack = 0;
-bool bServiceMode, bLaunchMiranda, bShortMode;
+bool bServiceMode, bLaunchMiranda, bShortMode, bAutoExit;
 HANDLE hService;
 
-DbToolOptions opts = {0};
+DbToolOptions opts = { 0 };
 
 PLUGININFOEX pluginInfoEx =
 {
@@ -38,42 +38,43 @@ PLUGININFOEX pluginInfoEx =
 	__AUTHORWEB,
 	UNICODE_AWARE | STATIC_PLUGIN,
 	// {A0138FC6-4C52-4501-AF93-7D3E20BCAE5B}
-	{0xa0138fc6, 0x4c52, 0x4501, {0xaf, 0x93, 0x7d, 0x3e, 0x20, 0xbc, 0xae, 0x5b}}
+	{ 0xa0138fc6, 0x4c52, 0x4501, { 0xaf, 0x93, 0x7d, 0x3e, 0x20, 0xbc, 0xae, 0x5b } }
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD, LPVOID)
 {
 	hInst = hinstDLL;
 	return TRUE;
 }
 
-extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
+extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD)
 {
 	return &pluginInfoEx;
 }
 
 // we implement service mode interface
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_SERVICEMODE, MIID_LAST};
+extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = { MIID_SERVICEMODE, MIID_LAST };
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
 static INT_PTR ServiceMode(WPARAM, LPARAM)
 {
-	bLaunchMiranda = bShortMode = false;
+	bLaunchMiranda = bShortMode = bAutoExit = false;
 	bServiceMode = true;
 	DialogBox(hInst, MAKEINTRESOURCE(IDD_WIZARD), NULL, WizardDlgProc);
 	return (bLaunchMiranda) ? SERVICE_CONTINUE : SERVICE_FAILED;
 }
 
-static INT_PTR CheckProfile(WPARAM wParam, LPARAM)
+static INT_PTR CheckProfile(WPARAM wParam, LPARAM lParam)
 {
 	bShortMode = true;
-	bLaunchMiranda = bServiceMode = false;
+	bLaunchMiranda = lParam != 0;
+	bAutoExit = lParam == 2;
+	bServiceMode = false;
 	_tcsncpy(opts.filename, (TCHAR*)wParam, SIZEOF(opts.filename));
-	DialogBox(hInst, MAKEINTRESOURCE(IDD_WIZARD), NULL, WizardDlgProc);
-	return 0;
+	return DialogBox(hInst, MAKEINTRESOURCE(IDD_WIZARD), NULL, WizardDlgProc);
 }
 
 extern "C" __declspec(dllexport) int Load(void)

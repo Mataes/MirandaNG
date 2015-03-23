@@ -3,9 +3,10 @@
 
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -46,13 +47,13 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #if defined (_DEBUG)
 #define TRACE(str)  { log0(str); }
 #else
-  #define TRACE(str)
+#define TRACE(str)
 #endif
 
 #if defined (_DEBUG)
-  #define TRACEVAR(str,n) { log1(str,n); }
+#define TRACEVAR(str,n) { log1(str,n); }
 #else
-  #define TRACEVAR(str,n)
+#define TRACEVAR(str,n)
 #endif
 
 #if defined (_DEBUG)
@@ -61,19 +62,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define TRACET(str)
 #endif
 
-#define SERVICE(serviceproc)         static INT_PTR serviceproc(WPARAM wParam,LPARAM lParam)
-#define EVENTHOOK(eventhookproc)     static int eventhookproc(WPARAM wParam,LPARAM lParam)
+#define SERVICE(serviceproc)         static INT_PTR serviceproc(WPARAM wParam, LPARAM lParam)
+#define EVENTHOOK(eventhookproc)     static int eventhookproc(WPARAM wParam, LPARAM lParam)
 #define CLINTERFACE                  static
 
 #include <windows.h>
 #include <Shlwapi.h>
 #include <vssym32.h>
-
+#include <UxTheme.h>
 #include <malloc.h>
 #include <time.h>
 #include <stddef.h>
 #include <io.h>
 #include <math.h>
+#include <stdio.h>
 
 #include <newpluginapi.h>
 #include <m_system_cpp.h>
@@ -93,6 +95,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <m_xstatus.h>
 #include <m_cluiframes.h>
 #include <m_modernopt.h>
+#include <m_netlib.h>
 
 #include <m_toptoolbar.h>
 #include <m_metacontacts.h>
@@ -103,7 +106,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "modern_global_structure.h"
 #include "modern_clc.h"
 #include "modern_clist.h"
-#include "modern_cluiframes.h"
+#include "CLUIFrames/cluiframes.h"
 #include "modern_rowheight_funcs.h"
 #include "modern_cache_funcs.h"
 #include "modern_log.h"
@@ -112,9 +115,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #define DEFAULT_SKIN_FOLDER		"Skins\\Modern contact list"
 extern TCHAR SkinsFolder[MAX_PATH];
-
-// module name of MetaContacts plugin
-extern char *g_szMetaModuleName;
 
 //macros to free data and set it pointer to NULL
 #define mir_free_and_nil(x) {mir_free((void*)x); x=NULL;}
@@ -143,20 +143,10 @@ extern char *g_szMetaModuleName;
 #define SCF_TOP     3
 #define SCF_BOTTOM  6
 
-char* __cdecl strstri( char *a, const char *b);
+char* __cdecl strstri(char *a, const char *b);
 BOOL __cdecl mir_bool_strcmpi(const char *a, const char *b);
-int __cdecl mir_strcmp (const char *a, const char *b);
-int __cdecl mir_strlen (const char *a);
-int __cdecl mir_strcmpi(const char *a, const char *b);
-int __cdecl mir_tstrcmpi(const TCHAR *a, const TCHAR *b);
 BOOL __cdecl mir_bool_tstrcmpi(const TCHAR *a, const TCHAR *b);
 DWORD exceptFunction(LPEXCEPTION_POINTERS EP);
-
-#ifndef MYCMP
-#define MYCMP 1
-#define strcmp(a,b) mir_strcmp(a,b)
-#define strlen(a) mir_strlen(a)
-#endif
 
 //  Register of plugin's user
 //
@@ -195,24 +185,9 @@ void MakeButtonSkinned(HWND hWnd);
 
 extern void TRACE_ERROR();
 extern BOOL DebugDeleteObject(HGDIOBJ a);
-extern BOOL ske_ResetTextEffect(HDC hdc);
-extern BOOL ske_SelectTextEffect(HDC hdc, BYTE EffectID, DWORD FirstColor, DWORD SecondColor);
 extern void IvalidateDisplayNameCache(DWORD mode);
 
-typedef BOOL (WINAPI *pfnTryEnterCriticalSection)( LPCRITICAL_SECTION );
-extern pfnTryEnterCriticalSection fnTryEnterCriticalSection;
-
-typedef BOOL (WINAPI *pfnGetScrollBarInfo)( HWND, LONG, PSCROLLBARINFO );
-extern pfnGetScrollBarInfo fnGetScrollBarInfo;
-
-typedef HWND (WINAPI *pfnGetAncestor)( HWND, UINT );
-extern pfnGetAncestor fnGetAncestor;
-HWND WINAPI MyGetAncestor( HWND, UINT );
-
-typedef BOOL (WINAPI *pfnGetMenuBarInfo)( HWND, LONG, LONG, PMENUBARINFO );
-extern pfnGetMenuBarInfo fnGetMenuBarInfo;
-
-extern SortedList *clistCache;
+extern LIST<ClcCacheEntry> clistCache;
 
 HICON LoadSmallIcon(HINSTANCE hInstance, int idx);
 BOOL DestroyIcon_protect(HICON icon);
@@ -255,14 +230,14 @@ int AniAva_InitModule();								   // HAVE TO BE AFTER GDI+ INITIALIZED
 int AniAva_UnloadModule();
 int AniAva_UpdateOptions();								   //reload options, //hot enable/disable engine
 
-int AniAva_AddAvatar(HANDLE hContact, TCHAR * szFilename, int width, int heigth);  // adds avatars to be displayed
-int AniAva_SetAvatarPos(HANDLE hContact, RECT *rc, int overlayIdx, BYTE bAlpha);	   // update avatars pos
-int AniAva_InvalidateAvatarPositions(HANDLE hContact);	   // reset positions of avatars to be drawn (still be painted at same place)
+int AniAva_AddAvatar(MCONTACT hContact, TCHAR * szFilename, int width, int heigth);  // adds avatars to be displayed
+int AniAva_SetAvatarPos(MCONTACT hContact, RECT *rc, int overlayIdx, BYTE bAlpha);	   // update avatars pos
+int AniAva_InvalidateAvatarPositions(MCONTACT hContact);	   // reset positions of avatars to be drawn (still be painted at same place)
 int AniAva_RemoveInvalidatedAvatars();					   // all avatars without validated position will be stop painted and probably removed
-int AniAva_RemoveAvatar(HANDLE hContact);				   // remove avatar
+int AniAva_RemoveAvatar(MCONTACT hContact);				   // remove avatar
 int AniAva_RedrawAllAvatars(BOOL updateZOrder);			   // request to repaint all
 void AniAva_UpdateParent();
-int AniAva_RenderAvatar( HANDLE hContact, HDC hdcMem, RECT *rc );
+int AniAva_RenderAvatar(MCONTACT hContact, HDC hdcMem, RECT *rc);
 
 #define CCI_NAME            1
 #define CCI_GROUP          (1<<1)
@@ -287,25 +262,14 @@ int AniAva_RenderAvatar( HANDLE hContact, HDC hdcMem, RECT *rc );
 void CListSettings_FreeCacheItemData(ClcCacheEntry *pDst);
 int CLUI_SyncGetPDNCE(WPARAM wParam, LPARAM lParam);
 WORD pdnce___GetStatus(ClcCacheEntry *pdnce);
-void pdnce___SetStatus( ClcCacheEntry *pdnce, WORD wStatus );
 
 /* move to list module */
-typedef void (*ItemDestuctor)(void*);
-
-template <class T> class INIT : public T
-{
-public:
-	INIT()
-	{
-		memset(this, 0, sizeof(T));
-		this->cbSize=sizeof(T);
-	}
-};
+typedef void(*ItemDestuctor)(void*);
 
 #ifdef __cplusplus
-const ROWCELL * rowAddCell(ROWCELL* &, int );
+const ROWCELL * rowAddCell(ROWCELL* &, int);
 void rowDeleteTree(ROWCELL *cell);
-BOOL rowParse(ROWCELL* &cell, ROWCELL* parent, char *tbuf, int &hbuf, int &sequence, ROWCELL** RowTabAccess );
+BOOL rowParse(ROWCELL* &cell, ROWCELL* parent, char *tbuf, int &hbuf, int &sequence, ROWCELL** RowTabAccess);
 void rowSizeWithReposition(ROWCELL* &root, int width);
 #endif
 
@@ -330,43 +294,43 @@ class HashStringKeyNoCase
 {
 public:
 
-	HashStringKeyNoCase( const char* szKey )
+	HashStringKeyNoCase(const char* szKey)
 	{
-		_strKey=_strdup( szKey );
+		_strKey = _strdup(szKey);
 		_CreateHashKey();
 	}
 
-	HashStringKeyNoCase( const HashStringKeyNoCase& hsKey )
+	HashStringKeyNoCase(const HashStringKeyNoCase& hsKey)
 	{
-		_strKey = _strdup( hsKey._strKey );
-		_dwKey  = hsKey._dwKey;
+		_strKey = _strdup(hsKey._strKey);
+		_dwKey = hsKey._dwKey;
 	}
 
-	HashStringKeyNoCase& operator= ( const HashStringKeyNoCase& hsKey )
+	HashStringKeyNoCase& operator= (const HashStringKeyNoCase& hsKey)
 	{
-		_strKey = _strdup( hsKey._strKey );
-		_dwKey  = hsKey._dwKey;
+		_strKey = _strdup(hsKey._strKey);
+		_dwKey = hsKey._dwKey;
 	}
 
 #ifdef _UNICODE
-	HashStringKeyNoCase( const wchar_t* szKey )
+	HashStringKeyNoCase(const wchar_t* szKey)
 	{
-		int codepage=0;
-		int cbLen = WideCharToMultiByte( codepage, 0, szKey, -1, NULL, 0, NULL, NULL );
-		char* result = ( char* )malloc( cbLen+1 );
-		WideCharToMultiByte( codepage, 0, szKey, -1, result, cbLen, NULL, NULL );
-		result[ cbLen ] = 0;
+		int codepage = 0;
+		int cbLen = WideCharToMultiByte(codepage, 0, szKey, -1, NULL, 0, NULL, NULL);
+		char* result = (char*)malloc(cbLen + 1);
+		WideCharToMultiByte(codepage, 0, szKey, -1, result, cbLen, NULL, NULL);
+		result[cbLen] = 0;
 
-		_strKey=result;
+		_strKey = result;
 		_CreateHashKey();
 	}
 #endif
 
 	~HashStringKeyNoCase()
 	{
-		if (_strKey) free (_strKey);
+		free(_strKey);
 		_strKey = NULL;
-		_dwKey=0;
+		_dwKey = 0;
 	}
 
 private:
@@ -375,23 +339,25 @@ private:
 
 	void  _CreateHashKey()
 	{
-		_strKey=_strupr( _strKey );
-		_dwKey = mod_CalcHash( _strKey );
+		_strKey = _strupr(_strKey);
+		_dwKey = mod_CalcHash(_strKey);
 	}
 
 public:
-	bool operator< ( const HashStringKeyNoCase& second ) const
+	bool operator< (const HashStringKeyNoCase& second) const
 	{
-		if ( this->_dwKey != second._dwKey )
-			return ( this->_dwKey < second._dwKey );
+		if (this->_dwKey != second._dwKey)
+			return (this->_dwKey < second._dwKey);
 		else
-			return ( strcmp( this->_strKey, second._strKey ) < 0 ); // already maked upper so in any case - will be case insensitive
+			return (mir_strcmp(this->_strKey, second._strKey) < 0); // already maked upper so in any case - will be case insensitive
 	}
 
 	struct HashKeyLess
 	{
-		bool operator() ( const HashStringKeyNoCase& first, const HashStringKeyNoCase& second ) const
-		{	return ( first < second ); }
+		bool operator() (const HashStringKeyNoCase& first, const HashStringKeyNoCase& second) const
+		{
+			return (first < second);
+		}
 	};
 };
 

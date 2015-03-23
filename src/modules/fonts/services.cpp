@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -142,10 +143,12 @@ int GetFontSettingFromDB(char *settings_group, char *prefix, LOGFONT* lf, COLORR
 
 	GetDefaultFontSetting(lf, colour);
 
-	if (flags & FIDF_APPENDNAME) mir_snprintf(idstr, SIZEOF(idstr), "%sName", prefix);
-	else mir_snprintf(idstr, SIZEOF(idstr), "%s", prefix);
+	if (flags & FIDF_APPENDNAME)
+		mir_snprintf(idstr, SIZEOF(idstr), "%sName", prefix);
+	else
+		strncpy_s(idstr, prefix, _TRUNCATE);
 
-	if ( !db_get_ts(NULL, settings_group, idstr, &dbv)) {
+	if (!db_get_ts(NULL, settings_group, idstr, &dbv)) {
 		_tcscpy(lf->lfFaceName, dbv.ptszVal);
 		db_free(&dbv);
 	}
@@ -159,7 +162,7 @@ int GetFontSettingFromDB(char *settings_group, char *prefix, LOGFONT* lf, COLORR
 	mir_snprintf(idstr, SIZEOF(idstr), "%sSize", prefix);
 	lf->lfHeight = (char)db_get_b(NULL, settings_group, idstr, lf->lfHeight);
 
-	//wsprintf(idstr, "%sFlags", prefix);
+	//mir_snprintf(idstr, SIZEOF(idstr), "%sFlags", prefix);
 	//if (db_get_dw(NULL, settings_group, idstr, 0) & FIDF_SAVEACTUALHEIGHT) {
 	//	HDC hdc = GetDC(0);
 	//	lf->lfHeight = -lf->lfHeight;
@@ -217,7 +220,7 @@ int CreateFromFontSettings(FontSettingsT* fs, LOGFONT* lf)
 	lf->lfWeight = fs->style & DBFONTF_BOLD ? FW_BOLD : FW_NORMAL;
 	lf->lfItalic = (fs->style & DBFONTF_ITALIC) != 0;
 	lf->lfUnderline = (fs->style & DBFONTF_UNDERLINE) != 0;
-	lf->lfStrikeOut = (fs->style & DBFONTF_STRIKEOUT) != 0;;
+	lf->lfStrikeOut = (fs->style & DBFONTF_STRIKEOUT) != 0;
 	lf->lfCharSet = fs->charset;
 	lf->lfOutPrecision = OUT_DEFAULT_PRECIS;
 	lf->lfClipPrecision = CLIP_DEFAULT_PRECIS;
@@ -237,7 +240,7 @@ void UpdateFontSettings(FontIDW* font_id, FontSettingsT* fontsettings)
 		colour = GetColorFromDefault(font_id->deffontsettings.colour);
 	}
 
-	fontsettings->style = 
+	fontsettings->style =
 		(lf.lfWeight == FW_NORMAL ? 0 : DBFONTF_BOLD) | (lf.lfItalic ? DBFONTF_ITALIC : 0) | (lf.lfUnderline ? DBFONTF_UNDERLINE : 0) | (lf.lfStrikeOut ? DBFONTF_STRIKEOUT : 0);
 
 	fontsettings->size = (char)lf.lfHeight;
@@ -290,7 +293,7 @@ static int sttRegisterFontWorker(FontIDW* font_id, int hLangpack)
 
 	for (int i=0; i < font_id_list.getCount(); i++) {
 		FontInternal& F = font_id_list[i];
-		if ( !lstrcmp(F.group, font_id->group) && !lstrcmp(F.name, font_id->name) && !(F.flags & FIDF_ALLOWREREGISTER))
+		if (!mir_tstrcmp(F.group, font_id->group) && !mir_tstrcmp(F.name, font_id->name) && !(F.flags & FIDF_ALLOWREREGISTER))
 			return 1;
 	}
 
@@ -303,11 +306,11 @@ static int sttRegisterFontWorker(FontIDW* font_id, int hLangpack)
 	memcpy(newItem, font_id, font_id->cbSize);
 	newItem->hLangpack = hLangpack;
 
-	if ( !lstrcmp(newItem->deffontsettings.szFace, _T("MS Shell Dlg"))) {
+	if (!mir_tstrcmp(newItem->deffontsettings.szFace, _T("MS Shell Dlg"))) {
 		LOGFONT lf;
 		SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, FALSE);
-		lstrcpyn(newItem->deffontsettings.szFace, lf.lfFaceName, SIZEOF(newItem->deffontsettings.szFace));
-		if ( !newItem->deffontsettings.size)
+		mir_tstrncpy(newItem->deffontsettings.szFace, lf.lfFaceName, SIZEOF(newItem->deffontsettings.szFace));
+		if (!newItem->deffontsettings.size)
 			newItem->deffontsettings.size = lf.lfHeight;
 	}
 
@@ -324,7 +327,7 @@ INT_PTR RegisterFontW(WPARAM wParam, LPARAM lParam)
 INT_PTR RegisterFont(WPARAM wParam, LPARAM lParam)
 {
 	FontIDW temp;
-	if ( !ConvertFontID((FontID*)wParam, &temp)) return -1;
+	if (!ConvertFontID((FontID*)wParam, &temp)) return -1;
 	return sttRegisterFontWorker(&temp, (int)lParam);
 }
 
@@ -337,7 +340,7 @@ static INT_PTR sttGetFontWorker(FontIDW* font_id, LOGFONT* lf)
 
 	for (int i=0; i < font_id_list.getCount(); i++) {
 		FontInternal& F = font_id_list[i];
-		if ( !_tcsncmp(F.name, font_id->name, SIZEOF(F.name)) && !_tcsncmp(F.group, font_id->group, SIZEOF(F.group))) {
+		if (!_tcsncmp(F.name, font_id->name, SIZEOF(F.name)) && !_tcsncmp(F.group, font_id->group, SIZEOF(F.group))) {
 			if (GetFontSettingFromDB(F.dbSettingsGroup, F.prefix, lf, &colour, F.flags) && (F.flags & FIDF_DEFAULTVALID)) {
 				CreateFromFontSettings(&F.deffontsettings, lf);
 				colour = GetColorFromDefault(F.deffontsettings.colour);
@@ -359,7 +362,7 @@ INT_PTR GetFontW(WPARAM wParam, LPARAM lParam)
 INT_PTR GetFont(WPARAM wParam, LPARAM lParam)
 {
 	FontIDW temp;
-	if ( !ConvertFontID((FontID*)wParam, &temp))
+	if (!ConvertFontID((FontID*)wParam, &temp))
 		return -1;
 
 	LOGFONT lftemp;
@@ -392,7 +395,7 @@ static INT_PTR sttRegisterColourWorker(ColourIDW* colour_id, int hLangpack)
 
 	for (int i=0; i < colour_id_list.getCount(); i++) {
 		ColourInternal& C = colour_id_list[i];
-		if ( !_tcscmp(C.group, colour_id->group) && !_tcscmp(C.name, colour_id->name))
+		if (!_tcscmp(C.group, colour_id->group) && !_tcscmp(C.name, colour_id->name))
 			return 1;
 	}
 
@@ -413,7 +416,7 @@ INT_PTR RegisterColourW(WPARAM wParam, LPARAM lParam)
 INT_PTR RegisterColour(WPARAM wParam, LPARAM lParam)
 {
 	ColourIDW temp;
-	if ( !ConvertColourID((ColourID*)wParam, &temp)) return -1;
+	if (!ConvertColourID((ColourID*)wParam, &temp)) return -1;
 	return sttRegisterColourWorker(&temp, (int)lParam);
 }
 
@@ -424,7 +427,7 @@ static INT_PTR sttGetColourWorker(ColourIDW* colour_id)
 {
 	for (int i=0; i < colour_id_list.getCount(); i++) {
 		ColourInternal& C = colour_id_list[i];
-		if ( !_tcscmp(C.group, colour_id->group) && !_tcscmp(C.name, colour_id->name))
+		if (!_tcscmp(C.group, colour_id->group) && !_tcscmp(C.name, colour_id->name))
 			return db_get_dw(NULL, C.dbSettingsGroup, C.setting, GetColorFromDefault(C.defcolour));
 	}
 
@@ -439,7 +442,7 @@ INT_PTR GetColourW(WPARAM wParam, LPARAM)
 INT_PTR GetColour(WPARAM wParam, LPARAM)
 {
 	ColourIDW temp;
-	if ( !ConvertColourID((ColourID*)wParam, &temp)) return -1;
+	if (!ConvertColourID((ColourID*)wParam, &temp)) return -1;
 	return sttGetColourWorker(&temp);
 }
 
@@ -478,7 +481,7 @@ static INT_PTR sttRegisterEffectWorker(EffectIDW* effect_id, int hLangpack)
 
 	for (int i=0; i < effect_id_list.getCount(); i++) {
 		EffectInternal& E = effect_id_list[i];
-		if ( !_tcscmp(E.group, effect_id->group) && !_tcscmp(E.name, effect_id->name))
+		if (!_tcscmp(E.group, effect_id->group) && !_tcscmp(E.name, effect_id->name))
 			return 1;
 	}
 
@@ -499,7 +502,7 @@ INT_PTR RegisterEffectW(WPARAM wParam, LPARAM lParam)
 INT_PTR RegisterEffect(WPARAM wParam, LPARAM lParam)
 {
 	EffectIDW temp;
-	if ( !ConvertEffectID((EffectID*)wParam, &temp)) return -1;
+	if (!ConvertEffectID((EffectID*)wParam, &temp)) return -1;
 	return sttRegisterEffectWorker(&temp, (int)lParam);
 }
 
@@ -510,7 +513,7 @@ static INT_PTR sttGetEffectWorker(EffectIDW* effect_id, FONTEFFECT* effect)
 {
 	for (int i=0; i < effect_id_list.getCount(); i++) {
 		EffectInternal& E = effect_id_list[i];
-		if ( !_tcsncmp(E.name, effect_id->name, SIZEOF(E.name)) && !_tcsncmp(E.group, effect_id->group, SIZEOF(E.group))) {
+		if (!_tcsncmp(E.name, effect_id->name, SIZEOF(E.name)) && !_tcsncmp(E.group, effect_id->group, SIZEOF(E.group))) {
 			FONTEFFECT temp;
 			UpdateEffectSettings(effect_id, &temp);
 
@@ -532,7 +535,7 @@ INT_PTR GetEffectW(WPARAM wParam, LPARAM lParam)
 INT_PTR GetEffect(WPARAM wParam, LPARAM lParam)
 {
 	EffectIDW temp;
-	if ( !ConvertEffectID((EffectID*)wParam, &temp)) return -1;
+	if (!ConvertEffectID((EffectID*)wParam, &temp)) return -1;
 	return sttGetEffectWorker(&temp, (FONTEFFECT*)lParam);
 }
 

@@ -109,10 +109,10 @@ int InitAccount(HACCOUNT Which)
 	SWMRGInitialize(Which->MessagesAccessSO,NULL);
 
 //zero memory, where timestamps are stored
-	ZeroMemory(&Which->LastChecked,sizeof(Which->LastChecked));
-	ZeroMemory(&Which->LastSChecked,sizeof(Which->LastSChecked));
-	ZeroMemory(&Which->LastSynchronised,sizeof(Which->LastSynchronised));
-	ZeroMemory(&Which->LastMail,sizeof(Which->LastMail));
+	memset(&Which->LastChecked, 0, sizeof(Which->LastChecked));
+	memset(&Which->LastSChecked, 0, sizeof(Which->LastSChecked));
+	memset(&Which->LastSynchronised, 0, sizeof(Which->LastSynchronised));
+	memset(&Which->LastMail, 0, sizeof(Which->LastMail));
 
 	Which->Name=NULL;
 	Which->Mails=NULL;
@@ -132,14 +132,15 @@ void DeInitAccount(HACCOUNT Which)
 //delete YAMN allocated fields
 	if (Which->Name != NULL)
 		delete[] Which->Name;
-	if (Which->Server->Name != NULL)
-		delete[] Which->Server->Name;
-	if (Which->Server->Login != NULL)
-		delete[] Which->Server->Login;
-	if (Which->Server->Passwd != NULL)
-		delete[] Which->Server->Passwd;
-	if (Which->Server != NULL)
+	if (Which->Server != NULL) {
+		if (Which->Server->Name != NULL)
+			delete[] Which->Server->Name;
+		if (Which->Server->Login != NULL)
+			delete[] Which->Server->Login;
+		if (Which->Server->Passwd != NULL)
+			delete[] Which->Server->Passwd;
 		delete[] Which->Server;
+	}
 
 	SWMRGDelete(Which->AccountAccessSO);
 	delete Which->AccountAccessSO;
@@ -1249,7 +1250,7 @@ void WINAPI GetStatusFcn(HACCOUNT Which,TCHAR *Value)
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"\tGetStatus:AccountStatusCS-cs enter\n");
 #endif
-	lstrcpy(Value,Which->Status);
+	mir_tstrcpy(Value,Which->Status);
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"\tGetStatus:AccountStatusCS-cs done\n");
 #endif
@@ -1269,7 +1270,7 @@ void WINAPI SetStatusFcn(HACCOUNT Which,TCHAR *Value)
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"\tSetStatus:AccountStatusCS-cs enter\n");
 #endif
-	lstrcpy(Which->Status,Value);
+	mir_tstrcpy(Which->Status,Value);
 	WindowList_BroadcastAsync(YAMNVar.MessageWnds,WM_YAMN_CHANGESTATUS,(WPARAM)Which,0);
 #ifdef DEBUG_SYNCHRO
 	DebugLog(SynchroFile,"\tSetStatus:AccountStatusCS-cs done\n");

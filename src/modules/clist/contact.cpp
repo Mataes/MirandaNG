@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -44,18 +45,18 @@ static const struct {
 	{ID_STATUS_ONTHEPHONE, 150},
 	{ID_STATUS_OUTTOLUNCH, 425}};
 
-static int GetContactStatus(HANDLE hContact)
+static int GetContactStatus(MCONTACT hContact)
 {
-	char* szProto = GetContactProto(hContact);
+	char *szProto = GetContactProto(hContact);
 	if (szProto == NULL)
 		return ID_STATUS_OFFLINE;
 	return db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE);
 }
 
-void fnChangeContactIcon(HANDLE hContact, int iIcon, int add)
+void fnChangeContactIcon(MCONTACT hContact, int iIcon, int add)
 {
-	CallService(add ? MS_CLUI_CONTACTADDED : MS_CLUI_CONTACTSETICON, (WPARAM) hContact, iIcon);
-	NotifyEventHooks(hContactIconChangedEvent, (WPARAM) hContact, iIcon);
+	CallService(add ? MS_CLUI_CONTACTADDED : MS_CLUI_CONTACTSETICON, hContact, iIcon);
+	NotifyEventHooks(hContactIconChangedEvent, hContact, iIcon);
 }
 
 int GetStatusModeOrdering(int statusMode)
@@ -77,9 +78,9 @@ void fnLoadContactTree(void)
 	}
 
 	int hideOffline = db_get_b(NULL, "CList", "HideOffline", SETTING_HIDEOFFLINE_DEFAULT);
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		int status = GetContactStatus(hContact);
-		if (( !hideOffline || status != ID_STATUS_OFFLINE) && !db_get_b(hContact, "CList", "Hidden", 0))
+		if ((!hideOffline || status != ID_STATUS_OFFLINE) && !db_get_b(hContact, "CList", "Hidden", 0))
 			cli.pfnChangeContactIcon(hContact, cli.pfnIconFromStatusMode(GetContactProto(hContact), status, hContact), 1);
 	}
 	sortByStatus = db_get_b(NULL, "CList", "SortByStatus", SETTING_SORTBYSTATUS_DEFAULT);
@@ -89,13 +90,13 @@ void fnLoadContactTree(void)
 
 int fnCompareContacts(const ClcContact* c1, const ClcContact* c2)
 {
-	HANDLE a = c1->hContact, b = c2->hContact;
+	MCONTACT a = c1->hContact, b = c2->hContact;
 	TCHAR namea[128], *nameb;
 	int statusa, statusb;
 	int rc;
 
-	statusa = db_get_w((HANDLE) a, c1->proto, "Status", ID_STATUS_OFFLINE);
-	statusb = db_get_w((HANDLE) b, c2->proto, "Status", ID_STATUS_OFFLINE);
+	statusa = db_get_w(a, c1->proto, "Status", ID_STATUS_OFFLINE);
+	statusb = db_get_w(b, c2->proto, "Status", ID_STATUS_OFFLINE);
 
 	if (sortByProto) {
 		/* deal with statuses, online contacts have to go above offline */
@@ -103,24 +104,24 @@ int fnCompareContacts(const ClcContact* c1, const ClcContact* c2)
 			return 2 * (statusa == ID_STATUS_OFFLINE) - 1;
 		}
 		/* both are online, now check protocols */
-		rc = lstrcmpA(c1->proto, c2->proto);
-		if (rc != 0 && (c1->proto != NULL && c2->proto != NULL))
-			return rc;
+		if (c1->proto != NULL && c2->proto != NULL) {
+			rc = mir_strcmp(c1->proto, c2->proto);
+			if (rc != 0)
+				return rc;
+		}
 		/* protocols are the same, order by display name */
 	}
 
 	if (sortByStatus) {
-		int ordera, orderb;
-		ordera = GetStatusModeOrdering(statusa);
-		orderb = GetStatusModeOrdering(statusb);
+		int ordera = GetStatusModeOrdering(statusa);
+		int orderb = GetStatusModeOrdering(statusb);
 		if (ordera != orderb)
 			return ordera - orderb;
 	}
 	else {
 		//one is offline: offline goes below online
-		if ((statusa == ID_STATUS_OFFLINE) != (statusb == ID_STATUS_OFFLINE)) {
+		if ((statusa == ID_STATUS_OFFLINE) != (statusb == ID_STATUS_OFFLINE))
 			return 2 * (statusa == ID_STATUS_OFFLINE) - 1;
-		}
 	}
 
 	nameb = cli.pfnGetContactDisplayName(a, 0);
@@ -145,13 +146,13 @@ INT_PTR ContactChangeGroup(WPARAM wParam, LPARAM lParam)
 
 	CallService(MS_CLUI_CONTACTDELETED, wParam, 0);
 	if ((HANDLE) lParam == NULL)
-		db_unset((HANDLE)wParam, "CList", "Group");
+		db_unset(wParam, "CList", "Group");
 	else {
 		grpChg.pszNewName = cli.pfnGetGroupName(lParam, NULL);
-		db_set_ts((HANDLE)wParam, "CList", "Group", grpChg.pszNewName);
+		db_set_ts(wParam, "CList", "Group", grpChg.pszNewName);
 	}
 	CallService(MS_CLUI_CONTACTADDED, wParam,
-		cli.pfnIconFromStatusMode(GetContactProto((HANDLE)wParam), GetContactStatus((HANDLE)wParam), (HANDLE)wParam));
+		cli.pfnIconFromStatusMode(GetContactProto(wParam), GetContactStatus(wParam), wParam));
 
 	NotifyEventHooks(hGroupChangeEvent, wParam, (LPARAM)&grpChg);
 	return 0;

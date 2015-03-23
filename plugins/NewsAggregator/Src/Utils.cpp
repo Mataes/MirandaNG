@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright (C) 2012 Mataes
 
 This is free software; you can redistribute it and/or
@@ -14,21 +14,21 @@ Library General Public License for more details.
 You should have received a copy of the GNU Library General Public
 License along with this file; see the file license.txt.  If
 not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  
+Boston, MA 02111-1307, USA.
 */
 
 #include "common.h"
 
 HANDLE hNetlibUser = NULL, hNetlibHttp;
-BOOL UpdateListFlag = FALSE;
+bool UpdateListFlag = FALSE;
 
-BOOL IsMyContact(HANDLE hContact)
+bool IsMyContact(MCONTACT hContact)
 {
 	const char *szProto = GetContactProto(hContact);
 	return szProto != NULL && strcmp(MODULE, szProto) == 0;
 }
 
-VOID NetlibInit()
+void NetlibInit()
 {
 	NETLIBUSER nlu = { sizeof(nlu) };
 	nlu.flags = NUF_OUTGOING | NUF_INCOMING | NUF_HTTPCONNS | NUF_TCHAR;	// | NUF_HTTPGATEWAY;
@@ -37,59 +37,44 @@ VOID NetlibInit()
 	hNetlibUser = (HANDLE)CallService(MS_NETLIB_REGISTERUSER, 0, (LPARAM)&nlu);
 }
 
-VOID NetlibUnInit()
+void NetlibUnInit()
 {
 	Netlib_CloseHandle(hNetlibUser);
 	hNetlibUser = NULL;
 }
 
-static void arrayToHex(BYTE *data, size_t datasz, char *res)
+void GetNewsData(TCHAR *tszUrl, char **szData, MCONTACT hContact, HWND hwndDlg)
 {
-	char *resptr = res;
-	for (unsigned i = 0; i < datasz ; i++) {
-		const BYTE ch = data[i];
-
-		const char ch0 = (char)(ch >> 4);
-		*resptr++ = (char)((ch0 <= 9) ? ('0' + ch0) : (('a' - 10) + ch0));
-
-		const char ch1 = (char)(ch & 0xF);
-		*resptr++ = (char)((ch1 <= 9) ? ('0' + ch1) : (('a' - 10) + ch1));
-	}
-	*resptr = '\0';
-} 
-
-VOID GetNewsData(TCHAR *tszUrl, char **szData, HANDLE hContact, HWND hwndDlg)
-{
-	NETLIBHTTPREQUEST nlhr = {0};
+	Netlib_LogfT(hNetlibUser, _T("Getting feed data %s."), tszUrl);
+	NETLIBHTTPREQUEST nlhr = { 0 };
 
 	// initialize the netlib request
 	nlhr.cbSize = sizeof(nlhr);
 	nlhr.requestType = REQUEST_GET;
 	nlhr.flags = NLHRF_DUMPASTEXT | NLHRF_HTTP11 | NLHRF_REDIRECT;
-	if ( _tcsstr(tszUrl, _T("https://")) != NULL)
+	if (_tcsstr(tszUrl, _T("https://")) != NULL)
 		nlhr.flags |= NLHRF_SSL;
 	char *szUrl = mir_t2a(tszUrl);
 	nlhr.szUrl = szUrl;
 	nlhr.nlc = hNetlibHttp;
 
 	// change the header so the plugin is pretended to be IE 6 + WinXP
-	if (db_get_b(hContact, MODULE, "UseAuth", 0) || IsDlgButtonChecked(hwndDlg, IDC_USEAUTH))
-		nlhr.headersCount = 5;
-	else
-		nlhr.headersCount = 4;
-	nlhr.headers = (NETLIBHTTPHEADER *)mir_alloc(sizeof(NETLIBHTTPHEADER) * nlhr.headersCount);
-	nlhr.headers[0].szName  = "User-Agent";
-	nlhr.headers[0].szValue = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)";
-	nlhr.headers[1].szName  = "Cache-Control";
+	NETLIBHTTPHEADER headers[5];
+	nlhr.headersCount = 4;
+	nlhr.headers = headers;
+	nlhr.headers[0].szName = "User-Agent";
+	nlhr.headers[0].szValue = NETLIB_USER_AGENT;
+	nlhr.headers[1].szName = "Cache-Control";
 	nlhr.headers[1].szValue = "no-cache";
-	nlhr.headers[2].szName  = "Pragma";
+	nlhr.headers[2].szName = "Pragma";
 	nlhr.headers[2].szValue = "no-cache";
-	nlhr.headers[3].szName  = "Connection";
+	nlhr.headers[3].szName = "Connection";
 	nlhr.headers[3].szValue = "close";
+	char auth[256];
 	if (db_get_b(hContact, MODULE, "UseAuth", 0) || IsDlgButtonChecked(hwndDlg, IDC_USEAUTH)) {
-		nlhr.headers[4].szName  = "Authorization";
-	
-		char auth[256];
+		nlhr.headersCount++;
+		nlhr.headers[4].szName = "Authorization";
+
 		CreateAuthString(auth, hContact, hwndDlg);
 		nlhr.headers[4].szValue = auth;
 	}
@@ -99,43 +84,35 @@ VOID GetNewsData(TCHAR *tszUrl, char **szData, HANDLE hContact, HWND hwndDlg)
 	if (nlhrReply) {
 		// if the recieved code is 200 OK
 		if (nlhrReply->resultCode == 200 && nlhrReply->dataLength > 0) {
+			Netlib_LogfT(hNetlibUser, _T("Code 200: Succeeded getting feed data %s."), tszUrl);
 			// allocate memory and save the retrieved data
-			*szData = (char *)mir_alloc(nlhrReply->dataLength + 2);
-			memcpy(*szData, nlhrReply->pData, nlhrReply->dataLength);
+			*szData = (char *)mir_alloc((size_t)(nlhrReply->dataLength + 2));
+			memcpy(*szData, nlhrReply->pData, (size_t)nlhrReply->dataLength);
 			(*szData)[nlhrReply->dataLength] = 0;
 		}
-		else if (nlhrReply->resultCode == 401)
-		{
-			ItemInfo SelItem = {0};
+		else if (nlhrReply->resultCode == 401) {
+			Netlib_LogfT(hNetlibUser, _T("Code 401: feed %s needs auth data."), tszUrl);
+			ItemInfo SelItem = { 0 };
 			SelItem.hwndList = hwndDlg;
 			SelItem.hContact = hContact;
 			if (DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_AUTHENTICATION), hwndDlg, AuthenticationProc, (LPARAM)&SelItem) == IDOK)
-			{
 				GetNewsData(tszUrl, szData, hContact, hwndDlg);
-			}
 		}
+		else
+			Netlib_LogfT(hNetlibUser, _T("Code %d: Failed getting feed data %s."), nlhrReply->resultCode, tszUrl);
 		CallService(MS_NETLIB_FREEHTTPREQUESTSTRUCT, 0, (LPARAM)nlhrReply);
-	} else {
-		if (nlhr.resultCode == 401) {
-			ItemInfo SelItem = {0};
-			SelItem.hwndList = hwndDlg;
-			SelItem.hContact = hContact;
-			if (DialogBoxParam(hInst, MAKEINTRESOURCE(IDD_AUTHENTICATION), hwndDlg, AuthenticationProc, (LPARAM)&SelItem) == IDOK)
-			{
-				GetNewsData(tszUrl, szData, hContact, hwndDlg);
-			}
-		}
 	}
+	else
+		Netlib_LogfT(hNetlibUser, _T("Failed getting feed data %s, no response."), tszUrl);
 
 	mir_free(szUrl);
-	mir_free(nlhr.headers);
 }
 
-VOID CreateList(HWND hwndList)
+void CreateList(HWND hwndList)
 {
-	SendMessage(hwndList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, LVS_EX_FULLROWSELECT | LVS_EX_CHECKBOXES);	
+	SendMessage(hwndList, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, LVS_EX_FULLROWSELECT | LVS_EX_CHECKBOXES);
 
-	LVCOLUMN lvc = {0};
+	LVCOLUMN lvc = { 0 };
 	// Initialize the LVCOLUMN structure.
 	// The mask specifies that the format, width, text, and
 	// subitem members of the structure are valid.
@@ -153,44 +130,45 @@ VOID CreateList(HWND hwndList)
 	ListView_InsertColumn(hwndList, 1, &lvc);
 }
 
-VOID UpdateList(HWND hwndList)
+void UpdateList(HWND hwndList)
 {
-	LVITEM lvI = {0};
+	LVITEM lvI = { 0 };
 
 	// Some code to create the list-view control.
 	// Initialize LVITEM members that are common to all
 	// items.
 	int i = 0;
-	for (HANDLE hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
+	for (MCONTACT hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
 		UpdateListFlag = TRUE;
 		lvI.mask = LVIF_TEXT;
 		lvI.iSubItem = 0;
-		DBVARIANT dbNick = {0};
-		if (!db_get_ts(hContact, MODULE, "Nick", &dbNick)) {
-			lvI.pszText = dbNick.ptszVal;
+		TCHAR *ptszNick = db_get_tsa(hContact, MODULE, "Nick");
+		if (ptszNick) {
+			lvI.pszText = ptszNick;
 			lvI.iItem = i;
 			ListView_InsertItem(hwndList, &lvI);
 			lvI.iSubItem = 1;
-			DBVARIANT dbURL = {0};
-			if (!db_get_ts(hContact, MODULE, "URL", &dbURL)) {
-				lvI.pszText = dbURL.ptszVal;
+
+			TCHAR *ptszURL = db_get_tsa(hContact, MODULE, "URL");
+			if (ptszURL) {
+				lvI.pszText = ptszURL;
 				ListView_SetItem(hwndList, &lvI);
-				i += 1;
+				i++;
 				ListView_SetCheckState(hwndList, lvI.iItem, db_get_b(hContact, MODULE, "CheckState", 1));
-				db_free(&dbURL);
+				mir_free(ptszURL);
 			}
-			db_free(&dbNick);
+			mir_free(ptszNick);
 		}
 	}
 	UpdateListFlag = FALSE;
 }
 
-VOID DeleteAllItems(HWND hwndList)
+void DeleteAllItems(HWND hwndList)
 {
 	ListView_DeleteAllItems(hwndList);
 }
 
-time_t __stdcall DateToUnixTime(TCHAR *stamp, BOOL FeedType)
+time_t __stdcall DateToUnixTime(const TCHAR *stamp, bool FeedType)
 {
 	struct tm timestamp;
 	TCHAR date[9];
@@ -200,7 +178,7 @@ time_t __stdcall DateToUnixTime(TCHAR *stamp, BOOL FeedType)
 	if (stamp == NULL)
 		return 0;
 
-	TCHAR *p = stamp;
+	TCHAR *p = NEWTSTR_ALLOCA(stamp);
 
 	if (FeedType) {
 		// skip '-' chars
@@ -208,55 +186,61 @@ time_t __stdcall DateToUnixTime(TCHAR *stamp, BOOL FeedType)
 		while (true) {
 			if (p[si] == _T('-'))
 				si++;
-			else if ( !(p[sj++] = p[si++]))
+			else if (!(p[sj++] = p[si++]))
 				break;
 		}
 	}
 	else {
-		TCHAR weekday[4], monthstr[4], timezonesign[2];
-		INT day, month, year, hour, min, sec, timezoneh, timezonem;
+		TCHAR *weekday, monthstr[4], timezonesign[2];
+		int day, month = 0, year, hour, min, sec, timezoneh, timezonem;
 		if (_tcsstr(p, _T(","))) {
-			_stscanf( p, _T("%3s, %d %3s %d %d:%d:%d %1s%02d%02d"), &weekday, &day, &monthstr, &year, &hour, &min, &sec, &timezonesign, &timezoneh, &timezonem);
-			if (!lstrcmpi(monthstr, _T("Jan")))
+			weekday = _tcstok(p, _T(","));
+			p = _tcstok(NULL, _T(","));
+			_stscanf(p + 1, _T("%d %3s %d %d:%d:%d %1s%02d%02d"), &day, &monthstr, &year, &hour, &min, &sec, &timezonesign, &timezoneh, &timezonem);
+			if (!mir_tstrcmpi(monthstr, _T("Jan")))
 				month = 1;
-			if (!lstrcmpi(monthstr, _T("Feb")))
+			if (!mir_tstrcmpi(monthstr, _T("Feb")))
 				month = 2;
-			if (!lstrcmpi(monthstr, _T("Mar")))
+			if (!mir_tstrcmpi(monthstr, _T("Mar")))
 				month = 3;
-			if (!lstrcmpi(monthstr, _T("Apr")))
+			if (!mir_tstrcmpi(monthstr, _T("Apr")))
 				month = 4;
-			if (!lstrcmpi(monthstr, _T("May")))
+			if (!mir_tstrcmpi(monthstr, _T("May")))
 				month = 5;
-			if (!lstrcmpi(monthstr, _T("Jun")))
+			if (!mir_tstrcmpi(monthstr, _T("Jun")))
 				month = 6;
-			if (!lstrcmpi(monthstr, _T("Jul")))
+			if (!mir_tstrcmpi(monthstr, _T("Jul")))
 				month = 7;
-			if (!lstrcmpi(monthstr, _T("Aug")))
+			if (!mir_tstrcmpi(monthstr, _T("Aug")))
 				month = 8;
-			if (!lstrcmpi(monthstr, _T("Sep")))
+			if (!mir_tstrcmpi(monthstr, _T("Sep")))
 				month = 9;
-			if (!lstrcmpi(monthstr, _T("Oct")))
+			if (!mir_tstrcmpi(monthstr, _T("Oct")))
 				month = 10;
-			if (!lstrcmpi(monthstr, _T("Nov")))
+			if (!mir_tstrcmpi(monthstr, _T("Nov")))
 				month = 11;
-			if (!lstrcmpi(monthstr, _T("Dec")))
+			if (!mir_tstrcmpi(monthstr, _T("Dec")))
 				month = 12;
 			if (year < 2000)
 				year += 2000;
-			if (!lstrcmp(timezonesign, _T("+")))
-				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour-timezoneh, min-timezonem, sec);
-			else if (!lstrcmp(timezonesign, _T("-")))
-				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour+timezoneh, min+timezonem, sec);
+			if (!mir_tstrcmp(timezonesign, _T("+")))
+				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour - timezoneh, min - timezonem, sec);
+			else if (!mir_tstrcmp(timezonesign, _T("-")))
+				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour + timezoneh, min + timezonem, sec);
 			else
 				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour, min, sec);
 		}
+		else if (_tcsstr(p, _T("T"))) {
+			_stscanf(p, _T("%d-%d-%dT%d:%d:%d"), &year, &month, &day, &hour, &min, &sec);
+			mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour, min, sec);
+		}
 		else
 		{
-			_stscanf( p, _T("%d-%d-%d %d:%d:%d %1s%02d%02d"), &year, &month, &day,  &hour, &min, &sec, &timezonesign, &timezoneh, &timezonem);
-			if (!lstrcmp(timezonesign, _T("+")))
-				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour-timezoneh, min-timezonem, sec);
-			else if (!lstrcmp(timezonesign, _T("-")))
-				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour+timezoneh, min+timezonem, sec);
+			_stscanf(p, _T("%d-%d-%d %d:%d:%d %1s%02d%02d"), &year, &month, &day, &hour, &min, &sec, &timezonesign, &timezoneh, &timezonem);
+			if (!mir_tstrcmp(timezonesign, _T("+")))
+				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour - timezoneh, min - timezonem, sec);
+			else if (!mir_tstrcmp(timezonesign, _T("-")))
+				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour + timezoneh, min + timezonem, sec);
 			else
 				mir_sntprintf(p, 4 + 2 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1, _T("%04d%02d%02dT%02d:%02d:%02d"), year, month, day, hour, min, sec);
 		}
@@ -268,7 +252,7 @@ time_t __stdcall DateToUnixTime(TCHAR *stamp, BOOL FeedType)
 	// Parse year
 	if (i == 6) {
 		// 2-digit year ( 1970-2069 )
-		y = (date[0] - '0' ) * 10 + (date[1] - '0');
+		y = (date[0] - '0') * 10 + (date[1] - '0');
 		if (y < 70)
 			y += 100;
 	}
@@ -296,7 +280,7 @@ time_t __stdcall DateToUnixTime(TCHAR *stamp, BOOL FeedType)
 	t = mktime(&timestamp);
 
 	_tzset();
-	t -= _timezone;
+	t -= (time_t)_timezone;
 	return (t >= 0) ? t : 0;
 }
 
@@ -319,7 +303,7 @@ TCHAR * _tcsistr(const TCHAR *str, const TCHAR *substr)
 	return (TCHAR *)str;
 }
 
-int StrReplace(TCHAR *lpszOld, TCHAR *lpszNew, TCHAR *&lpszStr)
+int StrReplace(TCHAR *lpszOld, const TCHAR *lpszNew, TCHAR *&lpszStr)
 {
 	if (!lpszStr || !lpszOld || !lpszNew)
 		return 0;
@@ -335,7 +319,7 @@ int StrReplace(TCHAR *lpszOld, TCHAR *lpszNew, TCHAR *&lpszStr)
 	size_t nNewLen = _tcslen(lpszNew);
 
 	// loop once to figure out the size of the result string
-	int nCount = 0;
+	size_t nCount = 0;
 	TCHAR *pszStart = (TCHAR *)lpszStr;
 	TCHAR *pszEnd = (TCHAR *)lpszStr + nStrLen;
 	TCHAR *pszTarget = NULL;
@@ -353,8 +337,8 @@ int StrReplace(TCHAR *lpszOld, TCHAR *lpszNew, TCHAR *&lpszStr)
 	if (nCount > 0) {
 		// allocate buffer for result string
 		size_t nResultStrSize = nStrLen + (nNewLen - nOldLen) * nCount + 2;
-		pszResultStr = new TCHAR [nResultStrSize];
-		ZeroMemory(pszResultStr, nResultStrSize * sizeof(TCHAR));
+		pszResultStr = new TCHAR[nResultStrSize];
+		memset(pszResultStr, 0, (nResultStrSize * sizeof(TCHAR)));
 
 		pszStart = (TCHAR *)lpszStr;
 		pszEnd = (TCHAR *)lpszStr + nStrLen;
@@ -363,7 +347,7 @@ int StrReplace(TCHAR *lpszOld, TCHAR *lpszNew, TCHAR *&lpszStr)
 		// loop again to actually do the work
 		while (pszStart < pszEnd) {
 			while ((pszTarget = _tcsistr(pszStart, lpszOld)) != NULL) {
-				int nCopyLen = (int)(pszTarget - pszStart);
+				size_t nCopyLen = (size_t)(pszTarget - pszStart);
 				_tcsncpy(cp, &lpszStr[pszStart - lpszStr], nCopyLen);
 
 				cp += nCopyLen;
@@ -385,27 +369,25 @@ int StrReplace(TCHAR *lpszOld, TCHAR *lpszNew, TCHAR *&lpszStr)
 	int nSize = 0;
 	if (pszResultStr) {
 		nSize = (int)_tcslen(pszResultStr);
-		delete [] pszResultStr;
+		delete[] pszResultStr;
 	}
 
 	return nSize;
 }
 
-BOOL DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal)
+bool DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal)
 {
-	HANDLE hFile = NULL;
-	DWORD dwBytes;
-
-	NETLIBHTTPREQUEST nlhr = {0};
+	NETLIBHTTPREQUEST nlhr = { 0 };
 	nlhr.cbSize = sizeof(nlhr);
 	nlhr.requestType = REQUEST_GET;
 	nlhr.flags = NLHRF_DUMPASTEXT | NLHRF_HTTP11;
 	char *szUrl = mir_t2a(tszURL);
 	nlhr.szUrl = szUrl;
+	NETLIBHTTPHEADER headers[4];
 	nlhr.headersCount = 4;
-	nlhr.headers=(NETLIBHTTPHEADER *)mir_alloc(sizeof(NETLIBHTTPHEADER) * nlhr.headersCount);
+	nlhr.headers = headers;
 	nlhr.headers[0].szName = "User-Agent";
-	nlhr.headers[0].szValue = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)";
+	nlhr.headers[0].szValue = NETLIB_USER_AGENT;
 	nlhr.headers[1].szName = "Connection";
 	nlhr.headers[1].szValue = "close";
 	nlhr.headers[2].szName = "Cache-Control";
@@ -419,11 +401,11 @@ BOOL DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal)
 		if ((200 == pReply->resultCode) && (pReply->dataLength > 0)) {
 			char *date = NULL, *size = NULL;
 			for (int i = 0; i < pReply->headersCount; i++) {
-				if (!lstrcmpiA(pReply->headers[i].szName, "Last-Modified")) {
+				if (!mir_strcmpi(pReply->headers[i].szName, "Last-Modified")) {
 					date = pReply->headers[i].szValue;
 					continue;
 				}
-				if (!lstrcmpiA(pReply->headers[i].szName, "Content-Length")) {
+				else if (!mir_strcmpi(pReply->headers[i].szName, "Content-Length")) {
 					size = pReply->headers[i].szValue;
 					continue;
 				}
@@ -439,39 +421,44 @@ BOOL DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal)
 					time_t modtime = DateToUnixTime(tdate, 0);
 					time_t filemodtime = mktime(localtime(&buf.st_atime));
 					if (modtime > filemodtime && buf.st_size != _ttoi(tsize)) {
-						hFile = CreateFile(tszLocal, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+						DWORD dwBytes;
+						HANDLE hFile = CreateFile(tszLocal, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 						WriteFile(hFile, pReply->pData, (DWORD)pReply->dataLength, &dwBytes, NULL);
 						ret = true;
+						if (hFile)
+							CloseHandle(hFile);
 					}
 					_close(fh);
 				}
 				else {
-					hFile = CreateFile(tszLocal, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+					DWORD dwBytes;
+					HANDLE hFile = CreateFile(tszLocal, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 					WriteFile(hFile, pReply->pData, (DWORD)pReply->dataLength, &dwBytes, NULL);
 					ret = true;
+					if (hFile)
+						CloseHandle(hFile);
 				}
 				mir_free(tdate);
 				mir_free(tsize);
 			}
 			else {
-				hFile = CreateFile(tszLocal, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				DWORD dwBytes;
+				HANDLE hFile = CreateFile(tszLocal, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 				WriteFile(hFile, pReply->pData, (DWORD)pReply->dataLength, &dwBytes, NULL);
 				ret = true;
+				if (hFile)
+					CloseHandle(hFile);
 			}
 		}
 		CallService(MS_NETLIB_FREEHTTPREQUESTSTRUCT, 0, (LPARAM)pReply);
 	}
 
 	mir_free(szUrl);
-	mir_free(nlhr.headers);
-
-	if (hFile)
-		CloseHandle(hFile);
 
 	return ret;
 }
 
-typedef HRESULT (MarkupCallback)(IHTMLDocument3 *, BSTR &message);
+typedef HRESULT(MarkupCallback)(IHTMLDocument3 *, BSTR &message);
 
 HRESULT TestMarkupServices(BSTR bstrHtml, MarkupCallback *pCallback, BSTR &message)
 {
@@ -485,7 +472,7 @@ HRESULT TestMarkupServices(BSTR bstrHtml, MarkupCallback *pCallback, BSTR &messa
 		HRESULT hr = pHtmlDocRoot->QueryInterface(IID_PPV_ARGS(&pPersistStreamInit));
 		if (SUCCEEDED(hr)) {
 			// Initialize the root document to a default state -- ready for parsing.
-			hr = pPersistStreamInit->InitNew();
+			pPersistStreamInit->InitNew();
 
 			IMarkupServices *pMarkupServices = NULL;
 			hr = pHtmlDocRoot->QueryInterface(IID_PPV_ARGS(&pMarkupServices));
@@ -555,38 +542,39 @@ HRESULT TestDocumentText(IHTMLDocument3 *pHtmlDoc, BSTR &message)
 	return hr;
 }
 
-VOID ClearText(TCHAR *&message)
+LPCTSTR ClearText(CMString &result, const TCHAR *message)
 {
-	CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
-	BSTR bstrHtml = SysAllocString(message), bstrRes = SysAllocString(L"");
+	BSTR bstrHtml = SysAllocString(message), bstrRes = SysAllocString(_T(""));
 	HRESULT hr = TestMarkupServices(bstrHtml, &TestDocumentText, bstrRes);
-	if ( SUCCEEDED(hr)) {
-		replaceStrT(message, bstrRes);
-		SysFreeString(bstrRes);
-	}
+	if (SUCCEEDED(hr))
+		result = bstrRes;
+	else
+		result = message;
 	SysFreeString(bstrHtml);
-	CoUninitialize();
+	SysFreeString(bstrRes);
+
+	return result;
 }
 
-HANDLE GetContactByNick(const TCHAR *nick)
+MCONTACT GetContactByNick(const TCHAR *nick)
 {
-	HANDLE hContact = NULL;
+	MCONTACT hContact = NULL;
 
 	for (hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
 		ptrW contactNick(::db_get_wsa(hContact, MODULE, "Nick"));
-		if (!lstrcmpi(contactNick, nick))
+		if (!mir_tstrcmpi(contactNick, nick))
 			break;
 	}
 	return hContact;
 }
 
-HANDLE GetContactByURL(const TCHAR *url)
+MCONTACT GetContactByURL(const TCHAR *url)
 {
-	HANDLE hContact = NULL;
+	MCONTACT hContact = NULL;
 
 	for (hContact = db_find_first(MODULE); hContact; hContact = db_find_next(hContact, MODULE)) {
 		ptrW contactURL(::db_get_wsa(hContact, MODULE, "URL"));
-		if (!lstrcmpi(contactURL, url))
+		if (!mir_tstrcmpi(contactURL, url))
 			break;
 	}
 	return hContact;

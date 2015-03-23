@@ -1,6 +1,9 @@
 {}
 var
+  doTray:bool;
+var
   trayradioparent:THANDLE;
+  trayprotoh:THANDLE;
   trayparent:THANDLE;
   traymute  :THANDLE;
   trayplay  :THANDLE;
@@ -79,7 +82,7 @@ begin
     begin
       mFreeMem(tmp.name);
       DestroyServiceFunction(tmp.service);
-      CallService(MS_CLIST_REMOVETRAYMENUITEM,tmp.menuitem,0);
+      CallService(MO_REMOVEMENUITEM,tmp.menuitem,0);
       mFreeMem(tmp);
       List_Remove(@trayStations,i);
     end;
@@ -101,7 +104,10 @@ begin
       mi.position  :=i;
       mi.pszService:=@buf;
       mi.szName.w  :=tmp.name;
-      tmp.menuitem:=Menu_AddTrayMenuItem(@mi);
+      if doTray then
+        tmp.menuitem:=Menu_AddTrayMenuItem(@mi)
+      else
+        tmp.menuitem:=Menu_AddMainMenuItem(@mi);
     end;
   end;
 end;
@@ -116,66 +122,152 @@ begin
   result:=CallService(MS_RADIO_COMMAND,MRC_STOP,0);
 end;
 
-procedure CreateTrayMenu();
+function TrayProto(wParam:WPARAM;lParam:LPARAM):int_ptr; cdecl;
+begin
+  if PluginStatus=ID_STATUS_ONLINE then
+    wParam:=ID_STATUS_OFFLINE
+  else
+    wParam:=ID_STATUS_ONLINE;
+  result:=Service_SetStatus(wParam,lParam);
+end;
+
+procedure CreateTrayMenu;
 var
   mi:TCListMenuItem;
   playstr:pWideChar;
+  ico:pAnsiChar;
 begin
   FillChar(mi, sizeof(mi), 0);
   mi.cbSize  :=sizeof(mi);
   mi.flags   :=CMIF_UNICODE;
   mi.szName.w:=cPluginName;
   mi.hIcon   :=CallService(MS_SKIN2_GETICON,0,lparam(IcoBtnSettings));
-  trayradioparent:=Menu_AddTrayMenuItem(@mi);
+  if doTray then
+    trayradioparent:=Menu_AddTrayMenuItem(@mi)
+  else
+    trayradioparent:=Menu_AddMainMenuItem(@mi);
 
   FillChar(mi, sizeof(mi), 0);
   mi.cbSize  :=sizeof(mi);
   mi.szPopupName:=TChar(trayradioparent);
 
-  if gVolume<0 then
-    mi.flags:=CMIF_UNICODE or CMIF_ROOTHANDLE or CMIF_CHECKED
+  if PluginStatus=ID_STATUS_ONLINE then
+  begin
+    mi.szName.w  :='mRadio off';
+  end
   else
+  begin
+    mi.szName.w  :='mRadio on';
+  end;
+  mi.flags:=CMIF_UNICODE or CMIF_ROOTHANDLE;
+  mi.position  :=0;
+  srvtraystop:=CreateServiceFunction('mRadio/TrayProto',@TrayProto);
+  mi.pszService:='mRadio/TrayProto';
+  if doTray then
+    trayprotoh:=Menu_AddTrayMenuItem(@mi)
+  else
+    trayprotoh:=Menu_AddMainMenuItem(@mi);
+
+  if gVolume<0 then
+  begin
+    mi.flags:=CMIF_UNICODE or CMIF_ROOTHANDLE or CMIF_CHECKED;
+    ico:=IcoBtnOff;
+  end
+  else
+  begin
     mi.flags:=CMIF_UNICODE or CMIF_ROOTHANDLE;
+    ico:=IcoBtnOn;
+  end;
+  mi.hIcon     :=CallService(MS_SKIN2_GETICON,0,tlparam(ico));
   mi.szName.w  :='Mute';
   mi.pszService:=MS_RADIO_MUTE;
   mi.position  :=1;
-  traymute:=Menu_AddTrayMenuItem(@mi);
+  if doTray then
+    traymute:=Menu_AddTrayMenuItem(@mi)
+  else
+    traymute:=Menu_AddMainMenuItem(@mi);
 
+  mi.hIcon:=0;
   mi.flags:=CMIF_UNICODE or CMIF_ROOTHANDLE;
   if CallService(MS_RADIO_COMMAND,MRC_STATUS,RD_STATUS_GET)<>RD_STATUS_PLAYING then
+  begin
     playstr:='Play'
+  end
   else
+  begin
     playstr:='Pause';
+  end;
+//  mi.hIcon:=CallService(MS_SKIN2_GETICON,0,tlparam(ico));
   mi.szName.w  :=playstr;
   mi.position  :=2;
   srvtrayplaypause:=CreateServiceFunction('mRadio/TrayPlayPause',@TrayPlayPause);
   mi.pszService:='mRadio/TrayPlayPause';
-  trayplay:=Menu_AddTrayMenuItem(@mi);
+  if doTray then
+    trayplay:=Menu_AddTrayMenuItem(@mi)
+  else
+    trayplay:=Menu_AddTrayMenuItem(@mi);
 
   mi.szName.w  :='Stop';
   mi.position  :=3;
   srvtraystop:=CreateServiceFunction('mRadio/TrayStop',@TrayStop);
   mi.pszService:='mRadio/TrayStop';
-  Menu_AddTrayMenuItem(@mi);
+  if doTray then
+    Menu_AddTrayMenuItem(@mi)
+  else
+    Menu_AddMainMenuItem(@mi);
 
+  mi.szName.w  :='Quick Open';
+  mi.position  :=4;
+  mi.pszService:=MS_RADIO_QUICKOPEN;
+  mi.hIcon     :=CallService(MS_SKIN2_GETICON,0,tlparam(IcoBtnOpen));
+  if doTray then
+    Menu_AddTrayMenuItem(@mi)
+  else
+    Menu_AddMainMenuItem(@mi);
+
+  mi.hIcon    :=0;
   mi.szName.w :='Play Station';
   mi.position :=1000;
   mi.pszService:=nil;
-  trayparent:=Menu_AddTrayMenuItem(@mi);
+  if doTray then
+    trayparent:=Menu_AddTrayMenuItem(@mi)
+  else
+    trayparent:=Menu_AddMainMenuItem(@mi);
 end;
 
 function TrayPrebuild(wParam:WPARAM;lParam:LPARAM):int; cdecl;
 var
   mi:tClistMenuItem;
   playstr:pWideChar;
+  ico:pAnsiChar;
 begin
   FillChar(mi,sizeof(mi),0);
   mi.cbSize:=sizeof(mi);
-  if gVolume<0 then
-    mi.flags:=CMIM_FLAGS or CMIF_CHECKED
+
+  mi.flags:=CMIM_NAME or CMIF_UNICODE;
+  if PluginStatus=ID_STATUS_ONLINE then
+  begin
+    playstr:='mRadio off';
+  end
   else
-    mi.flags:=CMIM_FLAGS;
+  begin
+    playstr:='mRadio on';
+  end;
+  mi.szName.w:=playstr;
+  CallService(MS_CLIST_MODIFYMENUITEM,trayprotoh,tlparam(@mi));
+
+  if gVolume<0 then
+  begin
+    ico:=IcoBtnOff;
+  end
+  else
+  begin
+    ico:=IcoBtnOn;
+  end;
+  mi.flags:=CMIM_FLAGS or CMIM_ICON;
+  mi.hIcon:=CallService(MS_SKIN2_GETICON,0,tlparam(ico));
   CallService(MS_CLIST_MODIFYMENUITEM,traymute,tlparam(@mi));
+  mi.hIcon:=0;
 
   mi.flags:=CMIM_NAME or CMIF_UNICODE;
   if CallService(MS_RADIO_COMMAND,MRC_STATUS,RD_STATUS_GET)<>RD_STATUS_PLAYING then
@@ -191,13 +283,14 @@ end;
 
 procedure CreateMIMTrayMenu;
 begin
-  if ServiceExists(MS_CLIST_ADDTRAYMENUITEM)<>0 then
-//    if hiddenwindow<>0 then
-    begin
-      CreateTrayMenu();
-      MakeStationsMenu();
-      HookEvent(ME_CLIST_PREBUILDTRAYMENU,@TrayPrebuild);
-    end;
+  doTray:=ServiceExists(MS_CLIST_ADDTRAYMENUITEM)<>0;
+
+  CreateTrayMenu();
+  MakeStationsMenu();
+  if doTray then
+    HookEvent(ME_CLIST_PREBUILDTRAYMENU,@TrayPrebuild)
+  else
+    HookEvent(ME_CLIST_PREBUILDMAINMENU,@TrayPrebuild)
 end;
 
 procedure RemoveTrayItems;
@@ -211,14 +304,11 @@ begin
     tmp:=pTrayRadioStation(trayStations.Items[i]);
     mFreeMem(tmp.name);
     DestroyServiceFunction(tmp.service);
-//    CallService(MS_CLIST_REMOVETRAYMENUITEM,tmp.menuitem,0);
     mFreeMem(tmp);
   end;
   List_Destroy(@trayStations);
   DestroyServiceFunction(srvtrayplaypause);
   DestroyServiceFunction(srvtraystop);
 
-  if ServiceExists(MS_CLIST_REMOVETRAYMENUITEM)<>0 then
-    CallService(MS_CLIST_REMOVETRAYMENUITEM,trayradioparent,0);
-
+  CallService(MO_REMOVEMENUITEM,trayradioparent,0);
 end;

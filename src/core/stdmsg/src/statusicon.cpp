@@ -1,6 +1,6 @@
 /*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright 2000-12 Miranda IM, 2012-15 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -24,9 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 HANDLE hHookIconPressedEvt;
 
-static int OnSrmmIconChanged(WPARAM wParam, LPARAM)
+static int OnSrmmIconChanged(WPARAM hContact, LPARAM)
 {
-	HANDLE hContact = (HANDLE)wParam;
 	if (hContact == NULL)
 		WindowList_Broadcast(g_dat.hMessageWindowList, DM_STATUSICONCHANGE, 0, 0);
 	else {
@@ -37,27 +36,27 @@ static int OnSrmmIconChanged(WPARAM wParam, LPARAM)
 	return 0;
 }
 
-void DrawStatusIcons(HANDLE hContact, HDC hDC, RECT r, int gap)
+void DrawStatusIcons(MCONTACT hContact, HDC hDC, const RECT &rc, int gap)
 {
-	HICON hIcon;
-	int x = r.left;
+	int x = rc.left;
+	int cx_icon = GetSystemMetrics(SM_CXSMICON);
+	int cy_icon = GetSystemMetrics(SM_CYSMICON);
 
 	int nIcon = 0;
 	StatusIconData *sid;
-	while ((sid = Srmm_GetNthIcon(hContact, nIcon++)) != 0 && x < r.right) {
-		if ((sid->flags & MBF_DISABLED) && sid->hIconDisabled) hIcon = sid->hIconDisabled;
-		else hIcon = sid->hIcon;
+	while ((sid = Srmm_GetNthIcon(hContact, nIcon++)) != 0 && x < rc.right) {
+		HICON hIcon = ((sid->flags & MBF_DISABLED) && sid->hIconDisabled) ? sid->hIconDisabled : sid->hIcon;
 
 		SetBkMode(hDC, TRANSPARENT);
-		DrawIconEx(hDC, x, (r.top + r.bottom - GetSystemMetrics(SM_CYSMICON)) >> 1, hIcon, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0, NULL, DI_NORMAL);
+		DrawIconEx(hDC, x, (rc.top + rc.bottom - cy_icon) >> 1, hIcon, cx_icon, cy_icon, 0, NULL, DI_NORMAL);
 
-		x += GetSystemMetrics(SM_CYSMICON) + gap;
+		x += cx_icon + gap;
 	}
 }
 
-void CheckIconClick(HANDLE hContact, HWND hwndFrom, POINT pt, RECT r, int gap, int click_flags)
+void CheckStatusIconClick(MCONTACT hContact, HWND hwndFrom, POINT pt, const RECT &rc, int gap, int click_flags)
 {
-	int iconNum = (pt.x - r.left) / (GetSystemMetrics(SM_CXSMICON) + gap);
+	int iconNum = (pt.x - rc.left) / (GetSystemMetrics(SM_CXSMICON) + gap);
 	StatusIconData *sid = Srmm_GetNthIcon(hContact, iconNum);
 	if (sid == NULL)
 		return;
@@ -69,7 +68,7 @@ void CheckIconClick(HANDLE hContact, HWND hwndFrom, POINT pt, RECT r, int gap, i
 	sicd.szModule = sid->szModule;
 	sicd.flags = click_flags;
 
-	NotifyEventHooks(hHookIconPressedEvt, (WPARAM)hContact, (LPARAM)&sicd);
+	NotifyEventHooks(hHookIconPressedEvt, hContact, (LPARAM)&sicd);
 }
 
 HANDLE hServiceIcon[3];
@@ -88,10 +87,10 @@ int DeinitStatusIcons()
 	return 0;
 }
 
-int GetStatusIconsCount(HANDLE hContact)
+int GetStatusIconsCount(MCONTACT hContact)
 {
 	int nIcon = 0;
-	while ( Srmm_GetNthIcon(hContact, nIcon) != NULL)
+	while (Srmm_GetNthIcon(hContact, nIcon) != NULL)
 		nIcon++;
 	return nIcon;
 }

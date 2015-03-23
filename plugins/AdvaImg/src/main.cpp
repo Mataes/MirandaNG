@@ -113,46 +113,38 @@ static void FI_CorrectBitmap32Alpha(HBITMAP hBitmap, BOOL force)
 */
 static BOOL FreeImage_PreMultiply(HBITMAP hBitmap)
 {
-	BYTE *p = NULL;
-	DWORD dwLen;
-	int width, height, x, y;
-	BITMAP bmp;
-	BYTE alpha;
 	BOOL transp = FALSE;
 
+	BITMAP bmp;
 	GetObject(hBitmap, sizeof(bmp), &bmp);
-	width = bmp.bmWidth;
-	height = bmp.bmHeight;
-	dwLen = width * height * 4;
-	p = (BYTE *)malloc(dwLen);
-	if (p != NULL)
-	{
-		GetBitmapBits(hBitmap, dwLen, p);
+	if (bmp.bmBitsPixel == 32) {
+		int width = bmp.bmWidth;
+		int height = bmp.bmHeight;
+		int dwLen = width * height * 4;
+		BYTE *p = (BYTE *)malloc(dwLen);
+		if (p != NULL) {
+			GetBitmapBits(hBitmap, dwLen, p);
 
-		for (y = 0; y < height; ++y)
-		{
-			BYTE *px = p + width * 4 * y;
+			for (int y = 0; y < height; ++y) {
+				BYTE *px = p + width * 4 * y;
+				for (int x = 0; x < width; ++x) {
+					BYTE alpha = px[3];
+					if (alpha < 255) {
+						transp = TRUE;
 
-			for (x = 0; x < width; ++x)
-			{
-				alpha = px[3];
+						px[0] = px[0] * alpha/255;
+						px[1] = px[1] * alpha/255;
+						px[2] = px[2] * alpha/255;
+					}
 
-				if (alpha < 255)
-				{
-					transp  = TRUE;
-
-					px[0] = px[0] * alpha/255;
-					px[1] = px[1] * alpha/255;
-					px[2] = px[2] * alpha/255;
+					px += 4;
 				}
-
-				px += 4;
 			}
-		}
 
-		if (transp)
-			dwLen = SetBitmapBits(hBitmap, dwLen, p);
-		free(p);
+			if (transp)
+				dwLen = SetBitmapBits(hBitmap, dwLen, p);
+			free(p);
+		}
 	}
 
 	return transp;
@@ -302,7 +294,7 @@ static INT_PTR serviceBmpFilterResizeBitmap(WPARAM wParam,LPARAM lParam)
 			&& width > bminfo.bmWidth && height > bminfo.bmHeight))
 	{
 		// Do nothing
-		return (int) info->hBmp;
+		return (INT_PTR)info->hBmp;
 	}
 	else
 	{
@@ -767,7 +759,7 @@ extern "C" BOOL __declspec(dllexport) dib2mempng( BITMAPINFO* pbmi, png_byte* pD
 				}	}
 			else {
 				for ( j = 0; j < pbmi->bmiHeader.biWidth; j++ ) {
-					DWORD point;
+					DWORD point = 0;
 					if ( ciChannels == 1 ) {
 						*d++ = ( BYTE )( point & 0x03 ) << 6;
 						*d++ = ( BYTE )(( point & 0x0C ) >> 2 ) << 6;
@@ -780,7 +772,7 @@ extern "C" BOOL __declspec(dllexport) dib2mempng( BITMAPINFO* pbmi, png_byte* pD
 						*d++ = ( BYTE )(( point & 0x001F ) << 3 );
 						*d++ = ( BYTE )((( point & 0x07e0 ) >> 6 ) << 3 );
 						*d++ = ( BYTE )((( point & 0xF800 ) >> 11 ) << 3 );
-					}	}	}	}
+		}	}	}	}
 
 		png_write_image (png_ptr, ppbRowPointers);
 		png_write_end(png_ptr, info_ptr);
@@ -855,18 +847,18 @@ static INT_PTR serviceLoad(WPARAM wParam, LPARAM lParam)
 		// ok, let's load the file
 		FIBITMAP *dib;
 
-		if(lParam & IMGL_WCHAR)
+		if (lParam & IMGL_WCHAR)
 			dib = FreeImage_LoadU(fif, (wchar_t *)lpszFilename, 0);
 		else
 			dib = FreeImage_Load(fif, lpszFilename, 0);
 
 		if(dib == NULL || (lParam & IMGL_RETURNDIB))
-			return (int)dib;
+			return (INT_PTR)dib;
 
 		HBITMAP hbm = FreeImage_CreateHBITMAPFromDIB(dib);
 		FreeImage_Unload(dib);
 		FI_CorrectBitmap32Alpha(hbm, FALSE);
-		return((INT_PTR)hbm);
+		return ((INT_PTR)hbm);
 	}
 	return NULL;
 }

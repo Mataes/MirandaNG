@@ -8,8 +8,8 @@ class CQuotesProviderVisitor;
 class IQuotesProvider : private boost::noncopyable
 {
 public:
-	struct CProviderInfo 
-	{		
+	struct CProviderInfo
+	{
 		tstring m_sName;
 		tstring m_sURL;
 
@@ -22,13 +22,14 @@ public:
 	virtual bool Init() = 0;
 	virtual const CProviderInfo& GetInfo()const = 0;
 
-	virtual void AddContact(HANDLE hContact) = 0;
-	virtual void DeleteContact(HANDLE hContact) = 0;
+	virtual void AddContact(MCONTACT hContact) = 0;
+	virtual void DeleteContact(MCONTACT hContact) = 0;
 
-	virtual void ShowPropertyPage(WPARAM wp,OPTIONSDIALOGPAGE& odp) = 0;
-	virtual void RefreshAll() = 0;
- 	virtual void RefreshContact(HANDLE hContact) = 0;
-	virtual void SetContactExtraIcon(HANDLE hContact)const = 0;
+	virtual void ShowPropertyPage(WPARAM wp, OPTIONSDIALOGPAGE& odp) = 0;
+	virtual void RefreshAllContacts() = 0;
+	virtual void RefreshSettings() = 0;
+	virtual void RefreshContact(MCONTACT hContact) = 0;
+	// 	virtual void SetContactExtraIcon(MCONTACT hContact)const = 0;
 
 	virtual void Run() = 0;
 

@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Artem Shpynov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Artem Shpynov
+Copyright (ñ) 2012-15 Miranda NG project
 
 Module implements a search according to XEP-0055: Jabber Search
 http://www.xmpp.org/extensions/xep-0055.html
@@ -162,7 +163,7 @@ public:
 		int index=_Records.getIndex(rec);
 		if (index<0)
 		{
-			if ( !_Records.insert(rec)) delete rec;
+			if (!_Records.insert(rec)) delete rec;
 			else
 			{
 				index=_Records.getIndex(rec);
@@ -183,7 +184,7 @@ public:
 		if (index<0)
 		{
 			_KEYTYPE* newKey=CopyProc(Key);
-			if ( !_Records.insert(rec))
+			if (!_Records.insert(rec))
 			{
 				delete rec;
 				DestroyProc(newKey);

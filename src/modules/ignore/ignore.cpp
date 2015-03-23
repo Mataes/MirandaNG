@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -28,7 +29,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 static const DWORD ignoreIdToPf1[IGNOREEVENT_MAX] = {PF1_IMRECV, PF1_URLRECV, PF1_FILERECV, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 static const DWORD ignoreIdToPf4[IGNOREEVENT_MAX] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, PF4_SUPPORTTYPING};
 
-static DWORD GetMask(HANDLE hContact)
+static DWORD GetMask(MCONTACT hContact)
 {
 	DWORD mask = db_get_dw(hContact, "Ignore", "Mask1", (DWORD)(-1));
 	if (mask == (DWORD)(-1)) {
@@ -109,15 +110,7 @@ static void SetAllChildIcons(HWND hwndList, HANDLE hFirstItem, int iColumn, int 
 
 static void ResetListOptions(HWND hwndList)
 {
-	SendMessage(hwndList, CLM_SETBKBITMAP, 0, (LPARAM)(HBITMAP)NULL);
-	SendMessage(hwndList, CLM_SETBKCOLOR, GetSysColor(COLOR_WINDOW), 0);
-	SendMessage(hwndList, CLM_SETGREYOUTFLAGS, 0, 0);
-	SendMessage(hwndList, CLM_SETLEFTMARGIN, 4, 0);
-	SendMessage(hwndList, CLM_SETINDENT, 10, 0);
 	SendMessage(hwndList, CLM_SETHIDEEMPTYGROUPS, 1, 0);
-
-	for (int i=0; i <= FONTID_MAX; i++)
-		SendMessage(hwndList, CLM_SETTEXTCOLOR, i, GetSysColor(COLOR_WINDOWTEXT));
 }
 
 static void SetIconsForColumn(HWND hwndList, HANDLE hItem, HANDLE hItemAll, int iColumn, int iImage)
@@ -144,7 +137,7 @@ static void SetIconsForColumn(HWND hwndList, HANDLE hItem, HANDLE hItemAll, int 
 	}
 }
 
-static void InitialiseItem(HWND hwndList, HANDLE hContact, HANDLE hItem, DWORD proto1Caps, DWORD proto4Caps)
+static void InitialiseItem(HWND hwndList, MCONTACT hContact, HANDLE hItem, DWORD proto1Caps, DWORD proto4Caps)
 {
 	DWORD mask = GetMask(hContact);
 	for (int i=0; i < IGNOREEVENT_MAX; i++)
@@ -155,7 +148,7 @@ static void InitialiseItem(HWND hwndList, HANDLE hContact, HANDLE hItem, DWORD p
 	SendMessage(hwndList, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(IGNOREEVENT_MAX+1, 2));
 }
 
-static void SaveItemMask(HWND hwndList, HANDLE hContact, HANDLE hItem, const char *pszSetting)
+static void SaveItemMask(HWND hwndList, MCONTACT hContact, HANDLE hItem, const char *pszSetting)
 {
 	DWORD mask = 0;
 	for (int i=0; i < IGNOREEVENT_MAX; i++) {
@@ -168,8 +161,8 @@ static void SaveItemMask(HWND hwndList, HANDLE hContact, HANDLE hItem, const cha
 
 static void SetAllContactIcons(HWND hwndList)
 {
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
-		HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+		HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_FINDCONTACT, hContact, 0);
 		if (hItem && SendMessage(hwndList, CLM_GETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(IGNOREEVENT_MAX, 0)) == EMPTY_EXTRA_ICON) {
 			DWORD proto1Caps, proto4Caps;
 			char *szProto = GetContactProto(hContact);
@@ -179,7 +172,7 @@ static void SetAllContactIcons(HWND hwndList)
 			}
 			else proto1Caps = proto4Caps = 0;
 			InitialiseItem(hwndList, hContact, hItem, proto1Caps, proto4Caps);
-			if ( !db_get_b(hContact, "CList", "Hidden", 0))
+			if (!db_get_b(hContact, "CList", "Hidden", 0))
 				SendMessage(hwndList, CLM_SETCHECKMARK, (WPARAM)hItem, 1);
 		}
 	}
@@ -194,7 +187,7 @@ static INT_PTR CALLBACK DlgProcIgnoreOpts(HWND hwndDlg, UINT msg, WPARAM, LPARAM
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
 		{
-			HIMAGELIST hIml = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), (IsWinVerXPPlus()?ILC_COLOR32:ILC_COLOR16)|ILC_MASK, 3+IGNOREEVENT_MAX, 3+IGNOREEVENT_MAX);
+			HIMAGELIST hIml = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), ILC_COLOR32 | ILC_MASK, 3 + IGNOREEVENT_MAX, 3 + IGNOREEVENT_MAX);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_SMALLDOT);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_FILLEDBLOB);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_EMPTYBLOB);
@@ -221,7 +214,7 @@ static INT_PTR CALLBACK DlgProcIgnoreOpts(HWND hwndDlg, UINT msg, WPARAM, LPARAM
 		SendDlgItemMessage(hwndDlg, IDC_ADDED, STM_SETICON, (WPARAM)hIcons[7], 0);
 		SendDlgItemMessage(hwndDlg, IDC_TYPINGICON, STM_SETICON, (WPARAM)hIcons[8], 0);
 
-		ResetListOptions( GetDlgItem(hwndDlg, IDC_LIST));
+		ResetListOptions(GetDlgItem(hwndDlg, IDC_LIST));
 		SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_SETEXTRACOLUMNS, IGNOREEVENT_MAX+2, 0);
 		{
 			CLCINFOITEM cii = { sizeof(cii) };
@@ -254,7 +247,7 @@ static INT_PTR CALLBACK DlgProcIgnoreOpts(HWND hwndDlg, UINT msg, WPARAM, LPARAM
 				SetListGroupIcons( GetDlgItem(hwndDlg, IDC_LIST), (HANDLE)SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_GETNEXTITEM, CLGN_ROOT, 0), hItemAll, NULL);
 				break;
 			case CLN_OPTIONSCHANGED:
-				ResetListOptions( GetDlgItem(hwndDlg, IDC_LIST));
+				ResetListOptions(GetDlgItem(hwndDlg, IDC_LIST));
 				break;
 			case CLN_CHECKCHANGED:
 				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
@@ -295,8 +288,8 @@ static INT_PTR CALLBACK DlgProcIgnoreOpts(HWND hwndDlg, UINT msg, WPARAM, LPARAM
 		case 0:
 			switch (((LPNMHDR)lParam)->code) {
 			case PSN_APPLY:
-				for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
-					HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+				for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+					HANDLE hItem = (HANDLE)SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_FINDCONTACT, hContact, 0);
 					if (hItem) SaveItemMask( GetDlgItem(hwndDlg, IDC_LIST), hContact, hItem, "Mask1");
 					if (SendDlgItemMessage(hwndDlg, IDC_LIST, CLM_GETCHECKMARK, (WPARAM)hItem, 0))
 						db_unset(hContact, "CList", "Hidden");
@@ -323,8 +316,7 @@ static INT_PTR CALLBACK DlgProcIgnoreOpts(HWND hwndDlg, UINT msg, WPARAM, LPARAM
 
 static int IgnoreOptInitialise(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = { 0 };
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.position = 900000000;
 	odp.hInstance = hInst;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_IGNORE);
@@ -338,7 +330,7 @@ static int IgnoreOptInitialise(WPARAM wParam, LPARAM)
 
 static INT_PTR IsIgnored(WPARAM wParam, LPARAM lParam)
 {
-	DWORD mask = GetMask((HANDLE)wParam);
+	DWORD mask = GetMask(wParam);
 	if (lParam < 1 || lParam > IGNOREEVENT_MAX)
 		return 1;
 	return (mask >> (lParam-1))&1;
@@ -346,20 +338,20 @@ static INT_PTR IsIgnored(WPARAM wParam, LPARAM lParam)
 
 static INT_PTR Ignore(WPARAM wParam, LPARAM lParam)
 {
-	DWORD mask = GetMask((HANDLE)wParam);
+	DWORD mask = GetMask(wParam);
 	if ((lParam < 1 || lParam > IGNOREEVENT_MAX) && lParam != IGNOREEVENT_ALL)
 		return 1;
 	if (lParam == IGNOREEVENT_ALL)
 		mask = (1 << IGNOREEVENT_MAX)-1;
 	else
 		mask |= 1 << (lParam-1);
-	db_set_dw((HANDLE)wParam, "Ignore", "Mask1", mask);
+	db_set_dw(wParam, "Ignore", "Mask1", mask);
 	return 0;
 }
 
 static INT_PTR Unignore(WPARAM wParam, LPARAM lParam)
 {
-	DWORD mask = GetMask((HANDLE)wParam);
+	DWORD mask = GetMask(wParam);
 	if ((lParam < 1 || lParam > IGNOREEVENT_MAX) && lParam != IGNOREEVENT_ALL)
 		return 1;
 
@@ -367,7 +359,7 @@ static INT_PTR Unignore(WPARAM wParam, LPARAM lParam)
 		mask = 0;
 	else
 		mask &= ~(1 << (lParam-1));
-	db_set_dw((HANDLE)wParam, "Ignore", "Mask1", mask);
+	db_set_dw(wParam, "Ignore", "Mask1", mask);
 	return 0;
 }
 
@@ -403,8 +395,8 @@ static int IgnoreAddedNotify(WPARAM, LPARAM lParam)
 {
 	DBEVENTINFO *dbei = (DBEVENTINFO*)lParam;
 	if (dbei && dbei->eventType == EVENTTYPE_ADDED && dbei->pBlob != NULL) {
-		HANDLE hContact = DbGetAuthEventContact(dbei);
-		if (CallService(MS_DB_CONTACT_IS, (WPARAM)hContact, 0) && IsIgnored((WPARAM)hContact, IGNOREEVENT_YOUWEREADDED))
+		MCONTACT hContact = DbGetAuthEventContact(dbei);
+		if (CallService(MS_DB_CONTACT_IS, hContact, 0) && IsIgnored(hContact, IGNOREEVENT_YOUWEREADDED))
 			return 1;
 	}
 	return 0;

@@ -20,16 +20,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
-void CIcqProto::handleErrorChannel(unsigned char* buf, WORD datalen)
+void CIcqProto::handleErrorChannel(unsigned char*, size_t)
 {
-	NetLog_Server("Ignoring server packet on ERROR channel");
+	debugLogA("Ignoring server packet on ERROR channel");
 }

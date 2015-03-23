@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -22,7 +22,7 @@ Boston, MA 02111-1307, USA.
 #ifndef __COMMONS_H__
 # define __COMMONS_H__
 
-#define MODULE_NAME		"ExtraIcons"
+#define MODULE_NAME "ExtraIcons"
 
 // Global Variables
 extern HINSTANCE hInst;
@@ -34,22 +34,21 @@ extern HINSTANCE hInst;
 #include "Extraicon.h"
 
 extern LIST<BaseExtraIcon> registeredExtraIcons;
-extern vector<ExtraIcon*> extraIconsByHandle;
-extern vector<ExtraIcon*> extraIconsBySlot;
-void RebuildListsBasedOnGroups(vector<ExtraIconGroup *> &groups);
+extern LIST<ExtraIcon> extraIconsByHandle, extraIconsBySlot;
+void RebuildListsBasedOnGroups(LIST<ExtraIconGroup> &groups);
 ExtraIcon * GetExtraIconBySlot(int slot);
 
 int GetNumberOfSlots();
 int ConvertToClistSlot(int slot);
 
-int Clist_SetExtraIcon(HANDLE hContact, int slot, HANDLE hImage);
+int Clist_SetExtraIcon(MCONTACT hContact, int slot, HANDLE hImage);
 
 void DefaultExtraIcons_Load();
 
 HANDLE ExtraIcon_Add(HICON hIcon);
 
 void fnReloadExtraIcons();
-void fnSetAllExtraIcons(HWND hwndList,HANDLE hContact);
+void fnSetAllExtraIcons(MCONTACT hContact);
 
 static inline BOOL IsEmpty(const char *str)
 {

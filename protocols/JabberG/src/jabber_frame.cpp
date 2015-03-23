@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -62,7 +63,7 @@ public:
 
 	static int cmp(const CJabberInfoFrameItem *p1, const CJabberInfoFrameItem *p2)
 	{
-		return lstrcmpA(p1->m_pszName, p2->m_pszName);
+		return mir_strcmp(p1->m_pszName, p2->m_pszName);
 	}
 };
 
@@ -77,7 +78,7 @@ CJabberInfoFrame::CJabberInfoFrame(CJabberProto *proto):
 	m_nextTooltipId = 0;
 	m_hhkFontsChanged = 0;
 
-	if ( !proto->m_options.DisableFrame && ServiceExists(MS_CLIST_FRAMES_ADDFRAME)) {
+	if (!proto->m_options.DisableFrame && ServiceExists(MS_CLIST_FRAMES_ADDFRAME)) {
 		InitClass();
 
 		CLISTFrame frame = { sizeof(frame) };
@@ -115,7 +116,7 @@ CJabberInfoFrame::CJabberInfoFrame(CJabberProto *proto):
 
 CJabberInfoFrame::~CJabberInfoFrame()
 {
-	if ( !m_hwnd) return;
+	if (!m_hwnd) return;
 
 	if (m_hhkFontsChanged) UnhookEvent(m_hhkFontsChanged);
 	CallService(MS_CLIST_FRAMES_REMOVEFRAME, (WPARAM)m_frameId, 0);
@@ -191,7 +192,7 @@ LRESULT CJabberInfoFrame::WndProc(UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN:
 		{
 			POINT pt = { LOWORD(lParam), HIWORD(lParam) };
-			for (int i = 0; i < m_pItems.getCount(); i++)
+			for (int i=0; i < m_pItems.getCount(); i++)
 				if (m_pItems[i].m_onEvent && PtInRect(&m_pItems[i].m_rcItem, pt)) {
 					m_clickedItem = i;
 					return 0;
@@ -241,37 +242,37 @@ void CJabberInfoFrame::ReloadFonts()
 {
 	LOGFONT lfFont;
 
-	FontID fontid = {0};
+	FontIDT fontid = {0};
 	fontid.cbSize = sizeof(fontid);
-	lstrcpyA(fontid.group, "Jabber");
-	lstrcpyA(fontid.name, "Frame title");
-	m_clTitle = CallService(MS_FONT_GET, (WPARAM)&fontid, (LPARAM)&lfFont);
+	mir_tstrncpy(fontid.group, _T("Jabber"), SIZEOF(fontid.group));
+	mir_tstrncpy(fontid.name, _T("Frame title"), SIZEOF(fontid.name));
+	m_clTitle = CallService(MS_FONT_GETT, (WPARAM)&fontid, (LPARAM)&lfFont);
 	DeleteObject(m_hfntTitle);
 	m_hfntTitle = CreateFontIndirect(&lfFont);
-	lstrcpyA(fontid.name, "Frame text");
-	m_clText = CallService(MS_FONT_GET, (WPARAM)&fontid, (LPARAM)&lfFont);
+	mir_tstrncpy(fontid.name, _T("Frame text"), SIZEOF(fontid.name));
+	m_clText = CallService(MS_FONT_GETT, (WPARAM)&fontid, (LPARAM)&lfFont);
 	DeleteObject(m_hfntText);
 	m_hfntText = CreateFontIndirect(&lfFont);
 
-	ColourID colourid = {0};
+	ColourIDT colourid = {0};
 	colourid.cbSize = sizeof(colourid);
-	lstrcpyA(colourid.group, "Jabber");
-	lstrcpyA(colourid.name, "Background");
-	m_clBack = CallService(MS_COLOUR_GET, (WPARAM)&colourid, 0);
+	mir_tstrncpy(colourid.group, _T("Jabber"), SIZEOF(colourid.group));
+	mir_tstrncpy(colourid.name, _T("Background"), SIZEOF(colourid.name));
+	m_clBack = CallService(MS_COLOUR_GETT, (WPARAM)&colourid, 0);
 
 	UpdateSize();
 }
 
 void CJabberInfoFrame::UpdateSize()
 {
-	if ( !m_hwnd || m_bLocked)
+	if (!m_hwnd || m_bLocked)
 		return;
 
 	int line_count = m_compact ? 1 : (m_pItems.getCount() - m_hiddenItemCount);
 	int height = 2 * SZ_FRAMEPADDING + line_count * (GetSystemMetrics(SM_CYSMICON) + SZ_LINEPADDING) + (line_count - 1) * SZ_LINESPACING;
 
 	if (CallService(MS_CLIST_FRAMES_GETFRAMEOPTIONS, MAKEWPARAM(FO_FLAGS, m_frameId), 0) & F_VISIBLE) {
-		if ( !ServiceExists(MS_SKIN_DRAWGLYPH)) {
+		if (!ServiceExists(MS_SKIN_DRAWGLYPH)) {
 			// crazy resizing for clist_nicer...
 			CallService(MS_CLIST_FRAMES_SHFRAME, m_frameId, 0);
 			CallService(MS_CLIST_FRAMES_SETFRAMEOPTIONS, MAKEWPARAM(FO_HEIGHT, m_frameId), height);
@@ -322,8 +323,8 @@ void CJabberInfoFrame::PaintSkinGlyph(HDC hdc, RECT *rc, char **glyphs, COLORREF
 		rq.rcClipRect = *rc;
 
 		for (; *glyphs; ++glyphs) {
-			strncpy(rq.szObjectID, *glyphs, sizeof(rq.szObjectID));
-			if ( !CallService(MS_SKIN_DRAWGLYPH, (WPARAM)&rq, 0))
+			strncpy_s(rq.szObjectID, *glyphs, _TRUNCATE);
+			if (!CallService(MS_SKIN_DRAWGLYPH, (WPARAM)&rq, 0))
 				return;
 		}
 	}
@@ -353,8 +354,8 @@ void CJabberInfoFrame::PaintCompact(HDC hdc)
 		CJabberInfoFrameItem &item = m_pItems[i];
 
 		SetRect(&item.m_rcItem, 0, 0, 0, 0);
-		if ( !item.m_bShow) continue;
-		if ( !item.m_bCompact) continue;
+		if (!item.m_bShow) continue;
+		if (!item.m_bCompact) continue;
 
 		int depth = 0;
 		for (char *p = item.m_pszName; p = strchr(p+1, '/'); ++depth) ;
@@ -369,7 +370,7 @@ void CJabberInfoFrame::PaintCompact(HDC hdc)
 			}
 
 			RECT rcText; SetRect(&rcText, cx_icon + SZ_FRAMEPADDING + SZ_ICONSPACING, 0, rc.right - SZ_FRAMEPADDING, rc.bottom);
-			DrawText(hdc, item.m_pszText, lstrlen(item.m_pszText), &rcText, DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+			DrawText(hdc, item.m_pszText, -1, &rcText, DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
 		}
 		else {
 			if (item.m_hIcolibIcon) {
@@ -404,10 +405,10 @@ void CJabberInfoFrame::PaintNormal(HDC hdc)
 	int line_height = cy_icon + SZ_LINEPADDING;
 	int cy = SZ_FRAMEPADDING;
 
-	for (int i = 0; i < m_pItems.getCount(); i++) {
+	for (int i=0; i < m_pItems.getCount(); i++) {
 		CJabberInfoFrameItem &item = m_pItems[i];
 
-		if ( !item.m_bShow) {
+		if (!item.m_bShow) {
 			SetRect(&item.m_rcItem, 0, 0, 0, 0);
 			continue;
 		}
@@ -432,7 +433,7 @@ void CJabberInfoFrame::PaintNormal(HDC hdc)
 		SetTextColor(hdc, depth ? m_clText : m_clTitle);
 
 		RECT rcText; SetRect(&rcText, cx, cy, rc.right - SZ_FRAMEPADDING, cy + line_height);
-		DrawText(hdc, item.m_pszText, lstrlen(item.m_pszText), &rcText, DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
+		DrawText(hdc, item.m_pszText, -1, &rcText, DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_END_ELLIPSIS);
 
 		RemoveTooltip(item.m_tooltipId);
 
@@ -474,7 +475,7 @@ void CJabberInfoFrame::ShowInfoItem(char *pszName, bool bShow)
 {
 	bool bUpdate = false;
 	size_t length = strlen(pszName);
-	for (int i = 0; i < m_pItems.getCount(); i++)
+	for (int i=0; i < m_pItems.getCount(); i++)
 		if ((m_pItems[i].m_bShow != bShow) && !strncmp(m_pItems[i].m_pszName, pszName, length)) {
 			m_pItems[i].m_bShow = bShow;
 			m_hiddenItemCount += bShow ? -1 : 1;
@@ -489,9 +490,9 @@ void CJabberInfoFrame::RemoveInfoItem(char *pszName)
 {
 	bool bUpdate = false;
 	size_t length = strlen(pszName);
-	for (int i = 0; i < m_pItems.getCount(); i++)
-		if ( !strncmp(m_pItems[i].m_pszName, pszName, length)) {
-			if ( !m_pItems[i].m_bShow) --m_hiddenItemCount;
+	for (int i=0; i < m_pItems.getCount(); i++)
+		if (!strncmp(m_pItems[i].m_pszName, pszName, length)) {
+			if (!m_pItems[i].m_bShow) --m_hiddenItemCount;
 			RemoveTooltip(m_pItems[i].m_tooltipId);
 			m_pItems.remove(i);
 			bUpdate = true;

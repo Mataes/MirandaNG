@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -42,6 +43,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <commctrl.h>
 #include <uxtheme.h>
 #include <richedit.h>
+#define SECURITY_WIN32
+#include <Security.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -156,10 +159,10 @@ protected:
 #define JABBER_GC_MSG_SLAP				LPGENT("/me slaps %s around a bit with a large trout")
 
 // registered db event types
-#define JABBER_DB_EVENT_TYPE_CHATSTATES          2000
+#define EVENTTYPE_JABBER_CHATSTATES          2000
 #define JS_DB_GETEVENTTEXT_CHATSTATES            "/GetEventText2000"
 #define JABBER_DB_EVENT_CHATSTATES_GONE          1
-#define JABBER_DB_EVENT_TYPE_PRESENCE            2001
+#define EVENTTYPE_JABBER_PRESENCE            2001
 #define JS_DB_GETEVENTTEXT_PRESENCE              "/GetEventText2001"
 #define JABBER_DB_EVENT_PRESENCE_SUBSCRIBE       1
 #define JABBER_DB_EVENT_PRESENCE_SUBSCRIBED      2
@@ -239,11 +242,6 @@ protected:
 // Font for groupchat log dialog
 #define JABBER_GCLOG_NUM_FONT      6	// 6 fonts (0:send, 1:msg, 2:time, 3:nick, 4:sys, 5:/me)
 
-// Old SDK don't have this
-#ifndef SPI_GETSCREENSAVERRUNNING
-#define SPI_GETSCREENSAVERRUNNING 114
-#endif
-
 // Icon list
 enum {
 	JABBER_IDI_GCOWNER = 0,
@@ -294,7 +292,7 @@ struct CJabberHttpAuthParams
 	TCHAR *m_szUrl;
 	CJabberHttpAuthParams()
 	{
-		ZeroMemory(this, sizeof(CJabberHttpAuthParams));
+		memset(this, 0, sizeof(CJabberHttpAuthParams));
 	}
 	~CJabberHttpAuthParams()
 	{
@@ -308,7 +306,7 @@ struct CJabberHttpAuthParams
 		mir_free(m_szId);
 		mir_free(m_szMethod);
 		mir_free(m_szUrl);
-		ZeroMemory(this, sizeof(CJabberHttpAuthParams));
+		memset(this, 0, sizeof(CJabberHttpAuthParams));
 	}
 };
 
@@ -316,12 +314,6 @@ struct CJabberHttpAuthParams
  * Global data structures and data type definitions
  *******************************************************************/
 typedef HANDLE JABBER_SOCKET;
-
-enum JABBER_SESSION_TYPE
-{
-	JABBER_SESSION_NORMAL,
-	JABBER_SESSION_REGISTER
-};
 
 #define CAPS_BOOKMARK         0x0001
 #define CAPS_BOOKMARKS_LOADED 0x8000
@@ -335,19 +327,30 @@ enum JABBER_SESSION_TYPE
 #define JABBER_LOGIN_SERVERINFO			0x0004
 #define JABBER_LOGIN_BOOKMARKS_AJ		0x0008
 
+struct JABBER_CONN_DATA : public MZeroedObject
+{
+	TCHAR username[512];
+	TCHAR password[512];
+	char  server[128];
+	char  manualHost[128];
+	int   port;
+	BOOL  useSSL;
+
+	HWND  reg_hwndDlg;
+};
+
 struct ThreadData
 {
-	ThreadData(CJabberProto* _ppro, JABBER_SESSION_TYPE parType);
+	ThreadData(CJabberProto *_pro, JABBER_CONN_DATA *_connData);
 	~ThreadData();
 
-	HANDLE hThread;
-	JABBER_SESSION_TYPE type;
+	ptrA     szStreamId;
+	char*    buffer;
 
 	// network support
 	JABBER_SOCKET s;
-	BOOL  useSSL;
 	HANDLE iomutex; // protects i/o operations
-	CJabberProto* proto;
+	CJabberProto *proto;
 
 	// XEP-0138 (Compression support)
 	BOOL     useZlib;
@@ -364,32 +367,28 @@ struct ThreadData
 	int      zlibRecv(char* data, long datalen);
 
 	// for nick names resolving
-	int    resolveID;
-	HANDLE resolveContact;
+	int      resolveID;
+	MCONTACT resolveContact;
 
 	// features & registration
-	HWND  reg_hwndDlg;
-	BOOL  reg_done, bIsSessionAvailable;
-	class TJabberAuth* auth;
-	JabberCapsBits jabberServerCaps;
-	BOOL bBookmarksLoaded;
-	DWORD	dwLoginRqs;
+	bool     bIsReg;
+	bool     reg_done, bIsSessionAvailable;
+	bool     bBookmarksLoaded;
+	DWORD	   dwLoginRqs;
 
 	// connection & login data
-	TCHAR username[512];
-	TCHAR password[512];
-	char  server[128];
-	char  manualHost[128];
-	TCHAR resource[128];
-	TCHAR fullJID[JABBER_MAX_JID_LEN];
-	WORD  port;
-	TCHAR newPassword[512];
+	JABBER_CONN_DATA conn;
+	TCHAR    resource[128];
+	TCHAR    fullJID[JABBER_MAX_JID_LEN];
+	ptrT     tszNewPassword;
+
+	class TJabberAuth *auth;
+	JabberCapsBits jabberServerCaps;
 
 	void  close(void);
 	void  shutdown(void);
 	int   recv(char* buf, size_t len);
 	int   send(char* buffer, int bufsize = -1);
-//	int   send(const char* fmt, ...);
 	int   send(HXML node);
 
 	int   recvws(char* buffer, size_t bufsize, int flags);
@@ -403,16 +402,6 @@ struct JABBER_MODEMSGS
 	TCHAR *szNa;
 	TCHAR *szDnd;
 	TCHAR *szFreechat;
-};
-
-struct JABBER_REG_ACCOUNT
-{
-	TCHAR username[512];
-	TCHAR password[512];
-	char  server[128];
-	char  manualHost[128];
-	WORD  port;
-	BOOL  useSSL;
 };
 
 typedef enum { FT_SI, FT_OOB, FT_BYTESTREAM, FT_IBB } JABBER_FT_TYPE;
@@ -434,7 +423,7 @@ struct filetransfer
 	JABBER_FILE_STATE state;
 	TCHAR *jid;
 	int    fileId;
-	TCHAR *iqId;
+	TCHAR* szId;
 	TCHAR *sid;
 	int    bCompleted;
 	HANDLE hWaitEvent;
@@ -580,20 +569,19 @@ private:
  * Global variables
  *******************************************************************/
 extern HINSTANCE hInst;
-extern BOOL   jabberChatDllPresent;
 
 extern HANDLE hExtraMood;
 extern HANDLE hExtraActivity;
-
-// Theme API
-extern BOOL (WINAPI *JabberAlphaBlend)(HDC, int, int, int, int, HDC, int, int, int, int, BLENDFUNCTION);
-extern BOOL (WINAPI *JabberIsThemeActive)();
-extern HRESULT (WINAPI *JabberDrawThemeParentBackground)(HWND, HDC, RECT *);
 
 extern TCHAR szCoreVersion[];
 
 extern int g_cbCountries;
 extern struct CountryListEntry* g_countries;
+
+extern FI_INTERFACE *FIP;
+
+extern HANDLE hExtListInit, hDiscoInfoResult;
+extern int bSecureIM, bMirOTR, bNewGPG, bPlatform;
 
 /*******************************************************************
  * Function declarations
@@ -674,7 +662,6 @@ int    g_OnToolbarInit(WPARAM, LPARAM);
 
 void   JabberChatDllError(void);
 int    JabberCompareJids(const TCHAR *jid1, const TCHAR *jid2);
-TCHAR* EscapeChatTags(TCHAR* pszText);
 TCHAR* UnEscapeChatTags(TCHAR* str_in);
 
 //---- jabber_adhoc.cpp	---------------------------------------------
@@ -743,9 +730,9 @@ TCHAR*        __stdcall JabberErrorStr(int errorCode);
 TCHAR*        __stdcall JabberErrorMsg(HXML errorNode, int* errorCode = NULL);
 void          __stdcall JabberUtfToTchar(const char* str, size_t cbLen, LPTSTR& dest);
 time_t        __stdcall JabberIsoToUnixTime(const TCHAR *stamp);
-void          __stdcall JabberStringAppend(char* *str, int *sizeAlloced, const char* fmt, ...);
 TCHAR*        __stdcall JabberStripJid(const TCHAR *jid, TCHAR* dest, size_t destLen);
 int           __stdcall JabberGetPacketID(HXML n);
+TCHAR*        __stdcall JabberId2string(int id);
 
 LPCTSTR       __stdcall JabberGetPictureType(HXML node, const char *picBuf);
 
@@ -755,8 +742,7 @@ time_t str2time(const TCHAR*);
 #define JabberUnixToDosT JabberUnixToDosW
 
 const TCHAR *JabberStrIStr(const TCHAR *str, const TCHAR *substr);
-void JabberCopyText(HWND hwnd, TCHAR *text);
-void JabberBitmapPremultiplyChannels(HBITMAP hBitmap);
+void JabberCopyText(HWND hwnd, const TCHAR *text);
 CJabberProto *JabberChooseInstance(bool bIsLink=false);
 
 bool JabberReadXep203delay(HXML node, time_t &msgTime);
@@ -767,7 +753,7 @@ void  strdel(char* parBuffer, int len);
 
 //---- jabber_userinfo.cpp --------------------------------------------------------------
 
-void JabberUserInfoUpdate(HANDLE hContact);
+void JabberUserInfoUpdate(MCONTACT hContact);
 
 //---- jabber_iq_handlers.cpp
 BOOL GetOSDisplayString(LPTSTR pszOS, int BUFSIZE);

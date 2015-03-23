@@ -19,7 +19,7 @@ Boston, MA 02111-1307, USA.
 
 #include "commons.h"
 
-typedef void (*FoundWrongWordCallback)(TCHAR *word, CHARRANGE pos, void *param);
+typedef void(*FoundWrongWordCallback)(TCHAR *word, CHARRANGE pos, void *param);
 
 typedef map<HWND, Dialog *> DialogMapType;
 DialogMapType dialogs;
@@ -30,11 +30,29 @@ void SetUnderline(Dialog *dlg, int pos_start, int pos_end)
 	dlg->re->SetSel(pos_start, pos_end);
 
 	CHARFORMAT2 cf;
-	cf.cbSize = sizeof(CHARFORMAT2);
+	cf.cbSize = sizeof(cf);
 	cf.dwMask = CFM_UNDERLINE | CFM_UNDERLINETYPE;
 	cf.dwEffects = CFE_UNDERLINE;
-	cf.bUnderlineType = ((opts.underline_type + CFU_UNDERLINEDOUBLE) | 0x50);
-	dlg->re->SendMessage(EM_SETCHARFORMAT, (WPARAM) SCF_SELECTION, (LPARAM)&cf);
+	cf.bUnderlineType = opts.underline_type + CFU_UNDERLINEDOUBLE;
+
+	OSVERSIONINFOEX osvi = { 0 };
+	BOOL bOsVersionInfoEx;
+
+	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+
+	bOsVersionInfoEx = GetVersionEx((OSVERSIONINFO*)&osvi);
+	if (!bOsVersionInfoEx) {
+		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+		if (!GetVersionEx((OSVERSIONINFO*)&osvi))
+			return;
+	}
+
+	if (VER_PLATFORM_WIN32_NT == osvi.dwPlatformId && osvi.dwMajorVersion == 6 && osvi.dwMinorVersion >= 2)
+		cf.bUnderlineColor = 0x06;
+	else
+		cf.bUnderlineColor = 0x05;
+
+	dlg->re->SendMessage(EM_SETCHARFORMAT, (WPARAM)SCF_SELECTION, (LPARAM)&cf);
 
 	dlg->markedSomeWord = TRUE;
 }
@@ -42,28 +60,29 @@ void SetUnderline(Dialog *dlg, int pos_start, int pos_end)
 BOOL IsMyUnderline(const CHARFORMAT2 &cf)
 {
 	return (cf.dwEffects & CFE_UNDERLINE)
-			&& (cf.bUnderlineType & 0x0F) >= CFU_UNDERLINEDOUBLE
-			&& (cf.bUnderlineType & 0x0F) <= CFU_UNDERLINETHICK
-			&& (cf.bUnderlineType & ~0x0F) == 0x50;
+		&& (cf.bUnderlineType & 0x0F) >= CFU_UNDERLINEDOUBLE
+		&& (cf.bUnderlineType & 0x0F) <= CFU_UNDERLINETHICK
+		&& (cf.bUnderlineColor) == 5;
 }
 
 void SetNoUnderline(RichEdit *re, int pos_start, int pos_end)
 {
 	if (opts.handle_underscore) {
-		for(int i = pos_start; i <= pos_end; i++) {
-			re->SetSel(i, min(i+1, pos_end));
+		for (int i = pos_start; i <= pos_end; i++) {
+			re->SetSel(i, min(i + 1, pos_end));
 
 			CHARFORMAT2 cf;
-			cf.cbSize = sizeof(CHARFORMAT2);
-			re->SendMessage(EM_GETCHARFORMAT, (WPARAM) SCF_SELECTION, (LPARAM)&cf);
+			cf.cbSize = sizeof(cf);
+			re->SendMessage(EM_GETCHARFORMAT, (WPARAM)SCF_SELECTION, (LPARAM)&cf);
 
 			BOOL mine = IsMyUnderline(cf);
 			if (mine) {
-				cf.cbSize = sizeof(CHARFORMAT2);
+				cf.cbSize = sizeof(cf);
 				cf.dwMask = CFM_UNDERLINE | CFM_UNDERLINETYPE;
 				cf.dwEffects = 0;
 				cf.bUnderlineType = CFU_UNDERLINE;
-				re->SendMessage(EM_SETCHARFORMAT, (WPARAM) SCF_SELECTION, (LPARAM)&cf);
+				cf.bUnderlineColor = 0;
+				re->SendMessage(EM_SETCHARFORMAT, (WPARAM)SCF_SELECTION, (LPARAM)&cf);
 			}
 		}
 	}
@@ -71,11 +90,12 @@ void SetNoUnderline(RichEdit *re, int pos_start, int pos_end)
 		re->SetSel(pos_start, pos_end);
 
 		CHARFORMAT2 cf;
-		cf.cbSize = sizeof(CHARFORMAT2);
+		cf.cbSize = sizeof(cf);
 		cf.dwMask = CFM_UNDERLINE | CFM_UNDERLINETYPE;
 		cf.dwEffects = 0;
 		cf.bUnderlineType = CFU_UNDERLINE;
-		re->SendMessage(EM_SETCHARFORMAT, (WPARAM) SCF_SELECTION, (LPARAM)&cf);
+		cf.bUnderlineColor = 0;
+		re->SendMessage(EM_SETCHARFORMAT, (WPARAM)SCF_SELECTION, (LPARAM)&cf);
 	}
 }
 
@@ -158,10 +178,10 @@ public:
 	virtual ~TextParser() {}
 
 	/// @return true when finished an word
-	virtual bool feed(int pos, TCHAR c) =0;
-	virtual int getFirstCharPos() =0;
-	virtual void reset() =0;
-	virtual void deal(const TCHAR *text, bool *mark, bool *replace, TCHAR **replacement) =0;
+	virtual bool feed(int pos, TCHAR c) = 0;
+	virtual int  getFirstCharPos() = 0;
+	virtual void reset() = 0;
+	virtual void deal(const TCHAR *text, bool *mark, bool *replace, TCHAR **replacement) = 0;
 };
 
 class SpellParser : public TextParser
@@ -176,13 +196,13 @@ public:
 		reset();
 	}
 
-	void reset()
+	virtual void reset()
 	{
 		last_pos = -1;
 		found_real_char = FALSE;
 	}
 
-	bool feed(int pos, TCHAR c)
+	virtual bool feed(int pos, TCHAR c)
 	{
 		// Is inside a word?
 		if (dict->isWordChar(c) || IsNumber(c)) {
@@ -201,15 +221,12 @@ public:
 		return (last_pos != -1);
 	}
 
-	int getFirstCharPos()
+	virtual int getFirstCharPos()
 	{
-		if (!found_real_char)
-			return -1;
-		else
-			return last_pos;
+		return (!found_real_char) ? -1 : last_pos;
 	}
 
-	void deal(const TCHAR *text, bool *mark, bool *replace, TCHAR **replacement)
+	virtual void deal(const TCHAR *text, bool *mark, bool *replace, TCHAR **replacement)
 	{
 		// Is it correct?
 		if (dict->spell(text))
@@ -239,12 +256,12 @@ public:
 		reset();
 	}
 
-	void reset()
+	virtual void reset()
 	{
 		last_pos = -1;
 	}
 
-	bool feed(int pos, TCHAR c)
+	virtual bool feed(int pos, TCHAR c)
 	{
 		// Is inside a word?
 		if (ar->isWordChar(c)) {
@@ -256,12 +273,12 @@ public:
 		return (last_pos != -1);
 	}
 
-	int getFirstCharPos()
+	virtual int getFirstCharPos()
 	{
 		return last_pos;
 	}
 
-	void deal(const TCHAR *text, bool *mark, bool *replace, TCHAR **replacement)
+	virtual void deal(const TCHAR *text, bool*, bool *replace, TCHAR **replacement)
 	{
 		*replacement = ar->autoReplace(text);
 		if (*replacement != NULL)
@@ -270,13 +287,13 @@ public:
 };
 
 int CheckTextLine(Dialog *dlg, int line, TextParser *parser,
-				   BOOL ignore_upper, BOOL ignore_with_numbers, BOOL test_urls,
-				   const CHARRANGE &ignored, FoundWrongWordCallback callback, void *param)
+						BOOL ignore_upper, BOOL ignore_with_numbers, BOOL test_urls,
+						const CHARRANGE &ignored, FoundWrongWordCallback callback, void *param)
 {
 	int errors = 0;
 	TCHAR text[1024];
 	dlg->re->GetLine(line, text, SIZEOF(text));
-	int len = lstrlen(text);
+	int len = mir_tstrlen(text);
 	int first_char = dlg->re->GetFirstCharOfLine(line);
 
 	// Now lets get the words
@@ -296,7 +313,7 @@ int CheckTextLine(Dialog *dlg, int line, TextParser *parser,
 				parser->reset();
 
 				BOOL feed = FALSE;
-				for(int j = pos; !feed && j <= url_end; j++)
+				for (int j = pos; !feed && j <= url_end; j++)
 					feed = parser->feed(j, text[j]);
 
 				if (feed || parser->getFirstCharPos() != pos)
@@ -316,7 +333,7 @@ int CheckTextLine(Dialog *dlg, int line, TextParser *parser,
 
 			BOOL feed = parser->feed(pos, c);
 			if (!feed) {
-				if (pos >= len-1)
+				if (pos >= len - 1)
 					pos = len; // To check the last block
 				else
 					continue;
@@ -338,7 +355,7 @@ int CheckTextLine(Dialog *dlg, int line, TextParser *parser,
 
 		if (ignore_upper) {
 			BOOL upper = TRUE;
-			for(int i = last_pos; i < pos && upper; i++)
+			for (int i = last_pos; i < pos && upper; i++)
 				upper = !IsCharLower(text[i]);
 			if (upper)
 				continue;
@@ -346,7 +363,7 @@ int CheckTextLine(Dialog *dlg, int line, TextParser *parser,
 
 		if (ignore_with_numbers) {
 			BOOL hasNumbers = FALSE;
-			for(int i = last_pos; i < pos && !hasNumbers; i++)
+			for (int i = last_pos; i < pos && !hasNumbers; i++)
 				hasNumbers = IsNumber(text[i]);
 			if (hasNumbers)
 				continue;
@@ -365,7 +382,7 @@ int CheckTextLine(Dialog *dlg, int line, TextParser *parser,
 			if (dif != 0) {
 				// Read line again
 				dlg->re->GetLine(line, text, SIZEOF(text));
-				len = lstrlen(text);
+				len = mir_tstrlen(text);
 
 				int old_first_char = first_char;
 				first_char = dlg->re->GetFirstCharOfLine(line);
@@ -413,14 +430,13 @@ int CheckText(Dialog *dlg, BOOL check_all, FoundWrongWordCallback callback = NUL
 
 			SetNoUnderline(dlg->re, first_char, first_char + dlg->re->GetLineLength(line));
 
-			if (opts.auto_replace_user) 
-				errors += CheckTextLine(dlg, line, &AutoReplaceParser(dlg->lang->autoReplace),
-										FALSE, FALSE, TRUE,
-										cur_sel, callback, param);
+			if (opts.auto_replace_user) {
+				AutoReplaceParser parser(dlg->lang->autoReplace);
+				errors += CheckTextLine(dlg, line, &parser, FALSE, FALSE, TRUE, cur_sel, callback, param);
+			}
 
-			errors += CheckTextLine(dlg, line, &SpellParser(dlg->lang),
-									opts.ignore_uppercase, opts.ignore_with_numbers, FALSE,
-									cur_sel, callback, param);
+			SpellParser parser(dlg->lang);
+			errors += CheckTextLine(dlg, line, &parser, opts.ignore_uppercase, opts.ignore_with_numbers, FALSE, cur_sel, callback, param);
 		}
 	}
 
@@ -435,7 +451,7 @@ int CheckText(Dialog *dlg, BOOL check_all, FoundWrongWordCallback callback = NUL
 void ToLocaleID(TCHAR *szKLName, size_t size)
 {
 	TCHAR *stopped = NULL;
-	USHORT langID = (USHORT) _tcstol(szKLName, &stopped, 16);
+	USHORT langID = (USHORT)_tcstol(szKLName, &stopped, 16);
 
 	TCHAR ini[32], end[32];
 	GetLocaleInfo(MAKELCID(langID, 0), LOCALE_SISO639LANGNAME, ini, SIZEOF(ini));
@@ -450,7 +466,7 @@ void LoadDictFromKbdl(Dialog *dlg)
 
 	// Use default input language
 	HKL hkl = GetKeyboardLayout(0);
-	mir_sntprintf(szKLName, SIZEOF(szKLName), _T("%x"), (int) LOWORD(hkl));
+	mir_sntprintf(szKLName, SIZEOF(szKLName), _T("%x"), (int)LOWORD(hkl));
 	ToLocaleID(szKLName, SIZEOF(szKLName));
 
 	int d = GetClosestLanguage(szKLName);
@@ -502,8 +518,8 @@ LRESULT CALLBACK OwnerProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			int errors = TimerCheck(dlg, TRUE);
 			if (errors > 0) {
 				TCHAR text[500];
-				mir_sntprintf(text,SIZEOF(text),TranslateT("There are %d spelling errors. Are you sure you want to send this message?"),errors);
-				if (MessageBox(hwnd,text,TranslateT("Spell Checker"), MB_ICONQUESTION | MB_YESNO) == IDNO)
+				mir_sntprintf(text, SIZEOF(text), TranslateT("There are %d spelling errors. Are you sure you want to send this message?"), errors);
+				if (MessageBox(hwnd, text, TranslateT("Spell Checker"), MB_ICONQUESTION | MB_YESNO) == IDNO)
 					return TRUE;
 			}
 		}
@@ -553,21 +569,23 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		return -1;
 
 	// Hotkey support
-	MSG msgData = {0};
+	MSG msgData = { 0 };
 	msgData.hwnd = hwnd;
 	msgData.message = msg;
 	msgData.wParam = wParam;
 	msgData.lParam = lParam;
 
-	int action = CallService(MS_HOTKEY_CHECK, (WPARAM) &msgData, (LPARAM) "Spell Checker");
+	int action = CallService(MS_HOTKEY_CHECK, (WPARAM)&msgData, (LPARAM)"Spell Checker");
 	if (action == HOTKEY_ACTION_TOGGLE) {
 		ToggleEnabled(dlg);
 		return 1;
 	}
 
 	LRESULT ret = mir_callNextSubclass(hwnd, EditProc, msg, wParam, lParam);
+	if ((dlgit = dialogs.find(hwnd)) == dialogs.end())
+		return ret;
 
-	switch(msg) {
+	switch (msg) {
 	case WM_KEYDOWN:
 		if (wParam != VK_DELETE)
 			break;
@@ -579,11 +597,11 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		if (lParam & (1 << 28))	// ALT key
 			break;
 
-		if ( GetKeyState(VK_CONTROL) & 0x8000)	// CTRL key
+		if (GetKeyState(VK_CONTROL) & 0x8000)	// CTRL key
 			break;
 
 		{
-			TCHAR c = (TCHAR) wParam;
+			TCHAR c = (TCHAR)wParam;
 			BOOL deleting = (c == VK_BACK || c == VK_DELETE);
 
 			// Need to do that to avoid changing the word while typing
@@ -607,10 +625,10 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			else {
 				// Remove underline of current word
 				CHARFORMAT2 cf;
-				cf.cbSize = sizeof(CHARFORMAT2);
-				dlg->re->SendMessage(EM_GETCHARFORMAT, (WPARAM) SCF_SELECTION, (LPARAM)&cf);
+				cf.cbSize = sizeof(cf);
+				dlg->re->SendMessage(EM_GETCHARFORMAT, (WPARAM)SCF_SELECTION, (LPARAM)&cf);
 
-				if ( IsMyUnderline(cf)) {
+				if (IsMyUnderline(cf)) {
 					dlg->re->Stop();
 
 					CHARRANGE sel = dlg->re->GetSel();
@@ -679,12 +697,12 @@ int GetClosestLanguage(TCHAR *lang_name)
 
 	// Search the language by name
 	for (i = 0; i < languages.getCount(); i++)
-		if (lstrcmpi(languages[i]->language, lang_name) == 0)
+		if (mir_tstrcmpi(languages[i]->language, lang_name) == 0)
 			return i;
 
 	// Try searching by the prefix only
 	TCHAR lang[128];
-	lstrcpyn(lang, lang_name, SIZEOF(lang));
+	mir_tstrncpy(lang, lang_name, SIZEOF(lang));
 
 	TCHAR *p = _tcschr(lang, _T('_'));
 	if (p != NULL)
@@ -692,17 +710,17 @@ int GetClosestLanguage(TCHAR *lang_name)
 
 	// First check if there is a language that is only the prefix
 	for (i = 0; i < languages.getCount(); i++)
-		if (lstrcmpi(languages[i]->language, lang) == 0)
+		if (mir_tstrcmpi(languages[i]->language, lang) == 0)
 			return i;
 
 	// Now try any suffix
-	size_t len = lstrlen(lang);
+	size_t len = mir_tstrlen(lang);
 	for (i = 0; i < languages.getCount(); i++) {
 		TCHAR *p = _tcschr(languages[i]->language, _T('_'));
 		if (p == NULL)
 			continue;
 
-		int prefix_len = p - languages[i]->language;
+		size_t prefix_len = p - languages[i]->language;
 		if (prefix_len != len)
 			continue;
 
@@ -713,12 +731,12 @@ int GetClosestLanguage(TCHAR *lang_name)
 	return -1;
 }
 
-void GetUserProtoLanguageSetting(Dialog *dlg, HANDLE hContact, char *group, char *setting, BOOL isProtocol = TRUE)
+void GetUserProtoLanguageSetting(Dialog *dlg, MCONTACT hContact, char *group, char *setting, BOOL isProtocol = TRUE)
 {
-	DBVARIANT dbv = {0};
+	DBVARIANT dbv = { 0 };
 	dbv.type = DBVT_TCHAR;
 
-	DBCONTACTGETSETTING cgs = {0};
+	DBCONTACTGETSETTING cgs = { 0 };
 	cgs.szModule = group;
 	cgs.szSetting = setting;
 	cgs.pValue = &dbv;
@@ -727,9 +745,9 @@ void GetUserProtoLanguageSetting(Dialog *dlg, HANDLE hContact, char *group, char
 
 	int caps = (isProtocol ? CallProtoService(group, PS_GETCAPS, PFLAGNUM_4, 0) : 0);
 	if (caps & PF4_INFOSETTINGSVC)
-		rc = CallProtoService(group, PS_GETINFOSETTING, (WPARAM) hContact, (LPARAM) &cgs);
+		rc = CallProtoService(group, PS_GETINFOSETTING, hContact, (LPARAM)&cgs);
 	else {
-		rc = CallService(MS_DB_CONTACT_GETSETTING_STR_EX, (WPARAM)hContact, (LPARAM)&cgs);
+		rc = CallService(MS_DB_CONTACT_GETSETTING_STR_EX, hContact, (LPARAM)&cgs);
 		if (rc == CALLSERVICE_NOTFOUND)
 			rc = db_get_ts(hContact, group, setting, &dbv);
 	}
@@ -739,11 +757,10 @@ void GetUserProtoLanguageSetting(Dialog *dlg, HANDLE hContact, char *group, char
 
 		for (int i = 0; i < languages.getCount(); i++) {
 			Dictionary *dict = languages[i];
-			if (lstrcmpi(dict->localized_name, lang) == 0
-				|| lstrcmpi(dict->english_name, lang) == 0
-				|| lstrcmpi(dict->language, lang) == 0)
-			{
-				lstrcpyn(dlg->lang_name, dict->language, SIZEOF(dlg->lang_name));
+			if (mir_tstrcmpi(dict->localized_name, lang) == 0
+				 || mir_tstrcmpi(dict->english_name, lang) == 0
+				 || mir_tstrcmpi(dict->language, lang) == 0) {
+				mir_tstrncpy(dlg->lang_name, dict->language, SIZEOF(dlg->lang_name));
 				break;
 			}
 		}
@@ -768,63 +785,51 @@ void GetUserLanguageSetting(Dialog *dlg, char *setting)
 		return;
 
 	// If not found and is inside meta, try to get from the meta
-	INT_PTR mc = CallService(MS_MC_GETPROTOCOLNAME, 0, 0);
-	if (mc != CALLSERVICE_NOTFOUND) {
-		char* metacontacts_proto = (char *) mc;
-		if (metacontacts_proto != NULL) {
-			mc = CallService(MS_MC_GETMETACONTACT, (WPARAM) dlg->hContact, 0);
-			if (mc != CALLSERVICE_NOTFOUND) {
-				HANDLE hMetaContact = (HANDLE) mc;
-				if (hMetaContact != NULL) {
-					GetUserProtoLanguageSetting(dlg, hMetaContact, metacontacts_proto, setting);
-					if (dlg->lang_name[0] != _T('\0'))
-						return;
+	MCONTACT hMetaContact = db_mc_getMeta(dlg->hContact);
+	if (hMetaContact != NULL) {
+		GetUserProtoLanguageSetting(dlg, hMetaContact, META_PROTO, setting);
+		if (dlg->lang_name[0] != _T('\0'))
+			return;
 
-					GetUserProtoLanguageSetting(dlg, hMetaContact, "UserInfo", setting, FALSE);
-				}
-			}
-		}
+		GetUserProtoLanguageSetting(dlg, hMetaContact, "UserInfo", setting, FALSE);
 	}
 }
 
 void GetContactLanguage(Dialog *dlg)
 {
-	DBVARIANT dbv = {0};
+	DBVARIANT dbv = { 0 };
 
 	dlg->lang_name[0] = _T('\0');
 
 	if (dlg->hContact == NULL) {
-		if ( !db_get_ts(NULL, MODULE_NAME, dlg->name, &dbv)) {
-			lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
+		if (!db_get_ts(NULL, MODULE_NAME, dlg->name, &dbv)) {
+			mir_tstrncpy(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
 			db_free(&dbv);
 		}
 	}
 	else {
 		if (!db_get_ts(dlg->hContact, MODULE_NAME, "TalkLanguage", &dbv)) {
-			lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
+			mir_tstrncpy(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
 			db_free(&dbv);
 		}
 
 		if (dlg->lang_name[0] == _T('\0') && !db_get_ts(dlg->hContact, "eSpeak", "TalkLanguage", &dbv)) {
-			lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
+			mir_tstrncpy(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
 			db_free(&dbv);
 		}
 
 		// Try from metacontact
 		if (dlg->lang_name[0] == _T('\0')) {
-			INT_PTR mc = CallService(MS_MC_GETMETACONTACT, (WPARAM) dlg->hContact, 0);
-			if (mc != CALLSERVICE_NOTFOUND) {
-				HANDLE hMetaContact = (HANDLE) mc;
-				if (hMetaContact != NULL) {
-					if (!db_get_ts(hMetaContact, MODULE_NAME, "TalkLanguage", &dbv)) {
-						lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
-						db_free(&dbv);
-					}
+			MCONTACT hMetaContact = db_mc_getMeta(dlg->hContact);
+			if (hMetaContact != NULL) {
+				if (!db_get_ts(hMetaContact, MODULE_NAME, "TalkLanguage", &dbv)) {
+					mir_tstrncpy(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
+					db_free(&dbv);
+				}
 
-					if (dlg->lang_name[0] == _T('\0') && !db_get_ts(hMetaContact, "eSpeak", "TalkLanguage", &dbv)) {
-						lstrcpyn(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
-						db_free(&dbv);
-					}
+				if (dlg->lang_name[0] == _T('\0') && !db_get_ts(hMetaContact, "eSpeak", "TalkLanguage", &dbv)) {
+					mir_tstrncpy(dlg->lang_name, dbv.ptszVal, SIZEOF(dlg->lang_name));
+					db_free(&dbv);
 				}
 			}
 		}
@@ -841,13 +846,13 @@ void GetContactLanguage(Dialog *dlg)
 
 		// Use default lang
 		if (dlg->lang_name[0] == _T('\0'))
-			lstrcpyn(dlg->lang_name, opts.default_language, SIZEOF(dlg->lang_name));
+			mir_tstrncpy(dlg->lang_name, opts.default_language, SIZEOF(dlg->lang_name));
 	}
 
 	int i = GetClosestLanguage(dlg->lang_name);
 	if (i < 0) {
 		// Lost a dict?
-		lstrcpyn(dlg->lang_name, opts.default_language, SIZEOF(dlg->lang_name));
+		mir_tstrncpy(dlg->lang_name, opts.default_language, SIZEOF(dlg->lang_name));
 		i = GetClosestLanguage(dlg->lang_name);
 	}
 
@@ -875,46 +880,29 @@ void ModifyIcon(Dialog *dlg)
 	}
 }
 
-INT_PTR AddContactTextBoxService(WPARAM wParam, LPARAM lParam)
+INT_PTR AddContactTextBoxService(WPARAM wParam, LPARAM)
 {
-	SPELLCHECKER_ITEM *sci = (SPELLCHECKER_ITEM *) wParam;
+	SPELLCHECKER_ITEM *sci = (SPELLCHECKER_ITEM *)wParam;
 	if (sci == NULL || sci->cbSize != sizeof(SPELLCHECKER_ITEM))
 		return -1;
 
 	return AddContactTextBox(sci->hContact, sci->hwnd, sci->window_name, FALSE, NULL);
 }
 
-void NotifyWrongSRMM()
-{
-	static BOOL notified = FALSE;
-	if (notified)
-		return;
-
-	MessageBox(NULL,
-		TranslateT("Your message window does not support SpellChecker Plugin.\nIf you use SRMM, TabSRMM or Scriver, please update them to the latest version,\notherwise ask the author of your message window plugin to add support for Spell Checker."),
-		TranslateT("Spell Checker"), MB_ICONERROR | MB_OK);
-
-	notified = TRUE;
-}
-
-int AddContactTextBox(HANDLE hContact, HWND hwnd, char *name, BOOL srmm, HWND hwndOwner)
+int AddContactTextBox(MCONTACT hContact, HWND hwnd, char *name, BOOL srmm, HWND hwndOwner)
 {
 	if (languages.getCount() <= 0)
 		return 0;
 
 	if (dialogs.find(hwnd) == dialogs.end()) {
 		// Fill dialog data
-		Dialog *dlg = (Dialog *) malloc(sizeof(Dialog));
-		ZeroMemory(dlg, sizeof(Dialog));
+		Dialog *dlg = (Dialog *)malloc(sizeof(Dialog));
+		memset(dlg, 0, sizeof(Dialog));
 
 		dlg->re = new RichEdit(hwnd);
 		if (!dlg->re->IsValid()) {
 			delete dlg->re;
 			free(dlg);
-
-			if (srmm)
-				NotifyWrongSRMM();
-
 			return 0;
 		}
 
@@ -953,16 +941,16 @@ int AddContactTextBox(HANDLE hContact, HWND hwnd, char *name, BOOL srmm, HWND hw
 
 void FreePopupData(Dialog *dlg)
 {
-	DESTROY_MENY(dlg->hLanguageSubMenu)
-	DESTROY_MENY(dlg->hWrongWordsSubMenu)
+	DESTROY_MENY(dlg->hLanguageSubMenu);
+	DESTROY_MENY(dlg->hWrongWordsSubMenu);
 
 	if (dlg->wrong_words != NULL) {
 		for (unsigned i = 0; i < dlg->wrong_words->size(); i++) {
-			FREE((*dlg->wrong_words)[i].word)
+			FREE((*dlg->wrong_words)[i].word);
 
-			DESTROY_MENY((*dlg->wrong_words)[i].hMeSubMenu)
-			DESTROY_MENY((*dlg->wrong_words)[i].hCorrectSubMenu)
-			DESTROY_MENY((*dlg->wrong_words)[i].hReplaceSubMenu)
+			DESTROY_MENY((*dlg->wrong_words)[i].hMeSubMenu);
+			DESTROY_MENY((*dlg->wrong_words)[i].hCorrectSubMenu);
+			DESTROY_MENY((*dlg->wrong_words)[i].hReplaceSubMenu);
 
 			FreeSuggestions((*dlg->wrong_words)[i].suggestions);
 		}
@@ -972,9 +960,9 @@ void FreePopupData(Dialog *dlg)
 	}
 }
 
-INT_PTR RemoveContactTextBoxService(WPARAM wParam, LPARAM lParam)
+INT_PTR RemoveContactTextBoxService(WPARAM wParam, LPARAM)
 {
-	HWND hwnd = (HWND) wParam;
+	HWND hwnd = (HWND)wParam;
 	if (hwnd == NULL)
 		return -1;
 
@@ -1015,12 +1003,12 @@ BOOL GetWordCharRange(Dialog *dlg, CHARRANGE &sel, TCHAR *text, size_t text_len,
 	// Find the word
 	sel.cpMin--;
 	while (sel.cpMin >= first_char && (dlg->lang->isWordChar(text[sel.cpMin - first_char])
-										|| IsNumber(text[sel.cpMin - first_char])))
+		|| IsNumber(text[sel.cpMin - first_char])))
 		sel.cpMin--;
 	sel.cpMin++;
 
 	while (text[sel.cpMax - first_char] != _T('\0') && (dlg->lang->isWordChar(text[sel.cpMax - first_char])
-														|| IsNumber(text[sel.cpMax - first_char])))
+		|| IsNumber(text[sel.cpMax - first_char])))
 		sel.cpMax++;
 
 	// Has a word?
@@ -1030,7 +1018,7 @@ BOOL GetWordCharRange(Dialog *dlg, CHARRANGE &sel, TCHAR *text, size_t text_len,
 	// See if it has only '-'s
 	BOOL has_valid_char = FALSE;
 	for (int i = sel.cpMin; i < sel.cpMax && !has_valid_char; i++)
-		has_valid_char = ( text[i - first_char] != _T('-'));
+		has_valid_char = (text[i - first_char] != _T('-'));
 
 	return has_valid_char;
 }
@@ -1059,23 +1047,22 @@ TCHAR *GetWordUnderPoint(Dialog *dlg, POINT pt, CHARRANGE &sel)
 
 void AppendSubmenu(HMENU hMenu, HMENU hSubMenu, TCHAR *name)
 {
-	MENUITEMINFO mii = {0};
+	MENUITEMINFO mii = { sizeof(mii) };
 	mii.cbSize = sizeof(MENUITEMINFO);
 	mii.fMask = MIIM_SUBMENU | MIIM_TYPE;
 	mii.fType = MFT_STRING;
 	mii.hSubMenu = hSubMenu;
 	mii.dwTypeData = name;
-	mii.cch = lstrlen(name);
+	mii.cch = mir_tstrlen(name);
 	InsertMenuItem(hMenu, 0, TRUE, &mii);
 }
 
 void AppendMenuItem(HMENU hMenu, int id, TCHAR *name, HICON hIcon, BOOL checked)
 {
 	ICONINFO iconInfo;
-	GetIconInfo(hIcon, & iconInfo);
+	GetIconInfo(hIcon, &iconInfo);
 
-	MENUITEMINFO mii = {0};
-	mii.cbSize = sizeof(MENUITEMINFO);
+	MENUITEMINFO mii = { sizeof(mii) };
 	mii.fMask = MIIM_CHECKMARKS | MIIM_TYPE | MIIM_STATE;
 	mii.fType = MFT_STRING;
 	mii.fState = (checked ? MFS_CHECKED : 0);
@@ -1083,7 +1070,7 @@ void AppendMenuItem(HMENU hMenu, int id, TCHAR *name, HICON hIcon, BOOL checked)
 	mii.hbmpChecked = iconInfo.hbmColor;
 	mii.hbmpUnchecked = iconInfo.hbmColor;
 	mii.dwTypeData = name;
-	mii.cch = lstrlen(name);
+	mii.cch = mir_tstrlen(name);
 	InsertMenuItem(hMenu, 0, TRUE, &mii);
 }
 
@@ -1099,7 +1086,7 @@ void AddMenuForWord(Dialog *dlg, TCHAR *word, CHARRANGE &pos, HMENU hMenu, BOOL 
 		dlg->wrong_words->resize(dlg->wrong_words->size() + 1);
 
 	WrongWordPopupMenuData &data = (*dlg->wrong_words)[dlg->wrong_words->size() - 1];
-	ZeroMemory(&data, sizeof(WrongWordPopupMenuData));
+	memset(&data, 0, sizeof(WrongWordPopupMenuData));
 
 	// Get suggestions
 	data.word = word;
@@ -1119,7 +1106,7 @@ void AddMenuForWord(Dialog *dlg, TCHAR *word, CHARRANGE &pos, HMENU hMenu, BOOL 
 	InsertMenu(data.hReplaceSubMenu, 0, MF_BYPOSITION, base + AUTOREPLACE_MENU_ID_BASE + suggestions.count, TranslateT("Other..."));
 	if (suggestions.count > 0) {
 		InsertMenu(data.hReplaceSubMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-		for (int i = (int)suggestions.count-1; i >= 0; i--)
+		for (int i = (int)suggestions.count - 1; i >= 0; i--)
 			InsertMenu(data.hReplaceSubMenu, 0, MF_BYPOSITION, base + AUTOREPLACE_MENU_ID_BASE + i, suggestions.words[i]);
 	}
 
@@ -1152,16 +1139,17 @@ void AddMenuForWord(Dialog *dlg, TCHAR *word, CHARRANGE &pos, HMENU hMenu, BOOL 
 	}
 }
 
-struct FoundWrongWordParam {
+struct FoundWrongWordParam
+{
 	Dialog *dlg;
 	int count;
 };
 
 void FoundWrongWord(TCHAR *word, CHARRANGE pos, void *param)
 {
-	FoundWrongWordParam *p = (FoundWrongWordParam*) param;
+	FoundWrongWordParam *p = (FoundWrongWordParam*)param;
 
-	p->count ++;
+	p->count++;
 
 	AddMenuForWord(p->dlg, _tcsdup(word), pos, p->dlg->hWrongWordsSubMenu, TRUE, WORD_MENU_ID_BASE * p->count);
 }
@@ -1173,8 +1161,6 @@ void AddItemsToMenu(Dialog *dlg, HMENU hMenu, POINT pt, HWND hwndOwner)
 		dlg->hwnd_menu_owner = hwndOwner;
 		menus[hwndOwner] = dlg;
 	}
-
-	BOOL wrong_word = FALSE;
 
 	// Make menu
 	if (GetMenuItemCount(hMenu) > 0)
@@ -1189,7 +1175,7 @@ void AddItemsToMenu(Dialog *dlg, HMENU hMenu, POINT pt, HWND hwndOwner)
 		// First add languages
 		for (int i = 0; i < languages.getCount(); i++)
 			AppendMenu(dlg->hLanguageSubMenu, MF_STRING | (languages[i] == dlg->lang ? MF_CHECKED : 0),
-				LANGUAGE_MENU_ID_BASE + i, languages[i]->full_name);
+			LANGUAGE_MENU_ID_BASE + i, languages[i]->full_name);
 
 		AppendSubmenu(hMenu, dlg->hLanguageSubMenu, TranslateT("Language"));
 	}
@@ -1221,21 +1207,21 @@ void AddItemsToMenu(Dialog *dlg, HMENU hMenu, POINT pt, HWND hwndOwner)
 
 
 static void AddWordToDictCallback(BOOL canceled, Dictionary *dict,
-								  const TCHAR *find, const TCHAR *replace, BOOL useVariables,
-								  const TCHAR *original_find, void *param)
+	const TCHAR *find, const TCHAR *replace, BOOL useVariables,
+	const TCHAR *, void *param)
 {
 	if (canceled)
 		return;
 
 	dict->autoReplace->add(find, replace, useVariables);
 
-	HWND hwndParent = (HWND) param;
+	HWND hwndParent = (HWND)param;
 	if (hwndParent != NULL)
 		PostMessage(hwndParent, WMU_DICT_CHANGED, 0, 0);
 }
 
 
-BOOL HandleMenuSelection(Dialog *dlg, POINT pt, unsigned selection)
+BOOL HandleMenuSelection(Dialog *dlg, unsigned selection)
 {
 	BOOL ret = FALSE;
 
@@ -1243,15 +1229,15 @@ BOOL HandleMenuSelection(Dialog *dlg, POINT pt, unsigned selection)
 		ToggleEnabled(dlg);
 		ret = TRUE;
 	}
-	else if (selection >= LANGUAGE_MENU_ID_BASE && selection < LANGUAGE_MENU_ID_BASE + (unsigned) languages.getCount()) {
+	else if (selection >= LANGUAGE_MENU_ID_BASE && selection < LANGUAGE_MENU_ID_BASE + (unsigned)languages.getCount()) {
 		SetNoUnderline(dlg);
 
 		if (dlg->hContact == NULL)
 			db_set_ts(NULL, MODULE_NAME, dlg->name,
-					languages[selection - LANGUAGE_MENU_ID_BASE]->language);
+			languages[selection - LANGUAGE_MENU_ID_BASE]->language);
 		else
 			db_set_ts(dlg->hContact, MODULE_NAME, "TalkLanguage",
-					languages[selection - LANGUAGE_MENU_ID_BASE]->language);
+			languages[selection - LANGUAGE_MENU_ID_BASE]->language);
 
 		GetContactLanguage(dlg);
 
@@ -1261,11 +1247,10 @@ BOOL HandleMenuSelection(Dialog *dlg, POINT pt, unsigned selection)
 		ret = TRUE;
 	}
 	else if (selection > 0 && dlg->wrong_words != NULL
-			 && selection >= WORD_MENU_ID_BASE
-			 && selection < (dlg->wrong_words->size() + 1) * WORD_MENU_ID_BASE)
-	{
+				&& selection >= WORD_MENU_ID_BASE
+				&& selection < (dlg->wrong_words->size() + 1) * WORD_MENU_ID_BASE) {
 		int pos = selection / WORD_MENU_ID_BASE;
-		selection -=  pos * WORD_MENU_ID_BASE;
+		selection -= pos * WORD_MENU_ID_BASE;
 		pos--; // 0 based
 		WrongWordPopupMenuData &data = (*dlg->wrong_words)[pos];
 
@@ -1286,8 +1271,8 @@ BOOL HandleMenuSelection(Dialog *dlg, POINT pt, unsigned selection)
 			selection -= AUTOREPLACE_MENU_ID_BASE;
 			if (selection == data.suggestions.count) {
 				ShowAutoReplaceDialog(dlg->hwnd_owner != NULL ? dlg->hwnd_owner : dlg->hwnd, FALSE,
-									  dlg->lang, data.word, NULL, FALSE,
-									  TRUE, &AddWordToDictCallback, dlg->hwnd);
+											 dlg->lang, data.word, NULL, FALSE,
+											 TRUE, &AddWordToDictCallback, dlg->hwnd);
 			}
 			else {
 				// TODO Assert that text hasn't changed
@@ -1309,9 +1294,9 @@ BOOL HandleMenuSelection(Dialog *dlg, POINT pt, unsigned selection)
 	return ret;
 }
 
-int MsgWindowPopup(WPARAM wParam, LPARAM lParam)
+int MsgWindowPopup(WPARAM, LPARAM lParam)
 {
-	MessageWindowPopupData *mwpd = (MessageWindowPopupData *) lParam;
+	MessageWindowPopupData *mwpd = (MessageWindowPopupData *)lParam;
 	if (mwpd == NULL || mwpd->cbSize < sizeof(MessageWindowPopupData) || mwpd->uFlags != MSG_WINDOWPOPUP_INPUT)
 		return 0;
 
@@ -1327,14 +1312,14 @@ int MsgWindowPopup(WPARAM wParam, LPARAM lParam)
 	if (mwpd->uType == MSG_WINDOWPOPUP_SHOWING)
 		AddItemsToMenu(dlg, mwpd->hMenu, pt, dlg->hwnd_owner);
 	else if (mwpd->uType == MSG_WINDOWPOPUP_SELECTED)
-		HandleMenuSelection(dlg, pt, mwpd->selection);
+		HandleMenuSelection(dlg, mwpd->selection);
 
 	return 0;
 }
 
-INT_PTR ShowPopupMenuService(WPARAM wParam, LPARAM lParam)
+INT_PTR ShowPopupMenuService(WPARAM wParam, LPARAM)
 {
-	SPELLCHECKER_POPUPMENU *scp = (SPELLCHECKER_POPUPMENU *) wParam;
+	SPELLCHECKER_POPUPMENU *scp = (SPELLCHECKER_POPUPMENU *)wParam;
 	if (scp == NULL || scp->cbSize != sizeof(SPELLCHECKER_POPUPMENU))
 		return -1;
 
@@ -1351,10 +1336,10 @@ int ShowPopupMenu(HWND hwnd, HMENU hMenu, POINT pt, HWND hwndOwner)
 
 	if (pt.x == 0xFFFF && pt.y == 0xFFFF) {
 		CHARRANGE sel;
-		SendMessage(hwnd, EM_EXGETSEL, 0, (LPARAM) &sel);
+		SendMessage(hwnd, EM_EXGETSEL, 0, (LPARAM)&sel);
 
 		// Get current cursor pos
-		SendMessage(hwnd, EM_POSFROMCHAR, (WPARAM)&pt, (LPARAM) sel.cpMax);
+		SendMessage(hwnd, EM_POSFROMCHAR, (WPARAM)&pt, (LPARAM)sel.cpMax);
 	}
 	else ScreenToClient(hwnd, &pt);
 
@@ -1366,12 +1351,11 @@ int ShowPopupMenu(HWND hwnd, HMENU hMenu, POINT pt, HWND hwndOwner)
 	AddItemsToMenu(dlg, hMenu, pt, hwndOwner);
 
 	// Show menu
-	POINT client = pt;
 	ClientToScreen(hwnd, &pt);
 	int selection = TrackPopupMenu(hMenu, TPM_RETURNCMD, pt.x, pt.y, 0, hwndOwner, NULL);
 
 	// Do action
-	if (HandleMenuSelection(dlg, client, selection))
+	if (HandleMenuSelection(dlg, selection))
 		selection = 0;
 
 	if (create_menu)
@@ -1380,7 +1364,7 @@ int ShowPopupMenu(HWND hwnd, HMENU hMenu, POINT pt, HWND hwndOwner)
 	return selection;
 }
 
-int MsgWindowEvent(WPARAM wParam, LPARAM lParam)
+int MsgWindowEvent(WPARAM, LPARAM lParam)
 {
 	MessageWindowEventData *event = (MessageWindowEventData *)lParam;
 	if (event == NULL)
@@ -1398,31 +1382,27 @@ int MsgWindowEvent(WPARAM wParam, LPARAM lParam)
 }
 
 
-int IconPressed(WPARAM wParam, LPARAM lParam)
+int IconPressed(WPARAM hContact, LPARAM lParam)
 {
-	StatusIconClickData *sicd = (StatusIconClickData *) lParam;
+	StatusIconClickData *sicd = (StatusIconClickData *)lParam;
 	if (sicd == NULL || strcmp(sicd->szModule, MODULE_NAME) != 0)
 		return 0;
 
-	HANDLE hContact = (HANDLE) wParam;
 	if (hContact == NULL)
 		return 0;
 
 	// Find the dialog
-	HWND hwnd = NULL;
-	Dialog *dlg;
-	for(DialogMapType::iterator it = dialogs.begin(); it != dialogs.end(); it++) {
-		dlg = it->second;
-		if (dlg->srmm && dlg->hContact == hContact) {
-			hwnd = it->first;
+	Dialog *dlg = NULL;
+	for (DialogMapType::iterator it = dialogs.begin(); it != dialogs.end(); it++) {
+		Dialog *p = it->second;
+		if (p->srmm && p->hContact == hContact) {
+			dlg = p;
 			break;
 		}
 	}
 
-	if (hwnd == NULL) {
-		NotifyWrongSRMM();
+	if (dlg == NULL)
 		return 0;
-	}
 
 	if ((sicd->flags & MBCF_RIGHTBUTTON) == 0) {
 		FreePopupData(dlg);
@@ -1439,8 +1419,7 @@ int IconPressed(WPARAM wParam, LPARAM lParam)
 
 			// First add languages
 			for (int i = 0; i < languages.getCount(); i++)
-				AppendMenu(hMenu, MF_STRING | (languages[i] == dlg->lang ? MF_CHECKED : 0),
-					LANGUAGE_MENU_ID_BASE + i, languages[i]->full_name);
+				AppendMenu(hMenu, MF_STRING | (languages[i] == dlg->lang ? MF_CHECKED : 0), LANGUAGE_MENU_ID_BASE + i, languages[i]->full_name);
 
 			InsertMenu(hMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
 		}
@@ -1450,13 +1429,11 @@ int IconPressed(WPARAM wParam, LPARAM lParam)
 
 		// Show menu
 		int selection = TrackPopupMenu(hMenu, TPM_RETURNCMD, sicd->clickLocation.x, sicd->clickLocation.y, 0, dlg->hwnd, NULL);
-		HandleMenuSelection(dlg, sicd->clickLocation, selection);
+		HandleMenuSelection(dlg, selection);
 		DestroyMenu(hMenu);
 	}
-	else {
-		// Enable / disable
-		HandleMenuSelection(dlg, sicd->clickLocation, 1);
-	}
+	else // Enable / disable
+		HandleMenuSelection(dlg, 1);
 
 	return 0;
 }
@@ -1467,20 +1444,18 @@ LRESULT CALLBACK MenuWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	if (dlgit == menus.end())
 		return -1;
 
-	Dialog *dlg = dlgit->second;
-
 	switch (msg) {
 	case WM_INITMENUPOPUP:
 		{
-			HMENU hMenu = (HMENU) wParam;
+			HMENU hMenu = (HMENU)wParam;
 
 			int count = GetMenuItemCount(hMenu);
-			for(int i = 0; i < count; i++) {
+			for (int i = 0; i < count; i++) {
 				unsigned id = GetMenuItemID(hMenu, i);
-				if (id < LANGUAGE_MENU_ID_BASE || id >= LANGUAGE_MENU_ID_BASE + (unsigned) languages.getCount())
+				if (id < LANGUAGE_MENU_ID_BASE || id >= LANGUAGE_MENU_ID_BASE + (unsigned)languages.getCount())
 					continue;
 
-				MENUITEMINFO mii = {0};
+				MENUITEMINFO mii = { 0 };
 				mii.cbSize = sizeof(MENUITEMINFO);
 				mii.fMask = MIIM_STATE;
 				GetMenuItemInfo(hMenu, id, FALSE, &mii);
@@ -1494,7 +1469,7 @@ LRESULT CALLBACK MenuWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_DRAWITEM:
 		{
 			LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT)lParam;
-			if (lpdis->CtlType != ODT_MENU || lpdis->itemID < LANGUAGE_MENU_ID_BASE || lpdis->itemID >= LANGUAGE_MENU_ID_BASE + (unsigned) languages.getCount())
+			if (lpdis->CtlType != ODT_MENU || lpdis->itemID < LANGUAGE_MENU_ID_BASE || lpdis->itemID >= LANGUAGE_MENU_ID_BASE + (unsigned)languages.getCount())
 				break;
 
 			int pos = lpdis->itemID - LANGUAGE_MENU_ID_BASE;
@@ -1502,9 +1477,9 @@ LRESULT CALLBACK MenuWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			Dictionary *dict = languages[pos];
 
 			COLORREF clrfore = SetTextColor(lpdis->hDC,
-				GetSysColor(lpdis->itemState & ODS_SELECTED ? COLOR_HIGHLIGHTTEXT : COLOR_MENUTEXT));
+													  GetSysColor(lpdis->itemState & ODS_SELECTED ? COLOR_HIGHLIGHTTEXT : COLOR_MENUTEXT));
 			COLORREF clrback = SetBkColor(lpdis->hDC,
-				GetSysColor(lpdis->itemState & ODS_SELECTED ? COLOR_HIGHLIGHT : COLOR_MENU));
+													GetSysColor(lpdis->itemState & ODS_SELECTED ? COLOR_HIGHLIGHT : COLOR_MENU));
 
 			FillRect(lpdis->hDC, &lpdis->rcItem, GetSysColorBrush(lpdis->itemState & ODS_SELECTED ? COLOR_HIGHLIGHT : COLOR_MENU));
 
@@ -1519,7 +1494,7 @@ LRESULT CALLBACK MenuWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				rc.bottom = rc.top + bmpChecked.bmHeight;
 
 				HDC hdcTemp = CreateCompatibleDC(lpdis->hDC);
-				HBITMAP oldBmp = (HBITMAP) SelectObject(hdcTemp, hCheckedBmp);
+				HBITMAP oldBmp = (HBITMAP)SelectObject(hdcTemp, hCheckedBmp);
 
 				BitBlt(lpdis->hDC, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, hdcTemp, 0, 0, SRCCOPY);
 
@@ -1543,70 +1518,67 @@ LRESULT CALLBACK MenuWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 			// Draw text
 			RECT rc_text = { 0, 0, 0xFFFF, 0xFFFF };
-			DrawText(lpdis->hDC, dict->full_name, lstrlen(dict->full_name), &rc_text, DT_END_ELLIPSIS | DT_NOPREFIX | DT_SINGLELINE | DT_LEFT | DT_TOP | DT_CALCRECT);
+			DrawText(lpdis->hDC, dict->full_name, -1, &rc_text, DT_END_ELLIPSIS | DT_NOPREFIX | DT_SINGLELINE | DT_LEFT | DT_TOP | DT_CALCRECT);
 
 			rc.right = lpdis->rcItem.right - 2;
 			rc.top = (lpdis->rcItem.bottom + lpdis->rcItem.top - (rc_text.bottom - rc_text.top)) / 2;
 			rc.bottom = rc.top + rc_text.bottom - rc_text.top;
-			DrawText(lpdis->hDC, dict->full_name, lstrlen(dict->full_name), &rc, DT_END_ELLIPSIS | DT_NOPREFIX | DT_LEFT | DT_TOP | DT_SINGLELINE);
+			DrawText(lpdis->hDC, dict->full_name, -1, &rc, DT_END_ELLIPSIS | DT_NOPREFIX | DT_LEFT | DT_TOP | DT_SINGLELINE);
 
 			// Restore old colors
 			SetTextColor(lpdis->hDC, clrfore);
 			SetBkColor(lpdis->hDC, clrback);
-
-			return TRUE;
 		}
+		return TRUE;
 
 	case WM_MEASUREITEM:
-		{
-			LPMEASUREITEMSTRUCT lpmis = (LPMEASUREITEMSTRUCT)lParam;
-			if (lpmis->CtlType != ODT_MENU || lpmis->itemID < LANGUAGE_MENU_ID_BASE || lpmis->itemID >= LANGUAGE_MENU_ID_BASE + (unsigned) languages.getCount())
-				break;
+		LPMEASUREITEMSTRUCT lpmis = (LPMEASUREITEMSTRUCT)lParam;
+		if (lpmis->CtlType != ODT_MENU || lpmis->itemID < LANGUAGE_MENU_ID_BASE || lpmis->itemID >= LANGUAGE_MENU_ID_BASE + (unsigned)languages.getCount())
+			break;
 
-			int pos = lpmis->itemID - LANGUAGE_MENU_ID_BASE;
+		int pos = lpmis->itemID - LANGUAGE_MENU_ID_BASE;
 
-			Dictionary *dict = languages[pos];
+		Dictionary *dict = languages[pos];
 
-			HDC hdc = GetDC(hwnd);
+		HDC hdc = GetDC(hwnd);
 
-			NONCLIENTMETRICS info;
-			ZeroMemory(&info, sizeof(info));
-			info.cbSize = sizeof(info);
-			SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(info), &info, 0);
-			HFONT hFont = CreateFontIndirect(&info.lfMenuFont);
-			HFONT hFontOld = (HFONT) SelectObject(hdc, hFont);
+		NONCLIENTMETRICS info;
+		memset(&info, 0, sizeof(info));
+		info.cbSize = sizeof(info);
+		SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(info), &info, 0);
+		HFONT hFont = CreateFontIndirect(&info.lfMenuFont);
+		HFONT hFontOld = (HFONT)SelectObject(hdc, hFont);
 
-			RECT rc = { 0, 0, 0xFFFF, 0xFFFF };
+		RECT rc = { 0, 0, 0xFFFF, 0xFFFF };
 
-			DrawText(hdc, dict->full_name, lstrlen(dict->full_name), &rc, DT_NOPREFIX | DT_SINGLELINE | DT_LEFT | DT_TOP | DT_CALCRECT);
+		DrawText(hdc, dict->full_name, -1, &rc, DT_NOPREFIX | DT_SINGLELINE | DT_LEFT | DT_TOP | DT_CALCRECT);
 
-			lpmis->itemHeight = max(ICON_SIZE, max(bmpChecked.bmHeight, rc.bottom));
-			lpmis->itemWidth = 2 + bmpChecked.bmWidth + 2 + ICON_SIZE + 4 + rc.right + 2;
+		lpmis->itemHeight = max(ICON_SIZE, max(bmpChecked.bmHeight, rc.bottom));
+		lpmis->itemWidth = 2 + bmpChecked.bmWidth + 2 + ICON_SIZE + 4 + rc.right + 2;
 
-			SelectObject(hdc, hFontOld);
-			DeleteObject(hFont);
-			ReleaseDC(hwnd, hdc);
+		SelectObject(hdc, hFontOld);
+		DeleteObject(hFont);
+		ReleaseDC(hwnd, hdc);
 
-			return TRUE;
-		}
+		return TRUE;
 	}
 
 	return mir_callNextSubclass(hwnd, MenuWndProc, msg, wParam, lParam);
 }
 
-TCHAR *lstrtrim(TCHAR *str)
+TCHAR* lstrtrim(TCHAR *str)
 {
-	int len = lstrlen(str);
+	int len = mir_tstrlen(str);
 
 	int i;
-	for(i = len - 1; i >= 0 && (str[i] == ' ' || str[i] == '\t'); --i) ;
+	for (i = len - 1; i >= 0 && (str[i] == ' ' || str[i] == '\t'); --i);
 	if (i < len - 1) {
 		++i;
 		str[i] = _T('\0');
 		len = i;
 	}
 
-	for(i = 0; i < len && (str[i] == ' ' || str[i] == '\t'); ++i) ;
+	for (i = 0; i < len && (str[i] == ' ' || str[i] == '\t'); ++i);
 	if (i > 0)
 		memmove(str, &str[i], (len - i + 1) * sizeof(TCHAR));
 

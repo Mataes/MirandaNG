@@ -2,7 +2,7 @@
     Variables Plugin for Miranda-IM (www.miranda-im.org)
     Copyright 2003-2006 P. Boon
 
-    This program is mir_free software; you can redistribute it and/or modify
+    This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
@@ -26,56 +26,56 @@ struct _tagType
 }
 static builtinCnfs[] =
 {
-	{ CNF_FIRSTNAME,   _T(STR_FIRSTNAME)  }, 
-	{ CNF_LASTNAME,    _T(STR_LASTNAME)   },
-	{ CNF_NICK,        _T(STR_NICK)       },
-	{ CNF_CUSTOMNICK,  _T(STR_CUSTOMNICK) },
-	{ CNF_EMAIL,       _T(STR_EMAIL)      },
-	{ CNF_CITY,        _T(STR_CITY)       },
-	{ CNF_STATE,       _T(STR_STATE)      },
-	{ CNF_COUNTRY,     _T(STR_COUNTRY)    },
-	{ CNF_PHONE,       _T(STR_PHONE)      },
-	{ CNF_HOMEPAGE,    _T(STR_HOMEPAGE)   },
-	{ CNF_ABOUT,       _T(STR_ABOUT)      },
-	{ CNF_GENDER,      _T(STR_GENDER)     },
-	{ CNF_AGE,         _T(STR_AGE)        },
-	{ CNF_FIRSTLAST,   _T(STR_FIRSTLAST)  },
-	{ CNF_UNIQUEID,    _T(STR_UNIQUEID)   },
-	{ CNF_DISPLAY,     _T(STR_DISPLAY)    },
-	{ CNF_FAX,         _T(STR_FAX)        },
-	{ CNF_CELLULAR,    _T(STR_CELLULAR)   },
-	{ CNF_TIMEZONE,    _T(STR_TIMEZONE)   },
-	{ CNF_MYNOTES,     _T(STR_MYNOTES)    },
-	{ CNF_BIRTHDAY,    _T(STR_BIRTHDAY)   },
-	{ CNF_BIRTHMONTH,  _T(STR_BIRTHMONTH) },
-	{ CNF_BIRTHYEAR,   _T(STR_BIRTHYEAR)  },
-	{ CNF_STREET,      _T(STR_STREET)     },
-	{ CNF_ZIP,         _T(STR_ZIP)        },
-	{ CNF_LANGUAGE1,   _T(STR_LANGUAGE1)  },
-	{ CNF_LANGUAGE2,   _T(STR_LANGUAGE2)  },
-	{ CNF_LANGUAGE3,   _T(STR_LANGUAGE3)  },
-	{ CNF_CONAME,      _T(STR_CONAME)     },
-	{ CNF_CODEPT,      _T(STR_CODEPT)     },
-	{ CNF_COPOSITION,  _T(STR_COPOSITION) },
-	{ CNF_COSTREET,    _T(STR_COSTREET)   },
-	{ CNF_COCITY,      _T(STR_COCITY)     },
-	{ CNF_COSTATE,     _T(STR_COSTATE)    },
-	{ CNF_COZIP,       _T(STR_COZIP)      },
-	{ CNF_COCOUNTRY,   _T(STR_COCOUNTRY)  },
-	{ CNF_COHOMEPAGE,  _T(STR_COHOMEPAGE) },
+	{ CNF_FIRSTNAME,   STR_FIRSTNAME  }, 
+	{ CNF_LASTNAME,    STR_LASTNAME   },
+	{ CNF_NICK,        STR_NICK       },
+	{ CNF_CUSTOMNICK,  STR_CUSTOMNICK },
+	{ CNF_EMAIL,       STR_EMAIL      },
+	{ CNF_CITY,        STR_CITY       },
+	{ CNF_STATE,       STR_STATE      },
+	{ CNF_COUNTRY,     STR_COUNTRY    },
+	{ CNF_PHONE,       STR_PHONE      },
+	{ CNF_HOMEPAGE,    STR_HOMEPAGE   },
+	{ CNF_ABOUT,       STR_ABOUT      },
+	{ CNF_GENDER,      STR_GENDER     },
+	{ CNF_AGE,         STR_AGE        },
+	{ CNF_FIRSTLAST,   STR_FIRSTLAST  },
+	{ CNF_UNIQUEID,    STR_UNIQUEID   },
+	{ CNF_DISPLAY,     STR_DISPLAY    },
+	{ CNF_FAX,         STR_FAX        },
+	{ CNF_CELLULAR,    STR_CELLULAR   },
+	{ CNF_TIMEZONE,    STR_TIMEZONE   },
+	{ CNF_MYNOTES,     STR_MYNOTES    },
+	{ CNF_BIRTHDAY,    STR_BIRTHDAY   },
+	{ CNF_BIRTHMONTH,  STR_BIRTHMONTH },
+	{ CNF_BIRTHYEAR,   STR_BIRTHYEAR  },
+	{ CNF_STREET,      STR_STREET     },
+	{ CNF_ZIP,         STR_ZIP        },
+	{ CNF_LANGUAGE1,   STR_LANGUAGE1  },
+	{ CNF_LANGUAGE2,   STR_LANGUAGE2  },
+	{ CNF_LANGUAGE3,   STR_LANGUAGE3  },
+	{ CNF_CONAME,      STR_CONAME     },
+	{ CNF_CODEPT,      STR_CODEPT     },
+	{ CNF_COPOSITION,  STR_COPOSITION },
+	{ CNF_COSTREET,    STR_COSTREET   },
+	{ CNF_COCITY,      STR_COCITY     },
+	{ CNF_COSTATE,     STR_COSTATE    },
+	{ CNF_COZIP,       STR_COZIP      },
+	{ CNF_COCOUNTRY,   STR_COCOUNTRY  },
+	{ CNF_COHOMEPAGE,  STR_COHOMEPAGE },
 
-	{ CCNF_ACCOUNT,    _T(STR_ACCOUNT)    },
-	{ CCNF_PROTOCOL,   _T(STR_PROTOCOL)   },
-	{ CCNF_STATUS,     _T(STR_STATUS)     },
-	{ CCNF_INTERNALIP, _T(STR_INTERNALIP) },
-	{ CCNF_EXTERNALIP, _T(STR_EXTERNALIP) },
-	{ CCNF_GROUP,      _T(STR_GROUP)      },
-	{ CCNF_PROTOID,    _T(STR_PROTOID)    }
+	{ CCNF_ACCOUNT,    STR_ACCOUNT    },
+	{ CCNF_PROTOCOL,   STR_PROTOCOL   },
+	{ CCNF_STATUS,     STR_STATUS     },
+	{ CCNF_INTERNALIP, STR_INTERNALIP },
+	{ CCNF_EXTERNALIP, STR_EXTERNALIP },
+	{ CCNF_GROUP,      STR_GROUP      },
+	{ CCNF_PROTOID,    STR_PROTOID    }
 };
 
 typedef struct {
 	TCHAR* tszContact;
-	HANDLE hContact;
+	MCONTACT hContact;
 	DWORD flags;
 } CONTACTCE; /* contact cache entry */
 
@@ -104,13 +104,9 @@ BYTE getContactInfoType(TCHAR* type)
 /*
 	returns info about a contact as a string
 */
-TCHAR* getContactInfoT(BYTE type, HANDLE hContact)
+TCHAR* getContactInfoT(BYTE type, MCONTACT hContact)
 {
 	/* returns dynamic allocated buffer with info, or NULL if failed */
-	TCHAR *res = NULL;
-	char protoname[128], szVal[16];
-	PROTOACCOUNT *pa;
-
 	if (hContact == NULL)
 		return NULL;
 
@@ -118,24 +114,25 @@ TCHAR* getContactInfoT(BYTE type, HANDLE hContact)
 	if (szProto == NULL)
 		return NULL;
 
+	TCHAR *res = NULL;
 	switch (type) {
 	case CCNF_PROTOID:
 		return mir_a2t(szProto);
 
-	case CCNF_ACCOUNT:
-		pa = ProtoGetAccount(szProto);
+	case CCNF_ACCOUNT: {
+		PROTOACCOUNT *pa = ProtoGetAccount(szProto);
 		return pa ? mir_tstrdup(pa->tszAccountName) : NULL;
+	}
 
-	case CCNF_PROTOCOL:
+	case CCNF_PROTOCOL: {
+		char protoname[128];
 		if (CallProtoService(szProto, PS_GETNAME, (WPARAM)sizeof(protoname), (LPARAM)protoname))
 			return NULL;
 		return mir_a2t(protoname);
+	}
 
 	case CCNF_STATUS:
-		return mir_tstrdup((TCHAR*)CallService(
-			MS_CLIST_GETSTATUSMODEDESCRIPTION,
-			db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE),
-			GSMDF_UNICODE));
+		return mir_tstrdup((TCHAR*)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE), GSMDF_UNICODE));
 
 	case CCNF_INTERNALIP:
 	case CCNF_EXTERNALIP:
@@ -168,7 +165,8 @@ TCHAR* getContactInfoT(BYTE type, HANDLE hContact)
 	ci.hContact = hContact;
 	ci.dwFlag = type | CNF_UNICODE;
 	CallService(MS_CONTACT_GETCONTACTINFO, 0, (LPARAM)&ci);
-
+	
+	char szVal[16];
 	memset(szVal, '\0', sizeof(szVal));
 	switch(ci.type) {
 	case CNFT_BYTE:
@@ -219,7 +217,7 @@ int getContactFromString(CONTACTSINFO *ci)
 		for (int i=0; i < cacheSize; i++) {
 			if ((!_tcscmp(cce[i].tszContact, tszContact)) && (ci->flags == cce[i].flags)) {
 				/* found in cache */
-				ci->hContacts = (HANDLE*)mir_alloc(sizeof(HANDLE));
+				ci->hContacts = (MCONTACT*)mir_alloc(sizeof(MCONTACT));
 				if (ci->hContacts == NULL)
 					return -1;
 
@@ -230,29 +228,33 @@ int getContactFromString(CONTACTSINFO *ci)
 	}
 
 	/* contact was not in cache, do a search */
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact))
+	{
+		TCHAR *szFind = NULL;
+		BOOL bMatch = FALSE;
+
+		// <_HANDLE_:hContact>
+		size_t size = _tcslen(_T(PROTOID_HANDLE)) + 36;
+		szFind = (TCHAR *)mir_alloc(size * sizeof(TCHAR));
+		if (szFind != NULL)
+		{
+			mir_sntprintf(szFind, size, _T("<%s:%p>"), _T(PROTOID_HANDLE), hContact);
+			if (!_tcsncmp(tszContact, szFind, _tcslen(tszContact)))
+				bMatch = TRUE;
+
+			mir_free(szFind);
+		}
+
 		char *szProto = GetContactProto(hContact);
 		if (szProto == NULL)
 			continue;
 
 		// <proto:id> (exact)
-		TCHAR *szFind = NULL;
-		BOOL bMatch = FALSE;
-		if (ci->flags & CI_PROTOID) {
+		if ((ci->flags & CI_PROTOID) && !bMatch)
+		{
 			TCHAR *cInfo = getContactInfoT(CNF_UNIQUEID, hContact);
-			if (cInfo == NULL) {
-				// <HANDLE:hContact>
-				size_t size = _tcslen(_T(PROTOID_HANDLE)) + 36;
-				szFind = (TCHAR *)mir_alloc(size * sizeof(TCHAR));
-				if (szFind != NULL) {
-					mir_sntprintf(szFind, size, _T("<%s:%p>"), _T(PROTOID_HANDLE), hContact);
-					if (!_tcsncmp(tszContact, szFind, _tcslen(tszContact)))
-						bMatch = TRUE;
-
-					mir_free(szFind);
-				}
-			}
-			else {
+			if (cInfo)
+			{
 				size_t size = _tcslen(cInfo) + strlen(szProto) + 4;
 				szFind = (TCHAR *)mir_alloc(size * sizeof(TCHAR));
 				if (szFind != NULL) {
@@ -328,12 +330,12 @@ int getContactFromString(CONTACTSINFO *ci)
 			}
 		}
 		if (bMatch) {
-			ci->hContacts = (HANDLE*)mir_realloc(ci->hContacts, (count+1)*sizeof(HANDLE));
+			ci->hContacts = (MCONTACT*)mir_realloc(ci->hContacts, (count + 1)*sizeof(MCONTACT));
 			if (ci->hContacts == NULL)
 				return -1;
 
 			ci->hContacts[count] = hContact;
-			count += 1;
+			count++;
 		}
 	}
 
@@ -345,7 +347,7 @@ int getContactFromString(CONTACTSINFO *ci)
 			cce[cacheSize].flags = ci->flags;
 			cce[cacheSize].tszContact = mir_tstrdup(tszContact);
 			if (cce[cacheSize].tszContact != NULL)
-				cacheSize += 1;
+				cacheSize++;
 		}
 	}
 
@@ -353,10 +355,9 @@ int getContactFromString(CONTACTSINFO *ci)
 }
 
 /* keep cache consistent */
-static int contactSettingChanged(WPARAM wParam, LPARAM lParam)
+static int contactSettingChanged(WPARAM hContact, LPARAM lParam)
 {
 	DBCONTACTWRITESETTING *dbw = (DBCONTACTWRITESETTING*)lParam;
-	HANDLE hContact = (HANDLE) wParam;
 
 	mir_cslock lck(csContactCache);
 	for (int i=0; i < cacheSize; i++) {
@@ -379,7 +380,7 @@ static int contactSettingChanged(WPARAM wParam, LPARAM lParam)
 			/* remove from cache */
 			mir_free(cce[i].tszContact);
 			if (cacheSize > 1) {
-				MoveMemory(&cce[i], &cce[cacheSize-1], sizeof(CONTACTCE));
+				memmove(&cce[i], &cce[cacheSize-1], sizeof(CONTACTCE));
 				cce = ( CONTACTCE* )mir_realloc(cce, (cacheSize-1)*sizeof(CONTACTCE));
 				cacheSize -= 1;
 			}
@@ -410,7 +411,7 @@ int deinitContactModule()
 
 // returns a string in the form <PROTOID:UNIQUEID>, cannot be _HANDLE_!
 // result must be freed
-TCHAR *encodeContactToString(HANDLE hContact)
+TCHAR* encodeContactToString(MCONTACT hContact)
 {
 	char *szProto = GetContactProto(hContact);
 	TCHAR *tszUniqueId = getContactInfoT(CNF_UNIQUEID, hContact);
@@ -426,17 +427,16 @@ TCHAR *encodeContactToString(HANDLE hContact)
 
 // returns a contact from a string in the form <PROTOID:UNIQUEID>
 // returns INVALID_HANDLE_VALUE in case of an error.
-HANDLE *decodeContactFromString(TCHAR *tszContact)
+MCONTACT decodeContactFromString(TCHAR *tszContact)
 {
-	HANDLE hContact = INVALID_HANDLE_VALUE;
+	MCONTACT hContact = INVALID_CONTACT_ID;
 	CONTACTSINFO ci = { sizeof(ci) };
 	ci.tszContact = tszContact;
 	ci.flags = CI_PROTOID|CI_TCHAR;
 	int count = getContactFromString( &ci );
 	if (count != 1) {
-		if (ci.hContacts != NULL)
-			mir_free(ci.hContacts);
-		return (HANDLE*)hContact;
+		mir_free(ci.hContacts);
+		return hContact;
 	}
 
 	if (ci.hContacts != NULL) {
@@ -444,5 +444,5 @@ HANDLE *decodeContactFromString(TCHAR *tszContact)
 		mir_free(ci.hContacts);
 	}
 
-	return (HANDLE*)hContact;
+	return hContact;
 }

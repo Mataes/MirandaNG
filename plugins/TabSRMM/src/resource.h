@@ -59,7 +59,6 @@
 #define IDD_SKINTABDIALOG               312
 #define IDD_OPT_SKIN                    313
 #define IDD_OPTIONS_PLUS                333
-#define IDD_EXCEPTION                   400
 #define IDC_QMGR_REMOVE                 1000
 #define IDC_EXCEPTION_DETAILS           1000
 #define IDC_UNLOAD                      1000
@@ -743,8 +742,8 @@
 #define ID_FONT_CLEARALLFORMATTING      40199
 #define ID_FONT_DEFAULTCOLOR            40200
 #define ID_FONT_CYAN                    40201
-#define ID_SENDMENU_SENDWITHOUTTIMEOUTS 40201
 #define ID_DUMMY_NOMESSAGESESSIONSOPENED 40202
+#define ID_SENDMENU_SENDWITHOUTTIMEOUTS 40203
 #define ID_TRAYCONTEXT_SHOWTHETRAYICON  40204
 #define ID_INFOPANEL_QUICKTOGGLE        40206
 #define ID_INFOPANEL_GLOBAL             40207

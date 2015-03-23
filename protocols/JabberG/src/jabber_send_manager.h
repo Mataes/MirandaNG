@@ -1,11 +1,12 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-08  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2008-09  Dmitriy Chervov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-08  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (c) 2008-09  Dmitriy Chervov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -48,7 +49,7 @@ public:
 
 	CJabberSendInfo()
 	{
-		ZeroMemory(this, sizeof(*this));
+		memset(this, 0, sizeof(*this));
 	}
 	~CJabberSendInfo()
 	{
@@ -72,125 +73,33 @@ class CJabberSendPermanentInfo
 public:
 	CJabberSendPermanentInfo()
 	{
-		ZeroMemory(this, sizeof(CJabberSendPermanentInfo));
+		memset(this, 0, sizeof(CJabberSendPermanentInfo));
 	}
+	
 	~CJabberSendPermanentInfo()
 	{
 		if (m_pUserDataFree)
 			m_pUserDataFree(m_pUserData);
 	}
+
+	__forceinline int getPriority() const { return m_iPriority; }
 };
 
 class CJabberSendManager
 {
 protected:
 	CJabberProto *ppro;
-	CRITICAL_SECTION m_cs;
-	CJabberSendPermanentInfo* m_pPermanentHandlers;
+	mir_cs m_cs;
+	OBJLIST<CJabberSendPermanentInfo> m_arHandlers;
 
 public:
-	CJabberSendManager(CJabberProto* proto)
-	{
-		InitializeCriticalSection(&m_cs);
-		m_pPermanentHandlers = NULL;
-		ppro = proto;
-	}
-	~CJabberSendManager()
-	{
-		Lock();
-		CJabberSendPermanentInfo *pInfo = m_pPermanentHandlers;
-		while (pInfo)
-		{
-			CJabberSendPermanentInfo *pTmp = pInfo->m_pNext;
-			delete pInfo;
-			pInfo = pTmp;
-		}
-		m_pPermanentHandlers = NULL;
-		Unlock();
-		DeleteCriticalSection(&m_cs);
-	}
-	BOOL Start()
-	{
-		return TRUE;
-	}
-	BOOL Shutdown()
-	{
-		return TRUE;
-	}
-	void Lock()
-	{
-		EnterCriticalSection(&m_cs);
-	}
-	void Unlock()
-	{
-		LeaveCriticalSection(&m_cs);
-	}
-	CJabberSendPermanentInfo* AddPermanentHandler(JABBER_SEND_HANDLER pHandler, void *pUserData = NULL, SEND_USER_DATA_FREE_FUNC pUserDataFree = NULL, int iPriority = JH_PRIORITY_DEFAULT)
-	{
-		CJabberSendPermanentInfo* pInfo = new CJabberSendPermanentInfo();
-		if ( !pInfo)
-			return NULL;
+	CJabberSendManager(CJabberProto* proto);
+	~CJabberSendManager();
 
-		pInfo->m_pHandler = pHandler;
-		pInfo->m_pUserData = pUserData;
-		pInfo->m_pUserDataFree = pUserDataFree;
-		pInfo->m_iPriority = iPriority;
+	CJabberSendPermanentInfo* AddPermanentHandler(JABBER_SEND_HANDLER pHandler, void *pUserData = NULL, SEND_USER_DATA_FREE_FUNC pUserDataFree = NULL, int iPriority = JH_PRIORITY_DEFAULT);
+	bool DeletePermanentHandler(CJabberSendPermanentInfo *pInfo);
 
-		Lock();
-		if ( !m_pPermanentHandlers)
-			m_pPermanentHandlers = pInfo;
-		else
-		{
-			if (m_pPermanentHandlers->m_iPriority > pInfo->m_iPriority) {
-				pInfo->m_pNext = m_pPermanentHandlers;
-				m_pPermanentHandlers = pInfo;
-			} else
-			{
-				CJabberSendPermanentInfo* pTmp = m_pPermanentHandlers;
-				while (pTmp->m_pNext && pTmp->m_pNext->m_iPriority <= pInfo->m_iPriority)
-					pTmp = pTmp->m_pNext;
-				pInfo->m_pNext = pTmp->m_pNext;
-				pTmp->m_pNext = pInfo;
-			}
-		}
-		Unlock();
-
-		return pInfo;
-	}
-	BOOL DeletePermanentHandler(CJabberSendPermanentInfo *pInfo)
-	{ // returns TRUE when pInfo found, or FALSE otherwise
-		Lock();
-		if ( !m_pPermanentHandlers)
-		{
-			Unlock();
-			return FALSE;
-		}
-		if (m_pPermanentHandlers == pInfo) // check first item
-		{
-			m_pPermanentHandlers = m_pPermanentHandlers->m_pNext;
-			delete pInfo;
-			Unlock();
-			return TRUE;
-		} else
-		{
-			CJabberSendPermanentInfo* pTmp = m_pPermanentHandlers;
-			while (pTmp->m_pNext)
-			{
-				if (pTmp->m_pNext == pInfo)
-				{
-					pTmp->m_pNext = pTmp->m_pNext->m_pNext;
-					delete pInfo;
-					Unlock();
-					return TRUE;
-				}
-				pTmp = pTmp->m_pNext;
-			}
-		}
-		Unlock();
-		return FALSE;
-	}
-	BOOL HandleSendPermanent(HXML node, ThreadData *pThreadData);
-	BOOL FillPermanentHandlers();
+	bool HandleSendPermanent(HXML node, ThreadData *pThreadData);
 };
 
 #endif

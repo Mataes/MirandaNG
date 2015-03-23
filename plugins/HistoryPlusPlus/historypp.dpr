@@ -48,9 +48,6 @@ uses
   HistoryForm in 'HistoryForm.pas' {HistoryFrm},
   EventDetailForm in 'EventDetailForm.pas' {EventDetailsFrm},
   EmptyHistoryForm in 'EmptyHistoryForm.pas' {EmptyHistoryFrm},
-  PassForm in 'PassForm.pas' {fmPass},
-  PassNewForm in 'PassNewForm.pas' {fmPassNew},
-  PassCheckForm in 'PassCheckForm.pas' {fmPassCheck},
   GlobalSearch in 'GlobalSearch.pas' {fmGlobalSearch},
   hpp_searchthread in 'hpp_searchthread.pas',
   hpp_bookmarks in 'hpp_bookmarks.pas',
@@ -125,7 +122,7 @@ function OnContactChanged(wParam: wParam; lParam: LPARAM): Integer; cdecl; forwa
 function OnContactDelete(wParam: wParam; lParam: LPARAM): Integer; cdecl; forward;
 function OnFSChanged(wParam: WPARAM; lParam: LPARAM): Integer; cdecl; forward;
 function OnTTBLoaded(awParam: WPARAM; alParam: LPARAM): Integer; cdecl; forward;
-function OnBuildContactMenu(awParam: WPARAM; alParam: LPARAM): Integer; cdecl; forward;
+function OnBuildContactMenu(hContact: WPARAM; alParam: LPARAM): Integer; cdecl; forward;
 function OnEventAdded(wParam: WPARAM; lParam: LPARAM): Integer; cdecl; forward;
 function OnEventDeleted(wParam: WPARAM; lParam: LPARAM): Integer; cdecl; forward;
 function OnMetaDefaultChanged(wParam: WPARAM; lParam: LPARAM): Integer; cdecl; forward;
@@ -212,8 +209,7 @@ begin
     UnhookEvent(HookSmAddChanged);
   UnhookEvent(HookIcon2Changed);
   UnhookEvent(HookFSChanged);
-  if MetaContactsEnabled then
-    UnhookEvent(HookMetaDefaultChanged);
+  UnhookEvent(HookMetaDefaultChanged);
 
   try
     // destroy hidden main window
@@ -247,7 +243,6 @@ begin
 
   LoadIcons;
   LoadIcons2;
-  LoadIntIcons;
 
   // TopToolBar support
   HookTTBLoaded := HookEvent(ME_TTB_MODULELOADED,OnTTBLoaded);
@@ -312,10 +307,7 @@ begin
   if SmileyAddEnabled    then HookSmAddChanged := HookEvent(ME_SMILEYADD_OPTIONSCHANGED,OnSmAddSettingsChanged);
   HookIcon2Changed := HookEvent(ME_SKIN2_ICONSCHANGED,OnIcon2Changed);
   HookFSChanged := HookEvent(ME_FONT_RELOAD,OnFSChanged);
-  if MetaContactsEnabled then HookMetaDefaultChanged := HookEvent(ME_MC_DEFAULTTCHANGED,OnMetaDefaultChanged);
-
-  // Register in dbeditor
-  CallService(MS_DBEDIT_REGISTERSINGLEMODULE, WPARAM(PAnsiChar(hppDBName)), 0);
+  HookMetaDefaultChanged := HookEvent(ME_MC_DEFAULTTCHANGED,OnMetaDefaultChanged);
 
   // return successfully
   Result:=0;
@@ -389,7 +381,7 @@ begin
     ((szProto = nil) or (StrComp(cws.szModule, szProto) <> 0)) then
     exit;
 
-  if MetaContactsEnabled and (StrComp(cws.szModule, pAnsiChar(MetaContactsProto)) = 0) and
+  if (StrComp(cws.szModule, META_PROTO) = 0) and
     (StrComp(cws.szSetting, 'Nick') = 0) then
     exit;
 
@@ -488,20 +480,22 @@ end;
 //lParam=0
 //modules should use this to change menu items that are specific to the
 //contact that has them
-function OnBuildContactMenu(awParam: WPARAM; alParam: LPARAM): Integer; cdecl;
+function OnBuildContactMenu(hContact: WPARAM; alParam: LPARAM): Integer; cdecl;
 var
   menuItem: TCLISTMENUITEM;
+  hLast: THandle;
   count: Integer;
   res: Integer;
 begin
   Result := 0;
-  count := db_event_count(THandle(awParam));
+  count := db_event_count(hContact);
+  hLast := db_event_last(hContact);
   if (PrevShowHistoryCount xor ShowHistoryCount) or (count <> MenuCount) then
   begin
     ZeroMemory(@menuitem, SizeOf(menuItem));
     menuItem.cbSize := SizeOf(menuItem);
     menuItem.flags := CMIM_FLAGS;
-    if count = 0 then
+    if hLast = 0 then
       menuItem.flags := menuItem.flags or CMIF_HIDDEN;
     CallService(MS_CLIST_MODIFYMENUITEM, MenuHandles[miEmpty].Handle,
       lParam(@menuitem));
@@ -524,10 +518,10 @@ begin
   end;
 end;
 
-//wParam : HCONTACT
+//wParam : MCONTACT
 //lParam : HDBCONTACT
 //Called when a new event has been added to the event chain
-//for a contact, HCONTACT contains the contact who added the event,
+//for a contact, MCONTACT contains the contact who added the event,
 //HDBCONTACT a handle to what was added.
 function OnEventAdded(wParam: WPARAM; lParam: LPARAM): Integer; cdecl;
 begin
@@ -535,7 +529,7 @@ begin
   NotifyAllForms(HM_MIEV_EVENTADDED,wParam,lParam);
 end;
 
-//wParam : HCONTACT
+//wParam : MCONTACT
 //lParam : HDBEVENT
 //Affect : Called when an event is about to be deleted from the event chain
 //for a contact, see notes

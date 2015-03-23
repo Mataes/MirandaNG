@@ -1,0 +1,73 @@
+﻿#muuid {2f093b88-f389-44f1-9e2a-37c29194203a}
+;============================================================
+;  File: IEHistory.dll
+;  Plugin: IEHistory
+;  Version: 0.0.1.7
+;  Authors: Cristian Libotean, Miranda NG team
+;============================================================
+[Shows the history for a given contact using IEView.]
+Просмотрщик истории, использующий движок IE.
+[Dialog]
+Диалог
+[Close]
+Закрыть
+[&Prev]
+&Назад
+[&Next]
+&Далее
+[&Search]
+&Искать
+[Number of events to load]
+Количество событий для загрузки
+[Load all events]
+Загружать все события
+[Load only]
+Загружать только
+[events per page]
+событий на странице
+[Show last page first]
+Последняя страница первой
+[Other options]
+Прочие настройки
+[Load items in background]
+Загружать в фоне
+[RTL is default text direction]
+Справа налево по умолчанию
+[Search]
+Поиск
+[&Find next]
+&Следующий
+[Cancel]
+Отмена
+[Text:]
+Текст:
+[Direction]
+Направление
+[Up]
+Вверх
+[Down]
+Вниз
+[System History]
+Системная история
+[Out of a total of]
+Всего из
+[You can't close the window now, wait for all events to load.]
+Дождитесь загрузки всех событий, прежде чем закрыть это окно.
+[Error]
+Ошибка
+[Text search]
+Поиск текста
+[Time search]
+Поиск времени
+[Time:]
+Время:
+[Search finished. No more entries...]
+Поиск закончен. Больше результатов нет...
+[Information]
+Информация
+[History]
+История
+[View &history]
+&История
+[&System History]
+&Системная история

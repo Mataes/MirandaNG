@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -20,18 +21,19 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "hdr/modern_commonheaders.h"
 #include <m_hotkeys.h>
 
 int InitSkinHotKeys(void);
 
-INT_PTR hkCloseMiranda(WPARAM wParam,LPARAM lParam)
+INT_PTR hkCloseMiranda(WPARAM, LPARAM)
 {
 	CallService("CloseAction", 0, 0);
 	return 0;
 }
 
-INT_PTR hkRestoreStatus(WPARAM wParam,LPARAM lParam)
+INT_PTR hkRestoreStatus(WPARAM, LPARAM)
 {
 	int nStatus = db_get_w(NULL, "CList", "Status", ID_STATUS_ONLINE);
 	CallService(MS_CLIST_SETSTATUSMODE, nStatus, 0);
@@ -41,10 +43,10 @@ INT_PTR hkRestoreStatus(WPARAM wParam,LPARAM lParam)
 
 int InitSkinHotKeys(void)
 {
-	CreateServiceFunction("CLIST/HK/CloseMiranda",hkCloseMiranda);
-	CreateServiceFunction("CLIST/HK/RestoreStatus",hkRestoreStatus);
+	CreateServiceFunction("CLIST/HK/CloseMiranda", hkCloseMiranda);
+	CreateServiceFunction("CLIST/HK/RestoreStatus", hkRestoreStatus);
 
-	HOTKEYDESC shk = {0};
+	HOTKEYDESC shk = { 0 };
 	shk.cbSize = sizeof(shk);
 	shk.dwFlags = HKD_TCHAR;
 
@@ -60,7 +62,7 @@ int InitSkinHotKeys(void)
 	shk.pszService = "CLIST/HK/RestoreStatus";
 	Hotkey_Register(&shk);
 
-	shk.ptszDescription = LPGENT("Show/Hide Offline Users");
+	shk.ptszDescription = LPGENT("Show/Hide offline users");
 	shk.pszName = "ShowHideOfflineUsers";
 	shk.ptszSection = LPGENT("Main");
 	shk.pszService = MS_CLIST_TOGGLEHIDEOFFLINE;

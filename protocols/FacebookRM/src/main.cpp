@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright Â© 2009-11 Michal Zelinka, 2011-13 Robert PÃ¶sel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ PLUGININFOEX pluginInfo = {
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {8432B009-FF32-4727-AAE6-A9035038FD58}
-	{0x8432b009, 0xff32, 0x4727, {0xaa, 0xe6, 0xa9, 0x3, 0x50, 0x38, 0xfd, 0x58}}
+	{ 0x8432b009, 0xff32, 0x4727, { 0xaa, 0xe6, 0xa9, 0x3, 0x50, 0x38, 0xfd, 0x58 } }
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -54,7 +54,7 @@ static int compare_protos(const FacebookProto *p1, const FacebookProto *p2)
 
 OBJLIST<FacebookProto> g_Instances(1, compare_protos);
 
-DWORD WINAPI DllMain(HINSTANCE hInstance,DWORD,LPVOID)
+DWORD WINAPI DllMain(HINSTANCE hInstance, DWORD, LPVOID)
 {
 	g_hInstance = hInstance;
 	return TRUE;
@@ -69,14 +69,14 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 /////////////////////////////////////////////////////////////////////////////////////////
 // Interface information
 
-extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_PROTOCOL, MIID_LAST};
+extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = { MIID_PROTOCOL, MIID_LAST };
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Load
 
-static PROTO_INTERFACE* protoInit(const char *proto_name,const TCHAR *username)
+static PROTO_INTERFACE* protoInit(const char *proto_name, const TCHAR *username)
 {
-	FacebookProto *proto = new FacebookProto(proto_name,username);
+	FacebookProto *proto = new FacebookProto(proto_name, username);
 	g_Instances.insert(proto);
 	return proto;
 }
@@ -87,46 +87,38 @@ static int protoUninit(PROTO_INTERFACE* proto)
 	return EXIT_SUCCESS;
 }
 
-static HANDLE g_hEvents[1];
-
 extern "C" int __declspec(dllexport) Load(void)
 {
 	mir_getLP(&pluginInfo);
 	mir_getCLI();
 
 	PROTOCOLDESCRIPTOR pd = { sizeof(pd) };
-	pd.szName = "Facebook";
+	pd.szName = FACEBOOK_NAME;
 	pd.type = PROTOTYPE_PROTOCOL;
 	pd.fnInit = protoInit;
 	pd.fnUninit = protoUninit;
-	CallService(MS_PROTO_REGISTERMODULE,0,reinterpret_cast<LPARAM>(&pd));
+	CallService(MS_PROTO_REGISTERMODULE, 0, reinterpret_cast<LPARAM>(&pd));
 
-	
 	InitIcons();
 	InitContactMenus();
 
 	// Init native User-Agent
-	{
-		std::stringstream agent;
-//		DWORD mir_ver = (DWORD)CallService(MS_SYSTEM_GETVERSION, NULL, NULL);
-		agent << "MirandaNG/";
-		agent << ((g_mirandaVersion >> 24) & 0xFF);
-		agent << ".";
-		agent << ((g_mirandaVersion >> 16) & 0xFF);
-		agent << ".";
-		agent << ((g_mirandaVersion >>  8) & 0xFF);
-		agent << ".";
-		agent << ((g_mirandaVersion     ) & 0xFF);
-	#ifdef _WIN64
-		agent << " Facebook Protocol RM x64/";
-	#else
-		agent << " Facebook Protocol RM/";
-	#endif
-		agent << __VERSION_STRING;
-		g_strUserAgent = agent.str();
-	}
+	WORD v[4];
+	CallService(MS_SYSTEM_GETFILEVERSION, 0, (LPARAM)v);
+	std::stringstream agent;
+	agent << "MirandaNG/" << v[0] << "." << v[1] << "." << v[2] << "." << v[3] << ".";
+#ifdef _WIN64
+	agent << " Facebook Protocol RM x64/";
+#else
+	agent << " Facebook Protocol RM/";
+#endif
+	agent << __VERSION_STRING_DOTS;
+	g_strUserAgent = agent.str();
 
-  return 0;
+	// Initialize random generator (used only as fallback in utils)
+	srand(::time(NULL));
+
+	return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -134,11 +126,5 @@ extern "C" int __declspec(dllexport) Load(void)
 
 extern "C" int __declspec(dllexport) Unload(void)
 {
-	UninitContactMenus();
-	for(size_t i=0; i<SIZEOF(g_hEvents); i++)
-		UnhookEvent(g_hEvents[i]);
-
-	g_Instances.destroy();
-
 	return 0;
 }

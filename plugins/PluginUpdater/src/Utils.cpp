@@ -19,13 +19,8 @@ Boston, MA 02111-1307, USA.
 
 #include "Common.h"
 
-BOOL DlgDld;
-int  Number = 0;
-TCHAR tszDialogMsg[2048] = {0};
-FILEINFO *pFileInfo = NULL;
-HANDLE hCheckThread = NULL, hListThread = NULL, hNetlibUser = NULL;
+HANDLE hNetlibUser = NULL, hPipe = NULL;
 POPUP_OPTIONS PopupOptions = {0};
-aPopups PopupsList[POPUPS];
 extern DWORD g_mirandaVersion;
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -39,21 +34,18 @@ struct
 }
 static iconList[] =
 {
-	{ "check_update", LPGEN("Check for plugin updates"),    IDI_MENU },
-	{ "btn_ok",	      LPGEN("'Yes' Button"),                IDI_OK },
-	{ "btn_cancel",   LPGEN("'No' Button"),                 IDI_CANCEL },
+	{ "check_update", LPGEN("Check for updates"),           IDI_MENU },
 	{ "info",         LPGEN("Plugin info"),                 IDI_INFO },
-	{ "plg_list",     LPGEN("Plugin list"),                 IDI_PLGLIST },
+	{ "plg_list",     LPGEN("Component list"),              IDI_PLGLIST },
 };
 
-void IcoLibInit()
+void InitIcoLib()
 {
 	TCHAR destfile[MAX_PATH];
 	GetModuleFileName(hInst, destfile, MAX_PATH);
 
 	SKINICONDESC sid = { sizeof(sid) };
 	sid.flags = SIDF_PATH_TCHAR;
-	sid.cx = sid.cy = 16;
 	sid.ptszDefaultFile = destfile;
 	sid.pszSection = MODULEA;
 
@@ -65,7 +57,7 @@ void IcoLibInit()
 	}
 }
 
-BOOL NetlibInit()
+void InitNetlib()
 {
 	NETLIBUSER nlu = {0};
 	nlu.cbSize = sizeof(nlu);
@@ -73,41 +65,12 @@ BOOL NetlibInit()
 	nlu.ptszDescriptiveName = TranslateT("Plugin Updater HTTP connection");
 	nlu.szSettingsModule = MODNAME;
 	hNetlibUser = (HANDLE)CallService(MS_NETLIB_REGISTERUSER, 0, (LPARAM)&nlu);
-
-	return hNetlibUser != NULL;
 }
 
-void NetlibUnInit()
+void UnloadNetlib()
 {
 	Netlib_CloseHandle(hNetlibUser);
 	hNetlibUser = NULL;
-}
-
-void InitPopupList()
-{
-	int index = 0;
-	PopupsList[index].ID = index;
-	PopupsList[index].Icon = SKINICON_OTHER_MIRANDA;
-	PopupsList[index].colorBack = db_get_dw(NULL, MODNAME, "Popups0Bg", COLOR_BG_FIRSTDEFAULT);
-	PopupsList[index].colorText = db_get_dw(NULL, MODNAME, "Popups0Tx", COLOR_TX_DEFAULT);
-
-	index = 1;
-	PopupsList[index].ID = index;
-	PopupsList[index].Icon = SKINICON_OTHER_MIRANDA;
-	PopupsList[index].colorBack = db_get_dw(NULL, MODNAME, "Popups1Bg", COLOR_BG_SECONDDEFAULT);
-	PopupsList[index].colorText = db_get_dw(NULL, MODNAME, "Popups1Tx", COLOR_TX_DEFAULT);
-
-	index = 2;
-	PopupsList[index].ID = index;
-	PopupsList[index].Icon = SKINICON_OTHER_MIRANDA;
-	PopupsList[index].colorBack = db_get_dw(NULL, MODNAME, "Popups2Bg", COLOR_BG_FIRSTDEFAULT);
-	PopupsList[index].colorText = db_get_dw(NULL, MODNAME, "Popups2Tx", COLOR_TX_DEFAULT);
-
-	index = 3;
-	PopupsList[index].ID = index;
-	PopupsList[index].Icon = SKINICON_OTHER_MIRANDA;
-	PopupsList[index].colorBack = db_get_dw(NULL, MODNAME, "Popups3Bg", COLOR_BG_SECONDDEFAULT);
-	PopupsList[index].colorText = db_get_dw(NULL, MODNAME, "Popups3Tx", COLOR_TX_DEFAULT);
 }
 
 void LoadOptions()
@@ -122,7 +85,8 @@ void LoadOptions()
 	opts.bUpdateOnPeriod = db_get_b(NULL, MODNAME, "UpdateOnPeriod", DEFAULT_UPDATEONPERIOD);
 	opts.Period = db_get_dw(NULL, MODNAME, "Period", DEFAULT_PERIOD);
 	opts.bPeriodMeasure = db_get_b(NULL, MODNAME, "PeriodMeasure", DEFAULT_PERIODMEASURE);
-	opts.bForceRedownload = db_get_b(NULL, MODNAME, "ForceRedownload", 0);
+	opts.bForceRedownload = db_get_b(NULL, MODNAME, DB_SETTING_REDOWNLOAD, 0);
+	opts.bSilentMode = db_get_b(NULL, MODNAME, "SilentMode", 0);
 }
 
 ULONG crc32_table[256];
@@ -178,14 +142,46 @@ int Get_CRC(unsigned char* buffer, ULONG bufsize)
 	return crc^0xffffffff;
 }
 
+int GetUpdateMode()
+{
+	int UpdateMode = db_get_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, -1);
+
+	// Check if there is url for custom mode
+	if (UpdateMode == UPDATE_MODE_CUSTOM) {
+		ptrT url(db_get_tsa(NULL, MODNAME, DB_SETTING_UPDATE_URL));
+		if (url == NULL || !_tcslen(url)) {
+			// No url for custom mode, reset that setting so it will be determined automatically			
+			db_unset(NULL, MODNAME, DB_SETTING_UPDATE_MODE);
+			UpdateMode = -1;
+		}
+	}
+
+	if (UpdateMode < 0 || UpdateMode > UPDATE_MODE_MAX_VALUE) {
+		// Missing or unknown mode, determine correct from version of running core
+		char coreVersion[512];
+		CallService(MS_SYSTEM_GETVERSIONTEXT, (WPARAM)SIZEOF(coreVersion), (LPARAM)coreVersion);
+		UpdateMode = (strstr(coreVersion, "alpha") == NULL) ? UPDATE_MODE_STABLE : UPDATE_MODE_TRUNK;
+	}
+
+	return UpdateMode;
+}
+
 TCHAR* GetDefaultUrl()
 {
-	TCHAR *result = db_get_tsa(NULL, MODNAME, "UpdateURL");
-	if (result == NULL) { // URL is not set
-		db_set_ts(NULL, MODNAME, "UpdateURL", _T(DEFAULT_UPDATE_URL));
-		result = mir_tstrdup( _T(DEFAULT_UPDATE_URL));
+#if MIRANDA_VER < 0x0A00
+	return mir_tstrdup(_T("http://miranda-ng.org/distr/deprecated/0.94.9/x%platform%"));
+#else
+	switch (GetUpdateMode()) {
+	case UPDATE_MODE_STABLE:
+		return mir_tstrdup(_T(DEFAULT_UPDATE_URL));
+	case UPDATE_MODE_TRUNK:
+		return mir_tstrdup(_T(DEFAULT_UPDATE_URL_TRUNK));
+	case UPDATE_MODE_TRUNK_SYMBOLS:
+		return mir_tstrdup(_T(DEFAULT_UPDATE_URL_TRUNK_SYMBOLS));
+	default:
+		return db_get_tsa(NULL, MODNAME, DB_SETTING_UPDATE_URL);
 	}
-	return result;
+#endif
 }
 
 int CompareHashes(const ServListEntry *p1, const ServListEntry *p2)
@@ -193,15 +189,15 @@ int CompareHashes(const ServListEntry *p1, const ServListEntry *p2)
 	return _tcsicmp(p1->m_name, p2->m_name);
 }
 
-bool ParseHashes(const TCHAR *ptszUrl, ptrT& baseUrl, SERVLIST& arHashes)
+bool ParseHashes(const TCHAR *ptszUrl, ptrT &baseUrl, SERVLIST &arHashes)
 {
 	REPLACEVARSARRAY vars[2];
 	vars[0].lptzKey = _T("platform");
-	#ifdef _WIN64
-		vars[0].lptzValue = _T("64");
-	#else
-		vars[0].lptzValue = _T("32");
-	#endif
+#ifdef _WIN64
+	vars[0].lptzValue = _T("64");
+#else
+	vars[0].lptzValue = _T("32");
+#endif
 	vars[1].lptzKey = vars[1].lptzValue = 0;
 
 	REPLACEVARSDATA dat = { sizeof(REPLACEVARSDATA) };
@@ -210,78 +206,103 @@ bool ParseHashes(const TCHAR *ptszUrl, ptrT& baseUrl, SERVLIST& arHashes)
 	baseUrl = (TCHAR*)CallService(MS_UTILS_REPLACEVARS, (WPARAM)ptszUrl, (LPARAM)&dat);
 
 	// Download version info
-	if (!opts.bSilent)
-		ShowPopup(NULL, TranslateT("Plugin Updater"), TranslateT("Checking new updates..."), 4, 0);
-
 	FILEURL pFileUrl;
 	mir_sntprintf(pFileUrl.tszDownloadURL, SIZEOF(pFileUrl.tszDownloadURL), _T("%s/hashes.zip"), baseUrl);
 	mir_sntprintf(pFileUrl.tszDiskPath, SIZEOF(pFileUrl.tszDiskPath), _T("%s\\hashes.zip"), tszTempPath);
+	pFileUrl.CRCsum = 0;
 
 	HANDLE nlc;
-	BOOL ret = DownloadFile(pFileUrl.tszDownloadURL, pFileUrl.tszDiskPath, 0, nlc);
+	bool ret = DownloadFile(&pFileUrl, nlc);
 	Netlib_CloseHandle(nlc);
 
-	if (!ret && !opts.bSilent) {
-		ShowPopup(0, LPGENT("Plugin Updater"), LPGENT("An error occured while checking new updates."), 1, 0);
+	if (!ret) {
+		Netlib_LogfT(hNetlibUser,_T("Downloading list of available updates from %s failed"),baseUrl);
+		ShowPopup(TranslateT("Plugin Updater"), TranslateT("An error occurred while checking for new updates."), POPUP_TYPE_ERROR);
+		SkinPlaySound("updatefailed");
 		return false;
 	}
 
-	unzip(pFileUrl.tszDiskPath, tszTempPath, NULL);
+	if(!unzip(pFileUrl.tszDiskPath, tszTempPath, NULL,true)) {
+		Netlib_LogfT(hNetlibUser,_T("Unzipping list of available updates from %s failed"),baseUrl);
+		ShowPopup(TranslateT("Plugin Updater"), TranslateT("An error occurred while checking for new updates."), POPUP_TYPE_ERROR);
+		SkinPlaySound("updatefailed");
+		return false;
+	}
+	
 	DeleteFile(pFileUrl.tszDiskPath);
 
 	TCHAR tszTmpIni[MAX_PATH] = {0};
 	mir_sntprintf(tszTmpIni, SIZEOF(tszTmpIni), _T("%s\\hashes.txt"), tszTempPath);
 	FILE *fp = _tfopen(tszTmpIni, _T("r"));
-	if (!fp)
+	if (!fp) {
+		Netlib_LogfT(hNetlibUser,_T("Opening %s failed"), tszTempPath);
+		ShowPopup(TranslateT("Plugin Updater"), TranslateT("An error occurred while checking for new updates."), POPUP_TYPE_ERROR);
 		return false;
+	}
 
+	bool bDoNotSwitchToStable = false;
 	char str[200];
 	while(fgets(str, SIZEOF(str), fp) != NULL) {
 		rtrim(str);
-		char *p = strchr(str, ' ');
-		if (p == NULL)
-			continue;
-
-		*p++ = 0;
-		_strlwr(p);
-
-		int dwCrc32;
-		char *p1 = strchr(p, ' ');
-		if (p1 == NULL)
-			dwCrc32 = 0;
-		else {
-			*p1++ = 0;
-			sscanf(p1, "%08x", &dwCrc32);
+		// Do not allow the user to switch back to stable
+		if (!strcmp(str, "DoNotSwitchToStable")) {
+			bDoNotSwitchToStable = true;
 		}
-		arHashes.insert(new ServListEntry(str, p, dwCrc32));
+		else if (str[0] != ';') { // ';' marks a comment
+			Netlib_Logf(hNetlibUser, "Update: %s", str);
+			char *p = strchr(str, ' ');
+			if (p != NULL) {
+				*p++ = 0;
+				_strlwr(p);
+
+				int dwCrc32;
+				char *p1 = strchr(p, ' ');
+				if (p1 == NULL)
+					dwCrc32 = 0;
+				else {
+					*p1++ = 0;
+					sscanf(p1, "%08x", &dwCrc32);
+				}
+				arHashes.insert(new ServListEntry(str, p, dwCrc32));
+			}
+		}
 	}
 	fclose(fp);
 	DeleteFile(tszTmpIni);
+
+	if (bDoNotSwitchToStable) {
+		db_set_b(NULL, MODNAME, DB_SETTING_DONT_SWITCH_TO_STABLE, 1);
+		// Reset setting if needed
+		int UpdateMode = db_get_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_STABLE);
+		if (UpdateMode == UPDATE_MODE_STABLE)
+			db_set_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_TRUNK);
+	}
+	else
+		db_set_b(NULL, MODNAME, DB_SETTING_DONT_SWITCH_TO_STABLE, 0);
+
 	return true;
 }
 
 
-BOOL DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal, int CRCsum, HANDLE &nlc)
+bool DownloadFile(FILEURL *pFileURL, HANDLE &nlc)
 {
-	DWORD dwBytes;
-
 	NETLIBHTTPREQUEST nlhr = {0};
-	#if MIRANDA_VER < 0x0A00
-		nlhr.cbSize = NETLIBHTTPREQUEST_V1_SIZE;
-	#else
-		nlhr.cbSize = sizeof(nlhr);
-	#endif
+#if MIRANDA_VER < 0x0A00
+	nlhr.cbSize = NETLIBHTTPREQUEST_V1_SIZE;
+#else
+	nlhr.cbSize = sizeof(nlhr);
+#endif
 	nlhr.requestType = REQUEST_GET;
 	nlhr.flags = NLHRF_DUMPASTEXT | NLHRF_HTTP11;
 	if (g_mirandaVersion >= PLUGIN_MAKE_VERSION(0, 9, 0, 0))
 		nlhr.flags |= NLHRF_PERSISTENT;
 	nlhr.nlc = nlc;
-	char *szUrl = mir_t2a(tszURL);
+	char *szUrl = mir_t2a(pFileURL->tszDownloadURL);
 	nlhr.szUrl = szUrl;
 	nlhr.headersCount = 4;
 	nlhr.headers=(NETLIBHTTPHEADER*)mir_alloc(sizeof(NETLIBHTTPHEADER)*nlhr.headersCount);
 	nlhr.headers[0].szName   = "User-Agent";
-	nlhr.headers[0].szValue = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)";
+	nlhr.headers[0].szValue = NETLIB_USER_AGENT;
 	nlhr.headers[1].szName  = "Connection";
 	nlhr.headers[1].szValue = "close";
 	nlhr.headers[2].szName  = "Cache-Control";
@@ -290,71 +311,68 @@ BOOL DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal, int CRCsum, HANDLE &nlc)
 	nlhr.headers[3].szValue = "no-cache";
 
 	bool ret = false;
-	NETLIBHTTPREQUEST *pReply = (NETLIBHTTPREQUEST*)CallService(MS_NETLIB_HTTPTRANSACTION, (WPARAM)hNetlibUser,(LPARAM)&nlhr);
-	if (pReply) {
-		nlc = pReply->nlc;
-		if ((200 == pReply->resultCode) && (pReply->dataLength > 0)) {
-			HANDLE hFile = CreateFile(tszLocal, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-			if (hFile != INVALID_HANDLE_VALUE) {
-				// write the downloaded file firectly
-				WriteFile(hFile, pReply->pData, (DWORD)pReply->dataLength, &dwBytes, NULL);
-				CloseHandle(hFile);
-				if (CRCsum) {
+	for (int i = 0; !ret && i < MAX_RETRIES; i++) {
+		Netlib_LogfT(hNetlibUser,_T("Downloading file %s to %s (attempt %d)"),pFileURL->tszDownloadURL,pFileURL->tszDiskPath, i+1);
+		NETLIBHTTPREQUEST *pReply = (NETLIBHTTPREQUEST*)CallService(MS_NETLIB_HTTPTRANSACTION, (WPARAM)hNetlibUser, (LPARAM)&nlhr);
+		if (pReply) {
+			nlc = pReply->nlc;
+			if ((200 == pReply->resultCode) && (pReply->dataLength > 0)) {
+				// Check CRC sum
+				if (pFileURL->CRCsum) {
 					InitCrcTable();
-					int crc = Get_CRC((unsigned char*)pReply->pData, (long)dwBytes);
-					if (crc == CRCsum)
-						ret = true;
-				} else
-					ret = true;
-			}
-			else {
-				// try to write it via PU stub
-				TCHAR tszTempFile[MAX_PATH];
-				mir_sntprintf(tszTempFile, SIZEOF(tszTempFile), _T("%s\\pulocal.tmp"), tszTempPath);
-				hFile = CreateFile(tszTempFile, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+					int crc = Get_CRC((unsigned char*)pReply->pData, pReply->dataLength);
+					if (crc != pFileURL->CRCsum) {
+						// crc check failed, try again
+						Netlib_LogfT(hNetlibUser,_T("crc check failed for file %s"),pFileURL->tszDiskPath);
+						CallService(MS_NETLIB_FREEHTTPREQUESTSTRUCT, 0, (LPARAM)pReply);
+						continue;
+					}
+				}
+
+				HANDLE hFile = CreateFile(pFileURL->tszDiskPath, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 				if (hFile != INVALID_HANDLE_VALUE) {
+					DWORD dwBytes;
+					// write the downloaded file directly
 					WriteFile(hFile, pReply->pData, (DWORD)pReply->dataLength, &dwBytes, NULL);
 					CloseHandle(hFile);
-					SafeMoveFile(tszTempFile, tszLocal);
-					if (CRCsum) {
-						InitCrcTable();
-						int crc = Get_CRC((unsigned char*)pReply->pData, (long)dwBytes);
-						if (crc == CRCsum)
-							ret = true;
-					} else
-						ret = true;
 				}
+				else {
+					// try to write it via PU stub
+					TCHAR tszTempFile[MAX_PATH];
+					mir_sntprintf(tszTempFile, SIZEOF(tszTempFile), _T("%s\\pulocal.tmp"), tszTempPath);
+					hFile = CreateFile(tszTempFile, GENERIC_READ | GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+					if (hFile != INVALID_HANDLE_VALUE) {
+						DWORD dwBytes;
+						WriteFile(hFile, pReply->pData, (DWORD)pReply->dataLength, &dwBytes, NULL);
+						CloseHandle(hFile);
+						SafeMoveFile(tszTempFile, pFileURL->tszDiskPath);
+					}
+				}
+				ret = true;
 			}
+			else
+				Netlib_LogfT(hNetlibUser,_T("Downloading file %s failed with error %d"),pFileURL->tszDownloadURL,pReply->resultCode);
+			CallService(MS_NETLIB_FREEHTTPREQUESTSTRUCT, 0, (LPARAM)pReply);
 		}
-		CallService(MS_NETLIB_FREEHTTPREQUESTSTRUCT, 0, (LPARAM)pReply);
-	} else {
-		nlc = NULL;
+		else {
+			Netlib_LogfT(hNetlibUser,_T("Downloading file %s failed, host is propably temporary down."),pFileURL->tszDownloadURL);
+			nlc = NULL;
+		}
 	}
+	if(!ret)
+		Netlib_LogfT(hNetlibUser,_T("Downloading file %s failed, giving up"),pFileURL->tszDownloadURL);
 
 	mir_free(szUrl);
 	mir_free(nlhr.headers);
 
-	DlgDld = ret;
 	return ret;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-BOOL AllowUpdateOnStartup()
+LONGLONG PeriodToMilliseconds(const int period, BYTE &periodMeasure)
 {
-	if (opts.bOnlyOnceADay) {
-		time_t now = time(NULL);
-		time_t was = db_get_dw(NULL, MODNAME, "LastUpdate", 0);
-
-		if ((now - was) < 86400)
-			return FALSE;
-	}
-	return TRUE;
-}
-
-LONG PeriodToMilliseconds(const int period, BYTE& periodMeasure)
-{
-	LONG result = period * 1000;
+	LONGLONG result = period * 1000LL;
 	switch(periodMeasure) {
 	case 1:
 		// day
@@ -371,103 +389,59 @@ LONG PeriodToMilliseconds(const int period, BYTE& periodMeasure)
 	return result;
 }
 
-void CALLBACK TimerAPCProc(LPVOID lpArg, DWORD dwTimerLowValue, DWORD dwTimerHighValue)
+void CALLBACK TimerAPCProc(void *, DWORD, DWORD)
 {
 	DoCheck(true);
 }
 
-void InitTimer(int type)
+void InitTimer(void *type)
 {
-	CancelWaitableTimer(Timer);
-	if (opts.bUpdateOnPeriod) {
-		LONG interval = PeriodToMilliseconds(opts.Period, opts.bPeriodMeasure);
+	if (!opts.bUpdateOnPeriod)
+		return;
 
-		switch (type) {
-		case 0: // default, plan next check relative to last check
+	LONGLONG interval = PeriodToMilliseconds(opts.Period, opts.bPeriodMeasure);
+
+	switch ((int)type) {
+	case 0: // default, plan next check relative to last check
 		{
 			time_t now = time(NULL);
-			time_t was = db_get_dw(NULL, MODNAME, "LastUpdate", 0);
+			time_t was = db_get_dw(NULL, MODNAME, DB_SETTING_LAST_UPDATE, 0);
 
 			interval -= (now - was) * 1000;
 			if (interval <= 0)
 				interval = 1000; // no last update or too far in the past -> do it now
-			break;
 		}
-		case 1: // options changed, use set interval from now
-			break;
-		case 2: // failed last check, check again in two hours
-			interval = 1000 * 60 * 60 * 2;
-			break;
-		}
+		break;
 
-		LARGE_INTEGER li = {0};
-		li.QuadPart = -1 * (interval * 10000LL);
-		SetWaitableTimer(Timer, &li, 0, TimerAPCProc, NULL, 0);
+	case 1: // options changed, use set interval from now
+		break;
+
+	case 2: // failed last check, check again in two hours
+		interval = 1000 * 60 * 60 * 2;
+		break;
 	}
+
+	FILETIME ft;
+	GetSystemTimeAsFileTime(&ft);
+
+	LARGE_INTEGER li;
+	li.LowPart = ft.dwLowDateTime;
+	li.HighPart = ft.dwHighDateTime;
+	li.QuadPart += interval * 10000LL;
+	SetWaitableTimer(Timer, &li, 0, TimerAPCProc, NULL, 0);
+
+	// Wait in an alertable state for the timer to go off.
+	SleepEx(INFINITE, TRUE);
 }
 
-void strdel(TCHAR *parBuffer, int len )
+void strdel(TCHAR *parBuffer, int len)
 {
 	TCHAR* p;
-	for (p = parBuffer+len; *p != 0; p++)
-		p[ -len ] = *p;
+	for (p = parBuffer + len; *p != 0; p++)
+		p[-len] = *p;
 
-	p[ -len ] = '\0';
+	p[-len] = '\0';
 }
-
-#if MIRANDA_VER < 0x0A00
-char* rtrim(char *str)
-{
-	if (str == NULL)
-		return NULL;
-
-	char *p = strchr(str, 0);
-	while (--p >= str) {
-		switch (*p) {
-		case ' ': case '\t': case '\n': case '\r':
-			*p = 0; break;
-		default:
-			return str;
-		}
-	}
-	return str;
-}
-
-void CreatePathToFileT(TCHAR* tszFilePath)
-{
-	TCHAR* pszLastBackslash = _tcsrchr(tszFilePath, '\\');
-	if (pszLastBackslash == NULL)
-		return;
-
-	*pszLastBackslash = '\0';
-	CreateDirectoryTreeT(tszFilePath);
-	*pszLastBackslash = '\\';
-}
-
-void __stdcall RestartMe(void*)
-{
-	TCHAR mirandaPath[MAX_PATH], cmdLine[MAX_PATH];
-	GetModuleFileName(NULL, mirandaPath, SIZEOF(mirandaPath));
-
-	TCHAR *profilename = Utils_ReplaceVarsT(_T("%miranda_profilename%"));
-	mir_sntprintf(cmdLine, SIZEOF(cmdLine), _T("\"%s\" /restart:%d /profile=%s"), mirandaPath, GetCurrentProcessId(), profilename);
-	mir_free(profilename);
-
-	CallService("CloseAction", 0, 0);
-
-	PROCESS_INFORMATION pi;
-	STARTUPINFO si = { sizeof(si) };
-	CreateProcess(mirandaPath, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-}
-
-#else
-
-void __stdcall RestartMe(void*)
-{
-	CallService(MS_SYSTEM_RESTART, db_get_b(NULL,MODNAME,"RestartCurrentProfile",1) ? 1 : 0, 0);
-}
-
-#endif
 
 void __stdcall OpenPluginOptions(void*)
 {
@@ -634,6 +608,65 @@ Cleanup:
 	return fIsElevated;
 }
 
+bool PrepareEscalation()
+{
+	// First try to create a file near Miranda32.exe
+	TCHAR szPath[MAX_PATH];
+	GetModuleFileName(NULL, szPath, SIZEOF(szPath));
+	TCHAR *ext = _tcsrchr(szPath, '.');
+	if (ext != NULL)
+		*ext = '\0';
+	_tcscat(szPath, _T(".test"));
+	HANDLE hFile = CreateFile(szPath, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile != INVALID_HANDLE_VALUE) {
+		// we are admins or UAC is disable, cool
+		CloseHandle(hFile);
+		DeleteFile(szPath);
+		return true;
+	}
+	else if (IsRunAsAdmin()) {
+		// Check the current process's "run as administrator" status.
+		return true;
+	}
+	else {
+		// Elevate the process. Create a pipe for a stub first
+		TCHAR tszPipeName[MAX_PATH];
+		mir_sntprintf(tszPipeName, SIZEOF(tszPipeName), _T("\\\\.\\pipe\\Miranda_Pu_%d"), GetCurrentProcessId());
+		hPipe = CreateNamedPipe(tszPipeName, PIPE_ACCESS_DUPLEX, PIPE_READMODE_BYTE | PIPE_WAIT, 1, 1024, 1024, NMPWAIT_USE_DEFAULT_WAIT, NULL);
+		if (hPipe == INVALID_HANDLE_VALUE) {
+			hPipe = NULL;
+		}
+		else {
+			TCHAR cmdLine[100], *p;
+			GetModuleFileName(NULL, szPath, ARRAYSIZE(szPath));
+			if ((p = _tcsrchr(szPath, '\\')) != 0)
+				_tcscpy(p+1, _T("pu_stub.exe"));
+			mir_sntprintf(cmdLine, SIZEOF(cmdLine), _T("%d"), GetCurrentProcessId());
+
+			// Launch a stub
+			SHELLEXECUTEINFO sei = { sizeof(sei) };
+			sei.lpVerb = L"runas";
+			sei.lpFile = szPath;
+			sei.lpParameters = cmdLine;
+			sei.hwnd = NULL;
+			sei.nShow = SW_NORMAL;
+			if (ShellExecuteEx(&sei)) {
+				if (hPipe != NULL)
+					ConnectNamedPipe(hPipe, NULL);
+				return true;
+			}
+
+			DWORD dwError = GetLastError();
+			if (dwError == ERROR_CANCELLED)
+			{
+				// The user refused to allow privileges elevation.
+				// Do nothing ...
+			}
+		}
+		return false;
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////
 
 int TransactPipe(int opcode, const TCHAR *p1, const TCHAR *p2)
@@ -710,12 +743,18 @@ int SafeCreateFilePath(TCHAR *pFolder)
 	return TransactPipe(5, pFolder, NULL);
 }
 
+void BackupFile(TCHAR *ptszSrcFileName, TCHAR *ptszBackFileName)
+{
+	SafeCreateFilePath(ptszBackFileName);
+	SafeMoveFile(ptszSrcFileName, ptszBackFileName);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////
 
 char *StrToLower(char *str)
 {
-	for (int i = 0; str[i]; i++) {
+	for (int i = 0; str[i]; i++)
 		str[i] = tolower(str[i]);
-	}
+
 	return str;
 }

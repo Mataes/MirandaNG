@@ -1,7 +1,7 @@
 {$IFDEF BIN_IMPORT_}
 
 var
-  XI: XML_API_W;
+  XI: TXML_API_W;
   rhxml: HXML;
   curxml: HXML;
   chldxml: HXML;
@@ -15,11 +15,11 @@ var
 begin
   If ServiceExists(MS_SYSTEM_GET_XI) > 0 then
   begin
-    XI.cbSize := SizeOf(XML_API_W);
+    XI.cbSize := SizeOf(TXML_API_W);
     res := LongBool(CallService(MS_SYSTEM_GET_XI, 0, int(@XI)));
     if not res then
     begin
-      XI.cbSize := SizeOf(XML_API_W) - 4;
+      XI.cbSize := SizeOf(TXML_API_W) - 4;
       res := LongBool(CallService(MS_SYSTEM_GET_XI, 0, int(@XI)));
       if not res then
       begin
@@ -92,7 +92,7 @@ begin
               Inc(AddedMessages)
             else
             begin
-              s := 'Error adding message to DB';
+              s := 'Error adding message to database';
               DoMessage(ITXT_THREAD_ERROR, wparam(PWideChar(s)), 0);
               break;
             end
@@ -109,7 +109,7 @@ begin
     end
     else
     begin
-      s := WideFormat(TranslateWideString('Its not %s file'), ['ICQ5']);
+      s := WideFormat(TranslateWideString('It''s not %s file'), ['ICQ5']);
       DoMessage(ITXT_THREAD_ERROR, wparam(PWideChar(s)), 0);
     end;
   end

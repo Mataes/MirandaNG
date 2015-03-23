@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -256,7 +257,7 @@ static int xmlapiGetElement(HXML _n, XML_ELEMENT_POS pos, XML_ELEMENT_TYPE *type
 	if (closeTag)
 		*closeTag = NULL;
 
-	if ( !type || pos >= XMLNode(_n).nElement())
+	if (!type || pos >= XMLNode(_n).nElement())
 		return false;
 	XMLNodeContents c(XMLNode(_n).enumContents((XMLElementPosition)pos));
 	switch (c.etype) {

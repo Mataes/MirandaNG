@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -40,8 +40,8 @@ struct POPUPTREEDATA
 	int timeoutValue;
 	char leftAction[MAXMODULELABELLENGTH];
 	char rightAction[MAXMODULELABELLENGTH];
-	COLORREF colorBack;			//realy needet ??
-	COLORREF colorText;			//realy needet ??
+	COLORREF colorBack;			//really needed ??
+	COLORREF colorText;			//really needed ??
 };
 
 extern LIST<POPUPTREEDATA> gTreeData;

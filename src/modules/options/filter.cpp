@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -46,7 +47,7 @@ void ClearFilterStrings()
 BOOL ContainsFilterString(const PageHash key, TCHAR *data)
 {
 	CPageKeywords* values = filterStrings[key];
-	return (values) ? values->ContainsString(data) : FALSE;	
+	return (values) ? values->ContainsString(data) : FALSE;
 }
 
 void AddTreeViewNodes(HWND hWndDlg, PageHash key, HTREEITEM root)
@@ -84,13 +85,13 @@ void AddDialogString(HWND hWndDlg, const PageHash key)
 	TCHAR szClass[64];
 	GetClassName(hWndDlg, szClass, SIZEOF(szClass));
 
-	if (lstrcmpi(szClass, _T("SysTreeView32")) == 0) {
+	if (mir_tstrcmpi(szClass, _T("SysTreeView32")) == 0) {
 		HTREEITEM hItem = TreeView_GetRoot(hWndDlg);
 		AddTreeViewNodes(hWndDlg, key, hItem);
 		return;
 	}
 
-	if (lstrcmpi(szClass, _T("listbox")) == 0) {
+	if (mir_tstrcmpi(szClass, _T("listbox")) == 0) {
 		if (GetWindowStyle(hWndDlg) & LBS_HASSTRINGS) {
 			int count = ListBox_GetCount(hWndDlg);
 			for (int i=0; i < count; i++) {
@@ -106,7 +107,7 @@ void AddDialogString(HWND hWndDlg, const PageHash key)
 		return;
 	}
 
-	if (lstrcmpi(szClass, _T("SysListView32")) == 0) {
+	if (mir_tstrcmpi(szClass, _T("SysListView32")) == 0) {
 		int count = ListView_GetItemCount(hWndDlg);
 		for (int i=0; i < count; i++) {
 			title[0] = 0; //safety
@@ -118,8 +119,8 @@ void AddDialogString(HWND hWndDlg, const PageHash key)
 		return;
 	}
 
-	if (lstrcmpi(szClass, _T("combobox")) == 0) {
-		if (GetWindowStyle(hWndDlg) & CBS_HASSTRINGS) { 
+	if (mir_tstrcmpi(szClass, _T("combobox")) == 0) {
+		if (GetWindowStyle(hWndDlg) & CBS_HASSTRINGS) {
 			int count = ComboBox_GetCount(hWndDlg);
 			for (int i=0; i < count; i++) {
 				title[0] = 0; //safety

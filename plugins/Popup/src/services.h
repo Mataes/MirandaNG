@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -26,9 +26,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 extern int num_classes;			//for core class api support
 
-INT_PTR Popup_AddPopupW(WPARAM, LPARAM);
-
 INT_PTR Popup_AddPopup(WPARAM, LPARAM);
+INT_PTR Popup_AddPopupW(WPARAM, LPARAM);
 INT_PTR Popup_AddPopup2(WPARAM, LPARAM);
 
 INT_PTR Popup_GetContact(WPARAM, LPARAM);

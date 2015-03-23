@@ -23,7 +23,6 @@ Boston, MA 02111-1307, USA.
 
 #include <windows.h>
 
-#include "mir_memory.h"
 #include <m_variables.h>
 
 template<class T>
@@ -41,7 +40,7 @@ static inline size_t __blen<char>(const char *str)
 template<>
 static inline size_t __blen<wchar_t>(const wchar_t *str)
 {
-	return lstrlenW(str);
+	return mir_wstrlen(str);
 }
 
 template<class T>
@@ -439,7 +438,7 @@ class Buffer
 };
 
 
-static void ReplaceVars(Buffer<TCHAR> *buffer, HANDLE hContact, TCHAR **variables, int numVariables)
+static void ReplaceVars(Buffer<TCHAR> *buffer, MCONTACT hContact, TCHAR **variables, int numVariables)
 {
 	if (buffer->len < 3)
 		return;
@@ -463,7 +462,7 @@ static void ReplaceVars(Buffer<TCHAR> *buffer, HANDLE hContact, TCHAR **variable
 				size_t foundLen = i - j + 1;
 				if (foundLen == 9 && _tcsncmp(&buffer->str[j], _T("%contact%"), 9) == 0)
 				{
-					buffer->replace(j, i + 1, (TCHAR *) CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM) hContact, GCDNF_TCHAR));
+					buffer->replace(j, i + 1, (TCHAR *) CallService(MS_CLIST_GETCONTACTDISPLAYNAME, hContact, GCDNF_TCHAR));
 				}
 				else if (foundLen == 6 && _tcsncmp(&buffer->str[j], _T("%date%"), 6) == 0)
 				{
@@ -479,7 +478,7 @@ static void ReplaceVars(Buffer<TCHAR> *buffer, HANDLE hContact, TCHAR **variable
 				{
 					for(int k = 0; k < numVariables; k += 2)
 					{
-						size_t len = lstrlen(variables[k]);
+						size_t len = mir_tstrlen(variables[k]);
 						if (foundLen == len + 2 && _tcsncmp(&buffer->str[j]+1, variables[k], len) == 0)
 						{
 							buffer->replace(j, i + 1, variables[k + 1]);
@@ -502,7 +501,7 @@ static void ReplaceVars(Buffer<TCHAR> *buffer, HANDLE hContact, TCHAR **variable
 }
 
 
-static void ReplaceTemplate(Buffer<TCHAR> *out, HANDLE hContact, TCHAR *templ, TCHAR **vars, int numVars)
+static void ReplaceTemplate(Buffer<TCHAR> *out, MCONTACT hContact, TCHAR *templ, TCHAR **vars, int numVars)
 {
 
 	if (ServiceExists(MS_VARS_FORMATSTRING))

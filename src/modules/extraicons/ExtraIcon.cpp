@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -24,7 +24,7 @@ Boston, MA 02111-1307, USA.
 #include "extraicons.h"
 
 ExtraIcon::ExtraIcon(const char *name) :
-	name(name), slot(-1), position(1000), hLangpack(0)
+	szName(mir_strdup(name)), slot(-1), position(1000), hLangpack(0)
 {
 }
 
@@ -34,7 +34,7 @@ ExtraIcon::~ExtraIcon()
 
 const char *ExtraIcon::getName() const
 {
-	return name.c_str();
+	return szName;
 }
 
 int ExtraIcon::getSlot() const
@@ -67,63 +67,9 @@ void ExtraIcon::applyIcons()
 	if (!isEnabled())
 		return;
 
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
 		// Clear to assert that it will be cleared
 		Clist_SetExtraIcon(hContact, slot, INVALID_HANDLE_VALUE);
 		applyIcon(hContact);
 	}
-}
-
-int ExtraIcon::compare(const ExtraIcon *other) const
-{
-	if (this == other)
-		return 0;
-
-	int ret = getPosition() - other->getPosition();
-	if (ret != 0)
-		return ret;
-
-	int id = 0;
-	if (getType() != EXTRAICON_TYPE_GROUP)
-		id = ((BaseExtraIcon*) this)->getID();
-	int otherId = 0;
-	if (other->getType() != EXTRAICON_TYPE_GROUP)
-		otherId = ((BaseExtraIcon*) other)->getID();
-	return id - otherId;
-}
-
-bool ExtraIcon::operator==(const ExtraIcon & other) const
-{
-	int c = compare(&other);
-	return c == 0;
-}
-
-bool ExtraIcon::operator!=(const ExtraIcon & other) const
-{
-	int c = compare(&other);
-	return c != 0;
-}
-
-bool ExtraIcon::operator<(const ExtraIcon & other) const
-{
-	int c = compare(&other);
-	return c < 0;
-}
-
-bool ExtraIcon::operator<=(const ExtraIcon & other) const
-{
-	int c = compare(&other);
-	return c <= 0;
-}
-
-bool ExtraIcon::operator>(const ExtraIcon & other) const
-{
-	int c = compare(&other);
-	return c > 0;
-}
-
-bool ExtraIcon::operator>=(const ExtraIcon & other) const
-{
-	int c = compare(&other);
-	return c >= 0;
 }

@@ -1,6 +1,6 @@
 #include "headers.h"
 
-class CREOleCallback: public IRichEditOleCallback
+class CREOleCallback : public IRichEditOleCallback
 {
 private:
 	unsigned refCount;
@@ -16,8 +16,7 @@ public:
 
 	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID * ppvObj)
 	{
-		if (IsEqualIID(riid, IID_IRichEditOleCallback))
-		{
+		if (IsEqualIID(riid, IID_IRichEditOleCallback)) {
 			*ppvObj = this;
 			this->AddRef();
 			return S_OK;
@@ -30,49 +29,49 @@ public:
 	{
 		if (this->refCount == 0) {
 			if (S_OK != StgCreateDocfile(NULL, STGM_READWRITE | STGM_SHARE_EXCLUSIVE | STGM_CREATE | STGM_DELETEONRELEASE, 0, &this->pictStg))
-	            this->pictStg = NULL;
+				this->pictStg = NULL;
 			this->nextStgId = 0;
-	    }
-	    return ++this->refCount;
+		}
+		return ++this->refCount;
 	}
 
 	ULONG STDMETHODCALLTYPE Release()
 	{
-	    if (--this->refCount == 0) {
-	        if (this->pictStg)
+		if (--this->refCount == 0) {
+			if (this->pictStg)
 				this->pictStg->Release();
-	    }
-	    return this->refCount;
+		}
+		return this->refCount;
 	}
 
-	HRESULT STDMETHODCALLTYPE  ContextSensitiveHelp(BOOL fEnterMode)
+	HRESULT STDMETHODCALLTYPE  ContextSensitiveHelp(BOOL)
 	{
-	    return S_OK;
+		return S_OK;
 	}
 
-	HRESULT STDMETHODCALLTYPE  DeleteObject(LPOLEOBJECT lpoleobj)
+	HRESULT STDMETHODCALLTYPE  DeleteObject(LPOLEOBJECT)
 	{
-	    return S_OK;
+		return S_OK;
 	}
 
-	HRESULT STDMETHODCALLTYPE  GetClipboardData(CHARRANGE * lpchrg, DWORD reco, LPDATAOBJECT * lplpdataobj)
+	HRESULT STDMETHODCALLTYPE  GetClipboardData(CHARRANGE *, DWORD, LPDATAOBJECT *)
 	{
-	    return E_NOTIMPL;
+		return E_NOTIMPL;
 	}
 
-	HRESULT STDMETHODCALLTYPE  GetContextMenu(WORD seltype, LPOLEOBJECT lpoleobj, CHARRANGE * lpchrg, HMENU * lphmenu)
+	HRESULT STDMETHODCALLTYPE  GetContextMenu(WORD, LPOLEOBJECT, CHARRANGE *, HMENU *)
 	{
-	    return E_INVALIDARG;
+		return E_INVALIDARG;
 	}
 
-	HRESULT STDMETHODCALLTYPE  GetDragDropEffect(BOOL fDrag, DWORD grfKeyState, LPDWORD pdwEffect)
+	HRESULT STDMETHODCALLTYPE  GetDragDropEffect(BOOL, DWORD, LPDWORD)
 	{
-	    return S_OK;
+		return S_OK;
 	}
 
-	HRESULT STDMETHODCALLTYPE  GetInPlaceContext(LPOLEINPLACEFRAME * lplpFrame, LPOLEINPLACEUIWINDOW * lplpDoc, LPOLEINPLACEFRAMEINFO lpFrameInfo)
+	HRESULT STDMETHODCALLTYPE  GetInPlaceContext(LPOLEINPLACEFRAME *, LPOLEINPLACEUIWINDOW *, LPOLEINPLACEFRAMEINFO)
 	{
-	    return E_INVALIDARG;
+		return E_INVALIDARG;
 	}
 
 	HRESULT STDMETHODCALLTYPE  GetNewStorage(LPSTORAGE * lplpstg)
@@ -82,23 +81,23 @@ public:
 		if (this->pictStg == NULL)
 			return STG_E_MEDIUMFULL;
 
-	    return this->pictStg->CreateStorage(sztName, STGM_READWRITE | STGM_SHARE_EXCLUSIVE | STGM_CREATE, 0, 0, lplpstg);
+		return this->pictStg->CreateStorage(sztName, STGM_READWRITE | STGM_SHARE_EXCLUSIVE | STGM_CREATE, 0, 0, lplpstg);
 
 	}
 
-	HRESULT STDMETHODCALLTYPE  QueryAcceptData(LPDATAOBJECT lpdataobj, CLIPFORMAT * lpcfFormat, DWORD reco, BOOL fReally, HGLOBAL hMetaPict)
+	HRESULT STDMETHODCALLTYPE  QueryAcceptData(LPDATAOBJECT, CLIPFORMAT *, DWORD, BOOL, HGLOBAL)
 	{
 		return S_OK;
 	}
 
-	HRESULT STDMETHODCALLTYPE  QueryInsertObject(LPCLSID lpclsid, LPSTORAGE lpstg, LONG cp)
+	HRESULT STDMETHODCALLTYPE  QueryInsertObject(LPCLSID, LPSTORAGE, LONG)
 	{
-	    return S_OK;
+		return S_OK;
 	}
 
-	HRESULT STDMETHODCALLTYPE  ShowContainerUI(BOOL fShow)
+	HRESULT STDMETHODCALLTYPE  ShowContainerUI(BOOL)
 	{
-	    return S_OK;
+		return S_OK;
 	}
 };
 
@@ -113,8 +112,7 @@ void InitRichEdit(ITextServices *ts)
 LRESULT CALLBACK RichEditProxyWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	ITextServices *ts = (ITextServices *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-	if (ts && (msg != WM_DESTROY))
-	{
+	if (ts && (msg != WM_DESTROY)) {
 		LRESULT lResult;
 		ts->TxSendMessage(msg, wParam, lParam, &lResult);
 		return lResult;
@@ -124,11 +122,7 @@ LRESULT CALLBACK RichEditProxyWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
 void LoadRichEdit()
 {
-	OleInitialize(NULL);
-//	LoadLibrary("riched20.dll");
 	reOleCallback = new CREOleCallback;
-//	CoInitializeEx(NULL,COINIT_MULTITHREADED);
-
 
 	WNDCLASSEX wcl;
 	wcl.cbSize = sizeof(wcl);
@@ -142,14 +136,13 @@ void LoadRichEdit()
 	wcl.hbrBackground = (HBRUSH)GetStockObject(LTGRAY_BRUSH);
 	wcl.lpszMenuName = NULL;
 	wcl.lpszClassName = _T("NBRichEditProxyWndClass");
-	wcl.hIconSm = 0; 
+	wcl.hIconSm = 0;
 	RegisterClassEx(&wcl);
 }
 
 void UnloadRichEdit()
 {
 	delete reOleCallback;
-	OleUninitialize();
 }
 
 HWND CreateProxyWindow(ITextServices *ts)

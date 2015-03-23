@@ -1,35 +1,31 @@
 // ---------------------------------------------------------------------------80
 //                ICQ plugin for Miranda Instant Messenger
 //                ________________________________________
-// 
+//
 // Copyright © 2000-2001 Richard Hughes, Roland Rabien, Tristan Van de Vreede
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2009 Joe Kucera
-// 
+// Copyright © 2012-2014 Miranda NG Team
+//
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
 // as published by the Free Software Foundation; either version 2
 // of the License, or (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
-void CIcqProto::handleAuthorizationFam(BYTE *pBuffer, WORD wBufferLength, snac_header *pSnacHeader, serverthread_info *info)
+void CIcqProto::handleAuthorizationFam(BYTE *pBuffer, size_t wBufferLength, snac_header *pSnacHeader, serverthread_info *info)
 {
 	switch (pSnacHeader->wSubtype) {
 
@@ -39,7 +35,7 @@ void CIcqProto::handleAuthorizationFam(BYTE *pBuffer, WORD wBufferLength, snac_h
 
 			if (wBufferLength >= 2)
 				unpackWord(&pBuffer, &wError);
-			else 
+			else
 				wError = 0;
 
 			LogFamilyError(ICQ_AUTHORIZATION_FAMILY, wError);
@@ -55,7 +51,7 @@ void CIcqProto::handleAuthorizationFam(BYTE *pBuffer, WORD wBufferLength, snac_h
 		break;
 
 	default:
-		NetLog_Server("Warning: Ignoring SNAC(x%02x,x%02x) - Unknown SNAC (Flags: %u, Ref: %u)", ICQ_AUTHORIZATION_FAMILY, pSnacHeader->wSubtype, pSnacHeader->wFlags, pSnacHeader->dwRef);
+		debugLogA("Warning: Ignoring SNAC(x%02x,x%02x) - Unknown SNAC (Flags: %u, Ref: %u)", ICQ_AUTHORIZATION_FAMILY, pSnacHeader->wSubtype, pSnacHeader->wFlags, pSnacHeader->dwRef);
 		break;
 	}
 }
@@ -74,35 +70,30 @@ static void icq_encryptPassword(const char *szPassword, BYTE *encrypted)
 		encrypted[i] = (szPassword[i] ^ table[i % 16]);
 }
 
-void CIcqProto::sendClientAuth(const char *szKey, WORD wKeyLen, BOOL bSecure)
+void CIcqProto::sendClientAuth(const char *szKey, size_t wKeyLen, BOOL bSecure)
 {
 	char szUin[UINMAXLEN];
-	WORD wUinLen;
 	icq_packet packet;
 
-	wUinLen = strlennull(strUID(m_dwLocalUIN, szUin));
+	size_t wUinLen = mir_strlen(strUID(m_dwLocalUIN, szUin));
 
-	packet.wLen = (m_bLegacyFix ? 65 : 70) + sizeof(CLIENT_ID_STRING) + wUinLen + wKeyLen + (m_bSecureConnection ? 4 : 0);
+	packet.wLen = WORD((m_bLegacyFix ? 65 : 70) + sizeof(CLIENT_ID_STRING) + wUinLen + wKeyLen + (m_bSecureConnection ? 4 : 0));
 
-	if (bSecure)
-	{
-		serverPacketInit(&packet, (WORD)(packet.wLen + 10));
+	if (bSecure) {
+		serverPacketInit(&packet, packet.wLen + 10);
 		packFNACHeader(&packet, ICQ_AUTHORIZATION_FAMILY, ICQ_SIGNON_LOGIN_REQUEST, 0, 0);
 	}
-	else
-	{
+	else {
 		write_flap(&packet, ICQ_LOGIN_CHAN);
 		packDWord(&packet, 0x00000001);
 	}
 	packTLV(&packet, 0x0001, wUinLen, (LPBYTE)szUin);
 
-	if (bSecure)
-	{ // Pack MD5 auth digest
+	if (bSecure) { // Pack MD5 auth digest
 		packTLV(&packet, 0x0025, wKeyLen, (BYTE*)szKey);
 		packDWord(&packet, 0x004C0000); // empty TLV(0x4C): unknown
 	}
-	else
-	{ // Pack old style password hash
+	else { // Pack old style password hash
 		BYTE hash[20];
 
 		icq_encryptPassword(szKey, hash);
@@ -127,31 +118,27 @@ void CIcqProto::sendClientAuth(const char *szKey, WORD wKeyLen, BOOL bSecure)
 	sendServPacket(&packet);
 }
 
-void CIcqProto::handleAuthKeyResponse(BYTE *buf, WORD wPacketLen, serverthread_info *info)
+void CIcqProto::handleAuthKeyResponse(BYTE *buf, size_t wPacketLen, serverthread_info *info)
 {
-	WORD wKeyLen;
 	char szKey[64] = {0};
 	mir_md5_state_t state;
 	BYTE digest[16];
 
-#ifdef _DEBUG
-	NetLog_Server("Received %s", "ICQ_SIGNON_AUTH_KEY");
-#endif
+	debugLogA("Received %s", "ICQ_SIGNON_AUTH_KEY");
 
-	if (wPacketLen < 2) 
-	{
-		NetLog_Server("Malformed %s", "ICQ_SIGNON_AUTH_KEY");
+	if (wPacketLen < 2) {
+		debugLogA("Malformed %s", "ICQ_SIGNON_AUTH_KEY");
 		icq_LogMessage(LOG_FATAL, LPGEN("Secure login failed.\nInvalid server response."));
 		SetCurrentStatus(ID_STATUS_OFFLINE);
 		return;
 	}
 
+	size_t wKeyLen;
 	unpackWord(&buf, &wKeyLen);
 	wPacketLen -= 2;
 
-	if (!wKeyLen || wKeyLen > wPacketLen || wKeyLen > sizeof(szKey)) 
-	{
-		NetLog_Server("Invalid length in %s: %u", "ICQ_SIGNON_AUTH_KEY", wKeyLen);
+	if (!wKeyLen || wKeyLen > wPacketLen || wKeyLen > sizeof(szKey)) {
+		debugLogA("Invalid length in %s: %u", "ICQ_SIGNON_AUTH_KEY", wKeyLen);
 		icq_LogMessage(LOG_FATAL, LPGEN("Secure login failed.\nInvalid key length."));
 		SetCurrentStatus(ID_STATUS_OFFLINE);
 		return;
@@ -160,17 +147,15 @@ void CIcqProto::handleAuthKeyResponse(BYTE *buf, WORD wPacketLen, serverthread_i
 	unpackString(&buf, szKey, wKeyLen);
 
 	mir_md5_init(&state);
-	mir_md5_append(&state, info->szAuthKey, info->wAuthKeyLen);
+	mir_md5_append(&state, info->szAuthKey, (int)info->wAuthKeyLen);
 	mir_md5_finish(&state, digest);
 
 	mir_md5_init(&state);
-	mir_md5_append(&state, (LPBYTE)szKey, wKeyLen);
+	mir_md5_append(&state, (LPBYTE)szKey, (int)wKeyLen);
 	mir_md5_append(&state, digest, 16);
 	mir_md5_append(&state, (LPBYTE)CLIENT_MD5_STRING, sizeof(CLIENT_MD5_STRING)-1);
 	mir_md5_finish(&state, digest);
 
-#ifdef _DEBUG
-	NetLog_Server("Sending ICQ_SIGNON_LOGIN_REQUEST to login server");
-#endif
+	debugLogA("Sending ICQ_SIGNON_LOGIN_REQUEST to login server");
 	sendClientAuth((char*)digest, 0x10, TRUE);
 }

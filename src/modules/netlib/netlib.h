@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -21,12 +22,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
-#define GetNetlibHandleType(h)  (h?*(int*)h:NLH_INVALID)
 #define NLH_INVALID      0
 #define NLH_USER         'USER'
 #define NLH_CONNECTION   'CONN'
 #define NLH_BOUNDPORT    'BIND'
 #define NLH_PACKETRECVER 'PCKT'
+int GetNetlibHandleType(void*);
 
 struct NetlibUser
 {
@@ -119,7 +120,7 @@ INT_PTR NetlibBase64Encode(WPARAM wParam, LPARAM lParam);
 INT_PTR NetlibBase64Decode(WPARAM wParam, LPARAM lParam);
 INT_PTR NetlibHttpUrlEncode(WPARAM wParam, LPARAM lParam);
 
-extern CRITICAL_SECTION csNetlibUser;
+extern mir_cs csNetlibUser;
 extern LIST<NetlibUser> netlibUser;
 
 //netlibautoproxy.c

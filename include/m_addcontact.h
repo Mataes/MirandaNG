@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -25,10 +26,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define M_ADDCONTACT_H__ 1
 
 typedef struct{
-	int handleType;						//one of the HANDLE_ constants
-	HANDLE handle;						//hDbEvent if acs.handleType == HANDLE_EVENT, hContact if acs.handleType == HANDLE_CONTACT, ignored if acs.handleType == HANDLE_SEARCHRESULT
-	const char *szProto;				//ignored if acs.handleType != HANDLE_SEARCHRESULT
-	PROTOSEARCHRESULT *psr;				//ignored if acs.handleType != HANDLE_SEARCHRESULT
+	int handleType;         // one of the HANDLE_ constants
+	union {
+		MEVENT hDbEvent;     // hDbEvent if acs.handleType == HANDLE_EVENT
+		MCONTACT hContact;   // hContact if acs.handleType == HANDLE_CONTACT
+		                     // ignored if acs.handleType == HANDLE_SEARCHRESULT
+	};
+	const char *szProto;    // ignored if acs.handleType != HANDLE_SEARCHRESULT
+	PROTOSEARCHRESULT *psr; // ignored if acs.handleType != HANDLE_SEARCHRESULT
 }ADDCONTACTSTRUCT;
 
 /*
@@ -61,5 +66,3 @@ typedef struct{
 #define MS_ADDCONTACT_SHOW		"AddContact/Show"
 
 #endif // M_ADDCONTACT_H__
-
-

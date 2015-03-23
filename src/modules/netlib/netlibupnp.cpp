@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -235,7 +236,7 @@ static void validateSocket(void)
 		break;
 	}
 
-	if ( !opened)
+	if (!opened)
 		closeRouterConnection();
 }
 
@@ -245,7 +246,7 @@ static int httpTransact(char* szUrl, char* szResult, int resSize, char* szAction
 	char szHost[256], szPath[256], szRes[16];
 	int sz = 0, res = 0;
 	unsigned short sPort;
-	bool needClose;
+	bool needClose = false;
 
 	const char* szPostHdr = soap_post_hdr;
 	char* szData = (char*)mir_alloc(4096);
@@ -272,7 +273,7 @@ static int httpTransact(char* szUrl, char* szResult, int resSize, char* szAction
 				char szData1[1024];
 
 				szReq = mir_strdup(szResult);
-				sz = mir_snprintf (szData1, sizeof(szData1),
+				sz = mir_snprintf (szData1, SIZEOF(szData1),
 					soap_action, szActionName, szDev, szReq, szActionName);
 
 				sz = mir_snprintf (szData, 4096,
@@ -285,7 +286,7 @@ static int httpTransact(char* szUrl, char* szResult, int resSize, char* szAction
 			{
 				char szData1[1024];
 
-				sz = mir_snprintf (szData1, sizeof(szData1),
+				sz = mir_snprintf (szData1, SIZEOF(szData1),
 					soap_query, szActionName);
 
 				sz = mir_snprintf (szData, 4096,
@@ -349,7 +350,7 @@ retrycon:
 						NetlibLogf(NULL, "UPnP connect timeout");
 						break;
 					}
-					else if ( !FD_ISSET(sock, &wfd))
+					else if (!FD_ISSET(sock, &wfd))
 					{
 						closeRouterConnection();
 						NetlibLogf(NULL, "UPnP connect failed");
@@ -550,7 +551,7 @@ static bool getUPnPURLs(char* szUrl, size_t sizeUrl)
 		strncpy(szCtlUrl, szTemp[0] ? szTemp : szUrl, sizeof(szCtlUrl));
 		szCtlUrl[sizeof(szCtlUrl)-1] = 0;
 
-		mir_snprintf(szTemp, sizeof(szTemp), search_device, szDev);
+		mir_snprintf(szTemp, SIZEOF(szTemp), search_device, szDev);
 		txtParseParam(szData, szTemp, "<controlURL>", "</controlURL>", szUrl, sizeUrl);
 
 		// URL combining per RFC 2396
@@ -806,7 +807,7 @@ void NetlibUPnPCleanup(void*)
 				break;
 			}
 
-		if ( !incoming)
+		if (!incoming)
 			return;
 	}
 
@@ -836,10 +837,10 @@ void NetlibUPnPCleanup(void*)
 			if (httpTransact(szCtlUrl, szData, 4096, "GetGenericPortMappingEntry", ControlAction) != 200)
 				break;
 
-			if ( !txtParseParam(szData, "<NewPortMappingDescription", ">", "<", buf, sizeof(buf)) || strcmp(buf, "Miranda") != 0)
+			if (!txtParseParam(szData, "<NewPortMappingDescription", ">", "<", buf, sizeof(buf)) || strcmp(buf, "Miranda") != 0)
 				continue;
 
-			if ( !txtParseParam(szData, "<NewInternalClient", ">", "<", buf, sizeof(buf)) || strcmp(buf, lip) != 0)
+			if (!txtParseParam(szData, "<NewInternalClient", ">", "<", buf, sizeof(buf)) || strcmp(buf, lip) != 0)
 				continue;
 
 			if (txtParseParam(szData, "<NewExternalPort", ">", "<", buf, sizeof(buf)))

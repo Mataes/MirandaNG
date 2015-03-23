@@ -1,11 +1,12 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-08  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2008-09  Dmitriy Chervov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-08  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (c) 2008-09  Dmitriy Chervov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -48,7 +49,7 @@ public:
 
 	CJabberPresenceInfo()
 	{
-		ZeroMemory(this, sizeof(*this));
+		memset(this, 0, sizeof(*this));
 	}
 	~CJabberPresenceInfo()
 	{
@@ -63,134 +64,41 @@ class CJabberPresencePermanentInfo
 {
 	friend class CJabberPresenceManager;
 
-	CJabberPresencePermanentInfo* m_pNext;
-
 	JABBER_PRESENCE_HANDLER m_pHandler;
 	void *m_pUserData;
 	PRESENCE_USER_DATA_FREE_FUNC m_pUserDataFree;
 	int m_iPriority;
+
 public:
 	CJabberPresencePermanentInfo()
 	{
-		ZeroMemory(this, sizeof(CJabberPresencePermanentInfo));
+		memset(this, 0, sizeof(CJabberPresencePermanentInfo));
 	}
+
 	~CJabberPresencePermanentInfo()
 	{
 		if (m_pUserDataFree)
 			m_pUserDataFree(m_pUserData);
 	}
+
+	__forceinline int getPriority() const { return m_iPriority; }
 };
 
 class CJabberPresenceManager
 {
 protected:
 	CJabberProto *ppro;
-	CRITICAL_SECTION m_cs;
-	CJabberPresencePermanentInfo* m_pPermanentHandlers;
+	mir_cs m_cs;
+	OBJLIST<CJabberPresencePermanentInfo> m_arHandlers;
 
 public:
-	CJabberPresenceManager(CJabberProto* proto)
-	{
-		InitializeCriticalSection(&m_cs);
-		m_pPermanentHandlers = NULL;
-		ppro = proto;
-	}
-	~CJabberPresenceManager()
-	{
-		Lock();
-		CJabberPresencePermanentInfo *pInfo = m_pPermanentHandlers;
-		while (pInfo)
-		{
-			CJabberPresencePermanentInfo *pTmp = pInfo->m_pNext;
-			delete pInfo;
-			pInfo = pTmp;
-		}
-		m_pPermanentHandlers = NULL;
-		Unlock();
-		DeleteCriticalSection(&m_cs);
-	}
-	BOOL Start()
-	{
-		return TRUE;
-	}
-	BOOL Shutdown()
-	{
-		return TRUE;
-	}
-	void Lock()
-	{
-		EnterCriticalSection(&m_cs);
-	}
-	void Unlock()
-	{
-		LeaveCriticalSection(&m_cs);
-	}
-	CJabberPresencePermanentInfo* AddPermanentHandler(JABBER_PRESENCE_HANDLER pHandler, void *pUserData = NULL, PRESENCE_USER_DATA_FREE_FUNC pUserDataFree = NULL, int iPriority = JH_PRIORITY_DEFAULT)
-	{
-		CJabberPresencePermanentInfo* pInfo = new CJabberPresencePermanentInfo();
-		if ( !pInfo)
-			return NULL;
+	CJabberPresenceManager(CJabberProto*);
+	~CJabberPresenceManager();
 
-		pInfo->m_pHandler = pHandler;
-		pInfo->m_pUserData = pUserData;
-		pInfo->m_pUserDataFree = pUserDataFree;
-		pInfo->m_iPriority = iPriority;
-
-		Lock();
-		if ( !m_pPermanentHandlers)
-			m_pPermanentHandlers = pInfo;
-		else
-		{
-			if (m_pPermanentHandlers->m_iPriority > pInfo->m_iPriority) {
-				pInfo->m_pNext = m_pPermanentHandlers;
-				m_pPermanentHandlers = pInfo;
-			} else
-			{
-				CJabberPresencePermanentInfo* pTmp = m_pPermanentHandlers;
-				while (pTmp->m_pNext && pTmp->m_pNext->m_iPriority <= pInfo->m_iPriority)
-					pTmp = pTmp->m_pNext;
-				pInfo->m_pNext = pTmp->m_pNext;
-				pTmp->m_pNext = pInfo;
-			}
-		}
-		Unlock();
-
-		return pInfo;
-	}
-	BOOL DeletePermanentHandler(CJabberPresencePermanentInfo *pInfo)
-	{ // returns TRUE when pInfo found, or FALSE otherwise
-		Lock();
-		if ( !m_pPermanentHandlers)
-		{
-			Unlock();
-			return FALSE;
-		}
-		if (m_pPermanentHandlers == pInfo) // check first item
-		{
-			m_pPermanentHandlers = m_pPermanentHandlers->m_pNext;
-			delete pInfo;
-			Unlock();
-			return TRUE;
-		} else
-		{
-			CJabberPresencePermanentInfo* pTmp = m_pPermanentHandlers;
-			while (pTmp->m_pNext)
-			{
-				if (pTmp->m_pNext == pInfo)
-				{
-					pTmp->m_pNext = pTmp->m_pNext->m_pNext;
-					delete pInfo;
-					Unlock();
-					return TRUE;
-				}
-				pTmp = pTmp->m_pNext;
-			}
-		}
-		Unlock();
-		return FALSE;
-	}
-	BOOL HandlePresencePermanent(HXML node, ThreadData *pThreadData);
-	BOOL FillPermanentHandlers();
+	CJabberPresencePermanentInfo* AddPermanentHandler(JABBER_PRESENCE_HANDLER pHandler, void *pUserData = NULL, PRESENCE_USER_DATA_FREE_FUNC pUserDataFree = NULL, int iPriority = JH_PRIORITY_DEFAULT);
+	bool DeletePermanentHandler(CJabberPresencePermanentInfo *pInfo);
+	
+	bool HandlePresencePermanent(HXML node, ThreadData *pThreadData);
 };
 
 #endif

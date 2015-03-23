@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -34,7 +35,7 @@ static INT_PTR hkHideShow(WPARAM, LPARAM)
 INT_PTR hkSearch(WPARAM wParam, LPARAM lParam)
 {
 	DBVARIANT dbv = {0};
-	if ( !db_get_s(NULL, "CList", "SearchUrl", &dbv)) {
+	if (!db_get_s(NULL, "CList", "SearchUrl", &dbv)) {
 		CallService(MS_UTILS_OPENURL, db_get_b(NULL, "CList", "HKSearchNewWnd", 0), (LPARAM)dbv.pszVal);
 		db_free(&dbv);
 	}
@@ -63,7 +64,7 @@ static INT_PTR hkCloseMiranda(WPARAM wParam, LPARAM lParam)
 
 INT_PTR hkRestoreStatus(WPARAM wParam, LPARAM lParam)
 {
-	int nStatus = db_get_w(NULL, "CList", "Status", ID_STATUS_ONLINE);
+	int nStatus = db_get_w(NULL, "CList", "Status", ID_STATUS_OFFLINE);
 	CallService(MS_CLIST_SETSTATUSMODE, nStatus, 0);
 	return 0;
 }
@@ -82,14 +83,14 @@ int InitClistHotKeys(void)
 
 	HOTKEYDESC shk = { sizeof(shk) };
 	shk.dwFlags = HKD_TCHAR;
-	shk.ptszDescription = LPGENT("Show Hide Contact List");
+	shk.ptszDescription = LPGENT("Show/Hide contact list");
 	shk.pszName = "ShowHide";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "CLIST/HK/SHOWHIDE";
 	shk.DefHotKey = HOTKEYCODE(HOTKEYF_CONTROL|HOTKEYF_SHIFT, 'A');
 	Hotkey_Register(&shk);
 
-	shk.ptszDescription = LPGENT("Read Message");
+	shk.ptszDescription = LPGENT("Read message");
 	shk.pszName = "ReadMessage";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "CLIST/HK/Read";
@@ -103,21 +104,21 @@ int InitClistHotKeys(void)
 	shk.DefHotKey = 846;
 	Hotkey_Register(&shk);
 */
-	shk.ptszDescription = LPGENT("Open Options Page");
+	shk.ptszDescription = LPGENT("Open Options page");
 	shk.pszName = "ShowOptions";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "CLIST/HK/Opts";
 	shk.DefHotKey = HOTKEYCODE(HOTKEYF_CONTROL|HOTKEYF_SHIFT, 'O') | HKF_MIRANDA_LOCAL;
 	Hotkey_Register(&shk);
 
-	shk.ptszDescription = LPGENT("Open Logging Options");
+	shk.ptszDescription = LPGENT("Open logging options");
 	shk.pszName = "ShowLogOptions";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "Netlib/Log/Win";
 	shk.DefHotKey = 0;
 	Hotkey_Register(&shk);
 
-	shk.ptszDescription = LPGENT("Open Find User Dialog");
+	shk.ptszDescription = LPGENT("Open 'Find user' dialog");
 	shk.pszName = "FindUsers";
 	shk.ptszSection = _T("Main");
 	shk.pszService = "FindAdd/FindAddCommand";

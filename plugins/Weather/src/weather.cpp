@@ -122,7 +122,6 @@ int WeatherInit(WPARAM wParam,LPARAM lParam)
 	// initialize netlib
 	NetlibInit();
 
-	InitIcons();
 	InitMwin();
 
 	// load weather menu items
@@ -133,12 +132,7 @@ int WeatherInit(WPARAM wParam,LPARAM lParam)
 
 	// weather user detail
 	HookEvent(ME_USERINFO_INITIALISE, UserInfoInit);
-
 	HookEvent(ME_TTB_MODULELOADED, OnToolbarLoaded);
-
-	hDataWindowList = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST,0,0);
-	hWindowList = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST,0,0);
-
 	return 0;
 }
 
@@ -173,6 +167,9 @@ extern "C" int __declspec(dllexport) Unload(void)
 	DestroyOptions();
 	DestroyWIList();				// unload all ini data from memory
 
+	WindowList_Destroy(hDataWindowList);
+	WindowList_Destroy(hWindowList);
+
 	CloseHandle(hUpdateMutex);
 	return 0;
 }
@@ -186,6 +183,8 @@ extern "C" int __declspec(dllexport) Load(void)
 
 	// load options and set defaults
 	LoadOptions();
+
+	InitIcons();
 
 	// reset the weather data at startup for individual contacts
 	EraseAllInfo();
@@ -210,19 +209,19 @@ extern "C" int __declspec(dllexport) Load(void)
 	HookEvent(ME_SYSTEM_PRESHUTDOWN, WeatherShutdown);
 	HookEvent(ME_CLIST_PREBUILDCONTACTMENU, BuildContactMenu);
 
+	hDataWindowList = WindowList_Create();
+	hWindowList = WindowList_Create();
+
 	hUpdateMutex = CreateMutex(NULL, FALSE, NULL);
 
 	// register weather protocol
 	PROTOCOLDESCRIPTOR pd = { PROTOCOLDESCRIPTOR_V3_SIZE };
 	pd.szName = WEATHERPROTONAME;
 	pd.type = (opt.NoProtoCondition) ? PROTOTYPE_VIRTUAL : PROTOTYPE_PROTOCOL;
-	CallService(MS_PROTO_REGISTERMODULE,0, (LPARAM)&pd);
+	CallService(MS_PROTO_REGISTERMODULE, 0, (LPARAM)&pd);
 
 	// initialize weather protocol services
 	InitServices();
-
-	// add our modules to the KnownModules list 
-	db_set_s(NULL, "KnownModules", "Weather Protocol", "Weather,WeatherCondition,Current");
 
 	// add sound event
 	SkinAddNewSoundExT("weatherupdated", _T(WEATHERPROTONAME), LPGENT("Weather Condition Changed"));
@@ -230,10 +229,9 @@ extern "C" int __declspec(dllexport) Load(void)
 
 	// window needed for popup commands
 	TCHAR SvcFunc[100];
-	mir_sntprintf( SvcFunc, SIZEOF(SvcFunc), _T("%s__PopupWindow"), _T(WEATHERPROTONAME));
-	hPopupWindow = CreateWindowEx(WS_EX_TOOLWINDOW,_T("static"),SvcFunc,0,CW_USEDEFAULT,CW_USEDEFAULT,
-		CW_USEDEFAULT,CW_USEDEFAULT,HWND_DESKTOP,NULL, hInst,NULL);
+	mir_sntprintf(SvcFunc, SIZEOF(SvcFunc), _T("%s__PopupWindow"), _T(WEATHERPROTONAME));
+	hPopupWindow = CreateWindowEx(WS_EX_TOOLWINDOW, _T("static"), SvcFunc, 0, CW_USEDEFAULT, CW_USEDEFAULT,
+		CW_USEDEFAULT, CW_USEDEFAULT, HWND_DESKTOP, NULL, hInst, NULL);
 	SetWindowLongPtr(hPopupWindow, GWLP_WNDPROC, (LONG_PTR)PopupWndProc);
-
 	return 0; 
 }

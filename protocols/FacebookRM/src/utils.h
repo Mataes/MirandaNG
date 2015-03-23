@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -43,35 +43,35 @@ namespace utils
 	{
 		std::string unix_timestamp();
 		std::string mili_timestamp();
-		DWORD fix_timestamp(unsigned __int64 mili_timestamp);
+		time_t from_string(const std::string &data);
 	};
 
 	namespace number
 	{
-		int random();
+		int random(int min, int max, unsigned int *value = NULL);
 	};
 
 	namespace text
 	{
-		void replace_first(std::string* data, std::string from, std::string to);
-		void replace_all(std::string* data, std::string from, std::string to);
-		unsigned int count_all(std::string* data, std::string term);
-		std::string special_expressions_decode(std::string data);
+		void replace_first(std::string* data, const std::string &from, const std::string &to);
+		void replace_all(std::string* data, const std::string &from, const std::string &to);
+		unsigned int count_all(std::string* data, const std::string &term);
+		std::string html_entities_decode(std::string data);
 		std::string edit_html(std::string data);
-		std::string remove_html(std::string data);
-		std::string slashu_to_utf8(std::string data);
-		std::string trim(std::string data, bool rtrim = false);
+		std::string remove_html(const std::string &data);
+		std::string slashu_to_utf8(const std::string &data);
+		std::string trim(const std::string &data, bool rtrim = false);
 		std::string source_get_value(std::string* data, unsigned int argument_count, ...);
 		std::string source_get_value2(std::string* data, const char *term, const char *endings, bool wholeString = false);
 		std::string source_get_form_data(std::string* data);
-		void explode(std::string str, std::string separator, std::vector<std::string>* results);
+		std::string rand_string(int len, const char *chars = "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXYZ" "abcdefghijklmnopqrstuvwxyz", unsigned int *number = NULL);
+		void explode(std::string str, const std::string &separator, std::vector<std::string>* results);
 		void append_ordinal(unsigned long value, std::string* data);
+		std::tstring prepare_name(const std::tstring &name, bool withSurnameLetter);
 	};
 
 	namespace conversion
 	{
-		DWORD to_timestamp(std::string data);
-		struct tm *fbtime_to_timeinfo(unsigned __int64 timestamp);
 		std::string to_string(void*, WORD type);
 
 		template <class T>
@@ -79,11 +79,6 @@ namespace utils
 			std::istringstream iss(s);
 			return !(iss >> f >> t).fail();				
 		}
-	};
-
-	namespace debug
-	{
-		int log(std::string file_name, std::string text);
 	};
 };
 

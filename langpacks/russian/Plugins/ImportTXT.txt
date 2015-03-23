@@ -1,10 +1,8 @@
 ﻿#muuid {6f376b33-d3f4-4c4f-a96b-77da08043b06}
 ;============================================================
-;  File: importtxt.dll
-;  Module: Imports history saved in TXT files from other clients
-;  Versions: 0.0.1.10
-;  URL: 
-;  Source: http://miranda-plugins.googlecode.com/svn/trunk/importtxt/
+;  File: ImportTXT.dll
+;  Plugin: ImportTXT
+;  Version: 0.0.1.11
 ;  Authors: Abyss
 ;============================================================
 [Imports history saved in TXT files from other clients.]
@@ -39,8 +37,8 @@
 За: %d:%d:%d
 [Import not finished. Do you realy want close?]
 Импорт не закончен. Вы действительно хотите закрыть?
-[Error adding message to DB]
-Ошибка добавления сообщения в Базу
+[Error adding message to database]
+Ошибка добавления сообщения в базу
 [Error opening file]
 Ошибка открытия файла
 [Error mapping file]
@@ -54,7 +52,7 @@
 [This wizard will help you import message history from some other clients and Miranda plugins, stored in text files.]
 Этот мастер поможет вам импортировать сообщения из некоторых других клиентов и плагинов Miranda NG, хранящих их в текстовых файлах.
 [Click ""Next"" to choose the information you wish to import, or click ""Cancel"" to exit the wizard and continue using Miranda.]
-Нажмите "Далее" чтобы выбрать информацию для импортирования, или "Отмена" чтобы выйти из этого мастера.
+Нажмите "Далее", чтобы выбрать информацию для импортирования, или "Отмена", чтобы выйти из этого мастера.
 [Choose type of imported files:]
 Выберите тип импортируемых файлов:
 [Select files or the whole directory for import:]
@@ -75,11 +73,11 @@
 Файл: %s
 [To: %s]
 В: %s
-[Can''t determine destination contact]
+[Can't determine destination contact]
 Не могу определить контакт назначения
 [Default extension]
 Расширение по умолчанию
-[Its not %s file]
+[It's not %s file]
 Это не файл %s
 [Duplicate:]
 Дубликат:
@@ -95,5 +93,3 @@
 Ошибка инициализации XML-парсера
 [Import history to %s (%s)]
 Импортировать историю в %s (%s)
-[Can't determine destination contact]
-Не удается определить контакт для импорта

@@ -1,32 +1,28 @@
-/*
- * astyle --force-indent=tab=4 --brackets=linux --indent-switches
- *		  --pad=oper --one-line=keep-blocks  --unpad=paren
- *
- * Miranda NG: the free IM client for Microsoft* Windows*
- *
- * Copyright 2000-2009 Miranda ICQ/IM project,
- * all portions of this codebase are copyrighted to the people
- * listed in contributors.txt.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * you should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- * part of tabSRMM messaging plugin for Miranda.
- *
- * (C) 2005-2009 by silvercircle _at_ gmail _dot_ com and contributors
- *
- */
+/////////////////////////////////////////////////////////////////////////////////////////
+// Miranda NG: the free IM client for Microsoft* Windows*
+//
+// Copyright (ñ) 2012-15 Miranda NG project,
+// Copyright (c) 2000-09 Miranda ICQ/IM project,
+// all portions of this codebase are copyrighted to the people
+// listed in contributors.txt.
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// you should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+// part of tabSRMM messaging plugin for Miranda.
+//
+// (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
 
 #ifndef _MSGS_H
 #define _MSGS_H
@@ -59,13 +55,11 @@
 #define MWF_LOG_INDENT 16384
 #define MWF_LOG_RTL 32768
 
-//MAD: ieview still mistakenly uses these...
+// ieview still mistakenly uses these...
 #define MWF_LOG_NEWLINE   8192
 #define MWF_LOG_UNDERLINE 65536
 #define MWF_LOG_SWAPNICK  131072
-//
-//#define MWF_LOG_BBCODE 65536
-//#define MWF_LOG_LOCALTIME 8192
+
 #define MWF_LOG_BBCODE		 1
 #define MWF_LOG_LOCALTIME	 64
 
@@ -194,7 +188,7 @@ struct TContainerData
 	LONG     uChildMinHeight;
 	int      tBorder;
 	int	   tBorder_outer_left, tBorder_outer_right, tBorder_outer_top, tBorder_outer_bottom;
-	HANDLE   hContactFrom;
+	MCONTACT hContactFrom;
 	BOOL     isCloned;
 	HWND     hwndStatus;
 	int      statusBarHeight;
@@ -237,105 +231,100 @@ struct SESSION_INFO;
 
 struct TWindowData
 {
-   UINT    cbSize;
-   BYTE    bType;
-   TContainerData *pContainer;		// parent container description structure
-   HWND    hwnd;
-   DWORD   dwFlags;
-   DWORD   dwFlagsEx;
-   HANDLE  hContact;
-   char   *szProto;
-   TCHAR   szMyNickname[130];
-   TCHAR   szStatusBar[100];
-   TCHAR   szStatusBarCustom[100];
-   TCHAR   newtitle[130];        // tab title...
-   TCHAR   szStatus[50];
-   WORD    wStatus;
-   char   *sendBuffer;
-   int     iSendBufferSize;
-   int     iSendLength;				// message length in utf-8 octets
-   HICON   hTabIcon, hTabStatusIcon, hXStatusIcon, hClientIcon, hTaskbarIcon;
-   HICON   iFlashIcon;
-   BOOL    mayFlashTab;
-   BOOL    bTabFlash;
-   HWND    hwndIEView, hwndFlash, hwndIWebBrowserControl, hwndHPP;
-   HWND    hwndContactPic, hwndPanelPic, hwndPanelPicParent;
-   UINT    bbLSideWidth;  //MAD
-   UINT    bbRSideWidth;    //MAD
-   BYTE    kstate[256];
+	UINT     cbSize;
+	BYTE     bType;
+	TContainerData *pContainer;		// parent container description structure
+	HWND     hwnd;
+	DWORD    dwFlags;
+	DWORD    dwFlagsEx;
+	MCONTACT hContact;
+	char    *szProto;
+	TCHAR    szMyNickname[130];
+	TCHAR    szStatusBar[100];
+	StatusTextData *sbCustom;
+	TCHAR    newtitle[130];        // tab title...
+	TCHAR    szStatus[50];
+	WORD     wStatus;
+	char    *sendBuffer;
+	size_t   iSendBufferSize;
+	int      iSendLength;				// message length in utf-8 octets
+	HICON    hTabIcon, hTabStatusIcon, hXStatusIcon, hClientIcon, hTaskbarIcon;
+	HICON    iFlashIcon;
+	BOOL     mayFlashTab;
+	BOOL     bTabFlash;
+	HWND     hwndIEView, hwndIWebBrowserControl, hwndHPP;
+	HWND     hwndContactPic, hwndPanelPic, hwndPanelPicParent;
+	UINT     bbLSideWidth, bbRSideWidth;
+	BYTE     kstate[256];
 
 	SESSION_INFO *si;
 
-	RECT    rcNick, rcUIN, rcStatus, rcPic;
-	HANDLE  hDbEventFirst, hDbEventLast;
-	int     sendMode;
-	int     splitterY, originalSplitterY, dynaSplitter, savedSplitter, savedSplitY, savedDynaSplit;
-	int     multiSplitterX;
-	SIZE    minEditBoxSize;
-	int     showUIElements;
-	int     nTypeSecs;
-	int     nTypeMode;
-	DWORD   nLastTyping;
-	int     showTyping;
-	DWORD   lastMessage;
-	int     iTabID;
-	HKL     hkl;                                    // keyboard layout identifier
-	DWORD   dwTickLastEvent, dwUnread;
-	HBITMAP hOwnPic;
-	SIZE    pic;
-	int     showPic, showInfoPic;
-	BOOL    fMustOffset;
-	BOOL    isHistory;
-	int     doSmileys;
-	UINT    codePage;
-	HICON   hSmileyIcon;
-	int     iLastEventType;
-	time_t  lastEventTime;
-	int     iRealAvatarHeight;
-	int     iButtonBarReallyNeeds;
-	DWORD   dwLastActivity;
-	int     iOpenJobs;
-	int     iCurrentQueueError;
-	BOOL    bIsMeta;
-	HANDLE  hFlashingEvent;
-	TCHAR   myUin[80];
-	BOOL    bNotOnList;
-	int     SendFormat;
-	HANDLE *hQueuedEvents;
-	int     iNextQueuedEvent;
+	RECT     rcNick, rcUIN, rcStatus, rcPic;
+	MEVENT   hDbEventFirst, hDbEventLast;
+	int      sendMode;
+	int      splitterY, originalSplitterY, dynaSplitter, savedSplitter, savedSplitY, savedDynaSplit;
+	int      multiSplitterX;
+	SIZE     minEditBoxSize;
+	int      nTypeSecs;
+	int      nTypeMode;
+	DWORD    nLastTyping;
+	DWORD    lastMessage;
+	int      iTabID;
+	HKL      hkl;                                    // keyboard layout identifier
+	DWORD    dwTickLastEvent, dwUnread;
+	HBITMAP  hOwnPic;
+	SIZE     pic;
+	BYTE     bShowTyping;
+	bool     bShowAvatar, bShowInfoAvatar, bShowSmileys, bShowUIElements;
+	bool     bUseOffset;
+	bool     bIsHistory, bIsMeta, bNotOnList;
+	UINT     codePage;
+	HICON    hSmileyIcon;
+	int      iLastEventType;
+	time_t   lastEventTime;
+	int      iRealAvatarHeight;
+	int      iButtonBarReallyNeeds;
+	DWORD    dwLastActivity;
+	int      iOpenJobs;
+	int      iCurrentQueueError;
+	MEVENT   hFlashingEvent;
+	TCHAR    myUin[80];
+	int      SendFormat;
+	MEVENT  *hQueuedEvents;
+	int      iNextQueuedEvent;
 #define EVENT_QUEUE_SIZE 10
-	int     iEventQueueSize;
-	LCID    lcid;
-	TCHAR   lcID[10];
-	int     panelWidth;
-	DWORD   idle;
-	HWND    hwndTip;
+	int      iEventQueueSize;
+	LCID     lcid;
+	TCHAR    lcID[10];
+	int      iPanelAvatarX, iPanelAvatarY;
+	DWORD    idle;
+	HWND     hwndTip;
 	TOOLINFO ti;
-	HANDLE  hTimeZone;
-	DWORD   panelStatusCX;
+	HANDLE   hTimeZone;
+	DWORD    panelStatusCX;
 	COLORREF inputbg;
 	avatarCacheEntry *ace, *ownAce;
-	HANDLE *hHistoryEvents;
-	int     maxHistory, curHistory;
-	HANDLE  hTheme, hThemeIP, hThemeToolbar;
-	char    szMicroLf[128];
-	DWORD   isAutoRTL;
-	int     nMax;            // max message size
-	int     textLen;         // current text len
-	LONG    ipFieldHeight;
-	BOOL    clr_added;
-	BOOL    fIsReattach;
-	WPARAM  wParam;          // used for "delayed" actions like moved splitters in minimized windows
-	LPARAM  lParam;
-	int     iHaveRTLLang;
-	BOOL    fInsertMode;
-	bool    fkeyProcessed;
-	bool    fEditNotesActive;
+	MEVENT  *hHistoryEvents;
+	int      maxHistory, curHistory;
+	HANDLE   hTheme, hThemeIP, hThemeToolbar;
+	char     szMicroLf[128];
+	DWORD    isAutoRTL;
+	int      nMax;            // max message size
+	int      textLen;         // current text len
+	LONG     ipFieldHeight;
+	BOOL     clr_added;
+	BOOL     fIsReattach;
+	WPARAM   wParam;          // used for "delayed" actions like moved splitters in minimized windows
+	LPARAM   lParam;
+	int      iHaveRTLLang;
+	BOOL     fInsertMode;
+	bool     fkeyProcessed;
+	bool     fEditNotesActive;
 
 	CInfoPanel *Panel;
 	CContactCache *cache;
 	CProxyWindow  *pWnd;	// proxy window object (win7+, for taskbar support).
-							// ALWAYS check this pointer before using it, it is not guaranteed to exist.
+	// ALWAYS check this pointer before using it, it is not guaranteed to exist.
 	DWORD   iSplitterSaved;
 	BYTE    bWasDeleted;
 	BOOL    bActualHistory;
@@ -343,6 +332,9 @@ struct TWindowData
 	LONG    iInputAreaHeight;
 	bool    bIsAutosizingInput;
 	bool    fLimitedUpdate;
+
+	// Used for history in chats.
+	char *enteredText;
 };
 
 #define MESSAGE_WINDOW_DATA_SIZE offsetof(_MessageWindowData, hdbEventFirst);
@@ -370,18 +362,18 @@ struct myTabCtrl
 
 struct TIconDesc
 {
-	char    *szName;
-	char    *szDesc;
-	HICON   *phIcon;       // where the handle is saved...
+	char   *szName;
+	char   *szDesc;
+	HICON  *phIcon;       // where the handle is saved...
 	INT_PTR uId;           // icon ID
 	BOOL    bForceSmall;   // true: force 16x16
 };
 
 struct TIconDescW
 {
-	TCHAR    *szName;
-	TCHAR    *szDesc;
-	HICON   *phIcon;       // where the handle is saved...
+	TCHAR  *szName;
+	TCHAR  *szDesc;
+	HICON  *phIcon;       // where the handle is saved...
 	INT_PTR uId;           // icon ID
 	BOOL    bForceSmall;   // true: force 16x16
 };
@@ -417,17 +409,21 @@ struct TIconDescW
 
 struct TNewWindowData
 {
-	HANDLE  		hContact;
-	int     		isWchar;
-	const   char*	szInitialText;
-	int     		iTabID;
-	int     		iTabImage;
-	int     		iActivate;
-	TCITEM  		item;
-	TContainerData*	pContainer;
-	BOOL    		bWantPopup;
-	HANDLE  		hdbEvent;
-	HKL				hkl;
+	MCONTACT hContact;
+	int      isWchar;
+	LPCSTR   szInitialText;
+	int      iTabID;
+	int      iTabImage;
+	int      iActivate;
+	TCITEM   item;
+	BOOL     bWantPopup;
+	HKL      hkl;
+
+	union {
+		MEVENT hdbEvent;
+		SESSION_INFO *si;
+	};
+	TContainerData *pContainer;
 };
 
 // flags for the container dwFlags
@@ -492,105 +488,101 @@ struct TNewWindowData
 /*
  * custom dialog window messages
  */
-#define EM_SUBCLASSED             (WM_USER+0x101)
-#define EM_SEARCHSCROLLER         (WM_USER+0x103)
-#define EM_VALIDATEBOTTOM         (WM_USER+0x104)
-#define EM_THEMECHANGED           (WM_USER+0x105)
-#define EM_UNSUBCLASSED			  (WM_USER+0x106)
-#define EM_REFRESHWITHOUTCLIP     (WM_USER+0x107)
 
-#define HM_EVENTSENT         (WM_USER+10)
-#define DM_REMAKELOG         (WM_USER+11)
-#define HM_DBEVENTADDED      (WM_USER+12)
-#define DM_SETINFOPANEL      (WM_USER+13)
-#define DM_OPTIONSAPPLIED    (WM_USER+14)
-#define DM_SPLITTERMOVED     (WM_USER+15)
-#define DM_UPDATETITLE       (WM_USER+16)
-#define DM_APPENDTOLOG       (WM_USER+17)
-#define DM_ERRORDECIDED      (WM_USER+18)
-#define DM_SPLITSENDACK      (WM_USER+19)
-#define DM_TYPING            (WM_USER+20)
-#define DM_UPDATEWINICON     (WM_USER+21)
-#define DM_UPDATELASTMESSAGE (WM_USER+22)
+#define TM_USER                  (WM_USER+300)
 
-#define DM_SELECTTAB		 (WM_USER+23)
-#define DM_CLOSETABATMOUSE   (WM_USER+24)
-#define DM_STATUSICONCHANGE  (WM_USER+25)
-#define DM_SETLOCALE         (WM_USER+26)
-#define DM_SESSIONLIST       (WM_USER+27)
-#define DM_QUERYLASTUNREAD   (WM_USER+28)
-#define DM_QUERYPENDING      (WM_USER+29)
-#define DM_UPDATEPICLAYOUT   (WM_USER+30)
-#define DM_QUERYCONTAINER    (WM_USER+31)
-#define DM_MUCFLASHWORKER    (WM_USER+32)
-#define DM_INVALIDATEPANEL   (WM_USER+33)
-//#define DM_REPORTMINHEIGHT   (WM_USER+34)       // msg dialog reports its minimum height to the container
-#define DM_CHECKINFOTIP		 (WM_USER+35) 
-#define DM_SAVESIZE          (WM_USER+36)
-#define DM_CHECKSIZE         (WM_USER+37)
-#define DM_FORCEREDRAW       (WM_USER+38)
-#define DM_CONTAINERSELECTED (WM_USER+39)
-#define DM_CONFIGURECONTAINER (WM_USER+40)
-#define DM_QUERYHCONTACT    (WM_USER+41)
-#define DM_DEFERREDREMAKELOG (WM_USER+42)
-#define DM_RESTOREWINDOWPOS  (WM_USER+43)
-#define DM_FORCESCROLL       (WM_USER+44)
-#define DM_QUERYCLIENTAREA   (WM_USER+45)
-#define DM_QUERYRECENT       (WM_USER+47)
-#define DM_ACTIVATEME        (WM_USER+46)
-// #define DM_REMOVEFROMSENDLATER  (WM_USER+48)
-#define DM_SENDLATER_RESEND  (WM_USER+49)
-#define DM_ADDDIVIDER        (WM_USER+50)
-#define DM_STATUSMASKSET     (WM_USER+51)
-#define DM_CONTACTSETTINGCHANGED (WM_USER+52)
-#define DM_UPDATESTATUSMSG   (WM_USER+53)
-#define DM_PROTOACK          (WM_USER+54)
-#define DM_OWNNICKCHANGED    (WM_USER+55)
-#define DM_CONFIGURETOOLBAR  (WM_USER+56)
-#define DM_LOADBUTTONBARICONS (WM_USER+57)
-#define DM_ACTIVATETOOLTIP   (WM_USER+58)
-#define DM_UINTOCLIPBOARD   (WM_USER+59)
-//#define DM_SPLITTEREMERGENCY (WM_USER+60)
-#define DM_SENDMESSAGECOMMAND (WM_USER+61)
-#define DM_FORCEDREMAKELOG   (WM_USER+62)
-//#define DM_QUERYFLAGS        (WM_USER+63)
-#define DM_STATUSBARCHANGED  (WM_USER+64)
-#define DM_SAVEMESSAGELOG    (WM_USER+65)
-#define DM_CHECKAUTOCLOSE    (WM_USER+66)
-#define DM_UPDATEMETACONTACTINFO (WM_USER+67)
-#define DM_SETICON           (WM_USER+68)
-#define DM_CLOSEIFMETA		 (WM_USER+69)
-#define DM_CHECKQUEUEFORCLOSE (WM_USER+70)
-#define DM_CHECKAUTOHIDE       (WM_USER+71)
-#define DM_SETPARENTDIALOG   (WM_USER+72)
-#define DM_HANDLECLISTEVENT  (WM_USER+73)
-#define DM_TRAYICONNOTIFY    (WM_USER+74)
-#define DM_REMOVECLISTEVENT  (WM_USER+75)
-#define DM_GETWINDOWSTATE    (WM_USER+76)
-#define DM_DOCREATETAB       (WM_USER+77)
-#define DM_DELAYEDSCROLL     (WM_USER+78)
-#define DM_REPLAYQUEUE       (WM_USER+79)
-#define DM_REFRESHTABINDEX   (WM_USER+83)
-#define DM_PROTOAVATARCHANGED (WM_USER+84)
-#define DM_SMILEYOPTIONSCHANGED (WM_USER+85)
-#define DM_MYAVATARCHANGED	 (WM_USER+86)
-#define DM_PRINTCLIENT		 (WM_USER+87)
-#define DM_IEVIEWOPTIONSCHANGED (WM_USER+88)
-#define DM_SPLITTERGLOBALEVENT (WM_USER + 89)
-#define DM_DOCREATETAB_CHAT    (WM_USER+90)
-#define DM_CLIENTCHANGED       (WM_USER+91)
-#define DM_PLAYINCOMINGSOUND   (WM_USER+92)
-#define DM_SENDMESSAGECOMMANDW (WM_USER+93)
-#define DM_REMOVEPOPUPS        (WM_USER+94)
-#define DM_BBNEEDUPDATE        (WM_USER+96)
-#define DM_CBDESTROY	       (WM_USER+97)
-#define DM_LOGSTATUSCHANGE	   (WM_USER+98)
-//#define DM_SPLITTERMOVEDGLOBAL_NOSYNC_IM (WM_USER+99)
-#define DM_SC_BUILDLIST      (WM_USER+100)
-#define DM_SC_INITDIALOG     (WM_USER+101)
-#define DM_SC_CONFIG		 (WM_USER+104)
-#define DM_SCROLLIEVIEW		 (WM_USER+102)
-#define DM_UPDATEUIN		 (WM_USER+103)
+#define EM_SUBCLASSED            (TM_USER+0x101)
+#define EM_SEARCHSCROLLER        (TM_USER+0x103)
+#define EM_VALIDATEBOTTOM        (TM_USER+0x104)
+#define EM_THEMECHANGED          (TM_USER+0x105)
+#define EM_REFRESHWITHOUTCLIP    (TM_USER+0x106)
+
+#define HM_EVENTSENT             (TM_USER+10)
+#define DM_REMAKELOG             (TM_USER+11)
+#define HM_DBEVENTADDED          (TM_USER+12)
+#define DM_SETINFOPANEL          (TM_USER+13)
+#define DM_OPTIONSAPPLIED        (TM_USER+14)
+#define DM_SPLITTERMOVED         (TM_USER+15)
+#define DM_UPDATETITLE           (TM_USER+16)
+#define DM_APPENDTOLOG           (TM_USER+17)
+#define DM_ERRORDECIDED          (TM_USER+18)
+#define DM_SPLITSENDACK          (TM_USER+19)
+#define DM_TYPING                (TM_USER+20)
+#define DM_UPDATEWINICON         (TM_USER+21)
+#define DM_UPDATELASTMESSAGE     (TM_USER+22)
+
+#define DM_SELECTTAB             (TM_USER+23)
+#define DM_CLOSETABATMOUSE       (TM_USER+24)
+#define DM_STATUSICONCHANGE      (TM_USER+25)
+#define DM_SETLOCALE             (TM_USER+26)
+#define DM_SESSIONLIST           (TM_USER+27)
+#define DM_QUERYLASTUNREAD       (TM_USER+28)
+#define DM_QUERYPENDING          (TM_USER+29)
+#define DM_UPDATEPICLAYOUT       (TM_USER+30)
+#define DM_QUERYCONTAINER        (TM_USER+31)
+#define DM_MUCFLASHWORKER        (TM_USER+32)
+#define DM_INVALIDATEPANEL       (TM_USER+33)
+#define DM_APPENDMCEVENT         (TM_USER+34)
+#define DM_CHECKINFOTIP		      (TM_USER+35)
+#define DM_SAVESIZE              (TM_USER+36)
+#define DM_CHECKSIZE             (TM_USER+37)
+#define DM_FORCEREDRAW           (TM_USER+38)
+#define DM_CONTAINERSELECTED     (TM_USER+39)
+#define DM_CONFIGURECONTAINER    (TM_USER+40)
+#define DM_QUERYHCONTACT         (TM_USER+41)
+#define DM_DEFERREDREMAKELOG     (TM_USER+42)
+#define DM_RESTOREWINDOWPOS      (TM_USER+43)
+#define DM_QUERYCLIENTAREA       (TM_USER+45)
+#define DM_QUERYRECENT           (TM_USER+47)
+#define DM_ACTIVATEME            (TM_USER+46)
+#define DM_SENDLATER_RESEND      (TM_USER+49)
+#define DM_ADDDIVIDER            (TM_USER+50)
+#define DM_STATUSMASKSET         (TM_USER+51)
+#define DM_CONTACTSETTINGCHANGED (TM_USER+52)
+#define DM_UPDATESTATUSMSG       (TM_USER+53)
+#define DM_PROTOACK              (TM_USER+54)
+#define DM_OWNNICKCHANGED        (TM_USER+55)
+#define DM_CONFIGURETOOLBAR      (TM_USER+56)
+#define DM_LOADBUTTONBARICONS    (TM_USER+57)
+#define DM_ACTIVATETOOLTIP       (TM_USER+58)
+#define DM_UINTOCLIPBOARD        (TM_USER+59)
+#define DM_SENDMESSAGECOMMAND    (TM_USER+61)
+#define DM_FORCEDREMAKELOG       (TM_USER+62)
+#define DM_STATUSBARCHANGED      (TM_USER+64)
+#define DM_SAVEMESSAGELOG        (TM_USER+65)
+#define DM_CHECKAUTOCLOSE        (TM_USER+66)
+#define DM_UPDATEMETACONTACTINFO (TM_USER+67)
+#define DM_SETICON               (TM_USER+68)
+#define DM_CLOSEIFMETA		      (TM_USER+69)
+#define DM_CHECKQUEUEFORCLOSE    (TM_USER+70)
+#define DM_CHECKAUTOHIDE         (TM_USER+71)
+#define DM_SETPARENTDIALOG       (TM_USER+72)
+#define DM_HANDLECLISTEVENT      (TM_USER+73)
+#define DM_TRAYICONNOTIFY        (TM_USER+74)
+#define DM_REMOVECLISTEVENT      (TM_USER+75)
+#define DM_GETWINDOWSTATE        (TM_USER+76)
+#define DM_DOCREATETAB           (TM_USER+77)
+#define DM_DELAYEDSCROLL         (TM_USER+78)
+#define DM_REPLAYQUEUE           (TM_USER+79)
+#define DM_REFRESHTABINDEX       (TM_USER+83)
+#define DM_SMILEYOPTIONSCHANGED  (TM_USER+85)
+#define DM_MYAVATARCHANGED	      (TM_USER+86)
+#define DM_PRINTCLIENT           (TM_USER+87)
+#define DM_IEVIEWOPTIONSCHANGED  (TM_USER+88)
+#define DM_SPLITTERGLOBALEVENT   (TM_USER+89)
+#define DM_DOCREATETAB_CHAT      (TM_USER+90)
+#define DM_CLIENTCHANGED         (TM_USER+91)
+#define DM_PLAYINCOMINGSOUND     (TM_USER+92)
+#define DM_SENDMESSAGECOMMANDW   (TM_USER+93)
+#define DM_REMOVEPOPUPS          (TM_USER+94)
+#define DM_BBNEEDUPDATE          (TM_USER+96)
+#define DM_CBDESTROY	            (TM_USER+97)
+#define DM_LOGSTATUSCHANGE	      (TM_USER+98)
+#define DM_SC_BUILDLIST          (TM_USER+100)
+#define DM_SC_INITDIALOG         (TM_USER+101)
+#define DM_SC_CONFIG             (TM_USER+104)
+#define DM_SCROLLIEVIEW          (TM_USER+102)
+#define DM_UPDATEUIN             (TM_USER+103)
 
 #define MINSPLITTERY         42
 #define MINLOGHEIGHT         30
@@ -613,100 +605,76 @@ struct TNewWindowData
  * this class has to implement the GetNewStorage() method
  */
 
-class REOLECallback : IRichEditOleCallback
+struct CREOleCallback : public IRichEditOleCallback
 {
+	CREOleCallback() : refCount(0) {}
+	unsigned refCount;
+	IStorage *pictStg;
+	int nextStgId;
 
-public:
+	STDMETHOD(QueryInterface)(REFIID riid, LPVOID FAR *lplpObj);
+	STDMETHOD_(ULONG, AddRef)(THIS);
+	STDMETHOD_(ULONG, Release)(THIS);
 
-	REOLECallback()
-	{
-		mRefCounter = 0;
-	}
-
-	~REOLECallback()
-	{}
-
-	STDMETHOD_(ULONG, AddRef)(void)
-	{
-		mRefCounter++;
-		return (mRefCounter);
-	}
-
-	STDMETHOD_(ULONG, Release)(void)
-	{
-		--mRefCounter;
-		//if (--mRefCounter == 0)
-		//	delete this;
-		return (mRefCounter);
-	}
-
-	STDMETHOD(QueryInterface)(REFIID iid, void** ppvObject)
-	{
-		if ( iid == IID_IUnknown || iid == IID_IRichEditOleCallback ) {
-			*ppvObject = this;  AddRef();   return (S_OK);
-		}
-		else
-			return (E_NOINTERFACE);
-	}
-
-	STDMETHOD(ContextSensitiveHelp) (BOOL fEnterMode)                                                                                           {   return (E_NOTIMPL);}
-	STDMETHOD(DeleteObject)         (LPOLEOBJECT lpoleobj)                                                                                      {   return (E_NOTIMPL);}
-	STDMETHOD(GetClipboardData)     (CHARRANGE FAR *lpchrg, DWORD reco, LPDATAOBJECT FAR *lplpdataobj)                                          {   return (E_NOTIMPL);}
-	STDMETHOD(GetContextMenu)       (WORD seltype, LPOLEOBJECT lpoleobj, CHARRANGE FAR *lpchrg, HMENU FAR *lphmenu)                             {   return (E_NOTIMPL);}
-	STDMETHOD(GetDragDropEffect)    (BOOL fDrag, DWORD grfKeyState, LPDWORD pdwEffect)                                                          {   return (E_NOTIMPL);}
-	STDMETHOD(GetInPlaceContext)    (LPOLEINPLACEFRAME FAR *lplpFrame, LPOLEINPLACEUIWINDOW FAR *lplpDoc, LPOLEINPLACEFRAMEINFO lpFrameInfo)    {   return (E_NOTIMPL);}
-	STDMETHOD(GetNewStorage)        (LPSTORAGE FAR *lplpstg);
-	STDMETHOD(QueryAcceptData)      (LPDATAOBJECT lpdataobj, CLIPFORMAT FAR *lpcfFormat, DWORD reco, BOOL fReally, HGLOBAL hMetaPict)           {   return (E_NOTIMPL);}
-	STDMETHOD(QueryInsertObject)    (LPCLSID lpclsid, LPSTORAGE lpstg, LONG cp)                                                                 {   return (S_OK);}
-	STDMETHOD(ShowContainerUI)      (BOOL fShow)                                                                                                {   return (E_NOTIMPL);}
-private:
-	UINT  mRefCounter;
+	STDMETHOD(ContextSensitiveHelp) (BOOL fEnterMode);
+	STDMETHOD(GetNewStorage) (LPSTORAGE FAR *lplpstg);
+	STDMETHOD(GetInPlaceContext) (LPOLEINPLACEFRAME FAR *lplpFrame, LPOLEINPLACEUIWINDOW FAR *lplpDoc, LPOLEINPLACEFRAMEINFO lpFrameInfo);
+	STDMETHOD(ShowContainerUI) (BOOL fShow);
+	STDMETHOD(QueryInsertObject) (LPCLSID lpclsid, LPSTORAGE lpstg, LONG cp);
+	STDMETHOD(DeleteObject) (LPOLEOBJECT lpoleobj);
+	STDMETHOD(QueryAcceptData) (LPDATAOBJECT lpdataobj, CLIPFORMAT FAR *lpcfFormat, DWORD reco, BOOL fReally, HGLOBAL hMetaPict);
+	STDMETHOD(GetClipboardData) (CHARRANGE FAR *lpchrg, DWORD reco, LPDATAOBJECT FAR *lplpdataobj);
+	STDMETHOD(GetDragDropEffect) (BOOL fDrag, DWORD grfKeyState, LPDWORD pdwEffect);
+	STDMETHOD(GetContextMenu) (WORD seltype, LPOLEOBJECT lpoleobj, CHARRANGE FAR *lpchrg, HMENU FAR *lphmenu);
 };
 
-#define MSGFONTID_MYMSG		  0
-#define MSGFONTID_MYMISC	  1
-#define MSGFONTID_YOURMSG	  2
-#define MSGFONTID_YOURMISC	  3
-#define MSGFONTID_MYNAME	  4
-#define MSGFONTID_MYTIME	  5
-#define MSGFONTID_YOURNAME	  6
-#define MSGFONTID_YOURTIME	  7
-#define H_MSGFONTID_MYMSG		8
-#define H_MSGFONTID_MYMISC		9
-#define H_MSGFONTID_YOURMSG		10
-#define H_MSGFONTID_YOURMISC	11
-#define H_MSGFONTID_MYNAME		12
-#define H_MSGFONTID_MYTIME		13
-#define H_MSGFONTID_YOURNAME	14
-#define H_MSGFONTID_YOURTIME	15
-#define MSGFONTID_MESSAGEAREA 16
+struct CREOleCallback2 : public CREOleCallback
+{
+	STDMETHOD(QueryAcceptData) (LPDATAOBJECT lpdataobj, CLIPFORMAT FAR *lpcfFormat, DWORD reco, BOOL fReally, HGLOBAL hMetaPict);
+};
+
+#define MSGFONTID_MYMSG            0
+#define MSGFONTID_MYMISC           1
+#define MSGFONTID_YOURMSG          2
+#define MSGFONTID_YOURMISC         3
+#define MSGFONTID_MYNAME           4
+#define MSGFONTID_MYTIME           5
+#define MSGFONTID_YOURNAME         6
+#define MSGFONTID_YOURTIME         7
+#define H_MSGFONTID_MYMSG          8
+#define H_MSGFONTID_MYMISC         9
+#define H_MSGFONTID_YOURMSG       10
+#define H_MSGFONTID_YOURMISC      11
+#define H_MSGFONTID_MYNAME        12
+#define H_MSGFONTID_MYTIME        13
+#define H_MSGFONTID_YOURNAME      14
+#define H_MSGFONTID_YOURTIME      15
+#define MSGFONTID_MESSAGEAREA     16
 #define H_MSGFONTID_STATUSCHANGES 17
-#define H_MSGFONTID_DIVIDERS 18
-#define MSGFONTID_ERROR 19
-#define MSGFONTID_SYMBOLS_IN 20
-#define MSGFONTID_SYMBOLS_OUT 21
+#define H_MSGFONTID_DIVIDERS      18
+#define MSGFONTID_ERROR           19
+#define MSGFONTID_SYMBOLS_IN      20
+#define MSGFONTID_SYMBOLS_OUT     21
 
-#define IPFONTID_NICK 0
-#define IPFONTID_UIN 1
-#define IPFONTID_STATUS 2
-#define IPFONTID_PROTO 3
-#define IPFONTID_TIME 4
+#define IPFONTID_NICK              0
+#define IPFONTID_UIN               1
+#define IPFONTID_STATUS            2
+#define IPFONTID_PROTO             3
+#define IPFONTID_TIME              4
 
-extern const int msgDlgFontCount;
-
-#define LOADHISTORY_UNREAD    0
-#define LOADHISTORY_COUNT     1
-#define LOADHISTORY_TIME      2
+#define LOADHISTORY_UNREAD         0
+#define LOADHISTORY_COUNT          1
+#define LOADHISTORY_TIME           2
 
 #define SRMSGSET_AUTOPOPUP         "AutoPopup"
-#define SRMSGDEFSET_AUTOPOPUP      0
+#define SRMSGDEFSET_AUTOPOPUP      false
 #define SRMSGSET_AUTOMIN           "AutoMin"
 #define SRMSGDEFSET_AUTOMIN        0
 #define SRMSGSET_SENDONENTER       "SendOnEnter"
-#define SRMSGDEFSET_SENDONENTER    0
+#define SRMSGDEFSET_SENDONENTER    false
 #define SRMSGSET_MSGTIMEOUT        "MessageTimeout"
-#define SRMSGDEFSET_MSGTIMEOUT     60000
-#define SRMSGSET_MSGTIMEOUT_MIN    30000 // minimum value (30 seconds)
+#define SRMSGDEFSET_MSGTIMEOUT     30000
+#define SRMSGSET_MSGTIMEOUT_MIN    5000 // minimum value (5 seconds)
 
 #define SRMSGSET_LOADHISTORY       "LoadHistory"
 #define SRMSGDEFSET_LOADHISTORY    LOADHISTORY_COUNT
@@ -716,7 +684,6 @@ extern const int msgDlgFontCount;
 #define SRMSGDEFSET_LOADTIME       10
 
 #define SRMSGSET_BKGCOLOUR         "BkgColour"
-#define SRMSGSET_BKGCOLOUR_MUC     "BkgColourMUC"
 
 #define SRMSGDEFSET_BKGCOLOUR      RGB(250,250,250)
 //#define SRMSGDEFSET_BKGCOLOUR      GetSysColor(COLOR_WINDOW)
@@ -744,9 +711,8 @@ extern const int msgDlgFontCount;
 #define SRMSGDEFSET_SHOWTYPINGCLIST 1
 
 // rtl support
-#define SRMSGDEFSET_MOD_RTL                      0
+#define SRMSGDEFSET_MOD_RTL  0
 
-#define TIMERID_FLASHWND     1
 #define TIMEOUT_FLASHWND     900
 #define TIMERID_HEARTBEAT    2
 #define TIMEOUT_HEARTBEAT    20000
@@ -756,7 +722,7 @@ extern const int msgDlgFontCount;
 #define SRMSGMOD "SRMsg"
 #define SRMSGMOD_T "Tab_SRMsg"
 #define FONTMODULE "TabSRMM_Fonts"
-#define CHAT_FONTMODULE "TabSRMM_chat_Fonts"
+#define CHAT_OLDFONTMODULE "TabSRMM_chat_Fonts"
 
 #define IDM_STAYONTOP (WM_USER + 1)
 #define IDM_NOTITLE (WM_USER + 2)
@@ -771,7 +737,6 @@ extern const int msgDlgFontCount;
 #define IDM_CONTAINERMENU 50500
 
 #define EVENTTYPE_STATUSCHANGE 25368
-#define EVENTTYPE_DIVIDER 25367
 #define EVENTTYPE_ERRMSG 25366
 
 // hotkey modifiers...
@@ -834,8 +799,8 @@ struct SIDEBARITEM {
 	DWORD   dwFlags;
 	HICON   *hIcon, *hIconPressed, *hIconHover;
 	TCHAR   *szName;
-	void (*pfnAction)(ButtonItem *item, HWND hwndDlg, TWindowData *dat, HWND hwndItem);
-	void (*pfnCallback)(ButtonItem *item, HWND hwndDlg, TWindowData *dat, HWND hwndItem);
+	void(*pfnAction)(ButtonItem *item, HWND hwndDlg, TWindowData *dat, HWND hwndItem);
+	void(*pfnCallback)(ButtonItem *item, HWND hwndDlg, TWindowData *dat, HWND hwndItem);
 	TCHAR   *tszTip;
 };
 
@@ -897,20 +862,6 @@ struct TABSRMM_SessionInfo {
 	UINT extraFlagsEX;
 	void *local;
 };
-
-typedef struct {
-	int cbSize;
-	HANDLE hContact;
-	int uFlags;  // should be same as input data unless 0, then it will be the actual type
-	HWND hwndWindow; //top level window for the contact or NULL if no window exists
-	int uState; // see window states
-	void *local; // used to store pointer to custom data
-} MessageWindowOutputData;
-
-#define MS_MSG_GETWINDOWDATA "MessageAPI/GetWindowData"
-//wparam=(MessageWindowInputData*)
-//lparam=(MessageWindowData*)
-//returns 0 on success and returns non-zero (1) on error or if no window data exists for that hcontact
 
 // callback for the user menu entry
 
@@ -997,7 +948,7 @@ typedef struct {
 
 #define TABSRMM_HK_SECTION_IM LPGEN("Message windows - IM")
 #define TABSRMM_HK_SECTION_GENERIC LPGEN("Message windows - all")
-#define TABSRMM_HK_SECTION_GC LPGEN("Message windows - groupchats")
+#define TABSRMM_HK_SECTION_GC LPGEN("Message windows - group chats")
 
 /*
  * encryption status bar indicator
@@ -1013,8 +964,8 @@ int SI_InitStatusIcons();
 int SI_DeinitStatusIcons();
 
 int  GetStatusIconsCount();
-void DrawStatusIcons(TWindowData *dat, HDC hdc, RECT r, int gap);
-void SI_CheckStatusIconClick(TWindowData *dat, HWND hwndFrom, POINT pt, RECT rc, int gap, int code);
+void DrawStatusIcons(TWindowData *dat, HDC hdc, const RECT &r, int gap);
+void CheckStatusIconClick(TWindowData *dat, POINT pt, const RECT &rc, int gap, int code);
 
 struct SKINDESC
 {
@@ -1041,5 +992,3 @@ struct SKINDESC
 #define ICON_BUTTON_SAVE				7
 
 #endif /* _MSGS_H */
-
-

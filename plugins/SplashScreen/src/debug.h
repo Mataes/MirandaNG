@@ -11,7 +11,7 @@ extern TCHAR szLogFile[MAX_PATH];
  *
  */
 
-int inline _DebugPopup(HANDLE hContact, TCHAR *fmt, ...)
+int inline _DebugPopup(MCONTACT hContact, TCHAR *fmt, ...)
 {
 	va_list va;
 	TCHAR debug[1024];
@@ -24,7 +24,7 @@ int inline _DebugPopup(HANDLE hContact, TCHAR *fmt, ...)
 		ppd.lchContact = hContact;
 		ppd.lchIcon = LoadSkinnedIcon(SKINICON_OTHER_MIRANDA);
 		if(hContact != 0)
-			_tcsncpy_s(ppd.lptzContactName, (TCHAR*)CallService(MS_CLIST_GETCONTACTDISPLAYNAME, (WPARAM)hContact, GCDNF_TCHAR), MAX_CONTACTNAME);
+			_tcsncpy_s(ppd.lptzContactName, (TCHAR*)CallService(MS_CLIST_GETCONTACTDISPLAYNAME, hContact, GCDNF_TCHAR), MAX_CONTACTNAME);
 		else
 			_tcsncpy_s(ppd.lptzContactName, _T(PlugName), MAX_CONTACTNAME);
 		_tcsncpy_s(ppd.lptzText, debug, MAX_SECONDLINE - 20);

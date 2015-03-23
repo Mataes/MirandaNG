@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -135,11 +135,8 @@ namespace List
 						help->prev->next = help->next;
 						help->next->prev = help->prev;
 					}
-					if (help != NULL)
-					{
-						this->count--;            
-						delete help;
-					}
+					this->count--;            
+					delete help;
 					break;
 				}
 			}

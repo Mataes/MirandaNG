@@ -17,45 +17,41 @@
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+	*/
 
 #include "common.h"
 
-TCHAR *db2t(DBVARIANT *dbv)
+// From NewEventNotify :-)
+bool CheckMsgWnd(MCONTACT hContact)
 {
-	TCHAR *buff;
-	switch (dbv->type) {
-		case DBVT_ASCIIZ: buff = mir_a2t(dbv->pszVal); break;
-		case DBVT_WCHAR: buff = mir_tstrdup(dbv->ptszVal); break;
-		case DBVT_UTF8: buff = mir_utf8decodeT(dbv->pszVal); break;
-		default: return NULL;
-	}
+	MessageWindowInputData mwid;
+	mwid.cbSize = sizeof(MessageWindowInputData);
+	mwid.hContact = hContact;
+	mwid.uFlags = MSG_WINDOW_UFLAG_MSG_BOTH;
 
-	if (buff[0] == 0) {
-		mir_free(buff);
-		buff = NULL;
-	}
-		
-	return buff;
+	MessageWindowData mwd;
+	mwd.cbSize = sizeof(MessageWindowData);
+	mwd.hContact = hContact;
+	if (CallService(MS_MSG_GETWINDOWDATA, (WPARAM)&mwid, (LPARAM)&mwd) != NULL)
+		return false;
+
+	if (mwd.hwndWindow != NULL && (mwd.uState & MSG_WINDOW_STATE_EXISTS))
+		return true;
+
+	return false;
 }
 
-int DBGetStringDefault(HANDLE hContact, const char *szModule, const char *szSetting, TCHAR *setting, int size, const TCHAR *defaultValue)
+int DBGetStringDefault(MCONTACT hContact, const char *szModule, const char *szSetting, TCHAR *setting, int size, const TCHAR *defaultValue)
 {
 	DBVARIANT dbv;
-	if ( !db_get_ts(hContact, szModule, szSetting, &dbv)) {
+	if (!db_get_ts(hContact, szModule, szSetting, &dbv)) {
 		_tcsncpy(setting, dbv.ptszVal, size);
 		db_free(&dbv);
 		return 0;
-	} 
+	}
 
 	_tcsncpy(setting, defaultValue, size);
 	return 1;
-}
-
-void HigherLower(int maxValue, int minValue) 
-{
-	TCHAR str[64] = { 0 };
-	mir_sntprintf(str, SIZEOF(str), TranslateT("You cannot specify a value lower than %d and higher than %d."), minValue, maxValue);
 }
 
 void ShowLog(TCHAR *file)
@@ -65,7 +61,7 @@ void ShowLog(TCHAR *file)
 		MessageBox(0, TranslateT("Can't open the log file!"), TranslateT("NewXstatusNotify"), MB_OK | MB_ICONERROR);
 }
 
-BOOL StatusHasAwayMessage(char *szProto, int status) 
+BOOL StatusHasAwayMessage(char *szProto, int status)
 {
 	if (szProto != NULL) {
 		unsigned long iSupportsSM = (unsigned long)CallProtoService(szProto, PS_GETCAPS, (WPARAM)PFLAGNUM_3, 0);
@@ -88,9 +84,9 @@ BOOL StatusHasAwayMessage(char *szProto, int status)
 }
 
 void LogToFile(TCHAR *stzText)
-{	
+{
 	FILE *fp = _tfopen(opt.LogFilePath, _T("a+b, ccs=UTF-8"));
-	if (fp) { 
+	if (fp) {
 		char *encodedText = mir_utf8encodeT(stzText);
 		if (encodedText) {
 			fprintf(fp, encodedText);
@@ -98,4 +94,15 @@ void LogToFile(TCHAR *stzText)
 		}
 		fclose(fp);
 	}
+}
+
+void AddCR(CMString &str, const TCHAR *stzText)
+{
+	if (stzText == NULL)
+		return;
+	
+	CMString res(stzText);
+	res.Replace(_T("\n"), _T("\r\n"));
+	res.Replace(_T("\r\r\n"), _T("\r\n"));
+	str.Append(res);
 }

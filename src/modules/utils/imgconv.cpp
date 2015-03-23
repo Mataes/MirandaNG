@@ -1,7 +1,9 @@
 /*
-Miranda IM: the free IM client for Microsoft* Windows*
 
-Copyright 2010-12 Miranda IM, 2012-13 Miranda NG project,
+Miranda NG: the free IM client for Microsoft* Windows*
+
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -26,7 +28,7 @@ typedef DWORD ARGB;
 
 void InitBitmapInfo(BITMAPINFO &bmi,  const SIZE &size)
 {
-	ZeroMemory(&bmi, sizeof(BITMAPINFO));
+	memset(&bmi, 0, sizeof(BITMAPINFO));
 	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
 	bmi.bmiHeader.biPlanes = 1;
 	bmi.bmiHeader.biCompression = BI_RGB;
@@ -85,7 +87,7 @@ void ConvertBufferToPARGB32(HANDLE hPaintBuffer, HDC hdc, HICON hIcon, SIZE& siz
 	HRESULT hr = getBufferedPaintBits(hPaintBuffer, &prgbQuad, &cxRow);
 	if (SUCCEEDED(hr)) {
 		ARGB *pargb = (ARGB *)prgbQuad;
-		if ( !HasAlpha(pargb, sizIcon, cxRow)) {
+		if (!HasAlpha(pargb, sizIcon, cxRow)) {
 			ICONINFO info;
 			if (GetIconInfo(hIcon, &info)) {
 				if (info.hbmMask)

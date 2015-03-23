@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -33,8 +33,8 @@ class PopupAvatar;
 class PopupWnd2 : public MZeroedObject
 {
 public:
-	typedef		LRESULT (PopupWnd2::*MethodPtr)(LPARAM lParam);
-	enum		TextType {TT_NONE, TT_ANSI, TT_UNICODE, TT_MTEXT};
+	typedef		LRESULT(PopupWnd2::*MethodPtr)(LPARAM lParam);
+	enum		TextType { TT_NONE, TT_UNICODE, TT_MTEXT };
 
 	struct		ActionInfo
 	{
@@ -42,7 +42,7 @@ public:
 		RECT rc;
 		bool hover;
 
-		ActionInfo(): hover(false) {}
+		ActionInfo() : hover(false) {}
 	};
 
 	DWORD		m_signature;
@@ -54,24 +54,23 @@ private:
 
 	// content
 	TextType    m_textType;
-	char       *m_lpzTitle,	*m_lpzText;
-	WCHAR      *m_lpwzTitle, *m_lpwzText;
+	TCHAR      *m_lptzTitle, *m_lptzText;
 	HANDLE      m_mtTitle, m_mtText;
 	bool        m_bTextEmpty, m_bIcoLib;
 	HFONT       m_hfnTitle, m_hfnText;
 	HICON       m_hIcon;
 	HBITMAP     m_hbmAvatar;
-	char        m_time[2+1+2+1];
+	TCHAR       m_time[2 + 1 + 2 + 1];
 	ActionInfo* m_actions;
 	int         m_actionCount;
 	HANDLE      m_hNotification;
 
 	// other data
 	Formula::Args m_args;
-	HANDLE      m_hContact, m_hContactPassed;
+	MCONTACT    m_hContact, m_hContactPassed;
 	WNDPROC     m_PluginWindowProc;
 	void       *m_PluginData;
-	
+
 	// the window
 	LPTSTR      m_lpzSkin;
 	bool        m_customPopup;
@@ -88,9 +87,9 @@ private:
 
 	// show & hide
 	bool        m_bFade;
-	BYTE        m_btAlpha0,		m_btAlpha1;
+	BYTE        m_btAlpha0, m_btAlpha1;
 	bool        m_bSlide;
-	POINT       m_ptPosition0,	m_ptPosition1;
+	POINT       m_ptPosition0, m_ptPosition1;
 	bool        m_bDestroy;
 	bool        m_bIsHovered;
 
@@ -109,7 +108,7 @@ private:
 	int        fixActions(POPUPACTION *theActions, int count, int additional);
 
 public:
-	PopupWnd2(POPUPDATA2 *ppd, POPUPOPTIONS *theCustomOptions=NULL, bool renderOnly=false);
+	PopupWnd2(POPUPDATA2 *ppd, POPUPOPTIONS *theCustomOptions = NULL, bool renderOnly = false);
 	~PopupWnd2();
 
 	void	startThread();
@@ -125,7 +124,7 @@ public:
 	void	idle();
 
 	DWORD	lock()				{ return ++m_lockCount; }
-	DWORD	unlock()			{ return m_lockCount = m_lockCount ? m_lockCount-1 : 0; }
+	DWORD	unlock()			{ return m_lockCount = m_lockCount ? m_lockCount - 1 : 0; }
 	bool	isLocked()			{ return m_lockCount != 0; }
 
 	void  setIcon(HICON);
@@ -133,10 +132,8 @@ public:
 	void	updateData(POPUPDATAW_V2 *ppd);
 	void	updateData(POPUPDATA2 *ppd);
 	void	buildMText();
-	void	updateText(char *text);
-	void	updateText(WCHAR *text);
-	void	updateTitle(char *title);
-	void	updateTitle(WCHAR *title);
+	void	updateText(TCHAR *text);
+	void	updateTitle(TCHAR *title);
 
 	void	updateTimer();
 
@@ -150,20 +147,18 @@ public:
 	bool     isTextEmpty()      { return m_bTextEmpty; }
 	bool     isIcolib()         { return m_bIcoLib; }
 	TextType getTextType()      { return m_textType; }
-	char    *getTextA()         { return m_lpzText; }
-	WCHAR   *getTextW()         { return m_lpwzText; }
+	TCHAR   *getText()          { return m_lptzText; }
 	HANDLE   getTextM()         { return m_mtText; }
-	char    *getTitleA()        { return m_lpzTitle; }
-	WCHAR   *getTitleW()        { return m_lpwzTitle; }
+	TCHAR   *getTitle()         { return m_lptzTitle; }
 	HANDLE   getTitleM()        { return m_mtTitle; }
 
 	int      getActionCount()   { return m_actionCount; }
 	ActionInfo *getActions()    { return m_actions; }
 
-	char    *getTime()          { return m_time; }
+	TCHAR   *getTime()          { return m_time; }
 	HICON    getIcon()          { return m_hIcon; }
-	HANDLE   getContact()       { return m_hContact; }
-	HANDLE   getContactPassed() { return m_hContactPassed; }
+	MCONTACT getContact()       { return m_hContact; }
+	MCONTACT getContactPassed() { return m_hContactPassed; }
 	int      getTimeout()       { return m_iTimeout; }
 	HWND     getHwnd()          { return m_hwnd; }
 	void    *getData()          { return m_PluginData; }
@@ -180,7 +175,7 @@ public:
 		this->m_sz = sz;
 		if (m_hwnd)
 		{
-			SetWindowPos(m_hwnd, 0, 0, 0, sz.cx, sz.cy, SWP_NOZORDER|SWP_NOMOVE|SWP_NOACTIVATE|SWP_DEFERERASE|SWP_NOSENDCHANGING);
+			SetWindowPos(m_hwnd, 0, 0, 0, sz.cx, sz.cy, SWP_NOZORDER | SWP_NOMOVE | SWP_NOACTIVATE | SWP_DEFERERASE | SWP_NOSENDCHANGING);
 			if (!m_customPopup)
 				PopupThreadUpdateWindow(this);
 		}
@@ -195,7 +190,7 @@ public:
 		if (m_bSlide)
 			m_ptPosition1 = pt;
 		else
-			SetWindowPos(m_hwnd, 0, pt.x, pt.y, 0, 0, SWP_NOZORDER|SWP_NOSIZE|SWP_NOACTIVATE|SWP_DEFERERASE|SWP_NOSENDCHANGING);
+			SetWindowPos(m_hwnd, 0, pt.x, pt.y, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE | SWP_DEFERERASE | SWP_NOSENDCHANGING);
 	}
 
 	// Thread-related methods
@@ -216,12 +211,10 @@ public:
 
 	LRESULT m_updateData_POPUPDATAW_V2(LPARAM arg)	{ updateData((POPUPDATAW_V2 *)arg); update(); return 0; }
 	LRESULT m_updateData_POPUPDATA2(LPARAM arg)		{ updateData((POPUPDATA2 *)arg); update(); return 0; }
-	LRESULT m_updateText(LPARAM arg)				{ updateText((char *)arg); update(); return 0; }
-	LRESULT m_updateTextW(LPARAM arg)				{ updateText((WCHAR *)arg); update(); return 0; }
-	LRESULT m_updateTitle(LPARAM arg)				{ updateTitle((char *)arg); update(); return 0; }
-	LRESULT m_updateTitleW(LPARAM arg)				{ updateTitle((WCHAR *)arg); update(); return 0; }
-	LRESULT m_show(LPARAM arg)						{ show(); return 0; }
-	LRESULT m_hide(LPARAM arg)						{ hide(); return 0; }
+	LRESULT m_updateText(LPARAM arg)				{ updateText((TCHAR *)arg); update(); return 0; }
+	LRESULT m_updateTitle(LPARAM arg)				{ updateTitle((TCHAR *)arg); update(); return 0; }
+	LRESULT m_show(LPARAM)						{ show(); return 0; }
+	LRESULT m_hide(LPARAM)						{ hide(); return 0; }
 
 	// window related stuff
 	LRESULT CALLBACK WindowProc(UINT, WPARAM, LPARAM);
@@ -242,7 +235,7 @@ static inline bool IsValidPopupObject(PopupWnd2 *wnd)
 		if (wnd->m_signature == POPUP_OBJECT_SIGNARURE)
 			res = true;
 	}
-	__except(EXCEPTION_EXECUTE_HANDLER)
+	__except (EXCEPTION_EXECUTE_HANDLER)
 	{
 		res = false;
 	}

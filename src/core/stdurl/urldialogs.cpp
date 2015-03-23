@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
-all portions of this codebase are copyrighted to the people 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -27,7 +28,7 @@ INT_PTR CALLBACK DlgProcUrlSend(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 extern HANDLE hUrlWindowList;
 
-static void sttUpdateTitle(HWND hwndDlg, HANDLE hContact)
+static void sttUpdateTitle(HWND hwndDlg, MCONTACT hContact)
 {
 	TCHAR newtitle[256], oldtitle[256];
 	TCHAR *szStatus, *contactName, *pszNewTitleStart = TranslateT("Send URL to");
@@ -39,8 +40,8 @@ static void sttUpdateTitle(HWND hwndDlg, HANDLE hContact)
 			CONTACTINFO ci;
 			int hasName = 0;
 			char buf[128];
-			ZeroMemory(&ci, sizeof(ci));
-			
+			memset(&ci, 0, sizeof(ci));
+
 			ci.cbSize = sizeof(ci);
 			ci.hContact = hContact;
 			ci.szProto = szProto;
@@ -49,30 +50,31 @@ static void sttUpdateTitle(HWND hwndDlg, HANDLE hContact)
 				switch(ci.type) {
 				case CNFT_ASCIIZ:
 					hasName = 1;
-					mir_snprintf(buf, SIZEOF(buf), "%s", ci.pszVal);
+					strncpy_s(buf, (char*)ci.pszVal, _TRUNCATE);
 					mir_free(ci.pszVal);
 					break;
 				case CNFT_DWORD:
 					hasName = 1;
 					mir_snprintf(buf, SIZEOF(buf), "%u", ci.dVal);
 					break;
-			}	}
+				}
+			}
 
 			contactName = pcli->pfnGetContactDisplayName(hContact, 0);
 			if (hasName)
 				SetDlgItemTextA(hwndDlg, IDC_NAME, buf);
-			else 
+			else
 				SetDlgItemText(hwndDlg, IDC_NAME, contactName);
 
-			szStatus = pcli->pfnGetStatusModeDescription(szProto == NULL ? ID_STATUS_OFFLINE : db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE), 0);
+			szStatus = pcli->pfnGetStatusModeDescription(db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE), 0);
 			mir_sntprintf(newtitle, SIZEOF(newtitle), _T("%s %s (%s)"), pszNewTitleStart, contactName, szStatus);
 		}
 	}
-	else lstrcpyn(newtitle, pszNewTitleStart, SIZEOF(newtitle));
+	else mir_tstrncpy(newtitle, pszNewTitleStart, SIZEOF(newtitle));
 
 	GetWindowText(hwndDlg, oldtitle, SIZEOF(oldtitle));
 
-	if (lstrcmp(newtitle, oldtitle))	   //swt() flickers even if the title hasn't actually changed
+	if (mir_tstrcmp(newtitle, oldtitle))	   //swt() flickers even if the title hasn't actually changed
 		SetWindowText(hwndDlg, newtitle);
 }
 
@@ -84,10 +86,10 @@ INT_PTR CALLBACK DlgProcUrlRecv(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
 		Window_SetIcon_IcoLib(hwndDlg, SKINICON_EVENT_URL);
-		Button_SetIcon_IcoLib(hwndDlg, IDC_ADD, SKINICON_OTHER_ADDCONTACT, LPGEN("Add Contact Permanently to List"));
-		Button_SetIcon_IcoLib(hwndDlg, IDC_DETAILS, SKINICON_OTHER_USERDETAILS, LPGEN("View User's Details"));
-		Button_SetIcon_IcoLib(hwndDlg, IDC_HISTORY, SKINICON_OTHER_HISTORY, LPGEN("View User's History"));
-		Button_SetIcon_IcoLib(hwndDlg, IDC_USERMENU, SKINICON_OTHER_DOWNARROW, LPGEN("User Menu"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_ADD, SKINICON_OTHER_ADDCONTACT, LPGEN("Add contact permanently to list"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_DETAILS, SKINICON_OTHER_USERDETAILS, LPGEN("View user's details"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_HISTORY, SKINICON_OTHER_HISTORY, LPGEN("View user's history"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_USERMENU, SKINICON_OTHER_DOWNARROW, LPGEN("User menu"));
 
 		dat = (struct UrlRcvData*)mir_alloc(sizeof(struct UrlRcvData));
 		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)dat);
@@ -102,7 +104,7 @@ INT_PTR CALLBACK DlgProcUrlRecv(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 			dbei.pBlob = (PBYTE)mir_alloc(dbei.cbBlob);
 			db_event_get(dat->hDbEvent, &dbei);
 			SetDlgItemTextA(hwndDlg, IDC_URL, (char*)dbei.pBlob);
-			SetDlgItemTextA(hwndDlg, IDC_MSG, (char*)dbei.pBlob+lstrlenA((char*)dbei.pBlob)+1);
+			SetDlgItemTextA(hwndDlg, IDC_MSG, (char*)dbei.pBlob+mir_strlen((char*)dbei.pBlob)+1);
 			mir_free(dbei.pBlob);
 
 			db_event_markRead(dat->hContact, dat->hDbEvent);
@@ -112,7 +114,7 @@ INT_PTR CALLBACK DlgProcUrlRecv(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 			SetWindowText(hwndDlg, msg);
 			SetDlgItemText(hwndDlg, IDC_FROM, contactName);
 			SendDlgItemMessage(hwndDlg, IDOK, BUTTONSETARROW, 1, 0);
-			
+
 			TCHAR str[128];
 			tmi.printTimeStamp(NULL, dbei.timestamp, _T("t d"), str, SIZEOF(str), 0);
 			SetDlgItemText(hwndDlg, IDC_DATE, str);
@@ -132,54 +134,54 @@ INT_PTR CALLBACK DlgProcUrlRecv(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 		return CallService(MS_CLIST_MENUMEASUREITEM, wParam, lParam);
 
 	case WM_DRAWITEM:
-		{	
+		{
 			LPDRAWITEMSTRUCT dis = (LPDRAWITEMSTRUCT)lParam;
 			if (dis->hwndItem == GetDlgItem(hwndDlg, IDC_PROTOCOL)) {
-				char *szProto;
-				
-				szProto = GetContactProto(dat->hContact);
+				char *szProto = GetContactProto(dat->hContact);
 				if (szProto) {
-					HICON hIcon;
-					
-					hIcon = (HICON)CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
+					HICON hIcon = (HICON)CallProtoService(szProto, PS_LOADICON, PLI_PROTOCOL|PLIF_SMALL, 0);
 					if (hIcon) {
 						DrawIconEx(dis->hDC, dis->rcItem.left, dis->rcItem.top, hIcon, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0, NULL, DI_NORMAL);
 						DestroyIcon(hIcon);
-		}	}	}	}
+					}
+				}
+			}
+		}
 		return CallService(MS_CLIST_MENUDRAWITEM, wParam, lParam);
-	
+
 	case DM_UPDATETITLE:
 		sttUpdateTitle(hwndDlg, dat->hContact);
 		break;
 
 	case WM_COMMAND:
-		if (dat)
-			if (CallService(MS_CLIST_MENUPROCESSCOMMAND, MAKEWPARAM(LOWORD(wParam), MPCF_CONTACTMENU), (LPARAM)dat->hContact))
-				break;
+		if (!dat)
+			break;
+		if (CallService(MS_CLIST_MENUPROCESSCOMMAND, MAKEWPARAM(LOWORD(wParam), MPCF_CONTACTMENU), (LPARAM)dat->hContact))
+			break;
 		switch(LOWORD(wParam)) {
 		case IDOK:
-			{	HMENU hMenu, hSubMenu;
+			{
 				RECT rc;
 				char url[256];
 
-				hMenu = LoadMenu(hInst, MAKEINTRESOURCE(IDR_CONTEXT));
-				hSubMenu = GetSubMenu(hMenu, 6);
+				HMENU hMenu = LoadMenu(hInst, MAKEINTRESOURCE(IDR_CONTEXT));
+				HMENU hSubMenu = GetSubMenu(hMenu, 6);
 				TranslateMenu(hSubMenu);
 				GetWindowRect((HWND)lParam, &rc);
 				GetDlgItemTextA(hwndDlg, IDC_URL, url, SIZEOF(url));
 				switch(TrackPopupMenu(hSubMenu, TPM_RETURNCMD, rc.left, rc.bottom, 0, hwndDlg, NULL)) {
 					case IDM_OPENNEW:
-						CallService(MS_UTILS_OPENURL, 1, (LPARAM)url);
+						CallService(MS_UTILS_OPENURL, OUF_NEWWINDOW, (LPARAM)url);
 						break;
 					case IDM_OPENEXISTING:
 						CallService(MS_UTILS_OPENURL, 0, (LPARAM)url);
 						break;
 					case IDM_COPYLINK:
-					{	HGLOBAL hData;
+					{
 						if ( !OpenClipboard(hwndDlg)) break;
 						EmptyClipboard();
-						hData = GlobalAlloc(GMEM_MOVEABLE, lstrlenA(url)+1);
-						lstrcpyA((char*)GlobalLock(hData), url);
+						HGLOBAL hData = GlobalAlloc(GMEM_MOVEABLE, mir_strlen(url)+1);
+						mir_strcpy((char*)GlobalLock(hData), url);
 						GlobalUnlock(hData);
 						SetClipboardData(CF_TEXT, hData);
 						CloseClipboard();
@@ -211,10 +213,8 @@ INT_PTR CALLBACK DlgProcUrlRecv(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 		case IDC_ADD:
 			{
 				ADDCONTACTSTRUCT acs = {0};
-				
-				acs.handle = dat->hContact;
+				acs.hContact = dat->hContact;
 				acs.handleType = HANDLE_CONTACT;
-				acs.szProto = 0;
 				CallService(MS_ADDCONTACT_SHOW, (WPARAM)hwndDlg, (LPARAM)&acs);
 			}
 			if ( !db_get_b(dat->hContact, "CList", "NotOnList", 0)) {
@@ -280,11 +280,10 @@ static LRESULT DdeMessage(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 
 static HGLOBAL DoDdeRequest(const char *szItemName, HWND hwndDlg)
 {
-	ATOM hSzItemName;
 	DWORD timeoutTick, thisTick;
 	MSG msg;
 
-	hSzItemName = GlobalAddAtomA(szItemName);
+	ATOM hSzItemName = GlobalAddAtomA(szItemName);
 	if ( !PostMessage(hwndDde, WM_DDE_REQUEST, (WPARAM)hwndDlg, MAKELPARAM(CF_TEXT, hSzItemName))) {
 		GlobalDeleteAtom(hSzItemName);
 		return NULL;
@@ -312,8 +311,7 @@ static HGLOBAL DoDdeRequest(const char *szItemName, HWND hwndDlg)
 
 static void FreeDdeRequestData(HGLOBAL hData)
 {
-	DDEDATA *data;
-	data = (DDEDATA*)GlobalLock(hData);
+	DDEDATA *data = (DDEDATA*)GlobalLock(hData);
 	if (data->fRelease) {
 		GlobalUnlock(hData);
 		GlobalFree(hData);
@@ -353,7 +351,7 @@ static void AddBrowserPageToCombo(char *url, HWND hwndCombo)
 			if (SendMessage(hwndCombo, CB_GETLBTEXTLEN, i, 0) >= SIZEOF(szExistingUrl))
 				continue;
 			SendMessageA(hwndCombo, CB_GETLBTEXT, i, (LPARAM)szExistingUrl);
-			if ( !lstrcmpA(szExistingUrl, url)) return;
+			if ( !mir_strcmp(szExistingUrl, url)) return;
 		}
 		i = SendMessageA(hwndCombo, CB_ADDSTRING, 0, (LPARAM)url);
 		szItemData = mir_strdup(title);
@@ -364,17 +362,13 @@ static void AddBrowserPageToCombo(char *url, HWND hwndCombo)
 //see Q160957 and http://developer.netscape.com/docs/manuals/communicator/DDE/index.htm
 static void GetOpenBrowserUrlsForBrowser(const char *szBrowser, HWND hwndDlg, HWND hwndCombo)
 {
-	ATOM hSzBrowser, hSzTopic;
 	int windowCount, i;
 	DWORD *windowId;
 	DWORD dwResult;
-	HGLOBAL hData;
-	DDEDATA *data;
-	int dataLength;
 
-	hSzBrowser = GlobalAddAtomA(szBrowser);
+	ATOM hSzBrowser = GlobalAddAtomA(szBrowser);
 
-	hSzTopic = GlobalAddAtomA("WWW_ListWindows");
+	ATOM hSzTopic = GlobalAddAtomA("WWW_ListWindows");
 	ddeAcked = 0;
 	if ( !SendMessageTimeout(HWND_BROADCAST, WM_DDE_INITIATE, (WPARAM)hwndDlg, MAKELPARAM(hSzBrowser, hSzTopic), SMTO_ABORTIFHUNG|SMTO_NORMAL, DDEMESSAGETIMEOUT, (PDWORD_PTR)&dwResult)
 	   || !ddeAcked) {
@@ -382,14 +376,14 @@ static void GetOpenBrowserUrlsForBrowser(const char *szBrowser, HWND hwndDlg, HW
 		GlobalDeleteAtom(hSzBrowser);
 		return;
 	}
-	hData = DoDdeRequest("WWW_ListWindows", hwndDlg);
+	HGLOBAL hData = DoDdeRequest("WWW_ListWindows", hwndDlg);
 	if (hData == NULL) {
 		GlobalDeleteAtom(hSzTopic);
 		GlobalDeleteAtom(hSzBrowser);
 		return;
 	}
-	dataLength = GlobalSize(hData)-offsetof(DDEDATA, Value);
-	data = (DDEDATA*)GlobalLock(hData);
+	int dataLength = GlobalSize(hData)-offsetof(DDEDATA, Value);
+	DDEDATA *data = (DDEDATA*)GlobalLock(hData);
 	windowCount = dataLength/sizeof(DWORD);
 	windowId = (PDWORD)mir_alloc(sizeof(DWORD)*windowCount);
 	memcpy(windowId, data->Value, windowCount*sizeof(DWORD));
@@ -460,15 +454,15 @@ INT_PTR CALLBACK DlgProcUrlSend(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwndDlg);
 		Window_SetIcon_IcoLib(hwndDlg, SKINICON_EVENT_URL);
-		Button_SetIcon_IcoLib(hwndDlg, IDC_ADD, SKINICON_OTHER_ADDCONTACT, LPGEN("Add Contact Permanently to List"));
-		Button_SetIcon_IcoLib(hwndDlg, IDC_DETAILS, SKINICON_OTHER_USERDETAILS, LPGEN("View User's Details"));
-		Button_SetIcon_IcoLib(hwndDlg, IDC_HISTORY, SKINICON_OTHER_HISTORY, LPGEN("View User's History"));
-		Button_SetIcon_IcoLib(hwndDlg, IDC_USERMENU, SKINICON_OTHER_DOWNARROW, LPGEN("User Menu"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_ADD, SKINICON_OTHER_ADDCONTACT, LPGEN("Add contact permanently to list"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_DETAILS, SKINICON_OTHER_USERDETAILS, LPGEN("View user's details"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_HISTORY, SKINICON_OTHER_HISTORY, LPGEN("View user's history"));
+		Button_SetIcon_IcoLib(hwndDlg, IDC_USERMENU, SKINICON_OTHER_DOWNARROW, LPGEN("User menu"));
 
 		SendDlgItemMessage(hwndDlg, IDC_MESSAGE, EM_LIMITTEXT, 450, 0);
 		dat = (struct UrlSendData*)mir_alloc(sizeof(struct UrlSendData));
 		SetWindowLongPtr(hwndDlg, GWLP_USERDATA, (LONG_PTR)dat);
-		dat->hContact = (HANDLE)lParam;
+		dat->hContact = lParam;
 		dat->hAckEvent = NULL;
 		dat->hSendId = NULL;
 		dat->sendBuffer = NULL;
@@ -523,7 +517,10 @@ INT_PTR CALLBACK DlgProcUrlSend(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 					if (hIcon) {
 						DrawIconEx(dis->hDC, dis->rcItem.left, dis->rcItem.top, hIcon, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0, NULL, DI_NORMAL);
 						DestroyIcon(hIcon);
-		}	}	}	}
+					}
+				}
+			}
+		}
 		return CallService(MS_CLIST_MENUDRAWITEM, wParam, lParam);
 
 	case DM_UPDATETITLE:
@@ -551,9 +548,9 @@ INT_PTR CALLBACK DlgProcUrlSend(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 				body = (char*)mir_alloc(bodySize);
 				GetDlgItemTextA(hwndDlg, IDC_MESSAGE, body, bodySize);
 
-				dat->sendBuffer = (char*)mir_realloc(dat->sendBuffer, lstrlenA(url)+lstrlenA(body)+2);
-				lstrcpyA(dat->sendBuffer, url);
-				lstrcpyA(dat->sendBuffer+lstrlenA(url)+1, body);
+				dat->sendBuffer = (char*)mir_realloc(dat->sendBuffer, mir_strlen(url)+mir_strlen(body)+2);
+				mir_strcpy(dat->sendBuffer, url);
+				mir_strcpy(dat->sendBuffer+mir_strlen(url)+1, body);
 				dat->hAckEvent = HookEventMessage(ME_PROTO_ACK, hwndDlg, HM_EVENTSENT);
 				dat->hSendId = (HANDLE)CallContactService(dat->hContact, PSS_URL, 0, (LPARAM)dat->sendBuffer);
 				mir_free(url);
@@ -607,7 +604,7 @@ INT_PTR CALLBACK DlgProcUrlSend(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 		case IDC_ADD:
 			ADDCONTACTSTRUCT acs = {0};
-			acs.handle = dat->hContact;
+			acs.hContact = dat->hContact;
 			acs.handleType = HANDLE_CONTACT;
 			acs.szProto = 0;
 			CallService(MS_ADDCONTACT_SHOW, (WPARAM)hwndDlg, (LPARAM)&acs);

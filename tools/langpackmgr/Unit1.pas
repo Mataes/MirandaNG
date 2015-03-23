@@ -1,408 +1,550 @@
-unit Unit1;
+unit unit1;
 
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
-  System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Menus, Vcl.ExtDlgs, Vcl.StdCtrls,
-  Vcl.CheckLst, Vcl.ComCtrls, Vcl.Buttons, ShellApi;
+  classes, sysutils, fileutil, forms, controls, graphics, dialogs, stdctrls,
+  extctrls, CheckLst, Windows;
 
 type
-  TForm1 = class(TForm)
 
-    SaveTextFileDialog1: TSaveTextFileDialog;
+  { tform1 }
 
-    MainMenu1: TMainMenu;
-    File1: TMenuItem;
-    Open1: TMenuItem;
-
-    ListBox1: TListBox;
-    ListBox2: TListBox;
-
-    Button1: TButton;
-    Button2: TButton;
-
-    BitBtn1: TBitBtn;
-    BitBtn2: TBitBtn;
-    BitBtn3: TBitBtn;
+  tform1 = class(tform)
+    button1: tbutton;
+    button2: tbutton;
+    button3: tbutton;
+    button4: tbutton;
+    Button5: TButton;
+    Button6: TButton;
+    Button7: TButton;
+    CheckListBox1: TCheckListBox;
     Edit1: TEdit;
+    Edit2: TEdit;
     Label1: TLabel;
-    Memo1: TMemo;
-    Memo2: TMemo;
-
-    procedure Open1Click(Sender: TObject); // процедура выбора файла =head=
-    procedure FormCreate(Sender: TObject);
-    procedure Button2Click(Sender: TObject); // переключатель
-    procedure ListBox1Click(Sender: TObject);// выбор обрабатываемого файла
-    procedure listfiles;// получение списка файлов в listbox
-    procedure progress; // парсинг текущего файла перевода
-    procedure parsing;// общий прогресс проверки перевода
-    procedure ListBox2Click(Sender: TObject);
-    procedure viewline;
-    procedure BitBtn1Click(Sender: TObject);
-    procedure BitBtn2Click(Sender: TObject);
+    memo1: tmemo;
+    memo2: tmemo;
+    listbox: tlistbox;
+    combobox1: tcombobox;
+    combobox2: tcombobox;
+    radiogroup1: tradiogroup;
     procedure Button1Click(Sender: TObject);
-    procedure BitBtn3Click(Sender: TObject);
-  private
-    { Private declarations }
+    procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
+    procedure Button5Click(Sender: TObject);
+    procedure Button6Click(Sender: TObject);
+    procedure Button7Click(Sender: TObject);
+    procedure combobox1change(sender: tobject);
+    procedure ComboBox2Change(Sender: TObject);
+    procedure formcreate(sender: tobject);
+    procedure FormResize(Sender: TObject);
+    procedure listbox1click(sender: tobject);
+    procedure listbox2click(sender: tobject);
+    procedure stringview;
+    procedure savestring;
+    procedure stringlist;
 
+  private
+    { private declarations }
   public
-    { Public declarations }
+    { public declarations }
   end;
 
 var
-  Form1: TForm1;
-  openDialog : TOpenDialog;
-  openfile:textfile;
+  form1: tform1;
 
-  stmp: string;                      // название  текущего файла перевода
-  lang: string;                     // выбранный перевод
-  sfull: array [0..6000] of string; // считывается выбранный перевод
-  ifull: integer;                    // строк в выбранном переводе
-  se: array [0..200,0..6000] of string; // английский файл перевода
-  st: array [0..200,0..6000] of string; // строки перевода
-
-  sfilter:array [1..30] of string;  // названия файлов основного перевода
-  ifilter: integer;                 // количество файлов основного перевода
-  bfilter: boolean;                 // флаг файла основного перевода
-
-  n,t:integer;                      // всего строк/переведено строк
-  il,ii,iindex:integer;                // счетчики
-  newlines:boolean;
-
-  adres:  array [0..6000]of integer;
-  ilines: array [0..200] of integer; // строк в файле
-  nlines: array [0..200] of integer; // всего строк для перевода
-  tlines: array [0..200] of integer; // строк переведено
-
-  lineindex: array [0..2000] of integer;
-
+  view,locale: string;
+  trlang,trline: TStringList;
+  z,j,i,l:integer;
+  sr:tsearchrec;
+  res:integer;
+  s:array[0..1,1..6000] of string;
+  u:array[0..6000] of integer;
+  first:string;
+  filename:string;
+  m:integer;
+  sse:string;
 implementation
 
-{$R *.dfm}
+{$r *.lfm}
 
-procedure TForm1.FormCreate(Sender: TObject);
-begin
-  assignfile(openfile,ExtractFilePath(Application.ExeName)+
-  '\corebasic.txt',CP_UTF8);
-  reset(openfile);
-  readln(openfile);
-  ifilter:=0;
-  while not eof(openfile) do
-    begin
-      ifilter:=ifilter+1;
-      readln(openfile,sfilter[ifilter]);
-    end;
-  listfiles;
-end;
+{ tform1 }
 
-///////////////////////////////////////////////////////////////////////////////
-procedure TForm1.ListBox1Click(Sender: TObject);
+procedure tform1.formcreate(sender: tobject);
+  var sr:tsearchrec; res:integer;
 begin
-  iindex:=ListBox1.ItemIndex;
-  listbox2.Items.Clear;
-  memo1.Lines.Clear;
-  memo1.Lines.add('Plugin:'+listbox1.Items[iindex]);
-  memo1.Lines.add('Lines:'+inttostr(tlines[iindex])
-  +'/'+inttostr(nlines[iindex]));
-  memo1.Lines.add('Completed:'
-  +copy(floattostr(100*tlines[iindex]/nlines[iindex]),1,4)+'%');
-  il:=-1;
-  for ii:=0 to ilines[iindex] do
-    begin
-      if (copy(se[iindex,ii],1,1)='[') and (st[iindex,ii]='') then
-        begin
-          listbox2.Items.add(se[iindex,ii]);
-          adres[listbox2.items.Count-1]:=ii;
-          il:=il+1;
-          lineindex[il]:=ii;
-        end;
-    end;
-end;
-///////////////////////////////////////////////////////////////////////////////
-procedure TForm1.ListBox2Click(Sender: TObject);
-var il,index:integer;
+view:='english';
+trlang:=TstringList.Create;
+trline:=TstringList.Create;
 begin
-  index:=strtoint(label1.Caption)-1;
-  if index<>-1 then
-  begin
-    // запись строки
-    if memo2.Lines.Count=memo1.Lines.Count then
-     st[iindex,adres[index]]:='';
-     il:=0;
-     while il<memo2.Lines.Count do
-     begin
-       st[iindex,adres[index]]:=
-       st[iindex,adres[index]]+memo2.lines[il];
-       if il<>memo2.Lines.Count-1 then
-       st[iindex,adres[index]]:=
-       st[iindex,adres[index]]+'\n';
-       il:=il+1;
+     res:=findfirst(extractfilepath(application.exename)+'*',faanyfile,sr);
+     while res = 0 do
+           begin
+                if ((sr.attr and fadirectory)=fadirectory)
+                and ((sr.name='.')or(sr.name='..')) then
+                    begin res:=findnext(sr); continue; end;
+                if ((sr.attr and fadirectory)=fadirectory)
+                and (fileexists(extractfilepath(application.exename)+
+                '/'+sr.name+'/=head=.txt')) and (sr.name<>'english') then
+                     begin
+                          ListBox.items.add(sr.name);
+                          trlang.add(sr.name);
+                     end;
+                res:=findnext(sr);
+           end;
+     SysUtils.FindClose(sr);
      end;
-  end;
-  label1.Caption:=inttostr(listbox2.ItemIndex+1);
-  memo1.Lines.Clear;
-  memo2.Lines.Clear;
-  viewline;
-end;
-///////////////////////////////////////////////////////////////////////////////
-procedure TForm1.Open1Click(Sender: TObject);
-begin
- chdir(ExtractFilePath(Application.ExeName));
- opendialog:=TOpenDialog.Create(self);
- opendialog.filter:='Langpack Head File|=HEAD=.txt';
- opendialog.initialDir:=GetCurrentDir;
- opendialog.options:=[ofFileMustExist];
- if (opendialog.execute) then
-  begin
-    lang:=copy(openDialog.filename,
-    length(ExtractFilePath(Application.ExeName))+1,
-    length(openDialog.filename)-
-    length(ExtractFilePath(Application.ExeName))-11);
-    chdir(ExtractFilePath(openDialog.filename));
-    form1.Caption:='LangPackMgr: '+lang;
-    ListBox1.enabled:=true;
-    parsing;
-  end;
-end;
-///////////////////////////////////////////////////////////////////////////////
-procedure tform1.parsing;
-begin
-  memo1.lines.clear;
-  listbox2.Items.clear;
-  n:=0;t:=0;
-  for iindex:=0 to listbox1.items.Count-1 do
-    progress;
-  if button2.Caption='Custom Plugins'
-    then memo1.Lines.Add('Language:'+lang+' (Standart Bulid)')
-    else memo1.Lines.Add('Language:'+lang+' (Custom Plugins)');
-  memo1.Lines.Add('Translated:'+copy(floattostr(100*t/n),1,4)+'%');
-end;
-///////////////////////////////////////////////////////////////////////////////
-procedure tform1.progress;
-begin
-  if copy(listbox1.Items[iindex],1,2)='=C' then
-    stmp:='=CORE=' else
-  if copy(listbox1.Items[iindex],1,2)='p|' then
-    stmp:='\plugins\'+copy(listbox1.Items[iindex],3,
-  length(listbox1.Items[iindex])-2) else
-  if copy(listbox1.Items[iindex],1,2)='w|' then
-    stmp:='\weather\'+copy(listbox1.Items[iindex],3,
-  length(listbox1.Items[iindex])-2);
-//
-  for ifull := 0 to 4000 do sfull[ifull]:='';
-    if fileexists(ExtractFilePath(Application.ExeName)
-    +'\'+lang+'\'+stmp+'.txt') then
-      begin
-        assignfile(openfile,ExtractFilePath(Application.ExeName)
-        +'\'+lang+'\'+stmp+'.txt',CP_UTF8);
-        reset(openfile);
-        ifull:=0;
-    while not Eof(openfile) do
-      begin
-        ifull:=ifull+1;
-        ReadLn(openfile,sfull[ifull]);
-      end;
-    closefile(openfile);
+
+     if (paramstr(1)='-r') then
+    begin
+         form1.caption:='Miranda NG Langpack Tools: Replacer';
+         listbox.visible:=false;
+         memo1.Visible:=false;
+         memo2.Visible:=false;
+         combobox1.visible:=false;
+         combobox2.visible:=false;
+         button1.visible:=false;
+         button2.visible:=false;
+         button3.visible:=false;
+         button4.visible:=false;
+         button7.visible:=false;
+         label1.visible:=false;
+         radiogroup1.visible:=false;
+         edit1.visible:=true;
+         edit2.visible:=true;
+         button5.visible:=true;
+         button6.visible:=true;
+         checklistbox1.visible:=true;
     end;
-  for ii := 0 to 6000 do st[iindex,ii]:='';
-  assignfile(openfile,ExtractFilePath(Application.ExeName)
-  +'\english\'+stmp+'.txt',CP_UTF8);
-  reset(openfile);
-  ilines[iindex]:=-1;
-  nlines[iindex]:=0;
-  tlines[iindex]:=0;
-  while not Eof(openfile) do
-    begin
-      ilines[iindex]:=ilines[iindex]+1;
-      ReadLn(openfile,se[iindex,ilines[iindex]]);
-    if (copy(se[iindex,ilines[iindex]],1,1)='[') then
-      begin
-        nlines[iindex]:= nlines[iindex]+1;
-    for ii:=0 to ifull-1 do
-      if se[iindex,ilines[iindex]]=sfull[ii] then
-      if (copy(sfull[ii+1],1,1)<>';')
-      and(copy(sfull[ii+1],1,1)<>'[')
-      and(copy(sfull[ii+1],1,1)<>'')
-      then
-      begin
-        st[iindex,ilines[iindex]]:=sfull[ii+1];
-        tlines[iindex]:=tlines[iindex]+1;
-      end;
-    end;
-  end;
-  closefile(openfile);
-  n:=n+nlines[iindex];
-  t:=t+tlines[iindex];
-end;
-///////////////////////////////////////////////////////////////////////////////
-procedure tform1.listfiles;
-Var
-  SR:TSearchRec;
-  Res:Integer;
-  i:integer;
-begin
-  n:=0;t:=0;
-  ListBox1.Items.Clear;
-  if button2.Caption='Custom Plugins' then
-    begin
-      Form1.ListBox1.Items.Add('=CORE=');
-      for i := 1 to ifilter do
-        Form1.ListBox1.Items.Add('p|'+sfilter[i]);
-    end else
-    begin
-      // plugins
-      Res:=FindFirst(ExtractFilePath(Application.ExeName)
-      +'\english\plugins\*.txt', faAnyFile, SR);
-      while Res = 0 do
-        begin
-          bfilter:=false;
-            for i:=1 to ifilter do
-              if sfilter[i]=copy(extractfilename(SR.Name),
-              1,length(extractfilename(SR.Name))-4) then bfilter:=true;
-            if bfilter=false then
-              Form1.ListBox1.Items.Add('p|'+copy(extractfilename(SR.Name),
-              1,length(extractfilename(SR.Name))-4));
-            Res:=FindNext(SR);
-        end;
-      FindClose(SR);
-      // weather
-      Res:=FindFirst(ExtractFilePath(Application.ExeName)
-      +'\english\weather\*.txt', faAnyFile, SR);
-      while Res = 0 do
-        begin
-          Form1.ListBox1.Items.Add('w|'+copy(extractfilename(SR.Name),
-          1,length(extractfilename(SR.Name))-4));
-          Res:=FindNext(SR);
-        end;
-      end;
-end;
-// копирование шаблона/////////////////////////////////////////////////////////
-procedure TForm1.BitBtn1Click(Sender: TObject);
-begin
-memo2.Lines:=memo1.Lines;
-end;
-// гугл //////////////////////////////////////////////////////////
-procedure TForm1.BitBtn2Click(Sender: TObject);
-var str:string; i:integer;
- begin
- str:='http://translate.google.com/?hl=&ie=&langpair=en#en/'+edit1.Text+'/';
-for i:=0 to memo1.Lines.Count-1 do
-begin
-str:=str+memo1.Lines[i];
-if i<memo1.Lines.Count-1 then
-str:=str+'+%0A+';
 end;
 
+procedure tform1.FormResize(Sender: TObject);
+begin
+  combobox2.Left:=form1.Width-78;
+  label1.left:=form1.Width-150;
+  button1.Left:=form1.width-48;
+  memo1.Width:=form1.Width-140;
+  memo2.Width:=form1.Width-140;
+
+  button1.top:=form1.Height-25;
+  button2.top:=form1.Height-25;
+  button3.top:=form1.Height-25;
+  button4.top:=form1.Height-25;
+  button7.top:=form1.Height-25;
+  listbox.height:=form1.Height-42;
+
+  memo1.Height:=Trunc((form1.Height-80)/2);
+  memo2.Height:=Trunc((form1.Height-80)/2);
+  memo2.top:=44+memo1.Height;
+
+  edit1.width:=form1.width-105;
+  edit2.width:=form1.width-105;
+  button5.left:=form1.width-88;
+  button6.left:=form1.width-88;
+  checklistbox1.width:=form1.width-12;
+  checklistbox1.height:=form1.height-68;
+
+end;
+
+procedure tform1.stringlist;
+ var llist:TStringList;
+  begin
+  for i := 1 to 6000 do
+         begin s[0,i]:='';s[1,i]:='';end;
+       j:=0;
+   lList:=TstringList.Create;
+       lList.LoadFromFile(extractfilePath(application.exename)+'/english/'
+       +combobox1.items[combobox1.itemindex]+'.txt');
+       first:=lList[0];
+       for i := 1 to lList.Count-1 do
+           begin
+             j:=j+1;
+             s[0,j]:=lList[i];
+           end;
+          lList.LoadFromFile(extractfilePath(application.exename)+'/'
+     +locale+'/'+combobox1.items[combobox1.itemindex]+'.txt');
+       for z:= 1 to j do
+         for i := 1 to lList.count-2 do
+           if (copy(s[0,z],1,1)='[')and(s[0,z]=lList[i])
+           and (copy(lList[i+1],1,1)<>'[')then
+             s[1,z]:=lList[i+1];
+       lList.free;
+       form1.Caption:='Miranda NG Langpack Tools: Editor -'
+       +locale+'\'+combobox1.items[combobox1.itemindex];
+       filename:=combobox1.items[combobox1.itemindex];
+       listbox.items.Clear;
+       z:=0;
+       for i := 1 to j do
+         if ((copy(s[0,i],1,1)='[')and(s[1,i]='') and (radiogroup1.ItemIndex=0))
+         or ((copy(s[0,i],1,1)='[')and (radiogroup1.ItemIndex=1))
+         then
+           begin
+             u[z]:=i;
+             z:=z+1;
+             listbox.items.add(copy(s[0,i],2,length(s[0,i])-2));
+         end;
+  end;
+
+procedure tform1.stringview;
+  begin
+   for i:=0 to combobox2.items.count-1 do
+      if view=combobox2.Items[i] then
+        combobox2.itemindex:=i;
+    sse:=trline[combobox2.ItemIndex];
+    m:=1;
+    for i := 1 to length(sse)-1 do
+        begin
+          if copy(sse,i,2)='\n' then
+          begin
+            memo1.Lines.Add(copy(sse,m,i-m));
+            m:=i+2;
+          end;
+        end;
+    memo2.Lines.Clear;
+    l:=listbox.itemindex;
+    if m=1 then  memo1.Lines.Add(sse)
+    else memo1.Lines.Add(copy(sse,m,length(sse)-m+2));
+   if s[1,u[listbox.itemindex]]<>'' then
+    begin
+      m:=1;
+      for i := 1 to length(s[1,u[listbox.itemindex]])-1 do
+        begin
+          if copy(s[1,u[listbox.itemindex]],i,2)='\n' then
+          begin
+            memo2.Lines.Add(copy(s[1,u[listbox.itemindex]],m,i-m));
+            m:=i+2;
+          end;
+        end;
+    if m=1 then  memo2.Lines.Add(s[1,u[listbox.itemindex]])
+    else memo2.Lines.Add(copy(s[1,u[listbox.itemindex]],m,
+    length(s[1,u[listbox.itemindex]])-m+2));
+    end;
+  end;
+
+procedure tform1.savestring;
+var sa:integer;
+    begin
+         s[1,u[l]]:='';
+         for sa:=0 to memo2.Lines.Count-1 do
+             begin
+                  s[1,u[l]]:=s[1,u[l]]+memo2.Lines[sa];
+                  if sa<>memo2.Lines.Count-1 then  s[1,u[l]]:=s[1,u[l]]+'\n';
+             end;
+    end;
+
+procedure tform1.combobox1change(sender: tobject);
+  var f:textfile;
+begin
+l:=2000;
+  if not FileExists(extractfilePath(application.exename)
+      +'/'+locale+'/'+combobox1.items[combobox1.itemindex]+'.txt')
+  then
+      begin
+           assignfile(f,extractfilePath(application.exename)
+           +'/'+locale+'/'+combobox1.items[combobox1.itemindex]+'.txt');
+           rewrite(f);
+           closefile(f);
+      end;
+  stringlist;
+  memo1.lines.clear;
+  memo2.lines.clear;
+end;
+
+procedure tform1.ComboBox2Change(Sender: TObject);
+begin
+   view:=combobox2.Text;
+  if (listbox.items.count>0) and (combobox1.items.count>0) then
+       begin
+     savestring;
+     memo1.lines.Clear;
+     memo2.lines.Clear;
+     stringview;
+       end;
+end;
+
+procedure tform1.Button1Click(Sender: TObject);
+  var sList:TStringList;
+begin
+     savestring;
+     memo1.lines.Clear;
+     memo2.lines.Clear;
+     sList:=TstringList.Create;
+     sList.add(first);
+     for i := 0 to j do
+         begin
+              if copy(s[0,i],1,1)=';' then sList.add(s[0,i]);
+              if s[1,i]<>'' then
+         begin
+            sList.add(s[0,i]);
+            sList.add(s[1,i]);
+          end
+        else
+        if (copy(s[0,i],1,1)='[')and
+        (fileexists(extractfilePath(application.exename)+'clearstring.ini'))then
+          begin
+          sList.add(s[0,i]);
+          sList.add('');
+          end;
+      end;
+  sList.SavetoFile(extractfilePath(application.exename)
+  +'/'+locale+'/'+filename+'.txt');
+  sList.free;
+  stringlist;
+end;
+
+procedure tform1.Button2Click(Sender: TObject);
+  var search:TStringList; q:integer;
+begin
+     search:=TstringList.Create;
+     search.LoadFromFile(extractfilePath(application.exename)+
+     '/'+locale+'/'+'Langpack_'+locale+'.txt');
+     for q := 0 to listbox.items.Count-1 do
+         for i := 1 to search.count-1 do
+             if (s[0,u[q]]=search[i])and(copy(search[i+1],1,1)<>'[')then
+                begin
+                     s[1,u[q]]:=search[i+1];
+                     break;
+                end;
+     search.free;
+end;
+
+procedure tform1.Button3Click(Sender: TObject);
+begin
+     memo2.lines:=memo1.lines;
+end;
+
+procedure tform1.Button4Click(Sender: TObject);
+  var str:string; i:integer;
+   begin
+   str:='http://translate.google.com/?hl=&ie=yhgg#auto/';
+   if  locale='belarusian' then str:=str+'be/';
+   if  locale='bulgarian' then str:=str+'bg/';
+   if  locale='chinese' then str:=str+'zh-CN/';
+   if  locale='czech' then str:=str+'cs/';
+   if  locale='dutch' then str:=str+'da/';
+   if  locale='estonian' then str:=str+'et/';
+   if  locale='french' then str:=str+'fr/';
+   if  locale='german' then str:=str+'de/';
+   if  locale='hebrew' then str:=str+'iw/';
+   if  locale='hungarian' then str:=str+'hu/';
+   if  locale='italian' then str:=str+'it/';
+   if  locale='japanese' then str:=str+'ja/';
+   if  locale='korean' then str:=str+'ko/';
+   if  locale='norwegian' then str:=str+'no/';
+   if  locale='polish' then str:=str+'pl/';
+   if  locale='portuguese_br' then str:=str+'pt/';
+   if  locale='russian' then str:=str+'ru/';
+   if  locale='slovak' then str:=str+'sk/';
+   if  locale='spanish' then str:=str+'es/';
+   if  locale='turkish' then str:=str+'tr/';
+   if  locale='ukrainian' then str:=str+'uk/';
+   if combobox1.Text<>'english' then str:=str+listbox.items[listbox.itemindex]
+   else     begin
+            for i:=0 to memo1.Lines.Count-1 do
+                begin
+                     str:=str+memo1.Lines[i];
+                     if i<memo1.Lines.Count-1 then str:=str+'+%0A+';
+                end;
+            end;
    ShellExecute(0, 'open',PChar(str), nil, nil, SW_SHOW);
 end;
 
-procedure TForm1.BitBtn3Click(Sender: TObject);
+procedure tform1.Button5Click(Sender: TObject);
 begin
- memo1.Lines.Clear;
- memo2.Lines.Clear;
- st[iindex,adres[listbox2.ItemIndex]]:='';
- viewline;
-end;
-
-// флаг переключения //////////////////////////////////////////////////////////
-
-
-procedure TForm1.Button2Click(Sender: TObject);
+  CheckListBox1.Items.clear;
+  for i := 0 to trlang.Count-1 do
 begin
-  if button2.Caption='Custom Plugins'
-    then button2.Caption:='Core and basic'
-    else button2.Caption:='Custom Plugins';
-  listfiles;
-  if  ListBox1.enabled=true then
-    parsing;
-end;
-
-procedure tform1.viewline;
-var im,m:integer;
-sse:string;
-begin
-  m:=1; sse:=copy(se[iindex,lineindex[listbox2.itemindex]],2,
-  length(se[iindex,lineindex[listbox2.itemindex]])-2);
-      for im := 1 to length(sse)-1 do
-        begin
-          if copy(sse,im,2)='\n' then
-          begin
-            memo1.Lines.Add(copy(sse,m,im-m));
-            m:=im+2;
-          end;
-        end;
-    if m=1 then  memo1.Lines.Add(sse)
-    else memo1.Lines.Add(copy(sse,m,length(sse)-m+2));
-
-  if st[iindex,adres[listbox2.ItemIndex]]<>'' then
+  trline:=TstringList.Create;
+  if fileexists(extractfilepath(application.exename)
+  +trlang[i]+'/'+'=CORE=.txt') then
     begin
-      m:=1;
-      for im := 1 to length(st[iindex,adres[listbox2.ItemIndex]])-1 do
+      trline.LoadFromFile(extractfilepath(application.exename)
+      +trlang[i]+'/'+'=CORE=.txt');
+      for j := 0 to trline.count-1 do
+      if trline[j]=edit1.text then
         begin
-          if copy(st[iindex,adres[listbox2.ItemIndex]],im,2)='\n' then
-          begin
-            memo2.Lines.Add(copy(st[iindex,adres[listbox2.ItemIndex]],m,im-m));
-            m:=im+2;
-          end;
+          CheckListBox1.Items.Add(trlang[i]+'/'+'=CORE=.txt');
+          break;
         end;
-    if m=1 then  memo2.Lines.Add(st[iindex,adres[listbox2.ItemIndex]])
-    else memo2.Lines.Add(copy(st[iindex,adres[listbox2.ItemIndex]],m,
-    length(st[iindex,adres[listbox2.ItemIndex]])-m+2));
-    end;
-  memo2.SetFocus;
-end;
-///////////////////////////////////////////////////////////////////////////////
-///
-
-// Процедура сохранения обработанного файла
-procedure TForm1.Button1Click(Sender: TObject);
-var il,index:integer;
-begin
-  index:=strtoint(label1.Caption)-1;
-  if index<>-1 then
-  begin
-    // запись строки
-    if memo2.Lines.Count=memo1.Lines.Count then
-     st[iindex,adres[index]]:='';
-     il:=0;
-     while il<memo2.Lines.Count do
-     begin
-       st[iindex,adres[index]]:=
-       st[iindex,adres[index]]+memo2.lines[il];
-       if il<>memo2.Lines.Count-1 then
-       st[iindex,adres[index]]:=
-       st[iindex,adres[index]]+'\n';
-       il:=il+1;
      end;
-  end;
-memo1.Lines.Clear;
-memo2.Lines.Clear;
- if copy(listbox1.Items[iindex],1,2)='=C' then
-    stmp:='=CORE=' else
-  if copy(listbox1.Items[iindex],1,2)='p|' then
-    stmp:='\plugins\'+copy(listbox1.Items[iindex],3,
-  length(listbox1.Items[iindex])-2) else
-  if copy(listbox1.Items[iindex],1,2)='w|' then
-    stmp:='\weather\'+copy(listbox1.Items[iindex],3,
-  length(listbox1.Items[iindex])-2);
-assignfile(openfile,ExtractFilePath(Application.ExeName)
-        +'\'+lang+'\'+stmp+'.txt',CP_UTF8);
-rewrite(openfile);
-writeLn(openfile,se[iindex,0]);
- for ii := 1 to ilines[iindex] do
- begin
-  if copy(se[iindex,ii],1,1)=';' then writeln(openfile,se[iindex,ii]);
-  if (copy(se[iindex,ii],1,1)='[') and (st[iindex,ii]<>'')
-  then
-  begin
-  writeln(openfile,se[iindex,ii]);
-  writeln(openfile,st[iindex,ii]);
-  end;
- end;
-closefile(openfile);
-//
-  parsing;
+  trline.Free;
+
+ res:=FindFirst(ExtractFilePath(Application.ExeName)+'/'
++trlang[i]+'/plugins/*.txt', faAnyFile, sr);
+ while res = 0 do
+    begin
+      trline:=TstringList.Create;
+      trline.LoadFromFile(extractfilepath(application.exename)
+      +'/'+trlang[i]+'/'+'plugins/'+sr.name);
+      for j := 0 to trline.count-1 do
+        if trline[j]=edit1.text then
+          begin
+            CheckListBox1.Items.Add(trlang[i]+'/'+'plugins/'+sr.name);
+            break;
+          end;
+      trline.free;
+       res:=FindNext(sr);
+    end;
+     FindClose(res);
+
+res:=FindFirst(ExtractFilePath(Application.ExeName)+'/'
++trlang[i]+'/weather/*.txt', faAnyFile, sr);
+ while res = 0 do
+    begin
+      trline:=TstringList.Create;
+      trline.LoadFromFile(extractfilepath(application.exename)
+      +'/'+trlang[i]+'/'+'weather/'+sr.name);
+      for j := 0 to trline.count-1 do
+        if trline[j]=edit1.text then
+          begin
+            CheckListBox1.Items.Add(trlang[i]+'/'+'plugins/'+sr.name);
+            break;
+          end;
+      trline.free;
+       res:=FindNext(sr);
+    end;
+     FindClose(res);
+
 end;
+for i := 0 to CheckListBox1.Count-1 do
+ CheckListBox1.Checked[i]:=true;
+end;
+
+procedure tform1.Button6Click(Sender: TObject);
+begin
+   for i := 0 to CheckListBox1.Count-1 do
+ if CheckListBox1.Checked[i]=true then
+ begin
+    trline:=TstringList.Create;
+    trline.LoadFromFile(extractfilepath(application.exename)
+      +'/'+CheckListBox1.Items[i]);
+    for j := 1 to trline.Count-1 do
+      if trline[j]=edit1.text then  trline[j]:=edit2.text;
+    trline.SaveToFile(extractfilepath(application.exename)
+      +'/'+CheckListBox1.Items[i]);
+ end;
+end;
+
+procedure tform1.Button7Click(Sender: TObject);
+  var search:TStringList; r:integer;
+begin
+if (form1.caption<>'Miranda NG Langpack Tools: Editor')
+then
+   begin
+if listbox.itemindex<listbox.items.Count-1 then listbox.itemindex:=listbox.ItemIndex+1;
+ savestring;
+               search:=tstringlist.Create;
+               combobox2.items.clear;
+               trline.Clear;
+               combobox2.items.add('english');
+               trline.add(copy(s[0,u[listbox.itemindex]],2,
+               length(s[0,u[listbox.itemindex]])-2));
+               for i:=0 to trlang.count-1 do
+               begin
+               if (fileexists(extractfilepath(application.exename)+
+                    '/'+trlang[i]+'/'+filename+'.txt'))
+               and(trlang[i]<>locale) then
+                  begin
+                    search.LoadFromFile(extractfilepath(application.exename)+
+                    '/'+trlang[i]+'/'+filename+'.txt');
+                   for r:=1 to search.Count-2 do
+                    if (search[r]=s[0,u[listbox.itemindex]])
+                    and (search[r+1]<>'')
+                    and (search[r+1]<>'[')
+                    and (search[r+1]<>';')
+                    then begin
+                    combobox2.items.add(trlang[i]);
+                    trline.add(search[r+1]);
+                    break;
+                    end;
+                  end;
+               end;
+               search.free;
+               combobox2.itemindex:=0;
+        memo1.lines.clear;
+        memo2.lines.clear;
+        stringview;
+        memo2.setFocus();
+   end;
+end;
+
+procedure tform1.ListBox1Click(sender: tobject);
+var search:TStringList; r:integer;
+begin
+   if (form1.caption<>'Miranda NG Langpack Tools: Editor')
+   then
+      begin
+        savestring;
+               search:=tstringlist.Create;
+               combobox2.items.clear;
+               trline.Clear;
+               combobox2.items.add('english');
+               trline.add(copy(s[0,u[listbox.itemindex]],2,
+               length(s[0,u[listbox.itemindex]])-2));
+               for i:=0 to trlang.count-1 do
+               begin
+               if (fileexists(extractfilepath(application.exename)+
+                    '/'+trlang[i]+'/'+filename+'.txt'))
+               and(trlang[i]<>locale) then
+                  begin
+                    search.LoadFromFile(extractfilepath(application.exename)+
+                    '/'+trlang[i]+'/'+filename+'.txt');
+                   for r:=1 to search.Count-2 do
+                    if (search[r]=s[0,u[listbox.itemindex]])
+                    and (search[r+1]<>'')
+                    and (search[r+1]<>'[')
+                    and (search[r+1]<>';')
+                    then begin
+                    combobox2.items.add(trlang[i]);
+                    trline.add(search[r+1]);
+                    break;
+                    end;
+                  end;
+               end;
+               search.free;
+               combobox2.itemindex:=0;
+        memo1.lines.clear;
+        memo2.lines.clear;
+        stringview;
+      end;
+end;
+
+procedure tform1.listbox2click(sender: tobject);
+  var sr:tsearchrec; res:integer;
+begin
+  if form1.caption='Miranda NG Langpack Tools: Editor'
+  then
+    begin
+      locale:=ListBox.items[listBox.itemindex];
+      form1.caption:=form1.caption+': '+locale;
+      ListBox.items.clear;
+      combobox1.items.add('=CORE=');
+      res:=findfirst(extractfilepath(application.exename)
+      +'\english\plugins\*.txt', faanyfile, sr);
+      while res = 0 do
+            begin
+                 combobox1.items.add('plugins\'+copy(extractfilename(sr.name),1,
+                 length(extractfilename(sr.name))-4));
+                 res:=findnext(sr);
+            end;
+      SysUtils.FindClose(sr);
+      res:=findfirst(extractfilepath(application.exename)
+      +'\english\weather\*.txt', faanyfile, sr);
+      while res = 0 do
+            begin
+                 combobox1.items.add('weather\'+copy(extractfilename(sr.name),1,
+                 length(extractfilename(sr.name))-4));
+                 res:=findnext(sr);
+            end;
+      SysUtils.FindClose(sr);
+      combobox1.itemindex:=0;
+      stringlist;
+      if (fileexists(extractfilePath(application.exename)+'/'+locale+'/'
+      +'Langpack_'+locale+'.txt'))  then button2.Enabled:=true;
+    end;
+
+end;
+
 end.
+

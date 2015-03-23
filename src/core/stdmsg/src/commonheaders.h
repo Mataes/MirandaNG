@@ -1,6 +1,6 @@
 /*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright 2000-12 Miranda IM, 2012-15 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -33,6 +33,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <shlobj.h>
 #include <commctrl.h>
 #include <vssym32.h>
+#include <Uxtheme.h>
 
 #include <malloc.h>
 #include <time.h>
@@ -64,6 +65,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <m_fontservice.h>
 #include <m_timezones.h>
 #include <m_avatars.h>
+#include <m_metacontacts.h>
 
 #include "cmdlist.h"
 #include "msgs.h"
@@ -72,3 +74,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "version.h"
 
 extern HINSTANCE g_hInst;
+extern HCURSOR hCurSplitNS, hCurSplitWE, hCurHyperlinkHand;
+extern HANDLE hHookWinEvt, hHookWinPopup, hHookWinWrite;
+extern CREOleCallback reOleCallback;

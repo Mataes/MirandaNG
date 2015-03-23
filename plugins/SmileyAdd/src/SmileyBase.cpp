@@ -136,7 +136,7 @@ void ISmileyBase::SetPosition(HWND hwnd, LPCRECT lpRect)
 		else if (lpRect->bottom == -1)
 		{
 			m_orect.top = lpRect->top;
-			m_orect.bottom = lpRect->top + m_sizeExtent.cy;;
+			m_orect.bottom = lpRect->top + m_sizeExtent.cy;
 		}
 		else
 		{
@@ -156,7 +156,7 @@ ULONG ISmileyBase::AddRef(void)
 ULONG ISmileyBase::Release(void)
 {
 	LONG count = InterlockedDecrement(&m_lRefCount);
-	if(count == 0) 
+	if (count == 0) 
 		delete this;
 	return count;
 }
@@ -380,9 +380,3 @@ int CheckForTip(int x, int y, HWND hwnd, TCHAR** smltxt)
 
 	return -1;
 }
-
-void DestroySmileyBase(void)
-{
-	regSmileys.destroy();
-}
-

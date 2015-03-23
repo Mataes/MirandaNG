@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2009 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-09 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -130,18 +131,21 @@ static __inline unsigned long Proto_Status2Flag(int status)
 	return 0;
 }
 
-#define PFLAGNUM_4	 4			//misc options
+#define PFLAGNUM_4           4          // another bunch of flags
+
 #define PF4_FORCEAUTH	     0x00000001 // forces auth requests to be sent when adding users
 #define PF4_FORCEADDED	     0x00000002 // forces "you were added" requests to be sent
 #define PF4_NOCUSTOMAUTH     0x00000004 // protocol doesn't support custom auth text (doesn't show auth text box)
-#define PF4_SUPPORTTYPING    0x00000008 // protocol supports user is typing messages v0.3.3+
-#define PF4_SUPPORTIDLE      0x00000010 // protocol understands idle, added during v0.3.4+ (2004/09/13)
-#define PF4_AVATARS		     0x00000020 // protocol has avatar support, added during v0.3.4 (2004/09/13)
-#define PF4_OFFLINEFILES     0x00000040 // protocols supports sending files to offline users (v0.5.2)
-#define PF4_IMSENDUTF        0x00000080 // protocol is able to process messages in utf-8 (v.0.7.0+)
-#define PF4_IMSENDOFFLINE    0x00000100 // protocol supports sending offline messages (v0.8.0+)
-#define PF4_INFOSETTINGSVC   0x00000200 // protocol supports user info translation services (v0.8.0+)
-#define PF4_NOAUTHDENYREASON 0x00000400 // protocol doesn't support authorization deny reason (v0.9.0+)
+#define PF4_SUPPORTTYPING    0x00000008 // protocol supports user is typing messages
+#define PF4_SUPPORTIDLE      0x00000010 // protocol understands idle
+#define PF4_AVATARS		     0x00000020 // protocol has avatar support
+#define PF4_OFFLINEFILES     0x00000040 // protocols supports sending files to offline users
+#define PF4_IMSENDUTF        0x00000080 // protocol is able to process messages in utf-8
+#define PF4_IMSENDOFFLINE    0x00000100 // protocol supports sending offline messages
+#define PF4_INFOSETTINGSVC   0x00000200 // protocol supports user info translation services
+#define PF4_NOAUTHDENYREASON 0x00000400 // protocol doesn't support authorization deny reason
+#define PF4_GROUPCHATFILES   0x00000800 // protocol supports sending files to group chats
+#define PF4_SINGLEFILEONLY   0x00001000 // protocol supports sending files one by one only
 
 #define PFLAG_UNIQUEIDTEXT  100    //returns a static buffer of text describing the unique field by which this protocol identifies users (already translated), or NULL
 
@@ -250,8 +254,6 @@ will pick this up and everything will be good.
 //Returns 0 on success, nonzero on failure
 //Note that this service will not be available unless PF1_MODEMSGSEND is set
 //and PF1_INDIVMODEMSG is *not* set.
-//If PF1_INDIVMODEMSG is set, then see PSS_AWAYMSG for details of
-//the operation of away messages
 //Protocol modules must support szMessage = NULL. It may either mean to use an
 //empty message, or (preferably) to not reply at all to any requests
 #define PS_SETAWAYMSG   "/SetAwayMsg"
@@ -422,18 +424,6 @@ typedef struct {
 //once, you should just do lots of calls.
 #define PS_ADDTOLISTBYEVENT  "/AddToListByEvent"
 
-//Changes our user details as stored on the server   v0.1.2.0+
-//wParam = infoType
-//lParam = (LPARAM)(void*)pInfoData
-//Returns a HANDLE to the change request, or NULL on failure
-//The details information that is stored on the server is very protocol-
-//specific, so this service just supplies an outline for protocols to use.
-//See protocol-specific documentation for what infoTypes are available and
-//what pInfoData should be for each infoType.
-//Sends an ack type = ACKTYPE_SETINFO, result = ACKRESULT_SUCCESS/FAILURE,
-//lParam = 0 on completion.
-#define PS_CHANGEINFO     "/ChangeInfo"
-
 //Informs the protocol of the users chosen resume behaviour   v0.1.2.2+
 //wParam = (WPARAM)(HANDLE)hFileTransfer
 //lParam = (LPARAM)(PROTOFILERESUME*)&pfr
@@ -463,19 +453,19 @@ typedef struct {
 #define PS_FILERESUMEW    "/FileResumeW"
 
 //Asks a protocol to join the chatroom from contact  v0.8.0+
-//wParam = (WPARAM)(HANDLE)hContact
-//lParam = (LPARAM)0
+//wParam = (MCONTACT)hContact
+//lParam = 0
 //Returns 0 on success, nonzero on failure
 #define PS_JOINCHAT "/JoinChat"
 
 //Asks a protocol to leave the chatroom from contact  v0.8.0+
-//wParam = (WPARAM)(HANDLE)hContact
-//lParam = (LPARAM)0
+//wParam = (MCONTACT)hContact
+//lParam = 0
 //Returns 0 on success, nonzero on failure
 #define PS_LEAVECHAT "/LeaveChat"
 
 //Asks a protocol to read contact information and translate them (for a lookup fields)  v0.8.0+
-//wParam = (WPARAM)(HANDLE)hContact
+//wParam = (MCONTACT)hContact
 //lParam = (LPARAM)(DBCONTACTGETSETTING*)&dbcgs
 //The flag PF4_INFOSETTINGSVC indicates that a protocol supports this. Basically it should
 //do the same as MS_DB_CONTACT_GETSETTING_STR, except that for a lookup settings (e.g. Language)
@@ -519,8 +509,8 @@ typedef struct {
 
 // Get the max allowed length for the user nickname
 // Optional, default value is 1024
-// wParam = (WPARAM)0
-// lParam = (LPARAM)0
+// wParam = 0
+// lParam = 0
 // return = <= 0 for error, >0 the max length of the nick
 #define PS_GETMYNICKNAMEMAXLENGTH "/GetMyNicknameMaxLength"
 
@@ -534,7 +524,7 @@ typedef struct {
 
 // Get the WAYD message for the user
 // wParam = (WPARAM)WAYD_xxx
-// lParam = (LPARAM)0
+// lParam = 0
 // Returns the text or NULL if there is none. Remember to mir_free the return value.
 #define PS_GETMYWAYD "/GetMyWAYD"
 
@@ -546,10 +536,16 @@ typedef struct {
 
 // Get the max allowed length that a WAYD message can have
 // Optional, default value is 1024
-// wParam = (WPARAM)0
-// lParam = (LPARAM)0
+// wParam = 0
+// lParam = 0
 // Returns the max length
 #define PS_GETMYWAYDMAXLENGTH "/GetMyWAYDMaxLength"
+
+// Get the unread email message count, optional
+// wParam = 0
+// lParam = 0
+// Returns the number of unread emails
+#define PS_GETUNREADEMAILCOUNT "/GetUnreadEmailCount"
 
 /****************************** SENDING SERVICES *************************/
 //these should be called with CallContactService()
@@ -617,17 +613,6 @@ typedef struct {
 //type = ACKTYPE_AWAYMSG, result = success/failure, lParam = (const char*)szMessage
 #define PSS_GETAWAYMSG    "/GetAwayMsg"
 
-//Sends an away message reply to a user
-//wParam = (WPARAM)(HANDLE)hProcess (of ack)
-//lParam = (LPARAM)(const char*)szMessage
-//Returns 0 on success, nonzero on failure
-//This function must only be used if the protocol has PF1_MODEMSGSEND and
-//PF1_INDIVMODEMSG set. Otherwise, PS_SETAWAYMESSAGE should be used.
-//This function must only be called in response to an ack that a user has
-//requested our away message. The ack is sent as:
-//type = ACKTYPE_AWAYMSG, result = ACKRESULT_SENTREQUEST, lParam = 0
-#define PSS_AWAYMSG     "/SendAwayMsg"
-
 //Allows a file transfer to begin
 //wParam = (WPARAM)(HANDLE)hTransfer
 //lParam = (LPARAM)(const TCHAR*)szPath
@@ -684,7 +669,7 @@ typedef struct {
 #define PSS_AUTHREQUESTW   "/AuthRequestW"
 
 // Send "User is Typing" (user is typing a message to the user) v0.3.3+
-// wParam = (WPARAM)(HANDLE)hContact
+// wParam = (MCONTACT)hContact
 // lParam = (LPARAM)(int)typing type - see PROTOTYPE_SELFTYPING_X defines in m_protocols.h
 #define PSS_USERISTYPING   "/UserIsTyping"
 
@@ -720,11 +705,15 @@ typedef struct {
 		TCHAR *tszMessage;
 	};
 	LPARAM lParam;     //extra space for the network level protocol module
+	void *pCustomData;
+	DWORD cbCustomDataSize;
 } PROTORECVEVENT;
+
 #define PREF_CREATEREAD   1     //create the database event with the 'read' flag set
-#define PREF_UNICODE	  2
+#define PREF_UNICODE      2
 #define PREF_RTL          4     // 0.5+ addition: support for right-to-left messages
 #define PREF_UTF          8     // message is in utf-8 (0.7.0+)
+#define PREF_SENT        16     // message will be created with the DBEF_SENT flag
 
 #if defined(_UNICODE)
 	#define PREF_TCHAR PREF_UNICODE
@@ -742,8 +731,8 @@ Returns the result of db_event_add()
 
 #define MS_PROTO_RECVMSG "Proto/RecvMessage"
 
-__forceinline INT_PTR Proto_RecvMessage(HANDLE hContact, PROTORECVEVENT *pcre)
-{	
+__forceinline INT_PTR Proto_RecvMessage(MCONTACT hContact, PROTORECVEVENT *pcre)
+{
 	CCSDATA ccs = { hContact, PSR_MESSAGE, 0, (LPARAM)pcre };
 	return CallService(MS_PROTO_RECVMSG, 0, (LPARAM)&ccs );
 }
@@ -779,7 +768,7 @@ typedef struct {
 
 #define MS_PROTO_RECVFILET "Proto/RecvFileT"
 
-__forceinline INT_PTR Proto_RecvFile(HANDLE hContact, PROTORECVFILET *pcre)
+__forceinline INT_PTR Proto_RecvFile(MCONTACT hContact, PROTORECVFILET *pcre)
 {
 	CCSDATA ccs = { hContact, PSR_FILE, 0, (LPARAM)pcre };
 	return CallService(MS_PROTO_RECVFILET, 0, ( LPARAM )&ccs);

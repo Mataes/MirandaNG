@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -197,7 +198,7 @@ public:
 	BOOL AddRule(PrivacyListRuleType type, const TCHAR *szValue, BOOL bAction, DWORD dwOrder, DWORD dwPackets)
 	{
 		CPrivacyListRule *pRule = new CPrivacyListRule(m_proto, type, szValue, bAction, dwOrder, dwPackets);
-		if ( !pRule)
+		if (!pRule)
 			return FALSE;
 		pRule->SetNext(m_pRules);
 		m_pRules = pRule;
@@ -211,7 +212,7 @@ public:
 	}
 	BOOL RemoveRule(CPrivacyListRule *pRuleToRemove)
 	{
-		if ( !m_pRules)
+		if (!m_pRules)
 			return FALSE;
 
 		if (m_pRules == pRuleToRemove) {
@@ -236,9 +237,9 @@ public:
 	BOOL Reorder()
 	{
 		// 0 or 1 rules?
-		if ( !m_pRules)
+		if (!m_pRules)
 			return TRUE;
-		if ( !m_pRules->GetNext()) {
+		if (!m_pRules->GetNext()) {
 			m_pRules->SetOrder(100);
 			return TRUE;
 		}
@@ -253,7 +254,7 @@ public:
 
 		// create pointer array for sort procedure
 		CPrivacyListRule **pRules = (CPrivacyListRule **)mir_alloc(dwCount * sizeof(CPrivacyListRule *));
-		if ( !pRules)
+		if (!pRules)
 			return FALSE;
 		DWORD dwPos = 0;
 		pRule = m_pRules;
@@ -265,7 +266,7 @@ public:
 		// sort array of pointers, slow, but working :)
 		DWORD i, j;
 		CPrivacyListRule *pTmp;
-		for (i = 0; i < dwCount; i++) {
+		for (i=0; i < dwCount; i++) {
 			for (j = dwCount - 1; j > i; j--) {
 				if (pRules[j - 1]->GetOrder() > pRules[j]->GetOrder()) {
 					pTmp = pRules[j - 1];
@@ -278,7 +279,7 @@ public:
 		// reorder linked list
 		DWORD dwOrder = 100;
 		CPrivacyListRule **ppPtr = &m_pRules;
-		for (i = 0; i < dwCount; i++) {
+		for (i=0; i < dwCount; i++) {
 			*ppPtr = pRules[ i ];
 			ppPtr = &pRules[ i ]->m_pNext;
 			pRules[ i ]->SetOrder(dwOrder);
@@ -321,11 +322,11 @@ protected:
 	TCHAR *m_szActiveListName;
 	TCHAR *m_szDefaultListName;
 	CPrivacyList *m_pLists;
-	CRITICAL_SECTION m_cs;
 	BOOL m_bModified;
 
 public:
 	CJabberProto* m_proto;
+	mir_cs m_cs;
 
 	CPrivacyListManager(CJabberProto *ppro)
 	{
@@ -333,7 +334,6 @@ public:
 		m_szActiveListName = NULL;
 		m_szDefaultListName = NULL;
 		m_pLists = NULL;
-		InitializeCriticalSection(&m_cs);
 		m_bModified = FALSE;
 	};
 	~CPrivacyListManager()
@@ -341,18 +341,7 @@ public:
 		mir_free(m_szActiveListName);
 		mir_free(m_szDefaultListName);
 		RemoveAllLists();
-		DeleteCriticalSection(&m_cs);
 	};
-	BOOL Lock()
-	{
-		EnterCriticalSection(&m_cs);
-		return TRUE;
-	}
-	BOOL Unlock()
-	{
-		LeaveCriticalSection(&m_cs);
-		return TRUE;
-	}
 	void SetActiveListName(const TCHAR *szListName)
 	{
 		replaceStrT(m_szActiveListName, szListName);
@@ -380,7 +369,7 @@ public:
 	{
 		CPrivacyList *pList = m_pLists;
 		while (pList) {
-			if ( !_tcscmp(pList->GetListName(), szListName))
+			if (!_tcscmp(pList->GetListName(), szListName))
 				return pList;
 			pList = pList->GetNext();
 		}
@@ -420,7 +409,7 @@ public:
 	{
 		CPrivacyList *pList = m_pLists;
 		while (pList) {
-			if ( !pList->IsLoaded())
+			if (!pList->IsLoaded())
 				return FALSE;
 			pList = pList->GetNext();
 		}

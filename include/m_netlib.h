@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2012 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-12 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -41,6 +42,8 @@ struct NETLIBHTTPREQUEST_tag;
 typedef struct NETLIBHTTPREQUEST_tag NETLIBHTTPREQUEST;
 struct NETLIBOPENCONNECTION_tag;
 typedef struct NETLIBOPENCONNECTION_tag NETLIBOPENCONNECTION;
+
+#define NETLIB_USER_AGENT "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.2; Trident/6.0)"
 
 //Initialises the netlib for a set of connections
 //wParam = 0
@@ -174,7 +177,7 @@ should use the MSG_DUMPPROXY flag so that the logging is neat.
 //Gets the user-configured settings for a netlib user
 //wParam = (WPARAM)(HANDLE)hUser
 //lParam = (LPARAM)(NETLIBUSERSETTINGS*)&nlus
-//Returns nonzero on success, 0 on failure	( !! this is different to most of the rest of Miranda, but consistent with netlib)
+//Returns nonzero on success, 0 on failure	(!! this is different to most of the rest of Miranda, but consistent with netlib)
 //The pointers referred to in the returned struct will remain valid until
 //the hUser handle is closed, or until the user changes the settings in the
 //options page, so it's best not to rely on them for too long.
@@ -207,7 +210,7 @@ typedef struct {
 //Changes the user-configurable settings for a netlib user
 //wParam = (WPARAM)(HANDLE)hUser
 //lParam = (LPARAM)(NETLIBUSERSETTINGS*)&nlus
-//Returns nonzero on success, 0 on failure	( !! this is different to most of the rest of Miranda, but consistent with netlib)
+//Returns nonzero on success, 0 on failure	(!! this is different to most of the rest of Miranda, but consistent with netlib)
 //This function is only really useful for people that specify NUF_NOOPTIONS
 //and want to create their own options.
 //Even if a setting is not active (eg szProxyAuthPassword when useProxyAuth is
@@ -218,7 +221,7 @@ typedef struct {
 //Closes a netlib handle
 //wParam = (WPARAM)(HANDLE)hNetlibHandle
 //lParam = 0
-//Returns nonzero on success, 0 on failure	( !! this is different to most of the rest of Miranda, but consistent with netlib)
+//Returns nonzero on success, 0 on failure	(!! this is different to most of the rest of Miranda, but consistent with netlib)
 //This function should be called on all handles returned by netlib functions
 //once you are done with them. If it's called on a socket-type handle, the
 //socket will be closed.
@@ -257,25 +260,8 @@ __forceinline INT_PTR Netlib_CloseHandle(HANDLE h) {return CallService(MS_NETLIB
 /* pExtra was added during 0.3.4+, prior its just two args, since we use the cdecl convention
 it shouldnt matter */
 
-#define NETLIBBIND_SIZEOF_V1 16 // sizeof(NETLIBBIND) prior to 0.3.4+ (2004/08/05)
-#define NETLIBBIND_SIZEOF_V2 20 // sizeof(NETLIBBIND) prior to 0.6+ (2006/07/03)
-
 typedef void (*NETLIBNEWCONNECTIONPROC_V2)(HANDLE hNewConnection, DWORD dwRemoteIP, void * pExtra);
 typedef void (*NETLIBNEWCONNECTIONPROC)(HANDLE hNewConnection, DWORD dwRemoteIP);
-/* This is NETLIBBIND prior to 2004/08/05+, DONT use this anymore unless you want to work
-with older cores, pExtra isnt available on older cores and never will be - for a period of time, the ABI
-for this service was broken and older NETLIBBINDs were not supported, if NULL is returned and the
-argument is good, then tell the user to upgrade to the latest CVS.
-
-The older structure was used til around 2004/08/05 */
-typedef struct {
-	int cbSize;
-	NETLIBNEWCONNECTIONPROC pfnNewConnection;
-	     //function to call when there's a new connection. Params are: the
-		 //new connection, IP of remote machine (host byte order)
-	DWORD dwInternalIP;   //set on return, host byte order
-	WORD wPort;			  //set on return, host byte order
-} NETLIBBINDOLD;
 
 typedef struct {
 	int cbSize;
@@ -334,7 +320,7 @@ a hard timeout is reached, this can be anywhere between 30-60 seconds, and it st
 this is attempted, clearing sucking - so now you can set a timeout of any value, there is still a hard limit which is
 always reached by Windows, If a timeout occurs, or Miranda is exiting then you will get ERROR_TIMEOUT as soon as possible.
 */
-#define NETLIBOPENCONNECTION_V1_SIZE 16 /* old sizeof() is 14 bytes, but there is padding of 2 bytes */
+
 struct NETLIBOPENCONNECTION_tag {
 	int cbSize;
 	const char *szHost;	  //can contain the string representation of an IP
@@ -345,13 +331,16 @@ struct NETLIBOPENCONNECTION_tag {
 	stopped, the remaining timeout value can also be adjusted */
 	int (*waitcallback) (unsigned int * timeout);
 };
+
+#define NETLIBOPENCONNECTION_V1_SIZE offsetof(NETLIBOPENCONNECTION_tag, timeout) /* old sizeof() is 14 bytes, but there is padding of 2 bytes */
+
 //typedef struct NETLIBOPENCONNECTION_tag NETLIBOPENCONNECTION;  //(above for reasons of forward referencing)
 #define MS_NETLIB_OPENCONNECTION	"Netlib/OpenConnection"
 
 //Sets the required information for an HTTP proxy connection
 //wParam = (WPARAM)(HANDLE)hConnection
 //lParam = (LPARAM)(NETLIBHTTPPROXYINFO*)&nlhpi
-//Returns nonzero on success, 0 on failure	( !! this is different to most of the rest of Miranda, but consistent with netlib)
+//Returns nonzero on success, 0 on failure	(!! this is different to most of the rest of Miranda, but consistent with netlib)
 //This function is designed to be called from within pfnHttpGatewayInit
 //See notes below MS_NETLIB_REGISTERUSER.
 //Errors: ERROR_INVALID_PARAMETER
@@ -389,7 +378,7 @@ typedef struct {
 // wParam = (WPARAM)(char*) string to convert
 // lParam = (LPARAM)(SOCKADDR_INET*) numeric IP address structure
 // Returns 0 on success
-#define MS_NETLIB_STARINGTOADDRESS "Netlib/StringToAddress"
+#define MS_NETLIB_STRINGTOADDRESS "Netlib/StringToAddress"
 
 // Converts numerical representation of IP in SOCKADDR_INET into string representation with IP and port
 // IPv4 will be supplied in formats address:port or address
@@ -505,7 +494,7 @@ struct NETLIBHTTPREQUEST_tag {
 //Free the memory used by a NETLIBHTTPREQUEST structure
 //wParam = 0
 //lParam = (LPARAM)(NETLIBHTTPREQUEST*)pnlhr
-//Returns nonzero on success, 0 on failure	( !! this is different to most of the rest of Miranda, but consistent with netlib)
+//Returns nonzero on success, 0 on failure	(!! this is different to most of the rest of Miranda, but consistent with netlib)
 //This should only be called on structures returned by
 //MS_NETLIB_RECVHTTPHEADERS or MS_NETLIB_HTTPTRANSACTION. Calling it on an
 //arbitrary structure will have disastrous results.
@@ -632,7 +621,7 @@ typedef struct {
 
 //Shutdown connection
 //wParam = (WPARAM)(HANDLE)hConnection
-//lParam = (LPARAM)0
+//lParam = 0
 //Returns 0
 #define MS_NETLIB_SHUTDOWN	   "Netlib/Shutdown"
 __forceinline void Netlib_Shutdown(HANDLE h) {CallService(MS_NETLIB_SHUTDOWN, (WPARAM)h, 0);}
@@ -680,7 +669,7 @@ typedef struct {
 //Add a message to the log (if it's running)
 //wParam = (WPARAM)(HANDLE)hUser
 //lParam = (LPARAM)(const char *)szMessage
-//Returns nonzero on success, 0 on failure	( !! this is different to most of the rest of Miranda, but consistent with netlib)
+//Returns nonzero on success, 0 on failure	(!! this is different to most of the rest of Miranda, but consistent with netlib)
 //Do not include a final line ending in szMessage.
 //Errors: ERROR_INVALID_PARAMETER
 #define MS_NETLIB_LOG       "Netlib/Log"
@@ -710,44 +699,30 @@ typedef struct
 //here's a handy piece of code to let you log using printf-style specifiers:
 //#include <stdarg.h> and <stdio.h> before including this header in order to
 //use it.
-#if defined va_start && (defined _STDIO_DEFINED || defined _STDIO_H_) && ( !defined NETLIB_NOLOGGING)
+#if defined va_start && (defined _STDIO_DEFINED || defined _STDIO_H_) && (!defined NETLIB_NOLOGGING)
+#pragma warning(disable:4505)
+
 static INT_PTR Netlib_Logf(HANDLE hUser, const char *fmt, ...)
 {
 	va_list va;
+	va_start(va, fmt);
 	char szText[1024];
-
-	__try
-	{
-		va_start(va, fmt);
-		mir_vsnprintf(szText, sizeof(szText), fmt, va);
-		va_end(va);
-		return CallService(MS_NETLIB_LOG, (WPARAM)hUser, (LPARAM)szText);
-	}
-	__except(EXCEPTION_EXECUTE_HANDLER) {}
-	return 0;
+	mir_vsnprintf(szText, sizeof(szText), fmt, va);
+	va_end(va);
+	return CallService(MS_NETLIB_LOG, (WPARAM)hUser, (LPARAM)szText);
 }
 
-#ifdef _UNICODE
-	static INT_PTR Netlib_LogfW(HANDLE hUser, const wchar_t *fmt, ...)
-	{
-		va_list va;
-		wchar_t szText[1024];
+static INT_PTR Netlib_LogfW(HANDLE hUser, const wchar_t *fmt, ...)
+{
+	va_list va;
+	va_start(va, fmt);
+	wchar_t szText[1024];
+	mir_vsnwprintf(szText, SIZEOF(szText), fmt, va);
+	va_end(va);
+	return CallService(MS_NETLIB_LOGW, (WPARAM)hUser, (LPARAM)szText);
+}
 
-		__try
-		{
-			va_start(va, fmt);
-			mir_vsntprintf(szText, sizeof(szText), fmt, va);
-			va_end(va);
-			return CallService(MS_NETLIB_LOGW, (WPARAM)hUser, (LPARAM)szText);
-		}
-		__except(EXCEPTION_EXECUTE_HANDLER) {}
-		return 0;
-	}
-	#define Netlib_LogfT Netlib_LogfW
-#else
-	#define Netlib_LogfT Netlib_Logf
-#endif
-
+#define Netlib_LogfT Netlib_LogfW
 #endif //defined va_start
 
 /////////////////////////////////////////////////////////////////////////////////////////

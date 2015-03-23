@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -52,9 +53,8 @@ INT_PTR NetlibPacketRecverGetMore(WPARAM wParam, LPARAM lParam)
 {
 	struct NetlibPacketRecver *nlpr = (struct NetlibPacketRecver*)wParam;
 	NETLIBPACKETRECVER *nlprParam = (NETLIBPACKETRECVER*)lParam;
-	INT_PTR recvResult;
 
-	if (GetNetlibHandleType(nlpr) != NLH_PACKETRECVER || nlprParam == NULL || nlprParam->cbSize != sizeof(NETLIBPACKETRECVER) || nlprParam->bytesUsed>nlpr->packetRecver.bytesAvailable) {
+	if (GetNetlibHandleType(nlpr) != NLH_PACKETRECVER || nlprParam == NULL || nlprParam->cbSize != sizeof(NETLIBPACKETRECVER) || nlprParam->bytesUsed > nlpr->packetRecver.bytesAvailable) {
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return SOCKET_ERROR;
 	}
@@ -70,17 +70,20 @@ INT_PTR NetlibPacketRecverGetMore(WPARAM wParam, LPARAM lParam)
 		}
 	}
 	else {
-		MoveMemory(nlpr->packetRecver.buffer, nlpr->packetRecver.buffer+nlprParam->bytesUsed, nlpr->packetRecver.bytesAvailable-nlprParam->bytesUsed);
-		nlpr->packetRecver.bytesAvailable-=nlprParam->bytesUsed;
+		memmove(nlpr->packetRecver.buffer, nlpr->packetRecver.buffer + nlprParam->bytesUsed, nlpr->packetRecver.bytesAvailable - nlprParam->bytesUsed);
+		nlpr->packetRecver.bytesAvailable -= nlprParam->bytesUsed;
 	}
+	
 	if (nlprParam->dwTimeout != INFINITE) {
-		if ( !si.pending(nlpr->nlc->hSsl) && WaitUntilReadable(nlpr->nlc->s, nlprParam->dwTimeout) <= 0) {
+		if (!si.pending(nlpr->nlc->hSsl) && WaitUntilReadable(nlpr->nlc->s, nlprParam->dwTimeout) <= 0) {
 			*nlprParam = nlpr->packetRecver;
 			return SOCKET_ERROR;
 		}
 	}
-	recvResult = NLRecv(nlpr->nlc, (char*)nlpr->packetRecver.buffer+nlpr->packetRecver.bytesAvailable, nlpr->packetRecver.bufferSize-nlpr->packetRecver.bytesAvailable, 0);
-	if (recvResult>0) nlpr->packetRecver.bytesAvailable+=recvResult;
+	
+	INT_PTR recvResult = NLRecv(nlpr->nlc, (char*)nlpr->packetRecver.buffer + nlpr->packetRecver.bytesAvailable, nlpr->packetRecver.bufferSize - nlpr->packetRecver.bytesAvailable, 0);
+	if (recvResult > 0)
+		nlpr->packetRecver.bytesAvailable += recvResult;
 	*nlprParam = nlpr->packetRecver;
 	return recvResult;
 }

@@ -24,8 +24,6 @@ HINSTANCE g_hInst;
 HANDLE    hEvent1;
 HGENMENU  hContactMenuItem;
 
-char* metaProtoName;
-
 int hLangpack;
 
 static const PLUGININFOEX pluginInfoEx =
@@ -48,22 +46,17 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD /* mira
 	return (PLUGININFOEX*)&pluginInfoEx;
 }
 
-static IconItem icon = { LPGEN("Button Smiley"), "SmileyAdd_ButtonSmiley", IDI_SMILINGICON };
+static IconItem icon = { LPGEN("Button smiley"), "SmileyAdd_ButtonSmiley", IDI_SMILINGICON };
 
 static int ModulesLoaded(WPARAM, LPARAM)
 {
-	Icon_Register(g_hInst, "SmileyAdd", &icon, 1);
-
-	INT_PTR temp = CallService(MS_MC_GETPROTOCOLNAME, 0, 0);
-	metaProtoName = mir_strdup(temp == CALLSERVICE_NOTFOUND ? NULL : (char*)temp);
-
 	CLISTMENUITEM mi = { sizeof(mi) };
 	mi.flags = CMIF_ROOTPOPUP;
 	mi.popupPosition = 2000070050;
 	mi.position = 2000070050;
 	mi.icolibItem = icon.hIcolib;
 	mi.pszPopupName = (char*)-1;
-	mi.pszName = LPGEN("Assign Smiley Category");
+	mi.pszName = LPGEN("Assign smiley category");
 	hContactMenuItem = Menu_AddContactMenuItem(&mi);
 
 	DownloadInit();
@@ -95,6 +88,8 @@ extern "C" __declspec(dllexport) int Load(void)
 
 	InitImageCache();
 
+	Icon_Register(g_hInst, "SmileyAdd", &icon, 1);
+
 	g_SmileyCategories.SetSmileyPackStore(&g_SmileyPacks);
 
 	opt.Load();
@@ -112,18 +107,14 @@ extern "C" __declspec(dllexport) int Load(void)
 
 	//create the smiley services
 	CreateServiceFunction(MS_SMILEYADD_REPLACESMILEYS, ReplaceSmileysCommand);
-	CreateServiceFunction(MS_SMILEYADD_GETSMILEYICON, GetSmileyIconCommand);
 	CreateServiceFunction(MS_SMILEYADD_SHOWSELECTION, ShowSmileySelectionCommand);
-	CreateServiceFunction(MS_SMILEYADD_GETINFO, GetInfoCommand);
 	CreateServiceFunction(MS_SMILEYADD_GETINFO2, GetInfoCommand2);
-	CreateServiceFunction(MS_SMILEYADD_PARSE, ParseText);
 	CreateServiceFunction(MS_SMILEYADD_REGISTERCATEGORY, RegisterPack);
 	CreateServiceFunction(MS_SMILEYADD_BATCHPARSE, ParseTextBatch);
 	CreateServiceFunction(MS_SMILEYADD_BATCHFREE, FreeTextBatch);
 	CreateServiceFunction(MS_SMILEYADD_CUSTOMCATMENU, CustomCatMenu);
 	CreateServiceFunction(MS_SMILEYADD_RELOAD, ReloadPack);
 	CreateServiceFunction(MS_SMILEYADD_LOADCONTACTSMILEYS, LoadContactSmileys);
-	CreateServiceFunction(MS_SMILEYADD_PARSEW, ParseTextW);
 	return 0;
 }
 
@@ -135,7 +126,6 @@ extern "C" __declspec(dllexport) int Unload(void)
 
 	RichEditData_Destroy();
 	DestroyAniSmileys();
-	DestroySmileyBase();
 
 	g_SmileyCategories.ClearAll();
 	g_SmileyPackCStore.ClearAndFreeAll();
@@ -144,9 +134,6 @@ extern "C" __declspec(dllexport) int Unload(void)
 	DestroyGdiPlus();
 
 	DownloadClose();
-	menuHandleArray.destroy();
-
-	mir_free(metaProtoName);
 	return 0;
 }
 

@@ -19,9 +19,6 @@
 
 #include "variables.h"
 
-BOOL (WINAPI *pfnEnableThemeDialogTexture)(HANDLE, DWORD) = 0;
-static BOOL bWarningShown = FALSE; // unicode on ansi warning
-
 /* some handles */
 static HANDLE
 	hFormatStringService,
@@ -39,8 +36,8 @@ HCURSOR hCurSplitNS;
 
 struct ParseOptions gParseOpts;
 
-TCHAR *getArguments(TCHAR *string, TCHAR ***aargv, int *aargc) {
-
+TCHAR* getArguments(TCHAR *string, TCHAR ***aargv, int *aargc)
+{
 	BOOL bDontParse, bNewArg, bDone;
 	TCHAR *cur, *scur, **argv;
 	int i, argc, brackets;
@@ -72,14 +69,14 @@ TCHAR *getArguments(TCHAR *string, TCHAR ***aargv, int *aargc) {
 
 		case '(':
 			if (!bDontParse)
-				brackets += 1;
+				brackets++;
 			break;
 
 		case ')':
 			if ((brackets == 0) && (!bDontParse))
 				bDone = bNewArg = TRUE;
 			else if ((brackets > 0) && (!bDontParse))
-				brackets -= 1;
+				brackets--;
 			break;
 		}
 		if (bNewArg) {
@@ -89,15 +86,17 @@ TCHAR *getArguments(TCHAR *string, TCHAR ***aargv, int *aargc) {
 
 			if (cur > scur) {
 				argv[argc] = (TCHAR*)mir_alloc((cur-scur+2)*sizeof(TCHAR));
-				if (argv[argc] == NULL)
+				if (argv[argc] == NULL) {
+					mir_free(argv);
 					return NULL;
+				}
 
 				memset(argv[argc], '\0', (cur-(scur+1)+1)*sizeof(TCHAR));
 				_tcsncpy(argv[argc], scur+1, cur-(scur+1));
 			}
 			else argv[argc] = mir_tstrdup(_T(""));
 
-			argc += 1;
+			argc++;
 			bNewArg = FALSE;
 			scur = cur;
 		}
@@ -162,44 +161,39 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 	pargv = argv = NULL;
 	//fi->pCount = 0;
 	memcpy(&afi, fi, sizeof(afi));
-	for (pos = 0;pos < _tcslen(string);pos++) {
+	for (pos = 0; pos < _tcslen(string); pos++) {
 		// string may move in memory, iterate by remembering the position in the string
 		cur = string+pos;
 		// mir_free memory from last iteration, this way we can bail out at any time in the loop
-		if (parsedToken != NULL)
-			mir_free(parsedToken);
+		mir_free(parsedToken);
 
-		for (i=0;i<argc;i++)
-			if (argv[i] != NULL)
-				mir_free(argv[i]);
-
-		if (argv != NULL)
-			mir_free(argv);
-
+		for (i = 0; i < argc; i ++)
+			mir_free(argv[i]);
+		mir_free(argv);
 		argc = 0;
 		tcur = scur = token = parsedToken = NULL;
 		pargv = argv = NULL;
 		// new round
 		if (*cur == DONTPARSE_CHAR) {
-			MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
+			memmove(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
 			if (*cur == DONTPARSE_CHAR)
 				continue;
 
 			while ( (*cur != DONTPARSE_CHAR) && (*cur != 0))
 				cur++;
 
-			MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
+			memmove(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
 			pos = cur-string-1;
 			continue;
 		}
 		// remove end of lines
 		else if ((!_tcsncmp(cur, _T("\r\n"), 2)) && (gParseOpts.bStripEOL)) {
-			MoveMemory(cur, cur+2, (_tcslen(cur+2)+1)*sizeof(TCHAR));
+			memmove(cur, cur+2, (_tcslen(cur+2)+1)*sizeof(TCHAR));
 			pos = cur-string-1;
 			continue;
 		}
 		else if ((*cur == '\n' && gParseOpts.bStripEOL) || (*cur == ' ' && gParseOpts.bStripWS)) {
-			MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
+			memmove(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
 			pos = cur - string - 1;
 			continue;
 		}
@@ -214,13 +208,13 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 				string = (TCHAR*)mir_realloc(string, (_tcslen(string)+1)*sizeof(TCHAR));
 				continue;
 			}
-			MoveMemory(scur, cur, (_tcslen(cur)+1)*sizeof(TCHAR));
+			memmove(scur, cur, (_tcslen(cur)+1)*sizeof(TCHAR));
 			pos = scur-string-1;
 			continue;
 		}
 		else if ((*cur != FIELD_CHAR) && (*cur != FUNC_CHAR) && (*cur != FUNC_ONCE_CHAR)) {
 			if (gParseOpts.bStripAll) {
-				MoveMemory(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
+				memmove(cur, cur+1, (_tcslen(cur+1)+1)*sizeof(TCHAR));
 				pos = cur - string - 1;
 			}
 			continue;
@@ -230,12 +224,12 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 			tcur++;
 
 		if (tcur == cur) {
-			fi->eCount += 1;
+			fi->eCount++;
 			continue;
 		}
 		token = (TCHAR*)mir_alloc((tcur-scur+1)*sizeof(TCHAR));
 		if (token == NULL) {
-			fi->eCount += 1;
+			fi->eCount++;
 			return NULL;
 		}
 		memset(token, '\0', (tcur-scur+1)*sizeof(TCHAR));
@@ -245,7 +239,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
  		tr = NULL;
  		if (*cur==FIELD_CHAR) {
  			for(i = 0; i < fi->cbTemporaryVarsSize; i += 2) {
- 				if (lstrcmp(fi->tszaTemporaryVars[i], token) == 0) {
+ 				if (mir_tstrcmp(fi->tszaTemporaryVars[i], token) == 0) {
  					tmpVarPos = i;
  					break;
  				}
@@ -255,7 +249,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
  			tr = searchRegister(token, (*cur==FIELD_CHAR)?TRF_FIELD:TRF_FUNCTION);
  		mir_free(token);
  		if (tmpVarPos < 0 && tr == NULL) {
-			fi->eCount += 1;
+			fi->eCount++;
 			// token not found, continue
 			continue;
 		}
@@ -264,7 +258,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
  			size_t len = _tcslen(tr != NULL ? tr->tszTokenString : fi->tszaTemporaryVars[tmpVarPos]);
 			cur++;
  			if (*(cur + len) != FIELD_CHAR) { // the next char after the token should be %
-				fi->eCount += 1;
+				fi->eCount++;
 				continue;
 			}
  			cur += len+1;
@@ -275,7 +269,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 			cur += _tcslen(tr->tszTokenString)+1;
 			argcur = getArguments(cur, &argv, &argc);
 			if ((argcur == cur) || (argcur == NULL)) {
-				fi->eCount += 1;
+				fi->eCount++;
 				// error getting arguments
 				continue;
 			}
@@ -300,14 +294,14 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
  		if (tr != NULL) {
  			pargv = ( TCHAR** )mir_alloc((argc+1)*sizeof(TCHAR*));
  			if (pargv == NULL) {
- 				fi->eCount += 1;
+ 				fi->eCount++;
  				return NULL;
  			}
  			for (i=0;i<argc;i++)
  				pargv[i+1] = argv[i];
 
  			pargv[0] = tr->tszTokenString;
- 			ZeroMemory(&ai, sizeof(ai));
+ 			memset(&ai, 0, sizeof(ai));
  			ai.cbSize = sizeof(ai);
  			ai.argc = argc+1;
  			ai.targv = pargv;
@@ -321,7 +315,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
  		else parsedToken = fi->tszaTemporaryVars[tmpVarPos + 1];
 
 		if (parsedToken == NULL) {
-			fi->eCount += 1;
+			fi->eCount++;
 			continue;
 		}
 
@@ -340,7 +334,7 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 					fi->err = EMEM;
 					return NULL;
 				}
-				CopyMemory(tcur+1, tcur, strlen(tcur)+1);
+				memcpy(tcur+1, tcur, strlen(tcur)+1);
 				tcur++;
 			}
 		}*/
@@ -354,14 +348,14 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 			// string needs more memory
 			string = (TCHAR*)mir_realloc(string, (initStrLen-tokenLen+parsedTokenLen+1)*sizeof(TCHAR));
 			if (string == NULL) {
-				fi->eCount += 1;
+				fi->eCount++;
 				return NULL;
 			}
 		}
 		scur = string+scurPos;
 		cur = string+curPos;
-		MoveMemory(scur + parsedTokenLen, cur, (_tcslen(cur)+1)*sizeof(TCHAR));
-		CopyMemory(scur, parsedToken, parsedTokenLen*sizeof(TCHAR));
+		memmove(scur + parsedTokenLen, cur, (_tcslen(cur)+1)*sizeof(TCHAR));
+		memcpy(scur, parsedToken, parsedTokenLen*sizeof(TCHAR));
 		{
 			size_t len = _tcslen(string);
 			string = (TCHAR*)mir_realloc(string, (len+1)*sizeof(TCHAR));
@@ -377,12 +371,9 @@ static TCHAR* replaceDynVars(TCHAR* szTemplate, FORMATINFO* fi)
 	if (parsedToken != NULL)
 		mir_free(parsedToken);
 
-	for ( i=0; i < argc; i++ )
-		if (argv[i] != NULL)
-			mir_free(argv[i]);
-
-	if (argv != NULL)
-		mir_free(argv);
+	for (i = 0; i < argc; i ++)
+		mir_free(argv[i]);
+	mir_free(argv);
 
 	return (TCHAR*)mir_realloc(string, (_tcslen(string)+1)*sizeof(TCHAR));
 }
@@ -396,23 +387,22 @@ static INT_PTR formatStringService(WPARAM wParam, LPARAM lParam)
  	int i;
  	BOOL copied;
 	FORMATINFO *fi, tempFi;
-	FORMATINFOV1 *fiv1;
 	TCHAR *tszFormat, *orgFormat, *tszSource, *orgSource, *tRes;
 
  	if (((FORMATINFO *)wParam)->cbSize >= sizeof(FORMATINFO)) {
-		ZeroMemory(&tempFi, sizeof(FORMATINFO));
-		CopyMemory(&tempFi, (FORMATINFO *)wParam, sizeof(FORMATINFO));
+		memset(&tempFi, 0, sizeof(FORMATINFO));
+		memcpy(&tempFi, (FORMATINFO *)wParam, sizeof(FORMATINFO));
 		fi = &tempFi;
 	}
  	else if (((FORMATINFO *)wParam)->cbSize == FORMATINFOV2_SIZE) {
- 		ZeroMemory(&tempFi, sizeof(FORMATINFO));
- 		CopyMemory(&tempFi, (FORMATINFO *)wParam, FORMATINFOV2_SIZE);
+ 		memset(&tempFi, 0, sizeof(FORMATINFO));
+ 		memcpy(&tempFi, (FORMATINFO *)wParam, FORMATINFOV2_SIZE);
  		fi = &tempFi;
  	}
 	else {
 		// old struct, must be ANSI
-		fiv1 = (FORMATINFOV1 *)wParam;
-		ZeroMemory(&tempFi, sizeof(FORMATINFO));
+		FORMATINFOV1 *fiv1 = (FORMATINFOV1 *)wParam;
+		memset(&tempFi, 0, sizeof(FORMATINFO));
 		tempFi.cbSize = sizeof(FORMATINFO);
 		tempFi.hContact = fiv1->hContact;
 		tempFi.szFormat = fiv1->szFormat;
@@ -469,16 +459,17 @@ static INT_PTR formatStringService(WPARAM wParam, LPARAM lParam)
 
 TCHAR *formatString(FORMATINFO *fi)
 {
+	if (fi == NULL)
+		return NULL;
 	/* the service to format a given string */
-	if (fi->eCount + fi->pCount > 5000) {
-		fi->eCount += 1;
-		fi->pCount += 1;
-		log_debugA("Variables: Overflow protection; %d parses", fi->eCount + fi->pCount);
+	if ((fi->eCount + fi->pCount) > 5000) {
+		fi->eCount++;
+		fi->pCount++;
+		log_debugA("Variables: Overflow protection; %d parses", (fi->eCount + fi->pCount));
 		return NULL;
 	}
-	if ((fi == NULL) || (fi->tszFormat == NULL))
+	if (fi->tszFormat == NULL)
 		return NULL;
-
 	ptrT string( mir_tstrdup(fi->tszFormat));
 	if (string == NULL)
 		return NULL;
@@ -491,7 +482,7 @@ int setParseOptions(struct ParseOptions *po)
 	if (po == NULL)
 		po = &gParseOpts;
 
-	ZeroMemory(po, sizeof(struct ParseOptions));
+	memset(po, 0, sizeof(struct ParseOptions));
 	if (!db_get_b(NULL, MODULENAME, SETTING_STRIPALL, 0)) {
 		po->bStripEOL = db_get_b(NULL, MODULENAME, SETTING_STRIPCRLF, 0);
 		po->bStripWS = db_get_b(NULL, MODULENAME, SETTING_STRIPWS, 0);
@@ -514,12 +505,6 @@ int LoadVarModule()
 	// help dialog
 	hCurSplitNS = LoadCursor(NULL, IDC_SIZENS);
 
-	if(IsWinVerXPPlus()) {
-		HMODULE hUxTheme = GetModuleHandle(_T("uxtheme.dll"));
-		if (hUxTheme)
-			pfnEnableThemeDialogTexture = (BOOL (WINAPI *)(HANDLE, DWORD))GetProcAddress(hUxTheme, "EnableThemeDialogTexture");
-	}
-
 	hShowHelpService = CreateServiceFunction(MS_VARS_SHOWHELP, showHelpService);
 	hShowHelpExService = CreateServiceFunction(MS_VARS_SHOWHELPEX, showHelpExService);
 
@@ -540,7 +525,6 @@ int LoadVarModule()
 	registerVariablesTokens();
 	registerRegExpTokens();
 	registerInetTokens();
-	registerXsltTokens();
 	registerAliasTokens();
 	registerMetaContactsTokens();
 
@@ -560,8 +544,8 @@ int LoadVarModule()
 	return 0;
 }
 
-int UnloadVarModule() {
-
+int UnloadVarModule()
+{
 	UnhookEvent(hOptionsHook);
 	if (hIconsChangedHook != NULL)
 		UnhookEvent(hIconsChangedHook);
@@ -574,7 +558,6 @@ int UnloadVarModule() {
 	DestroyServiceFunction(hGetIconService);
 	DestroyCursor(hCurSplitNS);
 	deinitContactModule();
-	deInitExternal();
 	deinitTokenRegister();
 	unregisterAliasTokens();
 	unregisterVariablesTokens();

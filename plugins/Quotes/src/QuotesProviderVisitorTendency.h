@@ -4,10 +4,10 @@
 class CQuotesProviderVisitorTendency : public CQuotesProviderVisitor
 {
 public:
-	CQuotesProviderVisitorTendency(HANDLE hContact,TCHAR chr);
-	
-	bool IsValid()const{return m_bValid;}
-	double GetResult()const{return m_dResult;}
+	CQuotesProviderVisitorTendency(MCONTACT hContact, TCHAR chr);
+
+	bool IsValid()const{ return m_bValid; }
+	double GetResult()const{ return m_dResult; }
 
 private:
 	virtual void Visit(const CQuotesProviderBase& rProvider);
@@ -18,7 +18,7 @@ private:
 	void GetValue(LPCSTR pszDbKeyName);
 
 private:
-	HANDLE m_hContact;
+	MCONTACT m_hContact;
 	TCHAR m_chr;
 	bool m_bValid;
 	double m_dResult;

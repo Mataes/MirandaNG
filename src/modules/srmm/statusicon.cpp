@@ -2,7 +2,7 @@
 
 Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright (C) 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -27,23 +27,30 @@ struct StatusIconChild : public MZeroedObject
 {
 	~StatusIconChild()
 	{
-		if (hIcon)
-			DestroyIcon(hIcon);
-		if (hIconDisabled)
-			DestroyIcon(hIconDisabled);
+		SafeDestroyIcon(hIcon);
+		SafeDestroyIcon(hIconDisabled);
 		mir_free(tszTooltip);
 	}
 
-	HANDLE hContact;
+	MCONTACT hContact;
 	HICON  hIcon, hIconDisabled;
 	int    flags;
 	TCHAR *tszTooltip;
+
+	void SafeDestroyIcon(HICON hIcon)
+	{
+		if (hIcon == NULL)
+			return;
+
+		if (!IcoLib_IsManaged(hIcon))
+			::DestroyIcon(hIcon);
+	}
 };
 
 struct StatusIconMain : public MZeroedObject
 {
 	StatusIconMain() :
-		arChildren(3, HandleKeySortT)
+		arChildren(3, NumericKeySortT)
 		{}
 
 	~StatusIconMain()
@@ -54,7 +61,7 @@ struct StatusIconMain : public MZeroedObject
 
 	StatusIconData sid;
 
-	int hPangpack;
+	int hLangpack;
 	OBJLIST<StatusIconChild> arChildren;
 };
 
@@ -71,7 +78,7 @@ static OBJLIST<StatusIconMain> arIcons(3, CompareIcons);
 
 static HANDLE hHookIconsChanged;
 
-INT_PTR ModifyStatusIcon(WPARAM wParam, LPARAM lParam)
+INT_PTR ModifyStatusIcon(WPARAM hContact, LPARAM lParam)
 {
 	StatusIconData *sid = (StatusIconData *)lParam;
 	if (sid == NULL || sid->cbSize != sizeof(StatusIconData))
@@ -81,13 +88,11 @@ INT_PTR ModifyStatusIcon(WPARAM wParam, LPARAM lParam)
 	if (p == NULL)
 		return 1;
 
-	HANDLE hContact = (HANDLE)wParam;
 	if (hContact == NULL) {
 		mir_free(p->sid.szModule);
+		mir_free(p->sid.szTooltip);
 		memcpy(&p->sid, sid, sizeof(p->sid));
 		p->sid.szModule = mir_strdup(sid->szModule);
-
-		mir_free(p->sid.szTooltip);
 		p->sid.tszTooltip = (sid->flags & MBF_UNICODE) ? mir_u2t(sid->wszTooltip) : mir_a2t(sid->szTooltip);
 
 		NotifyEventHooks(hHookIconsChanged, NULL, (LPARAM)p);
@@ -100,10 +105,7 @@ INT_PTR ModifyStatusIcon(WPARAM wParam, LPARAM lParam)
 		pc->hContact = hContact;
 		p->arChildren.insert(pc);
 	}
-	else {
-		if (pc->hIcon)
-			DestroyIcon(pc->hIcon);
-	}
+	else pc->SafeDestroyIcon(pc->hIcon);
 
 	pc->flags = sid->flags;
 	pc->hIcon = sid->hIcon;
@@ -112,7 +114,7 @@ INT_PTR ModifyStatusIcon(WPARAM wParam, LPARAM lParam)
 	mir_free(pc->tszTooltip);
 	pc->tszTooltip = (sid->flags & MBF_UNICODE) ? mir_u2t(sid->wszTooltip) : mir_a2t(sid->szTooltip);
 
-	NotifyEventHooks(hHookIconsChanged, wParam, (LPARAM)p);
+	NotifyEventHooks(hHookIconsChanged, hContact, (LPARAM)p);
 	return 0;
 }
 
@@ -128,7 +130,7 @@ static INT_PTR AddStatusIcon(WPARAM wParam, LPARAM lParam)
 
 	p = new StatusIconMain;
 	memcpy(&p->sid, sid, sizeof(p->sid));
-	p->hPangpack = (int)wParam;
+	p->hLangpack = (int)wParam;
 	p->sid.szModule = mir_strdup(sid->szModule);
 	if (sid->flags & MBF_UNICODE)
 		p->sid.tszTooltip = mir_u2t(sid->wszTooltip);
@@ -180,7 +182,7 @@ static INT_PTR GetNthIcon(WPARAM wParam, LPARAM lParam)
 				if (pc->tszTooltip) res.tszTooltip = pc->tszTooltip;
 				res.flags = pc->flags;
 			}
-			res.tszTooltip = TranslateTH(p.hPangpack, res.tszTooltip);
+			res.tszTooltip = TranslateTH(p.hLangpack, res.tszTooltip);
 			return (INT_PTR)&res;
 		}
 		nVis++;
@@ -195,7 +197,7 @@ void KillModuleSrmmIcons(int hLangpack)
 {
 	for (int i=arIcons.getCount()-1; i >= 0; i--) {
 		StatusIconMain &p = arIcons[i];
-		if (p.hPangpack == hLangpack)
+		if (p.hLangpack == hLangpack)
 			arIcons.remove(i);
 	}
 }

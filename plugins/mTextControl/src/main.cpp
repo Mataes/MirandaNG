@@ -2,7 +2,7 @@
 Miranda Text Control - Plugin for Miranda IM
 
 Copyright	© 2005 Victor Pavlychko (nullbie@gmail.com),
-			© 2010 Merlin_de
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -25,7 +25,9 @@ HINSTANCE hInst = 0;
 int hLangpack;
 
 HMODULE hMsfteditDll = 0;
-HRESULT	(WINAPI *MyCreateTextServices)(IUnknown *punkOuter, ITextHost *pITextHost, IUnknown **ppUnk);
+
+typedef HRESULT(WINAPI *pfnMyCreateTextServices)(IUnknown *punkOuter, ITextHost *pITextHost, IUnknown **ppUnk);
+pfnMyCreateTextServices MyCreateTextServices = NULL;
 
 PLUGININFOEX pluginInfoEx =
 {
@@ -39,19 +41,16 @@ PLUGININFOEX pluginInfoEx =
 	__AUTHORWEB,
 	UNICODE_AWARE,
 	// {69B9443B-DC58-4876-AD39-E3F418A133C5}
-	{0x69b9443b, 0xdc58, 0x4876, {0xad, 0x39, 0xe3, 0xf4, 0x18, 0xa1, 0x33, 0xc5}}
+	{ 0x69b9443b, 0xdc58, 0x4876, { 0xad, 0x39, 0xe3, 0xf4, 0x18, 0xa1, 0x33, 0xc5 } }
 };
 
-extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+extern "C" BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD, LPVOID)
 {
 	hInst = hinstDLL;
 	return TRUE;
 }
 
-static HANDLE hModulesLoaded = 0;
-static int ModulesLoaded(WPARAM wParam,LPARAM lParam);
-
-extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD mirandaVersion)
+extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD)
 {
 	return &pluginInfoEx;
 }
@@ -60,48 +59,25 @@ extern "C" __declspec(dllexport) int Load(void)
 {
 	mir_getLP(&pluginInfoEx);
 
-	//6.0A SDK is missing RichEd20.lib for x64
-	//http://connect.microsoft.com/VisualStudio/feedback/details/551071/the-6-0a-sdk-is-missing-riched20-lib-for-x64
 	MyCreateTextServices = 0;
 	hMsfteditDll = LoadLibrary(_T("msftedit.dll"));
-	if (hMsfteditDll) {
-		MyCreateTextServices = (HRESULT (WINAPI *)(
-			IUnknown *punkOuter,
-			ITextHost *pITextHost,
-			IUnknown **ppUnk))
-			GetProcAddress(hMsfteditDll, "CreateTextServices");
-	}
+	if (hMsfteditDll)
+		MyCreateTextServices = (pfnMyCreateTextServices)GetProcAddress(hMsfteditDll, "CreateTextServices");
 
-//	LoadFancy();
 	LoadEmfCache();
 	LoadRichEdit();
 	LoadTextUsers();
 	LoadServices();
-	//LoadOptions();
 
 	MTextControl_RegisterClass();
-	hModulesLoaded = HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
-	return 0;
-}
-
-static int ModulesLoaded(WPARAM wParam,LPARAM lParam)
-{
-//	char fn[MAX_PATH+1];
-//	GetModuleFileName(hInst, fn, MAX_PATH);
-//	InitFancy();
-//	InitIcons(icons, fn, iconCount);
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	UnhookEvent(hModulesLoaded);
-//	UnloadOptions();
-	UnloadServices();
 	UnloadTextUsers();
 	UnloadRichEdit();
 	UnloadEmfCache();
-//	UnloadFancy();
 	FreeLibrary(hMsfteditDll);
 	return 0;
 }

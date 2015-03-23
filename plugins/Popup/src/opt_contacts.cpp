@@ -23,22 +23,35 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "headers.h"
 
-static void sttResetListOptions(HWND hwndList);
-static void sttSetAllContactIcons(HWND hwndList);
+static void sttResetListOptions(HWND hwndList)
+{
+	SendMessage(hwndList, CLM_SETHIDEEMPTYGROUPS, 1, 0);
+}
 
-INT_PTR CALLBACK DlgProcContactOpts(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+static void sttSetAllContactIcons(HWND hwndList)
+{
+	for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+		HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_FINDCONTACT, hContact, 0);
+		DWORD dwMode = db_get_b(hContact, MODULNAME, "ShowMode", 0);
+		for (int i = 0; i < 4 /*SIZEOF(sttIcons)*/; ++i)
+			// hIml element [0]    = SKINICON_OTHER_SMALLDOT
+			// hIml element [1..5] = IcoLib_GetIcon(....)   ~ old sttIcons
+			SendMessage(hwndList, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(i, ((int)dwMode == i) ? i + 1 : 0));
+	}
+}
+
+INT_PTR CALLBACK DlgProcContactOpts(HWND hwnd, UINT msg, WPARAM, LPARAM lParam)
 {
 	switch (msg) {
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hwnd);
 
-		SendMessage(GetDlgItem(hwnd, IDC_ICO_AUTO),			STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_DEF,0), 0);
-		SendMessage(GetDlgItem(hwnd, IDC_ICO_FAVORITE),		STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_FAV,0), 0);
-		SendMessage(GetDlgItem(hwnd, IDC_ICO_FULLSCREEN),	STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_FULLSCREEN,0), 0);
-		SendMessage(GetDlgItem(hwnd, IDC_ICO_BLOCK),		STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_BLOCK,0), 0);
+		SendDlgItemMessage(hwnd, IDC_ICO_AUTO,		STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_DEF,0), 0);
+		SendDlgItemMessage(hwnd, IDC_ICO_FAVORITE,	STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_FAV,0), 0);
+		SendDlgItemMessage(hwnd, IDC_ICO_FULLSCREEN,	STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_FULLSCREEN,0), 0);
+		SendDlgItemMessage(hwnd, IDC_ICO_BLOCK,		STM_SETICON, (WPARAM)IcoLib_GetIcon(ICO_OPT_BLOCK,0), 0);
 		{
-			HIMAGELIST hIml = ImageList_Create(GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),
-				(IsWinVerXPPlus()?ILC_COLOR32:ILC_COLOR16)|ILC_MASK,5,5);
+			HIMAGELIST hIml = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), ILC_COLOR32 | ILC_MASK, 5, 5);
 			ImageList_AddIcon(hIml, LoadSkinnedIcon(SKINICON_OTHER_SMALLDOT));
 			ImageList_AddIcon(hIml, IcoLib_GetIcon(ICO_OPT_DEF,0));
 			ImageList_AddIcon(hIml, IcoLib_GetIcon(ICO_OPT_FAV,0));
@@ -74,8 +87,8 @@ INT_PTR CALLBACK DlgProcContactOpts(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 				int iImage = SendDlgItemMessage(hwnd,IDC_LIST,CLM_GETEXTRAIMAGE,(WPARAM)hItem,MAKELPARAM(nm->iColumn,0));
 				if (iImage != EMPTY_EXTRA_ICON) {
 					for (int i=0; i < 4 /*SIZEOF(sttIcons)*/; ++i)
-						//hIml element [0]    = SKINICON_OTHER_SMALLDOT
-							//hIml element [1..5] = IcoLib_GetIcon(....)   ~ old sttIcons
+						// hIml element [0]    = SKINICON_OTHER_SMALLDOT
+							// hIml element [1..5] = IcoLib_GetIcon(....)   ~ old sttIcons
 								SendDlgItemMessage(hwnd, IDC_LIST, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(i, (i==nm->iColumn)?i+1:0));
 				}
 				SendMessage(GetParent(hwnd), PSM_CHANGED, 0, 0);
@@ -86,8 +99,8 @@ INT_PTR CALLBACK DlgProcContactOpts(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 			switch (((LPNMHDR)lParam)->code) {
 			case PSN_APPLY:
 				HWND hwndList = GetDlgItem(hwnd, IDC_LIST);
-				for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
-					HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+				for (MCONTACT hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
+					HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_FINDCONTACT, hContact, 0);
 					for (int i=0; i < 4 /*SIZEOF(sttIcons)*/; ++i) {
 						if (SendMessage(hwndList,CLM_GETEXTRAIMAGE,(WPARAM)hItem,MAKELPARAM(i,0))) {
 							db_set_b(hContact, MODULNAME, "ShowMode", i);
@@ -102,28 +115,4 @@ INT_PTR CALLBACK DlgProcContactOpts(HWND hwnd, UINT msg, WPARAM wParam, LPARAM l
 	}
 
 	return FALSE;
-}
-
-static void sttResetListOptions(HWND hwndList)
-{
-	SendMessage(hwndList,CLM_SETBKBITMAP,0,(LPARAM)(HBITMAP)NULL);
-	SendMessage(hwndList,CLM_SETBKCOLOR,GetSysColor(COLOR_WINDOW),0);
-	SendMessage(hwndList,CLM_SETGREYOUTFLAGS,0,0);
-	SendMessage(hwndList,CLM_SETLEFTMARGIN,4,0);
-	SendMessage(hwndList,CLM_SETINDENT,20,0);
-	SendMessage(hwndList,CLM_SETHIDEEMPTYGROUPS,1,0);
-	for(int i=0;i<=FONTID_MAX;i++)
-		SendMessage(hwndList,CLM_SETTEXTCOLOR,i,GetSysColor(COLOR_WINDOWTEXT));
-}
-
-static void sttSetAllContactIcons(HWND hwndList)
-{
-	for (HANDLE hContact = db_find_first(); hContact; hContact = db_find_next(hContact)) {
-		HANDLE hItem = (HANDLE)SendMessage(hwndList, CLM_FINDCONTACT, (WPARAM)hContact, 0);
-		DWORD dwMode = db_get_b(hContact, MODULNAME, "ShowMode", 0);
-		for (int i=0; i < 4 /*SIZEOF(sttIcons)*/; ++i)
-			//hIml element [0]    = SKINICON_OTHER_SMALLDOT
-			//hIml element [1..5] = IcoLib_GetIcon(....)   ~ old sttIcons
-			SendMessage(hwndList, CLM_SETEXTRAIMAGE, (WPARAM)hItem, MAKELPARAM(i, (dwMode==i)?i+1:0));
-	}
 }

@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -174,7 +175,7 @@ static void sttOptionsSetupItem(HWND hwndList, int idx, THotkeyItem *item)
 	LVITEM lvi = {0};
 	lvi.iItem = idx;
 
-	if ( !item->rootHotkey) {
+	if (!item->rootHotkey) {
 		lvi.mask = LVIF_TEXT|LVIF_IMAGE;
 		lvi.iSubItem = COL_NAME;
 		lvi.pszText = item->getDescr();
@@ -244,23 +245,24 @@ static int CALLBACK sttOptionsSortList(LPARAM lParam1, LPARAM lParam2, LPARAM lP
 	if (ListView_GetItem((HWND)lParamSort, &lvi))
 		item2 = (THotkeyItem *)lvi.lParam;
 
-	if ( !item1 && !item2)
-		return lstrcmp(title1, title2);
+	if (!item1 && !item2)
+		return mir_tstrcmp(title1, title2);
 
-	if ( !item1) {
-		if (res = lstrcmp(title1, item2->getSection()))
+	if (!item1 && item2) {
+		if (res = mir_tstrcmp(title1, item2->getSection()))
 			return res;
 		return -1;
 	}
 
-	if ( !item2) {
-		if (res = lstrcmp(item1->getSection(), title2))
+	if (!item2 && item1) {
+		if (res = mir_tstrcmp(item1->getSection(), title2))
 			return res;
 		return 1;
 	}
+	/* item1 != NULL && item2 != NULL */
 
-	if (res = lstrcmp(item1->getSection(), item2->getSection())) return res;
-	if (res = lstrcmp(item1->getDescr(), item2->getDescr())) return res;
+	if (res = mir_tstrcmp(item1->getSection(), item2->getSection())) return res;
+	if (res = mir_tstrcmp(item1->getDescr(), item2->getDescr())) return res;
 	if (!item1->rootHotkey && item2->rootHotkey) return -1;
 	if (item1->rootHotkey && !item2->rootHotkey) return 1;
 	return 0;
@@ -313,7 +315,7 @@ static void sttOptionsSaveItem(THotkeyItem *item)
 	char buf[MAXMODULELABELLENGTH];
 
 	if (item->rootHotkey) return;
-	if ( !item->OptChanged) return;
+	if (!item->OptChanged) return;
 
 	item->Hotkey = item->OptHotkey;
 	item->type = item->OptType;
@@ -355,7 +357,7 @@ static void sttBuildHotkeyList(HWND hwndList)
 		if (item->OptDeleted)
 			continue;
 
-		if ( !i || lstrcmp(item->ptszSection, hotkeys[i-1]->ptszSection)) {
+		if (!i || mir_tstrcmp(item->ptszSection, hotkeys[i-1]->ptszSection)) {
 			lvi.mask = LVIF_TEXT|LVIF_PARAM;
 			lvi.iItem = nItems++;
 			lvi.iSubItem = 0;
@@ -411,9 +413,10 @@ static void sttOptionsStartEdit(HWND hwndDlg, HWND hwndHotkey)
 
 static void sttOptionsDrawTextChunk(HDC hdc, TCHAR *text, RECT *rc)
 {
+	DrawText(hdc, text, -1, rc, DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER | DT_WORD_ELLIPSIS);
+
 	SIZE sz;
-	DrawText(hdc, text, lstrlen(text), rc, DT_LEFT|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER|DT_WORD_ELLIPSIS);
-	GetTextExtentPoint32(hdc, text, lstrlen(text), &sz);
+	GetTextExtentPoint32(hdc, text, (int)mir_tstrlen(text), &sz);
 	rc->left += sz.cx;
 }
 
@@ -433,7 +436,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 		HotkeyEditCreate( GetDlgItem(hwndDlg, IDC_HOTKEY));
 		{
-			HIMAGELIST hIml = ImageList_Create(16, 16, ILC_MASK + (IsWinVerXPPlus() ? ILC_COLOR32 : ILC_COLOR16), 3, 1);
+			HIMAGELIST hIml = ImageList_Create(16, 16, ILC_MASK | ILC_COLOR32, 3, 1);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_WINDOWS);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_MIRANDA);
 			ImageList_AddIcon_IconLibLoaded(hIml, SKINICON_OTHER_WINDOW);
@@ -536,7 +539,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 			lvi.mask = LVIF_PARAM;
 			for (lvi.iItem = 0; lvi.iItem < count; ++lvi.iItem) {
 				ListView_GetItem(hwndHotkey, &lvi);
-				if ( !lvi.lParam) continue;
+				if (!lvi.lParam) continue;
 
 				if (((THotkeyItem *)lvi.lParam)->UnregisterHotkey) {
 					ListView_DeleteItem(hwndHotkey, lvi.iItem);
@@ -556,16 +559,15 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 			rc.left += 5;
 
 			HIMAGELIST hIml = ListView_GetImageList(hwndHotkey, LVSIL_SMALL);
-
 			if (lpdis->CtlID == IDC_CANVAS2) {
 				sttOptionsDrawTextChunk(lpdis->hDC, TranslateT("Scope:"), &rc);
 
-				rc.left = prefix + width * 0;
+				rc.left = prefix;
 				ImageList_Draw(hIml, 0, lpdis->hDC, rc.left, (rc.top+rc.bottom-16)/2, ILD_TRANSPARENT);
 				rc.left += 20;
 				sttOptionsDrawTextChunk(lpdis->hDC, TranslateT("System"), &rc);
 
-				rc.left = prefix + width * 1;
+				rc.left = prefix + width;
 				ImageList_Draw(hIml, 1, lpdis->hDC, rc.left, (rc.top+rc.bottom-16)/2, ILD_TRANSPARENT);
 				rc.left += 20;
 				sttOptionsDrawTextChunk(lpdis->hDC, TranslateT("Miranda"), &rc);
@@ -608,7 +610,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 			ShowWindow( GetDlgItem(hwndDlg, IDC_HOTKEY), SW_HIDE);
 			SetFocus(hwndHotkey);
-			if ( !wHotkey || (wHotkey == VK_ESCAPE) || (HIWORD(wParam) != 0))
+			if (!wHotkey || (wHotkey == VK_ESCAPE) || (HIWORD(wParam) != 0))
 				break;
 
 			lvi.mask = LVIF_PARAM;
@@ -636,7 +638,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 			lvi.mask = LVIF_PARAM;
 			ListView_GetItem(hwndList, &lvi);
-			if ( !(item = (THotkeyItem *)lvi.lParam)) return FALSE;
+			if (!(item = (THotkeyItem *)lvi.lParam)) return FALSE;
 
 			if ((pt.x == -1) && (pt.y == -1)) {
 				RECT rc;
@@ -666,7 +668,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 					(UINT_PTR)MI_LOCAL, TranslateT("Miranda scope"));
 			}
 			AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-			if ( !item->rootHotkey)
+			if (!item->rootHotkey)
 				AppendMenu(hMenu, MF_STRING, (UINT_PTR)MI_ADD, TranslateT("Add binding"));
 			else
 				AppendMenu(hMenu, MF_STRING, (UINT_PTR)MI_REMOVE, TranslateT("Remove"));
@@ -774,7 +776,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 						ListView_HitTest(lpnmia->hdr.hwndFrom, &lvhti);
 
 						if (item &&
-							( !item->rootHotkey && (lpnmia->iSubItem == COL_NAME) && ((lvhti.flags & LVHT_ONITEM) == LVHT_ONITEMICON)  ||
+							(!item->rootHotkey && (lpnmia->iSubItem == COL_NAME) && ((lvhti.flags & LVHT_ONITEM) == LVHT_ONITEMICON)  ||
 							item->rootHotkey && (lpnmia->iSubItem == COL_TYPE)) &&
 							((item->OptType == HKT_GLOBAL) || (item->OptType == HKT_LOCAL)))
 						{
@@ -845,7 +847,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 					{
 						LPNMLISTVIEW param = (LPNMLISTVIEW)lParam;
 						THotkeyItem *item = (THotkeyItem *)param->lParam;
-						if ( !initialized || (param->uNewState>>12 == param->uOldState>>12))
+						if (!initialized || (param->uNewState>>12 == param->uOldState>>12))
 							break;
 
 						if (item && !item->rootHotkey) {
@@ -853,7 +855,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 							sttOptionsSetChanged(item);
 							SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 						}
-						else if ( !item) {
+						else if (!item) {
 							TCHAR buf[256];
 							LVITEM lvi = {0};
 							lvi.mask = LVIF_TEXT;
@@ -870,8 +872,8 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 									THotkeyItem *item;
 									ListView_GetItem(lpnmhdr->hwndFrom, &lvi);
 									item = (THotkeyItem *)lvi.lParam;
-									if ( !item) continue;
-									if ( !lstrcmp( item->getSection(), buf)) {
+									if (!item) continue;
+									if (!mir_tstrcmp( item->getSection(), buf)) {
 										ListView_DeleteItem(lpnmhdr->hwndFrom, lvi.iItem);
 										--lvi.iItem;
 										--count;
@@ -886,7 +888,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 									if (item->OptDeleted)
 										continue;
-									if ( lstrcmp(buf, item->getSection()))
+									if ( mir_tstrcmp(buf, item->getSection()))
 										continue;
 
 									lvi.mask = LVIF_PARAM|LVIF_INDENT;
@@ -997,8 +999,7 @@ static INT_PTR CALLBACK sttOptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam,
 
 int HotkeyOptionsInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = {0};
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = hInst;
 	odp.flags = ODPF_BOLDGROUPS;
 	odp.position = -180000000;

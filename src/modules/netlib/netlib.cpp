@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -39,7 +40,7 @@ static int CompareNetlibUser(const NetlibUser* p1, const NetlibUser* p2)
 }
 
 LIST<NetlibUser> netlibUser(5, CompareNetlibUser);
-CRITICAL_SECTION csNetlibUser;
+mir_cs csNetlibUser;
 
 SSL_API si;
 
@@ -50,6 +51,17 @@ void NetlibFreeUserSettingsStruct(NETLIBUSERSETTINGS *settings)
 	mir_free(settings->szProxyAuthPassword);
 	mir_free(settings->szProxyAuthUser);
 	mir_free(settings->szProxyServer);
+}
+
+int GetNetlibHandleType(void *p)
+{
+	__try {
+		return *(int*)p;
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{}
+
+	return NLH_INVALID;
 }
 
 void NetlibInitializeNestedCS(NetlibNestedCriticalSection *nlncs)
@@ -103,37 +115,31 @@ void NetlibLeaveNestedCS(NetlibNestedCriticalSection *nlncs)
 static INT_PTR GetNetlibUserSettingInt(const char *szUserModule, const char *szSetting, int defValue)
 {
 	DBVARIANT dbv;
-	if (db_get(NULL, szUserModule, szSetting, &dbv)
-	   && db_get(NULL, "Netlib", szSetting, &dbv))
+	if (db_get(NULL, szUserModule, szSetting, &dbv) && db_get(NULL, "Netlib", szSetting, &dbv))
 		return defValue;
+
 	if (dbv.type == DBVT_BYTE) return dbv.bVal;
 	if (dbv.type == DBVT_WORD) return dbv.wVal;
 	return dbv.dVal;
 }
 
-static char *GetNetlibUserSettingString(const char *szUserModule, const char *szSetting, int decode)
+static char *GetNetlibUserSettingString(const char *szUserModule, const char *szSetting)
 {
-	DBVARIANT dbv;
-	if (db_get_s(NULL, szUserModule, szSetting, &dbv)
-	   && db_get_s(NULL, "Netlib", szSetting, &dbv)) {
-		return NULL;
-	}
-	else {
-		char *szRet;
-		if (decode) CallService(MS_DB_CRYPT_DECODESTRING, strlen(dbv.pszVal) + 1, (LPARAM)dbv.pszVal);
-		szRet = mir_strdup(dbv.pszVal);
-		db_free(&dbv);
-		if (szRet == NULL) SetLastError(ERROR_OUTOFMEMORY);
-		return szRet;
-	}
+	char *szRet = db_get_sa(NULL, szUserModule, szSetting);
+	if (szRet == NULL)
+		if ((szRet = db_get_sa(NULL, "Netlib", szSetting)) == NULL)
+			return NULL;
+
+	return szRet;
 }
 
 static INT_PTR NetlibRegisterUser(WPARAM, LPARAM lParam)
 {
 	NETLIBUSER *nlu = (NETLIBUSER*)lParam;
-	if (nlu == NULL || nlu->cbSize != sizeof(NETLIBUSER) || nlu->szSettingsModule == NULL
-	   || ( !(nlu->flags&NUF_NOOPTIONS) && nlu->szDescriptiveName == NULL)
-	   || (nlu->flags&NUF_HTTPGATEWAY && (nlu->pfnHttpGatewayInit == NULL))) {
+	if (nlu == NULL || nlu->cbSize != sizeof(NETLIBUSER) || nlu->szSettingsModule == NULL ||
+		 (!(nlu->flags & NUF_NOOPTIONS) && nlu->szDescriptiveName == NULL) ||
+		 (nlu->flags & NUF_HTTPGATEWAY && (nlu->pfnHttpGatewayInit == NULL)))
+	{
 		SetLastError(ERROR_INVALID_PARAMETER);
 		return 0;
 	}
@@ -153,9 +159,9 @@ static INT_PTR NetlibRegisterUser(WPARAM, LPARAM lParam)
 		return 0;
 	}
 
-	if (nlu->szDescriptiveName) {
+	if (nlu->szDescriptiveName)
 		thisUser->user.ptszDescriptiveName = (thisUser->user.flags&NUF_UNICODE ? mir_u2t((WCHAR*)nlu->ptszDescriptiveName) : mir_a2t(nlu->szDescriptiveName));
-	}
+
 	if ((thisUser->user.szSettingsModule = mir_strdup(nlu->szSettingsModule)) == NULL
 	   || (nlu->szDescriptiveName && thisUser->user.ptszDescriptiveName == NULL)
 	   || (nlu->szHttpGatewayUserAgent && (thisUser->user.szHttpGatewayUserAgent = mir_strdup(nlu->szHttpGatewayUserAgent)) == NULL))
@@ -174,20 +180,20 @@ static INT_PTR NetlibRegisterUser(WPARAM, LPARAM lParam)
 	thisUser->settings.proxyType = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLProxyType", PROXYTYPE_SOCKS5);
 	if (thisUser->user.flags&NUF_NOHTTPSOPTION && thisUser->settings.proxyType == PROXYTYPE_HTTPS)
 		thisUser->settings.proxyType = PROXYTYPE_HTTP;
-	if ( !(thisUser->user.flags&(NUF_HTTPCONNS|NUF_HTTPGATEWAY)) && thisUser->settings.proxyType == PROXYTYPE_HTTP) {
+	if (!(thisUser->user.flags&(NUF_HTTPCONNS|NUF_HTTPGATEWAY)) && thisUser->settings.proxyType == PROXYTYPE_HTTP) {
 		thisUser->settings.useProxy = 0;
 		thisUser->settings.proxyType = PROXYTYPE_SOCKS5;
 	}
-	thisUser->settings.szProxyServer = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLProxyServer", 0);
+	thisUser->settings.szProxyServer = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLProxyServer");
 	thisUser->settings.wProxyPort = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLProxyPort", 1080);
 	thisUser->settings.useProxyAuth = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLUseProxyAuth", 0);
-	thisUser->settings.szProxyAuthUser = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLProxyAuthUser", 0);
-	thisUser->settings.szProxyAuthPassword = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLProxyAuthPassword", 1);
+	thisUser->settings.szProxyAuthUser = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLProxyAuthUser");
+	thisUser->settings.szProxyAuthPassword = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLProxyAuthPassword");
 	thisUser->settings.dnsThroughProxy = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLDnsThroughProxy", 1);
 	thisUser->settings.specifyIncomingPorts = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLSpecifyIncomingPorts", 0);
-	thisUser->settings.szIncomingPorts = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLIncomingPorts", 0);
+	thisUser->settings.szIncomingPorts = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLIncomingPorts");
 	thisUser->settings.specifyOutgoingPorts = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLSpecifyOutgoingPorts", 0);
-	thisUser->settings.szOutgoingPorts = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLOutgoingPorts", 0);
+	thisUser->settings.szOutgoingPorts = GetNetlibUserSettingString(thisUser->user.szSettingsModule, "NLOutgoingPorts");
 	thisUser->settings.enableUPnP = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLEnableUPnP", 1); //default to on
 	thisUser->settings.validateSSL = GetNetlibUserSettingInt(thisUser->user.szSettingsModule, "NLValidateSSL", 0);
 
@@ -229,9 +235,8 @@ void NetlibDoClose(NetlibConnection *nlc, bool noShutdown)
 	if (nlc->s == INVALID_SOCKET) return;
 
 	NetlibLogf(nlc->nlu, "(%p:%u) Connection closed internal", nlc, nlc->s);
-	if (nlc->hSsl)
-	{
-		if ( !noShutdown) si.shutdown(nlc->hSsl);
+	if (nlc->hSsl) {
+		if (!noShutdown) si.shutdown(nlc->hSsl);
 		si.sfree(nlc->hSsl);
 		nlc->hSsl = NULL;
 	}
@@ -241,9 +246,11 @@ void NetlibDoClose(NetlibConnection *nlc, bool noShutdown)
 
 INT_PTR NetlibCloseHandle(WPARAM wParam, LPARAM)
 {
-	switch(GetNetlibHandleType(wParam))
-	{
-		case NLH_USER:
+	if (wParam == NULL)
+		return 0;
+
+	switch(GetNetlibHandleType((void*)wParam)) {
+	case NLH_USER:
 		{
 			NetlibUser *nlu = (NetlibUser*)wParam;
 			{
@@ -261,7 +268,7 @@ INT_PTR NetlibCloseHandle(WPARAM wParam, LPARAM)
 			mir_free(nlu->szStickyHeaders);
 			break;
 		}
-		case NLH_CONNECTION:
+	case NLH_CONNECTION:
 		{
 			NetlibConnection *nlc = (struct NetlibConnection*)wParam;
 			HANDLE waitHandles[4];
@@ -269,14 +276,10 @@ INT_PTR NetlibCloseHandle(WPARAM wParam, LPARAM)
 
 			WaitForSingleObject(hConnectionHeaderMutex, INFINITE);
 			if (nlc->usingHttpGateway)
-			{
 				HttpGatewayRemovePacket(nlc, -1);
-			}
-			else
-			{
-				if (nlc->s != INVALID_SOCKET) {
-					NetlibDoClose(nlc);
-				}
+			else {
+				if (nlc->s != INVALID_SOCKET)
+					NetlibDoClose(nlc, nlc->termRequested);
 				if (nlc->s2 != INVALID_SOCKET) closesocket(nlc->s2);
 				nlc->s2 = INVALID_SOCKET;
 			}
@@ -287,7 +290,7 @@ INT_PTR NetlibCloseHandle(WPARAM wParam, LPARAM)
 			waitHandles[2] = nlc->ncsRecv.hMutex;
 			waitHandles[3] = nlc->ncsSend.hMutex;
 			waitResult = WaitForMultipleObjects(SIZEOF(waitHandles), waitHandles, TRUE, INFINITE);
-			if (waitResult<WAIT_OBJECT_0 || waitResult >= WAIT_OBJECT_0 + SIZEOF(waitHandles)) {
+			if (waitResult >= WAIT_OBJECT_0 + SIZEOF(waitHandles)) {
 				ReleaseMutex(hConnectionHeaderMutex);
 				SetLastError(ERROR_INVALID_PARAMETER);  //already been closed
 				return 0;
@@ -305,19 +308,22 @@ INT_PTR NetlibCloseHandle(WPARAM wParam, LPARAM)
 			DeleteCriticalSection(&nlc->csHttpSequenceNums);
 			ReleaseMutex(hConnectionHeaderMutex);
 			NetlibLogf(nlc->nlu, "(%p:%u) Connection closed", nlc, nlc->s);
-			break;
 		}
-		case NLH_BOUNDPORT:
-			return NetlibFreeBoundPort((struct NetlibBoundPort*)wParam);
-		case NLH_PACKETRECVER:
+		break;
+
+	case NLH_BOUNDPORT:
+		return NetlibFreeBoundPort((struct NetlibBoundPort*)wParam);
+
+	case NLH_PACKETRECVER:
 		{
 			struct NetlibPacketRecver *nlpr = (struct NetlibPacketRecver*)wParam;
 			mir_free(nlpr->packetRecver.buffer);
-			break;
 		}
-		default:
-			SetLastError(ERROR_INVALID_PARAMETER);
-			return 0;
+		break;
+
+	default:
+		SetLastError(ERROR_INVALID_PARAMETER);
+		return 0;
 	}
 	mir_free((void*)wParam);
 	return 1;
@@ -326,26 +332,23 @@ INT_PTR NetlibCloseHandle(WPARAM wParam, LPARAM)
 static INT_PTR NetlibGetSocket(WPARAM wParam, LPARAM)
 {
 	SOCKET s;
-	if (wParam == 0)
-	{
+	if (wParam == 0) {
 		s = INVALID_SOCKET;
 		SetLastError(ERROR_INVALID_PARAMETER);
 	}
-	else
-	{
+	else {
 		WaitForSingleObject(hConnectionHeaderMutex, INFINITE);
-		switch (GetNetlibHandleType(wParam))
-		{
-			case NLH_CONNECTION:
-				s = ((struct NetlibConnection*)wParam)->s;
-				break;
-			case NLH_BOUNDPORT:
-				s = ((struct NetlibBoundPort*)wParam)->s;
-				break;
-			default:
-				s = INVALID_SOCKET;
-				SetLastError(ERROR_INVALID_PARAMETER);
-				break;
+		switch (GetNetlibHandleType((void*)wParam)) {
+		case NLH_CONNECTION:
+			s = ((struct NetlibConnection*)wParam)->s;
+			break;
+		case NLH_BOUNDPORT:
+			s = ((struct NetlibBoundPort*)wParam)->s;
+			break;
+		default:
+			s = INVALID_SOCKET;
+			SetLastError(ERROR_INVALID_PARAMETER);
+			break;
 		}
 		ReleaseMutex(hConnectionHeaderMutex);
 	}
@@ -359,15 +362,13 @@ INT_PTR NetlibStringToAddressSrv(WPARAM wParam, LPARAM lParam)
 
 INT_PTR NetlibAddressToStringSrv(WPARAM wParam, LPARAM lParam)
 {
-	if (wParam)
-	{
+	if (wParam) {
 		SOCKADDR_INET_M iaddr = {0};
 		iaddr.Ipv4.sin_family = AF_INET;
 		iaddr.Ipv4.sin_addr.s_addr = htonl((unsigned)lParam);
 		return (INT_PTR)NetlibAddressToString(&iaddr);
 	}
-	else
-		return (INT_PTR)NetlibAddressToString((SOCKADDR_INET_M*)lParam);
+	return (INT_PTR)NetlibAddressToString((SOCKADDR_INET_M*)lParam);
 }
 
 INT_PTR NetlibGetConnectionInfoSrv(WPARAM wParam, LPARAM lParam)
@@ -383,58 +384,51 @@ INT_PTR NetlibGetMyIp(WPARAM wParam, LPARAM)
 
 INT_PTR NetlibShutdown(WPARAM wParam, LPARAM)
 {
-	if (wParam)
-	{
+	if (wParam) {
 		WaitForSingleObject(hConnectionHeaderMutex, INFINITE);
-		switch(GetNetlibHandleType(wParam)) {
-			case NLH_CONNECTION:
-				{
-					struct NetlibConnection* nlc = (struct NetlibConnection*)wParam;
+		switch(GetNetlibHandleType((void*)wParam)) {
+		case NLH_CONNECTION:
+			{
+				NetlibConnection *nlc = (NetlibConnection*)wParam;
+				if (!nlc->termRequested) {
 					if (nlc->hSsl) si.shutdown(nlc->hSsl);
 					if (nlc->s != INVALID_SOCKET) shutdown(nlc->s, 2);
 					if (nlc->s2 != INVALID_SOCKET) shutdown(nlc->s2, 2);
 					nlc->termRequested = true;
 				}
-				break;
-			case NLH_BOUNDPORT:
-				{
-					struct NetlibBoundPort* nlb = (struct NetlibBoundPort*)wParam;
-					if (nlb->s != INVALID_SOCKET) shutdown(nlb->s, 2);
-				}
-				break;
+			}
+			break;
+
+		case NLH_BOUNDPORT:
+			struct NetlibBoundPort* nlb = (struct NetlibBoundPort*)wParam;
+			if (nlb->s != INVALID_SOCKET)
+				shutdown(nlb->s, 2);
+			break;
 		}
 		ReleaseMutex(hConnectionHeaderMutex);
-
 	}
 	return 0;
 }
 
 void UnloadNetlibModule(void)
 {
-	if ( !bModuleInitialized) return;
+	if (!bModuleInitialized || hConnectionHeaderMutex == NULL) return;
 
-	if (hConnectionHeaderMutex != NULL)
-	{
-		int i;
+	NetlibUnloadIeProxy();
+	NetlibSecurityDestroy();
+	NetlibUPnPDestroy();
+	NetlibLogShutdown();
 
-		NetlibUnloadIeProxy();
-		NetlibSecurityDestroy();
-		NetlibUPnPDestroy();
-		NetlibLogShutdown();
+	DestroyHookableEvent(hRecvEvent); hRecvEvent = NULL;
+	DestroyHookableEvent(hSendEvent); hSendEvent = NULL;
 
-		DestroyHookableEvent(hRecvEvent); hRecvEvent = NULL;
-		DestroyHookableEvent(hSendEvent); hSendEvent = NULL;
+	for (int i = netlibUser.getCount(); i > 0; i--)
+		NetlibCloseHandle((WPARAM)netlibUser[i-1], 0);
 
-		for (i = netlibUser.getCount(); i > 0; i--)
-			NetlibCloseHandle((WPARAM)netlibUser[i-1], 0);
-
-		netlibUser.destroy();
-
-		CloseHandle(hConnectionHeaderMutex);
-		if (hConnectionOpenMutex) CloseHandle(hConnectionOpenMutex);
-		DeleteCriticalSection(&csNetlibUser);
-		WSACleanup();
-	}
+	CloseHandle(hConnectionHeaderMutex);
+	if (hConnectionOpenMutex)
+		CloseHandle(hConnectionOpenMutex);
+	WSACleanup();
 }
 
 int LoadNetlibModule(void)
@@ -447,7 +441,6 @@ int LoadNetlibModule(void)
 
 	HookEvent(ME_OPT_INITIALISE, NetlibOptInitialise);
 
-	InitializeCriticalSection(&csNetlibUser);
 	hConnectionHeaderMutex = CreateMutex(NULL, FALSE, NULL);
 	NetlibLogInit();
 
@@ -455,19 +448,16 @@ int LoadNetlibModule(void)
 
 	OSVERSIONINFOEX osvi = {0};
 	osvi.dwOSVersionInfoSize = sizeof(osvi);
-	if (GetVersionEx((LPOSVERSIONINFO)&osvi))
-	{
+	if (GetVersionEx((LPOSVERSIONINFO)&osvi)) {
 		// Connection limiting was introduced in Windows XP SP2 and later and set to 10 / sec
 		if (osvi.dwMajorVersion == 5 && ((osvi.dwMinorVersion == 1 && osvi.wServicePackMajor >= 2) || osvi.dwMinorVersion > 1))
 			connectionTimeout = 150;
 		// Connection limiting has limits based on addition Windows Vista pre SP2
-		else if (osvi.dwMajorVersion == 6 && osvi.wServicePackMajor < 2)
-		{
+		else if (osvi.dwMajorVersion == 6 && osvi.wServicePackMajor < 2) {
 			DWORD dwType = 0;
 			tGetProductInfo pGetProductInfo = (tGetProductInfo) GetProcAddress(GetModuleHandleA("kernel32"), "GetProductInfo");
 			if (pGetProductInfo != NULL) pGetProductInfo(6, 0, 0, 0, &dwType);
-			switch(dwType)
-			{
+			switch(dwType) {
 			case 0x01:  // Vista Ultimate edition have connection limit of 25 / sec - plenty for Miranda
 			case 0x1c:
 				break;
@@ -483,21 +473,18 @@ int LoadNetlibModule(void)
 			}
 		}
 		// Connection limiting is disabled by default and is controlled by registry setting in Windows Vista SP2 and later
-		else if (osvi.dwMajorVersion >= 6)
-		{
+		else if (osvi.dwMajorVersion >= 6) {
 			static const char keyn[] = "SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters";
 			static const char valn[] = "EnableConnectionRateLimiting";
 
 			HKEY hSettings;
-			if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, keyn, 0, KEY_QUERY_VALUE, &hSettings) == ERROR_SUCCESS)
-			{
+			if (RegOpenKeyExA(HKEY_LOCAL_MACHINE, keyn, 0, KEY_QUERY_VALUE, &hSettings) == ERROR_SUCCESS) {
 				DWORD tValueLen, enabled;
 				tValueLen = sizeof(enabled);
 				if (RegQueryValueExA(hSettings, valn, NULL, NULL, (BYTE*)&enabled, &tValueLen) == ERROR_SUCCESS && enabled)
 					connectionTimeout = 150;  // if enabled limit is set to 10 / sec
 				RegCloseKey(hSettings);
 			}
-
 		}
 	}
 
@@ -526,7 +513,7 @@ int LoadNetlibModule(void)
 	CreateServiceFunction(MS_NETLIB_GETMOREPACKETS, NetlibPacketRecverGetMore);
 	CreateServiceFunction(MS_NETLIB_SETPOLLINGTIMEOUT, NetlibHttpSetPollingTimeout);
 	CreateServiceFunction(MS_NETLIB_STARTSSL, NetlibStartSsl);
-	CreateServiceFunction(MS_NETLIB_STARINGTOADDRESS, NetlibStringToAddressSrv);
+	CreateServiceFunction(MS_NETLIB_STRINGTOADDRESS, NetlibStringToAddressSrv);
 	CreateServiceFunction(MS_NETLIB_ADDRESSTOSTRING, NetlibAddressToStringSrv);
 	CreateServiceFunction(MS_NETLIB_GETCONNECTIONINFO, NetlibGetConnectionInfoSrv);
 	CreateServiceFunction(MS_NETLIB_GETMYIP, NetlibGetMyIp);
@@ -537,11 +524,5 @@ int LoadNetlibModule(void)
 	NetlibUPnPInit();
 	NetlibSecurityInit();
 	NetlibLoadIeProxy();
-
 	return 0;
-}
-
-void NetlibInitSsl(void)
-{
-	mir_getSI(&si);
 }

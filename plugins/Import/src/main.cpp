@@ -2,7 +2,7 @@
 
 Import plugin for Miranda NG
 
-Copyright (C) 2012 George Hazan
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -28,10 +28,9 @@ int nCustomOptions;
 static HANDLE hImportService = NULL;
 
 HINSTANCE hInst;
-HANDLE hIcoHandle;
 INT_PTR CALLBACK WizardDlgProc(HWND hdlg, UINT message, WPARAM wParam, LPARAM lParam);
 
-static HWND hwndWizard = NULL;
+HWND hwndWizard, hwndAccMerge;
 int hLangpack;
 
 PLUGININFOEX pluginInfo =
@@ -102,12 +101,10 @@ static int OnExit(WPARAM wParam, LPARAM lParam)
 {
 	if (hwndWizard)
 		SendMessage(hwndWizard, WM_CLOSE, 0, 0);
+	if (hwndAccMerge)
+		SendMessage(hwndAccMerge, WM_CLOSE, 0, 0);
 	return 0;
 }
-
-static IconItem iconList[] = { 
-	{ LPGEN("Import..."), "import_main", IDI_IMPORT }
-};
 
 extern "C" __declspec(dllexport) int Load(void)
 {
@@ -115,12 +112,12 @@ extern "C" __declspec(dllexport) int Load(void)
 
 	hImportService = CreateServiceFunction(IMPORT_SERVICE, ImportCommand);
 
-	// icon
-	Icon_Register(hInst, "Import", iconList, SIZEOF(iconList));
-	
+	RegisterIcons();
+
 	// menu item
-	CLISTMENUITEM mi = { sizeof(mi) };
-	mi.icolibItem = iconList[0].hIcolib;
+	CLISTMENUITEM mi = { 0 };
+	mi.cbSize = sizeof(mi);
+	mi.icolibItem = GetIconHandle(IDI_IMPORT);
 	mi.pszName = LPGEN("&Import...");
 	mi.position = 500050000;
 	mi.pszService = IMPORT_SERVICE;
@@ -128,7 +125,7 @@ extern "C" __declspec(dllexport) int Load(void)
 
 	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
 	HookEvent(ME_SYSTEM_OKTOEXIT, OnExit);
-	
+
 	INITCOMMONCONTROLSEX icex;
 	icex.dwSize = sizeof(icex);
 	icex.dwICC = ICC_DATE_CLASSES;
@@ -141,8 +138,6 @@ extern "C" __declspec(dllexport) int Load(void)
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	if (hImportService)
-		DestroyServiceFunction(hImportService);
-
+	DestroyServiceFunction(hImportService);
 	return 0;
 }

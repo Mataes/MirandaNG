@@ -40,17 +40,18 @@ Boston, MA 02111-1307, USA.
 #include <m_netlib.h>
 #include <m_icolib.h>
 #include <win2k.h>
+#include <m_pluginupdater.h>
 
 #include <m_folders.h>
-#include <m_popup2.h>
 
 #include "version.h"
 #include "resource.h"
-#include "Notifications.h"
 
 #if MIRANDA_VER < 0x0A00
 #include "compat.h"
 #endif
+
+#include "Notifications.h"
 
 // Enable Visual Style
 #if defined _M_IX86
@@ -92,23 +93,44 @@ struct PopupDataText
 
 struct PlugOptions
 {
-	BYTE bUpdateOnStartup, bUpdateOnPeriod, bOnlyOnceADay, bForceRedownload;
+	BYTE bUpdateOnStartup, bUpdateOnPeriod, bOnlyOnceADay, bForceRedownload, bSilentMode;
 	BOOL bSilent, bDlgDld;
 
 	BYTE bPeriodMeasure;
 	int  Period;
 };
 
-#define DEFAULT_UPDATEICONS       0
 #define DEFAULT_UPDATEONSTARTUP   1
-#define DEFAULT_ONLYONCEADAY      1
 #define DEFAULT_UPDATEONPERIOD    0
 #define DEFAULT_PERIOD            1
 #define DEFAULT_PERIODMEASURE     1
 
+#if MIRANDA_VER < 0x0A00
+	#define DEFAULT_ONLYONCEADAY      0
+#else
+	#define DEFAULT_ONLYONCEADAY      1
+#endif
+
 #define DEFAULT_UPDATE_URL                "http://miranda-ng.org/distr/stable/x%platform%"
 #define DEFAULT_UPDATE_URL_TRUNK          "http://miranda-ng.org/distr/x%platform%"
-#define DEFAULT_UPDATE_URL_TRUNK_SYMBOLS  "http://miranda-ng.now.im/pdb_x%platform%/"
+#define DEFAULT_UPDATE_URL_TRUNK_SYMBOLS  "http://miranda-ng.now.im/pdb_x%platform%"
+
+#define UPDATE_MODE_CUSTOM			0
+#define UPDATE_MODE_STABLE			1
+#define UPDATE_MODE_TRUNK			2
+#define UPDATE_MODE_TRUNK_SYMBOLS	3
+#define UPDATE_MODE_MAX_VALUE		3 // when adding new mode, increment this number
+
+#define DB_SETTING_UPDATE_MODE		"UpdateMode"
+#define DB_SETTING_UPDATE_URL		"UpdateURL"
+#define DB_SETTING_REDOWNLOAD		"ForceRedownload"
+#define DB_SETTING_NEED_RESTART		"NeedRestart"
+#define DB_SETTING_RESTART_COUNT	"RestartCount"
+#define DB_SETTING_LAST_UPDATE		"LastUpdate"
+#define DB_SETTING_DONT_SWITCH_TO_STABLE		"DontSwitchToStable"
+#define DB_MODULE_FILES				MODNAME "Files"
+
+#define MAX_RETRIES			3
 
 #define IDINFO				3
 #define IDDOWNLOAD			4
@@ -118,17 +140,33 @@ using namespace std;
 
 extern HINSTANCE hInst;
 
-extern TCHAR tszRoot[MAX_PATH], tszDialogMsg[2048], tszTempPath[MAX_PATH];
+extern TCHAR tszRoot[MAX_PATH], tszTempPath[MAX_PATH];
 extern FILEINFO *pFileInfo;
-extern HANDLE hCheckThread, hListThread, hPluginUpdaterFolder;
 extern PlugOptions opts;
 extern POPUP_OPTIONS PopupOptions;
 extern aPopups PopupsList[POPUPS];
-extern HANDLE Timer, hPipe;
-extern HWND hwndDialog;
+extern HANDLE Timer, hPipe, hNetlibUser;
 
-void DoCheck(int iFlag);
-void DoGetList(int iFlag);
+void DoCheck(bool bSilent);
+
+void UninitCheck(void);
+void UninitListNew(void);
+
+class AutoHandle
+{
+	HANDLE &m_handle;
+	AutoHandle& operator=(const AutoHandle&) { return *this; }
+
+public:
+	AutoHandle(HANDLE &_handle) : m_handle(_handle) {}
+	~AutoHandle()
+	{
+		if (m_handle) {
+			::CloseHandle(m_handle);
+			m_handle = 0;
+		}
+	}
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -158,46 +196,46 @@ typedef OBJLIST<ServListEntry> SERVLIST;
 
 void  InitPopupList();
 void  LoadOptions();
-BOOL  NetlibInit();
-void  IcoLibInit();
-void  ServiceInit();
-void  NetlibUnInit();
-int   ModulesLoaded(WPARAM wParam, LPARAM lParam);
+void  InitNetlib();
+void  InitIcoLib();
+void  InitServices();
+void  InitEvents();
+void  InitOptions();
+void  InitListNew();
+void  InitCheck();
 
-int   OnFoldersChanged(WPARAM, LPARAM);
-int   OnPreShutdown(WPARAM, LPARAM);
-int   OptInit(WPARAM, LPARAM);
+void  UnloadCheck();
+void  UnloadListNew();
+void  UnloadNetlib();
 
 void  BackupFile(TCHAR *ptszSrcFileName, TCHAR *ptszBackFileName);
 
 bool  ParseHashes(const TCHAR *ptszUrl, ptrT &baseUrl, SERVLIST &arHashes);
 int   CompareHashes(const ServListEntry *p1, const ServListEntry *p2);
 
+int   GetUpdateMode();
 TCHAR* GetDefaultUrl();
-BOOL   DownloadFile(LPCTSTR tszURL, LPCTSTR tszLocal, int CRCsum, HANDLE &nlc);
+bool   DownloadFile(FILEURL *pFileURL, HANDLE &nlc);
 
-void  ShowPopup(HWND hDlg, LPCTSTR Title, LPCTSTR Text, int Number, int ActType);
+void  ShowPopup(LPCTSTR Title, LPCTSTR Text, int Number);
 void  __stdcall RestartMe(void*);
 void  __stdcall OpenPluginOptions(void*);
-BOOL  AllowUpdateOnStartup();
-void  InitTimer(int type = 0);
+void  CheckUpdateOnStartup();
+void  InitTimer(void *type);
 
-INT_PTR MenuCommand(WPARAM wParam,LPARAM lParam);
-INT_PTR ShowListCommand(WPARAM wParam,LPARAM lParam);
-INT_PTR EmptyFolder(WPARAM wParam,LPARAM lParam);
+INT_PTR EmptyFolder(WPARAM,LPARAM);
 
 INT_PTR CALLBACK DlgMsgPop(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 int  ImageList_AddIconFromIconLib(HIMAGELIST hIml, const char *name);
 
-bool unzip(const TCHAR *ptszZipFile, TCHAR *ptszDestPath, TCHAR *ptszBackPath);
+bool unzip(const TCHAR *ptszZipFile, TCHAR *ptszDestPath, TCHAR *ptszBackPath,bool ch);
 void strdel(TCHAR *parBuffer, int len);
 
 ///////////////////////////////////////////////////////////////////////////////
 
 int CalculateModuleHash(const TCHAR *tszFileName, char *dest);
 
-BOOL IsRunAsAdmin();
 BOOL IsProcessElevated();
 bool PrepareEscalation();
 

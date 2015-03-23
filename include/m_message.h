@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -24,12 +25,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef M_MESSAGE_H__
 #define M_MESSAGE_H__ 1
 
-#include <m_core.h>
+#include <m_database.h>
 
 extern int hLangpack;
 
 //brings up the send message dialog for a contact
-//wParam = (WPARAM)(HANDLE)hContact
+//wParam = (MCONTACT)hContact
 //lParam = (LPARAM)(char*)szText
 //returns 0 on success or nonzero on failure
 //returns immediately, just after the dialog is shown
@@ -61,7 +62,7 @@ extern int hLangpack;
 
 typedef struct {
 	int cbSize;
-	HANDLE hContact;
+	MCONTACT hContact;
 	HWND hwndWindow; // top level window for the contact
 	const char* szModule; // used to get plugin type (which means you could use local if needed)
 	unsigned int uType; // see event types above
@@ -71,9 +72,15 @@ typedef struct {
 	HWND hwndLog; // log area window for the contact (or NULL if there is none)
 } MessageWindowEventData;
 
-//wparam = (HANDLE)hContact
-//lparam = (TCHAR*)ptszMessageText
-//Sets a status line text for the appropriate contact
+typedef struct {
+	int cbSize;
+	HICON hIcon; 
+	TCHAR tszText[100];
+} StatusTextData;
+
+//wparam = (MCONTACT)hContact
+//lparam = (StatusTextData*) or NULL to clear statusbar
+//Sets a statusbar line text for the appropriate contact
 #define MS_MSG_SETSTATUSTEXT "MessageAPI/SetStatusText"
 
 //wparam = 0
@@ -89,7 +96,7 @@ typedef struct {
 
 typedef struct {
 	int cbSize;
-	HANDLE hContact;
+	MCONTACT hContact;
 	int uFlags; // see uflags above
 } MessageWindowInputData;
 
@@ -100,7 +107,7 @@ typedef struct {
 
 typedef struct {
 	int cbSize;
-	HANDLE hContact;
+	MCONTACT hContact;
 	int uFlags;  // should be same as input data unless 0, then it will be the actual type
 	HWND hwndWindow; //top level window for the contact or NULL if no window exists
 	int uState; // see window states
@@ -120,7 +127,7 @@ typedef struct {
 typedef struct {
 	int cbSize;
 	int seq;      // number returned by PSS_MESSAGE
-	HANDLE hContact;
+	MCONTACT hContact;
 	DBEVENTINFO *dbei; // database event written on the basis of message sent
 } MessageWindowEvent;
 
@@ -145,7 +152,7 @@ typedef struct {
 	int cbSize;
 	unsigned int uType; // see popup types above
 	unsigned int uFlags; // used to indicate in which window the popup was requested
-	HANDLE hContact;
+	MCONTACT hContact;
 	HWND hwnd; // window where the popup was requested
 	HMENU hMenu;	// The handle to the menu
 	POINT pt; // The point, in screen coords
@@ -212,8 +219,8 @@ __forceinline void Srmm_RemoveIcon(StatusIconData *sid)
 // if either hIcon, hIconDisabled or szTooltip is null, they will not be modified
 #define MS_MSG_MODIFYICON "MessageAPI/ModifyIcon"
 
-__forceinline void Srmm_ModifyIcon(HANDLE hContact, StatusIconData *sid)
-{	CallService(MS_MSG_MODIFYICON, (WPARAM)hContact, (LPARAM)sid);
+__forceinline void Srmm_ModifyIcon(MCONTACT hContact, StatusIconData *sid)
+{	CallService(MS_MSG_MODIFYICON, hContact, (LPARAM)sid);
 }
 
 // wParam = (HANDLE)hContact
@@ -221,8 +228,8 @@ __forceinline void Srmm_ModifyIcon(HANDLE hContact, StatusIconData *sid)
 // returns (StatusIconData*)icon description filled for the required contact
 // don't free this memory.
 
-__forceinline StatusIconData* Srmm_GetNthIcon(HANDLE hContact, int index)
-{	return (StatusIconData*)CallService("MessageAPI/GetNthIcon", (WPARAM)hContact, index);
+__forceinline StatusIconData* Srmm_GetNthIcon(MCONTACT hContact, int index)
+{	return (StatusIconData*)CallService("MessageAPI/GetNthIcon", hContact, index);
 }
 
 // wParam = (HANDLE)hContact;

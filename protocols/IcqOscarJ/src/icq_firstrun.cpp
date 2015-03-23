@@ -6,6 +6,7 @@
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2009 Joe Kucera
+// Copyright © 2012-2014 Miranda NG Team
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,23 +21,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
-//  DESCRIPTION:
-//
-//  Describe me here please...
-//
-// -----------------------------------------------------------------------------
-#include "icqoscar.h"
 
+#include "icqoscar.h"
 
 static void accountLoadDetails(CIcqProto *ppro, HWND hwndDlg)
 {
 	char pszUIN[20];
 	DWORD dwUIN = ppro->getContactUin(NULL);
-	if (dwUIN)
-	{
-		mir_snprintf(pszUIN, 20, "%u", dwUIN);
+	if (dwUIN) {
+		mir_snprintf(pszUIN, SIZEOF(pszUIN), "%u", dwUIN);
 		SetDlgItemTextA(hwndDlg, IDC_UIN, pszUIN);
 	}
 
@@ -44,7 +38,6 @@ static void accountLoadDetails(CIcqProto *ppro, HWND hwndDlg)
 	if (ppro->GetUserStoredPassword(pszPwd, PASSWORDMAXLEN))
 		SetDlgItemTextA(hwndDlg, IDC_PW, pszPwd);
 }
-
 
 INT_PTR CALLBACK icq_FirstRunDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -75,49 +68,43 @@ INT_PTR CALLBACK icq_FirstRunDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 		break;
 
 	case WM_COMMAND:
-		switch (LOWORD(wParam))
-    {
+		switch (LOWORD(wParam)) {
 		case IDC_REGISTER:
-			CallService(MS_UTILS_OPENURL, 1, (LPARAM)URL_REGISTER);
+			CallService(MS_UTILS_OPENURL, OUF_NEWWINDOW, (LPARAM)URL_REGISTER);
 			break;
 
-    case IDC_UIN:
-    case IDC_PW:
-			if (HIWORD(wParam) == EN_CHANGE && (HWND)lParam == GetFocus())
-			{
-        SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+		case IDC_UIN:
+		case IDC_PW:
+			if (HIWORD(wParam) == EN_CHANGE && (HWND)lParam == GetFocus()) {
+				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 				break;
 			}
-    }
-    break;
+		}
+		break;
 
 	case WM_NOTIFY:
-		switch (((LPNMHDR)lParam)->code)
-		{
+		switch (((LPNMHDR)lParam)->code) {
 		case PSN_APPLY:
-			{
-        char str[128];
-        GetDlgItemTextA(hwndDlg, IDC_UIN, str, sizeof(str));
-        ppro->setDword(UNIQUEIDSETTING, atoi(str));
-        GetDlgItemTextA(hwndDlg, IDC_PW, str, sizeof(ppro->m_szPassword));
-        strcpy(ppro->m_szPassword, str);
-        CallService(MS_DB_CRYPT_ENCODESTRING, sizeof(ppro->m_szPassword), (LPARAM) str);
-        ppro->setString("Password", str);
-      }
-      break;
+			char str[128];
+			GetDlgItemTextA(hwndDlg, IDC_UIN, str, SIZEOF(str));
+			ppro->setDword(UNIQUEIDSETTING, atoi(str));
 
-    case PSN_RESET:
-      accountLoadDetails(ppro, hwndDlg);
-      break;
-    }
+			GetDlgItemTextA(hwndDlg, IDC_PW, str, SIZEOF(ppro->m_szPassword));
+			strcpy(ppro->m_szPassword, str);
+			ppro->setString("Password", str);
+			break;
+
+		case PSN_RESET:
+			accountLoadDetails(ppro, hwndDlg);
+			break;
+		}
 		break;
 	}
 
 	return FALSE;
 }
 
-
-INT_PTR CIcqProto::OnCreateAccMgrUI(WPARAM wParam, LPARAM lParam)
+INT_PTR CIcqProto::OnCreateAccMgrUI(WPARAM, LPARAM lParam)
 {
 	return (INT_PTR)CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_ICQACCOUNT), (HWND)lParam, icq_FirstRunDlgProc, LPARAM(this));
 }

@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright (C) 2005 Ricardo Pescuma Domenecci
 
 This is free software; you can redistribute it and/or
@@ -14,7 +14,7 @@ Library General Public License for more details.
 You should have received a copy of the GNU Library General Public
 License along with this file; see the file license.txt.  If
 not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-Boston, MA 02111-1307, USA.  
+Boston, MA 02111-1307, USA.
 */
 
 
@@ -46,7 +46,8 @@ Boston, MA 02111-1307, USA.
 #include <m_proto_listeningto.h>
 #include <m_listeningto.h>
 #include <m_statusplugins.h>
-#include <m_simpleaway.h>
+#include <m_awaymsg.h>
+#include <m_simplestatusmsg.h>
 #include <m_smileyadd.h>
 #include <m_mydetails.h>
 #include <m_skin_eng.h>
@@ -66,20 +67,27 @@ Boston, MA 02111-1307, USA.
 #define SETTING_DEFAULT_NICK "DefaultNick"
 
 extern HINSTANCE hInst;
-extern long nickname_dialog_open;
-extern long status_msg_dialog_open;
-extern bool g_bFramesExist;
+extern bool g_bFramesExist, g_bAvsExist;
 
 #define PS_GETMYNICKNAMEMAXLENGTH "/GetMyNicknameMaxLength"
+
+INT_PTR PluginCommand_SetMyNicknameUI(WPARAM wParam, LPARAM lParam);
+INT_PTR PluginCommand_SetMyNickname(WPARAM wParam, LPARAM lParam);
+INT_PTR PluginCommand_GetMyNickname(WPARAM wParam, LPARAM lParam);
+INT_PTR PluginCommand_SetMyAvatarUI(WPARAM wParam, LPARAM lParam);
+INT_PTR PluginCommand_SetMyAvatar(WPARAM wParam, LPARAM lParam);
+INT_PTR PluginCommand_GetMyAvatar(WPARAM wParam, LPARAM lParam);
+INT_PTR PluginCommand_SetMyStatusMessageUI(WPARAM wParam, LPARAM lParam);
+INT_PTR PluginCommand_CycleThroughtProtocols(WPARAM wParam, LPARAM lParam);
 
 // Helper
 static __inline int DRAW_TEXT(HDC hDC, LPCTSTR lpString, int nCount, LPRECT lpRect, UINT uFormat, const char *protocol)
 {
 	if (!opts.replace_smileys)
 		return DrawText(hDC, lpString, nCount, lpRect, uFormat);
-		
-	return Smileys_DrawText(hDC, lpString, nCount, lpRect, uFormat | (opts.resize_smileys ? DT_RESIZE_SMILEYS : 0), 
-			opts.use_contact_list_smileys ? "clist" : protocol, NULL);
+
+	return Smileys_DrawText(hDC, lpString, nCount, lpRect, uFormat | (opts.resize_smileys ? DT_RESIZE_SMILEYS : 0),
+		opts.use_contact_list_smileys ? "clist" : protocol, NULL);
 }
 
 #endif // __COMMONS_H__

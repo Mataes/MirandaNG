@@ -4,6 +4,7 @@
 //
 // Copyright © 2001-2004 Richard Hughes, Martin Öberg
 // Copyright © 2004-2009 Joe Kucera, Bio
+// Copyright © 2012-2014 Miranda NG Team
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -18,15 +19,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
 // -----------------------------------------------------------------------------
 //  DESCRIPTION:
 //
 //  ChangeInfo Plugin stuff
-//
 // -----------------------------------------------------------------------------
-#include "icqoscar.h"
 
+#include "icqoscar.h"
 
 int CIcqProto::StringToListItemId(const char *szSetting,int def)
 {
@@ -36,7 +35,8 @@ int CIcqProto::StringToListItemId(const char *szSetting,int def)
 		if (!strcmpnull(szSetting,setting[i].szDbSetting))
 			break;
 
-	if (i==settingCount) return def;
+	if (i == settingCount)
+		return def;
 
 	FieldNamesItem *list = (FieldNamesItem*)setting[i].pList;
 
@@ -57,9 +57,8 @@ int CIcqProto::StringToListItemId(const char *szSetting,int def)
 
 int ChangeInfoData::UploadSettings(void)
 {
-	if (!ppro->icqOnline())
-	{
-		MessageBoxUtf(hwndDlg, LPGEN("You are not currently connected to the ICQ network. You must be online in order to update your information on the server."), LPGEN("Change ICQ Details"), MB_OK);
+	if (!ppro->icqOnline()) {
+		MessageBox(hwndDlg, TranslateT("You are not currently connected to the ICQ network. You must be online in order to update your information on the server."), TranslateT("Change ICQ Details"), MB_OK);
 		return 0;
 	}
 
@@ -67,10 +66,8 @@ int ChangeInfoData::UploadSettings(void)
 
 	//password
 	char* tmp = ppro->GetUserPassword(TRUE);
-	if (tmp)
-	{
-		if (strlennull(Password) > 0 && strcmpnull(Password, tmp))
-		{
+	if (tmp) {
+		if (mir_strlen(Password) > 0 && strcmpnull(Password, tmp)) {
 			// update password in user info dialog (still open)
 			strcpy(Password, tmp);
 			// update password in protocol
@@ -79,16 +76,9 @@ int ChangeInfoData::UploadSettings(void)
 			hUpload[1] = (HANDLE)ppro->icq_changeUserPasswordServ(tmp);
 			char szPwd[PASSWORDMAXLEN] = {0};
 
+			// password is stored in DB, update
 			if (ppro->GetUserStoredPassword(szPwd, sizeof(szPwd)))
-			{ // password is stored in DB, update
-				char ptmp[PASSWORDMAXLEN];
-
-				strcpy(ptmp, tmp);
-
-				CallService(MS_DB_CRYPT_ENCODESTRING, sizeof(ptmp), (LPARAM)ptmp);
-
-				ppro->setString("Password", ptmp);
-			}
+				ppro->setString("Password", tmp);
 		}
 	}
 

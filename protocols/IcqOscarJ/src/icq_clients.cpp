@@ -6,6 +6,7 @@
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2010 Joe Kucera
+// Copyright © 2012-2014 Miranda NG Team
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,13 +21,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-//
 // -----------------------------------------------------------------------------
 //  DESCRIPTION:
 //
 //  Provides capability & signature based client detection
-//
 // -----------------------------------------------------------------------------
+
 #include "icqoscar.h"
 
 const capstr capShortCaps = {0x09, 0x46, 0x00, 0x00, 0x4c, 0x7f, 0x11, 0xd1, 0x82, 0x22, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00}; // CAP_AIM_BUDDYICON
@@ -169,11 +169,12 @@ const char* cliQip       = "QIP %s";
 const char* cliIM2       = "IM2";
 const char* cliSpamBot   = "Spam Bot";
 
-const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserClass, DWORD dwOnlineSince, const char *szCurrentClient,
-										WORD wVersion, DWORD dwFT1, DWORD dwFT2, DWORD dwFT3, BYTE bDirectFlag, DWORD dwDirectCookie, DWORD dwWebPort, /* ICQ specific */
-										BYTE *caps, WORD wLen, /* Client capabilities */
-										BYTE *bClientId, /* Output: detected client-type */
-										char *szClientBuf)
+const char* CIcqProto::detectUserClient(
+	MCONTACT hContact, int nIsICQ, WORD wUserClass, DWORD dwOnlineSince, const char *szCurrentClient,
+	WORD wVersion, DWORD dwFT1, DWORD dwFT2, DWORD dwFT3, DWORD dwDirectCookie, DWORD dwWebPort, /* ICQ specific */
+	BYTE *caps, size_t wLen, /* Client capabilities */
+	BYTE *bClientId, /* Output: detected client-type */
+	char *szClientBuf)
 {
 	LPCSTR szClient = NULL;
 	int bMirandaIM = FALSE;
@@ -462,7 +463,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 
 			strcpy(szClientBuf, "QIP Infium");
 			if (dwFT1) {
-				mir_snprintf(ver, 10, " (%d)", dwFT1);
+				mir_snprintf(ver, SIZEOF(ver), " (%d)", dwFT1);
 				strcat(szClientBuf, ver);
 			}
 			if (dwFT2 == 0x0B)
@@ -473,7 +474,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 		else if (MatchCapability(caps, wLen, &capQip2010, 12)) {
 			strcpy(szClientBuf, "QIP 2010");
 			if (dwFT1) {
-				mir_snprintf(ver, 10, " (%d)", dwFT1);
+				mir_snprintf(ver, SIZEOF(ver), " (%d)", dwFT1);
 				strcat(szClientBuf, ver);
 			}
 
@@ -482,7 +483,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 		else if (MatchCapability(caps, wLen, &capQip2012, 12)) {
 			strcpy(szClientBuf, "QIP 2012");
 			if (dwFT1) {
-				mir_snprintf(ver, 10, " (%d)", dwFT1);
+				mir_snprintf(ver, SIZEOF(ver), " (%d)", dwFT1);
 				strcat(szClientBuf, ver);
 			}
 
@@ -496,7 +497,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 
 			mir_snprintf(szClientBuf, 64, cliQip, ver);
 			if (dwFT1 && dwFT2 == 0x0E) {
-				mir_snprintf(ver, 10, " (%d%d%d%d)", dwFT1 >> 0x18, (dwFT1 >> 0x10) & 0xFF, (dwFT1 >> 0x08) & 0xFF, dwFT1 & 0xFF);
+				mir_snprintf(ver, SIZEOF(ver), " (%d%d%d%d)", dwFT1 >> 0x18, (dwFT1 >> 0x10) & 0xFF, (dwFT1 >> 0x08) & 0xFF, dwFT1 & 0xFF);
 				strcat(szClientBuf, ver);
 			}
 			szClient = szClientBuf;
@@ -517,7 +518,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 			if (dwFT2 == 0x0FFFF0011 && dwFT3 == 0x1100FFFF && (dwFT1 >> 0x18)) {
 				char ver[16];
 
-				mir_snprintf(ver, 10, " %d.%d", dwFT1 >> 0x18, (dwFT1 >> 0x10) & 0xFF);
+				mir_snprintf(ver, SIZEOF(ver), " %d.%d", dwFT1 >> 0x18, (dwFT1 >> 0x10) & 0xFF);
 				if ((dwFT1 & 0xFF) == 0x0B)
 					strcat(ver, " Beta");
 				strcat(szClientBuf, ver);
@@ -664,7 +665,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 		else if (szClient == NULL) {
 			// ZA mangled the version, OMG!
 			if (wVersion == 8 && CheckContactCapabilities(hContact, CAPF_XTRAZ) && (MatchCapability(caps, wLen, &capIMSecKey1, 6) || MatchCapability(caps, wLen, &capIMSecKey2, 6)))
-				wVersion = 9;
+				wVersion = ICQ_VERSION;
 
 			// try to determine 2001-2003 versions
 			if (wVersion == 8 && (MatchCapability(caps, wLen, &capComm20012) || CheckContactCapabilities(hContact, CAPF_SRV_RELAY))) {
@@ -716,7 +717,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 					szClient = "imo.im"; //https://imo.im/ - Web IM
 			}
 			// try to determine lite versions
-			else if (wVersion == 9) {
+			else if (wVersion >= 9) {
 				if (CheckContactCapabilities(hContact, CAPF_XTRAZ)) {
 					*bClientId = CLID_GENERIC;
 					if (CheckContactCapabilities(hContact, CAPF_OSCAR_FILE)) {
@@ -755,7 +756,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 						if (CheckContactCapabilities(hContact, CAPF_RTF)) {
 							// most probably Qnext - try to make that shit at least receiving our msgs
 							ClearContactCapabilities(hContact, CAPF_SRV_RELAY);
-							NetLog_Server("Forcing simple messages (QNext client).");
+							debugLogA("Forcing simple messages (QNext client).");
 							szClient = "Qnext";
 						}
 						else if (CheckContactCapabilities(hContact, CAPF_TYPING) && MatchCapability(caps, wLen, &captZers) && MatchCapability(caps, wLen, &capFakeHtml)) {
@@ -801,7 +802,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 				if ( !CheckContactCapabilities(hContact, CAPF_RTF) && !CheckContactCapabilities(hContact, CAPF_UTF)) {
 					// this is bad, but we must do it - try to detect QNext
 					ClearContactCapabilities(hContact, CAPF_SRV_RELAY);
-					NetLog_Server("Forcing simple messages (QNext client).");
+					debugLogA("Forcing simple messages (QNext client).");
 					szClient = "Qnext";
 				}
 				else if (!CheckContactCapabilities(hContact, CAPF_RTF) && CheckContactCapabilities(hContact, CAPF_UTF) && !dwFT1 && !dwFT2 && !dwFT3)
@@ -929,7 +930,7 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 		capstr* capId;
 		if (capId = MatchCapability(caps, wLen, &capMimPack, 4)) {
 			char szPack[16];
-			mir_snprintf(szPack, 16, " [%.12s]", (*capId)+4);
+			mir_snprintf(szPack, SIZEOF(szPack), " [%.12s]", (*capId)+4);
 
 			// make sure client string is not constant
 			if (szClient != szClientBuf) {
@@ -986,9 +987,9 @@ const char* CIcqProto::detectUserClient(HANDLE hContact, int nIsICQ, WORD wUserC
 	// Log the detection result if it has changed or contact just logged on...
 	if (!szCurrentClient || strcmpnull(szCurrentClient, szClient)) {
 		if (bClientDetected)
-			NetLog_Server("Client identified as %s", szClient);
+			debugLogA("Client identified as %s", szClient);
 		else
-			NetLog_Server("No client identification, put default ICQ client for protocol.");
+			debugLogA("No client identification, put default ICQ client for protocol.");
 	}
 
 	return szClient;

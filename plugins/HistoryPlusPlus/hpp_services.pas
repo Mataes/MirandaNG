@@ -51,13 +51,11 @@ interface
 uses
   Classes, Windows, Controls,
   m_api,
-  HistoryForm, PassForm, PassCheckForm;
+  HistoryForm;
 
 var
   hHppRichEditItemProcess: THandle;
   HstWindowList: TList;
-  PassFm: TfmPass;
-  PassCheckFm: TfmPassCheck;
 
 procedure hppRegisterServices;
 procedure hppUnregisterServices;
@@ -81,7 +79,6 @@ function AllHistoryRichEditProcess(wParam { hRichEdit } : WPARAM; lParam { PItem
 begin
   Result := 0;
   if GridOptions.SmileysEnabled        then Result := Result or DoSupportSmileys(wParam, lParam);
-  if GridOptions.MathModuleEnabled     then Result := Result or DoSupportMathModule(wParam, lParam);
   if GridOptions.AvatarsHistoryEnabled then Result := Result or DoSupportAvatarHistory(wParam, lParam);
 end;
 
@@ -183,7 +180,6 @@ end;
 // See m_historypp.inc for details
 function HppOpenHistoryEvent(wParam { POpenEventParams } : WPARAM; lParam: LPARAM): uint_ptr; cdecl;
 var
-  wHistory: THistoryFrm;
   hDbEvent: THandle;
   item, sel: Integer;
   oep: TOpenEventParams;
@@ -196,19 +192,14 @@ begin
     sel := -1;
     while (hDbEvent <> oep.hDbEvent) and (hDbEvent <> 0) do
     begin
-      hDbEvent := db_event_prev(hDbEvent);
+      hDbEvent := db_event_prev(oep.hContact,hDbEvent);
       Inc(item);
     end;
     if hDbEvent = oep.hDbEvent then
       sel := item;
-    wHistory := OpenContactHistory(oep.hContact, sel);
-    if wHistory.PasswordMode then
-      if (oep.pPassword <> nil) and CheckPassword(oep.pPassword) then
-        wHistory.PasswordMode := False;
-    Result := int_ptr(not wHistory.PasswordMode);
-  end
-  else
-    Result := 0;
+    OpenContactHistory(oep.hContact, sel);
+  end;
+  Result := 0;
 end;
 
 // MS_HPP_EMPTYHISTORY service

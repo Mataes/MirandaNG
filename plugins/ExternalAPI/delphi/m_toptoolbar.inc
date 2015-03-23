@@ -20,14 +20,14 @@ type
   TTBButton = record
     cbSize       :int;
     pszService   :PAnsiChar; // or program for lButtons
-    dwFlags      :DWORD;
+    dwFlags      :dword;
     lParamUp     :LPARAM;
     wParamUp     :WPARAM;
     lParamDown   :LPARAM;
     wParamDown   :WPARAM;
     name         :PAnsiChar;
-    hIconUp      :HICON;     // or hIconHandleUp:HANDLE
-    hIconDn      :HICON;     // or hIconHandleDn:HANDLE
+    hIconUp      :HICON;     // or hIconHandleUp:THANDLE
+    hIconDn      :HICON;     // or hIconHandleDn:THANDLE
     pszTooltipUp :PansiChar;
     pszTooltipDn :PansiChar;
   end;
@@ -72,8 +72,7 @@ const
   lparam = (LPARAM) state
   returns: 0 on success, -1 on failure.
 }
-  TTBST_PUSHED   = 1;
-  TTBST_RELEASED = 2;
+  TTBST_PUSHED = 1;
 
   MS_TTB_SETBUTTONSTATE:PAnsiChar = 'TopToolBar/SetState';
 
@@ -151,34 +150,24 @@ type
     nButtonWidth :int;
     nButtonHeight:int;
     nButtonSpace :int;
-    nLastHeight  :int;         // fix against recursion in WM_SIZE
-    bOrderChanged:boolean;     // set by buttons' arrange procedure if the buttons' order was changed
+    nLastHeight  :int;     // fix against recursion in WM_SIZE
+    bOrderChanged:bool;    // set by buttons' arrange procedure if the buttons' order was changed
     bFlatButtons,
     bAutoSize,
-    bSingleLine  :boolean;
-    bHardUpdate  :boolean;    // clist modern requires to delete buttons to update them
+    bSingleLine  :bool;
+    bHardUpdate  :bool;    // clist modern requires to delete buttons to update them
 
     pButtonList  :PSortedList;
-
-    lResult      :LRESULT;     // custom window proc result
-    fnWindowProc :TWNDPROC;    // custom window proc
-  end;
-
-type
-  PTBCtrlCustomize = ^TTBCtrlCustomize;
-  TTBCtrlCustomize = record
-    cbLen       :size_t;            // total length of the internal data structure
-    fnWindowProc:TWNDPROC;          // subclassed windows procedure for the custom button
   end;
 
 {
   Sets the custom painting procedure for a toolbar
   wParam = not used
-  lParam = TTBCtrlCustomize*
+  lParam = lParam = size_t: size of new data block (published from TTBCtrl)
   Usage: SendMessage(hwndToolbar, TTB_SETCUSTOM, 0, (LPARAM)&CustomData);
   Only works on TopToolbars
 }
 const
-  TTB_SETCUSTOM = WM_USER+1;
+  TTB_SETCUSTOMDATASIZE = WM_USER+1;
 
 {$ENDIF}

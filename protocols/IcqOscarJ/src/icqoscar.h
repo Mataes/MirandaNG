@@ -6,6 +6,7 @@
 // Copyright © 2001-2002 Jon Keating, Richard Hughes
 // Copyright © 2002-2004 Martin Öberg, Sam Kothari, Robert Rainwater
 // Copyright © 2004-2010 Joe Kucera
+// Copyright © 2012-2014 Miranda NG Team
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -20,20 +21,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-//
 // -----------------------------------------------------------------------------
 //  DESCRIPTION:
 //
 // Includes all header files that should be precompiled to speed up compilation.
-//
 // -----------------------------------------------------------------------------
+
 #define _WIN32_WINNT 0x0501
 #define _WIN32_IE 0x0501
 
 // Windows includes
 #include <windows.h>
 #include <commctrl.h>
-#include <uxtheme.h>
 
 // Standard includes
 #include <stdio.h>
@@ -41,12 +40,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <io.h>
+#include <malloc.h>
 #include <direct.h>
 #include <fcntl.h>
 #include <process.h>
-
-//C++
-#include <list>
 
 #ifndef _DEBUG
 #include <crtdbg.h>
@@ -85,6 +82,7 @@
 #include <m_icolib.h>
 #include <m_avatars.h>
 #include <m_xstatus.h>
+#include <m_timezones.h>
 #include <win2k.h>
 
 // Project resources
@@ -113,7 +111,6 @@
 #include "channels.h"
 #include "families.h"
 #include "m_icq.h"
-#include "m_icqplus.h"
 #include "icq_advsearch.h"
 #include "log.h"
 

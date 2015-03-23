@@ -1,21 +1,21 @@
 ﻿#muuid {fc6c81f4-837e-4430-9601-a0aa43177ae3}
 ;============================================================
-;  File: watrack.dll
-;  Module: Winamp Track |Unicode aware|
-;  Versions: 0.0.2.4 - 0.0.6.12
-;  Url: http://addons.miranda-im.org/details.php?action=viewfile&id=2345
+;  File: Watrack.dll
+;  Plugin: Winamp Track
+;  Version: 0.0.6.12
+;  Authors: Awkward
 ;============================================================
-[Clear xStatus before set new one]
-Очищать хСтатус перед установкой нового
-[Emulate Multimedia keys]
-Эмуляция мультимедийных клавиш
-[xStatus will cleared before text changing and restored with new text later.]
-хСтатус будет очищен перед изменением текста и восстановлен с новым текстом позже
 [Paste played music info into message window or status text]
 Вставляет информацию о проигрываемой музыке в окно сообщения или в статусное сообщение.
-[Use XStatus]
-Использовать хСтатус
-[If this option is "ON", XStatus doesn't depend of protocol status.]
+[Clear xStatus before set new one]
+Очищать xСтатус перед установкой нового
+[Emulate Multimedia keys]
+Эмуляция мультимедийных клавиш
+[xStatus will be cleared before text changing and restored with new text later.]
+xСтатус будет очищен перед изменением текста и восстановлен с новым текстом позже
+[Use xStatus]
+Использовать xСтатус
+[If this option is "ON", xStatus doesn't depend on protocol status.]
 Если включена эта опция, xСтатус не будет зависеть от статуса протокола.
 [Use "Variables" plugin or not. If plugin used, you can use some transform, data and math functions. If plugin not used, work will be faster.]
 Использовать плагин "Variables" или нет. Этот плагин позволяет вам преобразовывать строки, использовать математические функции и функции даты. Без этого плагина WATrack будет работать быстрее.
@@ -203,19 +203,19 @@ FPS (кадров в секунду), только для видео
 Кодовая страница перевода юникод - ANSI:
 [VBR macro]
 Отображение VBR
-[\[X\]Status Title / Text]
-Заголовок и текст xCтатуса
+[\[x\]Status Title / Text]
+Заголовок/текст статусов
 [Insert in messages]
 Вставлять в сообщения
 [Use status messages]
 Использовать сообщения статуса
-[Independed XStatus]
-Независимый хСтатус
+[Independent xStatus]
+Независимый xСтатус
 [Use process implantation]
 Встраиваться в процесс
 [Simple Template mode]
 Режим простых шаблонов
-[Use existing XStatus]
+[Use existing xStatus]
 Использовать текущий xСтатус
 [Only if 'Music' status was set]
 Только при статусе "Музыка"
@@ -237,9 +237,9 @@ FPS (кадров в секунду), только для видео
 Пользователю
 [Channel message]
 В чат
-[If this option is "ON", XStatus number will not be changed, only message will be replaced by WATrack templates]
-Если включено, хСтатус не изменится, но сообщение xСтатуса будет заменено по шаблону WATrack
-[Keep 'Music' XStatus]
+[If this option is "ON", xStatus number will not be changed, only message will be replaced by WATrack templates]
+Если включено, xСтатус не изменится, но сообщение xСтатуса будет заменено по шаблону WATrack
+[Keep 'Music' xStatus]
 Оставлять xСтатус "Музыка"
 [No-music text]
 Если нет музыки
@@ -295,15 +295,15 @@ VBR или пусто
 Если опция включена, все настройки сохранятся в INI-файле и сотрутся из базы Miranda, иначе - удалится INI-файл (если был).
 [If this option is "ON", plugin will try to obtain unknown music format info from player (not all players works!)]
 Если опция включена, плагин попытается получить информацию о музыке от плеера, работает не со всеми плеерами
-[If this option is "ON", XStatus changes only if "Music" XStatus was set already.]
+[If this option is "ON", xStatus changes only if "Music" xStatus was set already.]
 Если опция включена, xСтатус меняется только при уже установленном в "Музыка" статусе.
-[If this option is "ON", XStatus doesn't depend of ICQ's status.]
+[If this option is "ON", xStatus doesn't depend of ICQ's status.]
 Если включена эта опция, xСтатус не зависит от статуса ICQ.
-[If this option is "ON", XStatus not changed when player shutdowned.]
-Если опция включена, хСтатус не изменится при выключении плеера.
-[If this option is "ON", XStatus will be changed to "Music" and status text will be replaced by music info.]
+[If this option is "ON", xStatus won't be changed when player is shut down.]
+Если опция включена, xСтатус не изменится при выключении плеера.
+[If this option is "ON", xStatus will be changed to "Music" and status text will be replaced by music info.]
 Если опция включена, xСтатус для ICQ заменится на "Музыка" и его текст изменится на информацию о музыке
-[If this option is "ON", one templates will be used with all protocols, protocol and player (media) statuses. Template option page will be changed next time.]
+[If this option is "ON", one template will be used with all protocols, protocol and player (media) statuses. Template option page will be changed next time.]
 Если опция включена, то будет применён один шаблон для всех протоколов, а также плееров и статусов. Страница настройки шаблонов изменится после перезагрузки
 [Use player process injection to obtain info easier. Can provoke antivirus or firewall alarm.]
 Встраиваться в процесс проигрывателя для облегчения получения информации. Может спровоцировать тревогу фаервола или антивируса.
@@ -369,8 +369,6 @@ VBR или пусто
 статус плеера (остановлен, играет, на паузе)
 [player]
 плеер
-[Independed Xstatus]
-Независимый хСтатус
 ["Variables" ANSI output]
 Выводить "Variables" в ANSI
 [FPS (Frames per second)]
@@ -428,12 +426,12 @@ VBR или нет
 [Context menu]
 Контекстное меню
 [/me listening "%title%"]
-/я слушаю "%title%"
+/me слушает "%title%"
 [Report file name not defined]
 Название файла отчёта не указано
 [Status Template]
 Шаблон xСтатуса
-[XStatus Title]
+[xStatus Title]
 Сообщение xСтатуса
 ['mono' / 'stereo']
 моно/стерео
@@ -455,13 +453,13 @@ VBR или нет
 - длина песни в секундах
 [- track number]
 - номер трека
-[  Refresh time (sec) is time to refresh music info and status messages. If zero, automatic refresh is disabled.\n  Only if 'Music' status was set - change your status if Music XStatus sets already.\n  Keep 'Music' XStatus - if player stopped or shutdowned, save or not 'Music' XStatus (changes to empty).\n  If text after processing is empty, the status message does not changes.\n  If settings saved in ini-file, its will be deleted from Miranda DB. Else ini-file will be deleted.]
+[  Refresh time (sec) is time to refresh music info and status messages. If zero, automatic refresh is disabled.\n  Only if 'Music' status was set - change your status if Music xStatus sets already.\n  Keep 'Music' xStatus - if player stopped or shutdowned, save or not 'Music' xStatus (changes to empty).\n  If text after processing is empty, the status message does not changes.\n  If settings saved in ini-file, its will be deleted from Miranda DB. Else ini-file will be deleted.]
  Время обновления (сек) - обновление информации в статусных сообщениях. Если нуль, автообновление выключено\n Работает, только если xСтатус "Музыка".\n Если плеер выключен или остановлен, xСтатус убирается.\n Если текст пуст, статусное сообщение не меняется.\n Если настройки хранятся в ini файле, они удалятся из базы Miranda, иначе ini файл будет удален.
 ["Variables" module use]
 Использовать "Variables"
 [Acoustic]
 Акустика
-[Use ICQ XStatus]
+[Use ICQ xStatus]
 Использовать xCтатус ICQ
 [Winamp Track]
 Сейчас играет (WATrack)
@@ -482,15 +480,15 @@ VBR или нет
 [Statistic]
 Статистика
 [Export text template]
-Шаблон текста экспорта 
+Шаблон текста экспорта
 [Use listening info]
 Использовать "Listening To"
 [If this option is "ON", "Listening To" protocol property will be filled by music info.]
 Если опция включена, то поле "Listening To" будет заполнено информацией о музыке.
 [Enable Status message]
 Включить сообщение статуса
-[Enable XStatus message]
-Включить сообщение ХСтатуса
+[Enable xStatus message]
+Включить сообщение xСтатуса
 [Enable Tunes message]
 Включить сообщение мелодии
 [Tunes]
@@ -510,9 +508,9 @@ VBR или нет
 [Enable Plugin]
 Включить плагин
 [Don't forget to enter Login and Password to use Last.fm service]
-Не забудьте ввести логин и пароль, что бы пользоваться сервисом Last.fm
+Не забудьте ввести логин и пароль, чтобы пользоваться сервисом Last.fm
 [Don't forget to enter Login and Password to use MyShows service]
-Не забудьте ввести логин и пароль, что бы пользоваться сервисом MyShows
+Не забудьте ввести логин и пароль, чтобы пользоваться сервисом MyShows
 [Attempts]
 попыток
 [Disable scrobbling]
@@ -541,14 +539,14 @@ VBR или нет
 Статус (общее)
 [Status (templates)]
 Статус (шаблоны)
-[Set XStatus when...]
-Устанавливать хСтатус когда
-[XStatus is empty or 'Music']
-нет хСтатуса или хСтатус "Музыка"
+[Set xStatus when...]
+Устанавливать xСтатус когда...
+[xStatus is empty or 'Music']
+нет xСтатуса или xСтатус "Музыка"
 ['Music' status is set]
-установлен хСтатус "Музыка"
-[any XStatus is set]
-установлен любой хСтатус
+установлен xСтатус "Музыка"
+[any xStatus is set]
+установлен любой xСтатус
 [Players list\n(F1 for note)]
 Список плееров\n(Нажмите F1 для доп. инф-ии)
 [Chat Template]
@@ -568,23 +566,53 @@ VBR или нет
 [Alpha]
 Альфа
 [Hide when no player]
-Прятать если плеер не найден
+Прятать, если плеер не найден
 [Hide when no music]
-Прятать если ничего не проигрывается
+Прятать, если ничего не проигрывается
 [Use popup action buttons]
 Использовать кнопки действий
+[Left click]
+Левый щелчок
+[Right click]
+Правый щелчок
+[Default colors]
+По умолчанию
+[Windows colors]
+Цвета Windows
+[Custom colors]
+Задать цвета
+[artist]
+исполнитель
+[album]
+альбом
+[genre]
+жанр
 [Picture transform]
 Трансформация изображения
+[Kilobytes]
+Килобайт
+[Megabytes]
+Мегабайт
+[Precision]
+знаков после запятой
 [none]
 нет
 [kb]
 кб
+[Kb]
+Кб
 [KB]
 Кб
+[Color]
+Цвет
+[Output]
+Вывод
+[Check]
+Отметить
+[Choose font...]
+Шрифт...
 [Genres]
 Жанры
-[[X]Status Title / Text]
-Заголовок/текст статусов
 [Scrobble at]
 Скробблить с
 [Timeout, ms]
@@ -593,8 +621,6 @@ VBR или нет
 Информация о серии
 [Episode]
 Эпизод
-[Kinopoisk info page]
-Информация с Кинопоиска
 [Last.fm error: ]
 Ошибка Last.fm:\s
 [Client is banned]
@@ -607,10 +633,9 @@ VBR или нет
 Похожие исполнители
 [Music Info from ]
 Информация о музыке от\s
-[ answer you]
- ответил
 [You Get Error]
-У Вас ошибка
+У вас ошибка
+;other strings
 [Slider]
 Бегунок	
 [Slider Hovered]
@@ -619,3 +644,7 @@ VBR или нет
 Нажатый бегунок
 [WATrack status]
 Статус WATrack
+[Enable WATrack]
+Включить WATrack
+[Disable WATrack]
+Выключить WATrack

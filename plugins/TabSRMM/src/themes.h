@@ -1,38 +1,34 @@
-/*
- * astyle --force-indent=tab=4 --brackets=linux --indent-switches
- *		  --pad=oper --one-line=keep-blocks  --unpad=paren
- *
- * Miranda NG: the free IM client for Microsoft* Windows*
- *
- * Copyright 2000-2009 Miranda ICQ/IM project,
- * all portions of this codebase are copyrighted to the people
- * listed in contributors.txt.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * you should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- * part of tabSRMM messaging plugin for Miranda.
- *
- * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
- *
- * The class CSkin implements the skinning engine and loads skins from
- * their skin definition files (.tsk).
- *
- * CImageItem implements a single rectangular skin item with an image
- * and its rendering.
- *
- */
+/////////////////////////////////////////////////////////////////////////////////////////
+// Miranda NG: the free IM client for Microsoft* Windows*
+//
+// Copyright (ñ) 2012-15 Miranda NG project,
+// Copyright (c) 2000-09 Miranda ICQ/IM project,
+// all portions of this codebase are copyrighted to the people
+// listed in contributors.txt.
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// you should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+// part of tabSRMM messaging plugin for Miranda.
+//
+// (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
+//
+// The class CSkin implements the skinning engine and loads skins from
+// their skin definition files (.tsk).
+//
+// CImageItem implements a single rectangular skin item with an image
+// and its rendering.
 
 #ifndef __THEMES_H
 #define __THEMES_H
@@ -75,7 +71,7 @@ struct AeroEffect
 	DWORD    m_cornerRadius;
 	DWORD    m_glowSize;
 	COLORREF m_clrBack, m_clrToolbar, m_clrToolbar2;
-	
+
 	void (TSAPI	*pfnEffectRenderer)(const HDC hdc, const RECT *rc, int iEffectArea);
 };
 /**
@@ -88,7 +84,7 @@ class CImageItem
 public:
 	CImageItem()
 	{
-		ZeroMemory(this, sizeof(CImageItem));
+		memset(this, 0, sizeof(CImageItem));
 	}
 	CImageItem(const CImageItem& From)
 	{
@@ -97,17 +93,17 @@ public:
 	}
 	CImageItem(const TCHAR *szName)
 	{
-		ZeroMemory(this, sizeof(CImageItem));
-		mir_sntprintf(m_szName, 40, szName);
+		memset(this, 0, sizeof(CImageItem));
+		mir_sntprintf(m_szName, SIZEOF(m_szName), szName);
 		m_szName[39] = 0;
 	}
 
 	CImageItem(BYTE bottom, BYTE left, BYTE top, BYTE right, HDC hdc, HBITMAP hbm, DWORD dwFlags,
-			   HBRUSH brush, BYTE alpha, LONG inner_height, LONG inner_width, LONG height, LONG width)
+		HBRUSH brush, BYTE alpha, LONG inner_height, LONG inner_width, LONG height, LONG width)
 	{
 		m_bBottom = bottom;
 		m_bLeft = left,
-		m_bTop = top;
+			m_bTop = top;
 		m_bRight = right;
 		m_hdc = hdc;
 		m_hbm = hbm;
@@ -239,7 +235,7 @@ public:
 
 	CSkin()
 	{
-		ZeroMemory(this, sizeof(CSkin));
+		memset(this, 0, sizeof(CSkin));
 		m_default_bf.SourceConstantAlpha = 255;
 		m_default_bf.AlphaFormat = AC_SRC_ALPHA;
 		m_default_bf.BlendOp = AC_SRC_OVER;
@@ -250,19 +246,19 @@ public:
 		Unload();
 	}
 
-	void			Init(bool fStartup = false);
-	void			Load(void);
-	void			Unload();
-	void			UnloadAeroTabs();
-	void			setFileName();
-	void			ReadItem(const int id, const TCHAR *section);
-	void			LoadItems();
-	void 			LoadIcon(const TCHAR *szSection, const TCHAR *name, HICON *hIcon);
-	void			ReadImageItem(const TCHAR *szItemName);
-	void 			ReadButtonItem(const TCHAR *itemName) const;
-	bool			haveGlyphItem() const { return(m_fHaveGlyph); }
-	int				getNrIcons() const { return(m_nrSkinIcons); }
-	const	DWORD	getDwmColor() const { return(m_dwmColor); }
+	void  Init(bool fStartup = false);
+	void  Load(void);
+	void  Unload();
+	void  UnloadAeroTabs();
+	void  setFileName();
+	void  ReadItem(const int id, const TCHAR *section);
+	void  LoadItems();
+	void  LoadIcon(const TCHAR *szSection, const TCHAR *name, HICON &hIcon);
+	void  ReadImageItem(const TCHAR *szItemName);
+	void  ReadButtonItem(const TCHAR *itemName) const;
+	bool  haveGlyphItem() const { return(m_fHaveGlyph); }
+	int   getNrIcons() const { return(m_nrSkinIcons); }
+	DWORD getDwmColor() const { return(m_dwmColor); }
 
 	const TIconDescW* getIconDesc(const int id) const { return(&m_skinIcons[id]); }
 	/**
@@ -289,7 +285,6 @@ public:
 	 */
 	static void TSAPI		SkinDrawBGFromDC(HWND hwndClient, HWND hwnd, RECT *rcClient, HDC hdcTarget);
 	static void TSAPI		SkinDrawBG(HWND hwndClient, HWND hwnd, TContainerData *pContainer, RECT *rcClient, HDC hdcTarget);
-	static void TSAPI		MY_AlphaBlend(HDC hdcDraw, DWORD left, DWORD top,  int width, int height, int bmWidth, int bmHeight, HDC hdcMem);
 	static void TSAPI		DrawDimmedIcon(HDC hdc, LONG left, LONG top, LONG dx, LONG dy, HICON hIcon, BYTE alpha);
 	static DWORD __fastcall HexStringToLong(const TCHAR *szSource);
 	static UINT TSAPI		DrawRichEditFrame(HWND hwnd, const TWindowData *mwdat, UINT skinID, UINT msg, WPARAM wParam, LPARAM lParam, WNDPROC OldWndProc);
@@ -299,13 +294,13 @@ public:
 	static void TSAPI		MapClientToParent(HWND hwndClient, HWND hwndParent, RECT &rc);
 	static void TSAPI		RenderToolbarBG(const TWindowData *dat, HDC hdc, const RECT &rcWindow);
 	static HBITMAP TSAPI	ResizeBitmap(HBITMAP hBmpSrc, LONG width, LONG height, bool &mustFree);
-	static void	TSAPI		ApplyAeroEffect(const HDC hdc, const RECT* rc, int iEffectArea, HANDLE hbp = 0);
+	static void	TSAPI		ApplyAeroEffect(const HDC hdc, const RECT* rc, int iEffectArea);
 	static void	TSAPI		setAeroEffect(const LRESULT effect);
 	static void	TSAPI		initAeroEffect();
 	static HANDLE TSAPI		InitiateBufferedPaint(const HDC hdcSrc, RECT& rc, HDC& hdcOut);
 	static void TSAPI		FinalizeBufferedPaint(HANDLE hbp, RECT *rc);
 	static bool __fastcall	DrawItem(const HDC hdc, const RECT *rc, const CSkinItem *item);
-	static void	TSAPI		UpdateToolbarBG(TWindowData *dat, DWORD dwRdwOptFlags = 0);
+	static void	TSAPI		UpdateToolbarBG(TWindowData *dat);
 	static void TSAPI		FillBack(const HDC hdc, RECT* rc);
 
 public:
@@ -314,7 +309,7 @@ public:
 	static char     m_realSkinnedFrame_left, m_realSkinnedFrame_right, m_realSkinnedFrame_bottom, m_realSkinnedFrame_caption;
 	static HPEN     m_SkinLightShadowPen, m_SkinDarkShadowPen;
 	static int 		m_titleBarLeftOff, m_titleButtonTopOff, m_captionOffset, m_captionPadding,
-					m_titleBarRightOff, m_sidebarTopOffset, m_sidebarBottomOffset, m_bRoundedCorner;
+		m_titleBarRightOff, m_sidebarTopOffset, m_sidebarBottomOffset, m_bRoundedCorner;
 	static SIZE		m_titleBarButtonSize;
 	static int		m_bAvatarBorderType;
 	static COLORREF m_avatarBorderClr, m_tmp_tb_low, m_tmp_tb_high;
@@ -338,7 +333,7 @@ public:
 	 */
 
 	static UINT			m_aeroEffect;										// effect id, initAeroEffect() is using it to set
-																			// the parameters below.
+	// the parameters below.
 	static AeroEffect	m_aeroEffects[AERO_EFFECT_LAST];
 	static AeroEffect	m_currentAeroEffect;
 	static AeroEffect*	m_pCurrentAeroEffect;
@@ -347,7 +342,7 @@ public:
 
 	static COLORREF		m_dwmColorRGB;
 
-	static CImageItem *m_switchBarItem,	*m_tabTop, *m_tabBottom, *m_tabGlowTop,	*m_tabGlowBottom;
+	static CImageItem *m_switchBarItem, *m_tabTop, *m_tabBottom, *m_tabGlowTop, *m_tabGlowBottom;
 	static bool			m_fAeroSkinsValid;
 
 private:
@@ -384,7 +379,8 @@ struct TabControlData
 	TContainerData *pContainer;
 	BOOL    bDragging;
 	int     iBeginIndex;
-	int		iHoveredCloseIcon;
+	int	iHoveredTabIndex;
+	int	iHoveredCloseIcon;
 	HWND    hwndDrag;
 	TWindowData *dragDat;
 	HIMAGELIST himlDrag;
@@ -400,4 +396,3 @@ struct TabControlData
 extern CSkin *Skin;
 
 #endif /* __THEMES_H */
-

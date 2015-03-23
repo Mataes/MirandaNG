@@ -73,7 +73,7 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
@@ -87,12 +87,12 @@
       <AdditionalIncludeDirectories>..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>pcred.lib;pdh.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>pdh.lib;Ws2_32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>src\pcre\lib;$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -101,7 +101,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Size</FavorSizeOrSpeed>
       <AdditionalIncludeDirectories>..\..\include;..\ExternalAPI;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <WarningLevel>Level3</WarningLevel>
@@ -114,14 +114,14 @@
       <AdditionalIncludeDirectories>..\..\include\msapi</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>pcre.lib;pdh.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>pdh.lib;Ws2_32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>src\pcre\lib;$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
       <AdditionalOptions>/PDBALTPATH:%_PDB%</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
@@ -140,14 +140,14 @@
       <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>pcre.lib;pdh.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>pdh.lib;Ws2_32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <AdditionalLibraryDirectories>src\pcre\lib64;$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
       <AdditionalOptions>/PDBALTPATH:%_PDB%</AdditionalOptions>
     </Link>
     <ResourceCompile>
@@ -168,12 +168,12 @@
       <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>pcred.lib;pdh.lib;Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>pdh.lib;Ws2_32.lib;UxTheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <AdditionalLibraryDirectories>src\pcre\lib64;$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProfileDir)..\..\bin10\lib</AdditionalLibraryDirectories>
     </Link>
     <ResourceCompile>
       <AdditionalIncludeDirectories>..\..\include\msapi</AdditionalIncludeDirectories>
@@ -203,7 +203,6 @@
     <ClCompile Include="src\parse_str.cpp" />
     <ClCompile Include="src\parse_system.cpp" />
     <ClCompile Include="src\parse_variables.cpp" />
-    <ClCompile Include="src\parse_xml.cpp" />
     <ClCompile Include="..\helpers\gen_helpers.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -231,6 +230,14 @@
   <ItemGroup>
     <ResourceCompile Include="res\Variables.rc" />
     <ResourceCompile Include="res\version.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\V.ico" />
+  </ItemGroup>
+   <ItemGroup>
+    <ProjectReference Include="..\Pcre16\pcre16_10.vcxproj">
+      <Project>{6124e997-426e-4a0b-9617-d6d577d5e7d7}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

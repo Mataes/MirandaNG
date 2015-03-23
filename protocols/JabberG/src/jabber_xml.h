@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -86,9 +87,9 @@ struct XmlNodeIq : public XmlNode
 	XmlNodeIq(const TCHAR *type, const TCHAR *idStr, const TCHAR *to);
 	XmlNodeIq(const TCHAR *type, HXML node, const TCHAR *to);
 	// new request
-	XmlNodeIq(CJabberIqInfo* pInfo);
+	XmlNodeIq(CJabberIqInfo *pInfo);
 	// answer to request
-	XmlNodeIq(const TCHAR *type, CJabberIqInfo* pInfo);
+	XmlNodeIq(const TCHAR *type, CJabberIqInfo *pInfo);
 };
 
 typedef void (*JABBER_XML_CALLBACK)(HXML, void*);
@@ -257,11 +258,11 @@ public:
 	}
 	__forceinline bool operator== (TCHAR *str)
 	{
-		return !lstrcmp((LPCTSTR)*this, str);
+		return !mir_tstrcmp((LPCTSTR)*this, str);
 	}
 	__forceinline bool operator!= (TCHAR *str)
 	{
-		return lstrcmp((LPCTSTR)*this, str) ? true : false;
+		return mir_tstrcmp((LPCTSTR)*this, str) ? true : false;
 	}
 	HXML operator[] (int idx)
 	{

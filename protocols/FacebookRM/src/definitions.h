@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -30,8 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define FLAG_CONTAINS(x,y)      ((x & y) == y)
 #define REMOVE_FLAG(x,y)        (x = (x & ~y))
-
-#define LOG Log
 
 #define LOG_NOTIFY              0
 #define LOG_WARNING             1

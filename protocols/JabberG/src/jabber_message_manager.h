@@ -1,11 +1,12 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-08  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2008-09  Dmitriy Chervov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-08  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (c) 2008-09  Dmitriy Chervov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -41,7 +42,7 @@ typedef BOOL (CJabberProto::*JABBER_PERMANENT_MESSAGE_HANDLER)(HXML messageNode,
 #define JABBER_MESSAGE_PARSE_TO						(1<<5)
 #define JABBER_MESSAGE_PARSE_ID_STR					(1<<6)
 
-class CJabberMessageInfo
+class CJabberMessageInfo : public MZeroedObject
 {
 protected:
 	friend class CJabberMessageManager;
@@ -56,57 +57,40 @@ public:
 	LPCTSTR m_szChildTagXmlns;
 	LPCTSTR m_szChildTagName;
 	HXML m_hChildNode;
-	HANDLE m_hContact;
+	MCONTACT m_hContact;
 	LPCTSTR m_szTo;
 	LPCTSTR m_szId;
 
 public:
-	CJabberMessageInfo()
-	{
-		ZeroMemory(this, sizeof(*this));
+	__forceinline int GetMessageType()
+	{	return m_nMessageType;
 	}
-	~CJabberMessageInfo()
-	{
+	__forceinline void* GetUserData()
+	{	return m_pUserData;
 	}
-	int GetMessageType()
-	{
-		return m_nMessageType;
+	__forceinline LPCTSTR GetFrom()
+	{	return m_szFrom;
 	}
-	void* GetUserData()
-	{
-		return m_pUserData;
+	__forceinline LPCTSTR GetTo()
+	{	return m_szTo;
 	}
-	LPCTSTR GetFrom()
-	{
-		return m_szFrom;
+	__forceinline LPCTSTR GetIdStr()
+	{	return m_szId;
 	}
-	LPCTSTR GetTo()
-	{
-		return m_szTo;
+	__forceinline MCONTACT GetHContact()
+	{	return m_hContact;
 	}
-	LPCTSTR GetIdStr()
-	{
-		return m_szId;
+	__forceinline HXML GetChildNode()
+	{	return m_hChildNode;
 	}
-	HANDLE GetHContact()
-	{
-		return m_hContact;
-	}
-	HXML GetChildNode()
-	{
-		return m_hChildNode;
-	}
-	LPCTSTR GetChildNodeName()
-	{
-		return m_szChildTagName;
+	__forceinline LPCTSTR GetChildNodeName()
+	{	return m_szChildTagName;
 	}
 };
 
-class CJabberMessagePermanentInfo
+class CJabberMessagePermanentInfo : public MZeroedObject
 {
 	friend class CJabberMessageManager;
-
-	CJabberMessagePermanentInfo* m_pNext;
 
 	JABBER_PERMANENT_MESSAGE_HANDLER m_pHandler;
 	DWORD m_dwParamsToParse;
@@ -117,11 +101,8 @@ class CJabberMessagePermanentInfo
 	void *m_pUserData;
 	MESSAGE_USER_DATA_FREE_FUNC m_pUserDataFree;
 	int m_iPriority;
+
 public:
-	CJabberMessagePermanentInfo()
-	{
-		ZeroMemory(this, sizeof(CJabberMessagePermanentInfo));
-	}
 	~CJabberMessagePermanentInfo()
 	{
 		if (m_pUserDataFree)
@@ -129,123 +110,26 @@ public:
 		mir_free(m_szXmlns);
 		mir_free(m_szTag);
 	}
+
+	__forceinline int getPriority() const { return m_iPriority; }
 };
 
 class CJabberMessageManager
 {
 protected:
 	CJabberProto *ppro;
-	CRITICAL_SECTION m_cs;
-	CJabberMessagePermanentInfo* m_pPermanentHandlers;
+	mir_cs m_cs;
+	OBJLIST<CJabberMessagePermanentInfo> m_arHandlers;
 
 public:
-	CJabberMessageManager(CJabberProto* proto)
-	{
-		InitializeCriticalSection(&m_cs);
-		m_pPermanentHandlers = NULL;
-		ppro = proto;
-	}
-	~CJabberMessageManager()
-	{
-		Lock();
-		CJabberMessagePermanentInfo *pInfo = m_pPermanentHandlers;
-		while (pInfo)
-		{
-			CJabberMessagePermanentInfo *pTmp = pInfo->m_pNext;
-			delete pInfo;
-			pInfo = pTmp;
-		}
-		m_pPermanentHandlers = NULL;
-		Unlock();
-		DeleteCriticalSection(&m_cs);
-	}
-	BOOL Start()
-	{
-		return TRUE;
-	}
-	BOOL Shutdown()
-	{
-		return TRUE;
-	}
-	void Lock()
-	{
-		EnterCriticalSection(&m_cs);
-	}
-	void Unlock()
-	{
-		LeaveCriticalSection(&m_cs);
-	}
-	CJabberMessagePermanentInfo* AddPermanentHandler(JABBER_PERMANENT_MESSAGE_HANDLER pHandler, int nMessageTypes, DWORD dwParamsToParse, const TCHAR *szXmlns, BOOL bAllowPartialNs, const TCHAR *szTag, void *pUserData = NULL, MESSAGE_USER_DATA_FREE_FUNC pUserDataFree = NULL, int iPriority = JH_PRIORITY_DEFAULT)
-	{
-		CJabberMessagePermanentInfo* pInfo = new CJabberMessagePermanentInfo();
-		if ( !pInfo)
-			return NULL;
+	CJabberMessageManager(CJabberProto* proto);
+	~CJabberMessageManager();
 
-		pInfo->m_pHandler = pHandler;
-		pInfo->m_nMessageTypes = nMessageTypes ? nMessageTypes : JABBER_MESSAGE_TYPE_ANY;
-		replaceStrT(pInfo->m_szXmlns, szXmlns);
-		pInfo->m_bAllowPartialNs = bAllowPartialNs;
-		replaceStrT(pInfo->m_szTag, szTag);
-		pInfo->m_dwParamsToParse = dwParamsToParse;
-		pInfo->m_pUserData = pUserData;
-		pInfo->m_pUserDataFree = pUserDataFree;
-		pInfo->m_iPriority = iPriority;
+	CJabberMessagePermanentInfo* AddPermanentHandler(JABBER_PERMANENT_MESSAGE_HANDLER pHandler, int nMessageTypes, DWORD dwParamsToParse, const TCHAR *szXmlns, BOOL bAllowPartialNs, const TCHAR *szTag, void *pUserData = NULL, MESSAGE_USER_DATA_FREE_FUNC pUserDataFree = NULL, int iPriority = JH_PRIORITY_DEFAULT);
+	bool DeletePermanentHandler(CJabberMessagePermanentInfo *pInfo);
 
-		Lock();
-		if ( !m_pPermanentHandlers)
-			m_pPermanentHandlers = pInfo;
-		else
-		{
-			if (m_pPermanentHandlers->m_iPriority > pInfo->m_iPriority) {
-				pInfo->m_pNext = m_pPermanentHandlers;
-				m_pPermanentHandlers = pInfo;
-			} else
-			{
-				CJabberMessagePermanentInfo* pTmp = m_pPermanentHandlers;
-				while (pTmp->m_pNext && pTmp->m_pNext->m_iPriority <= pInfo->m_iPriority)
-					pTmp = pTmp->m_pNext;
-				pInfo->m_pNext = pTmp->m_pNext;
-				pTmp->m_pNext = pInfo;
-			}
-		}
-		Unlock();
-
-		return pInfo;
-	}
-	BOOL DeletePermanentHandler(CJabberMessagePermanentInfo *pInfo)
-	{ // returns TRUE when pInfo found, or FALSE otherwise
-		Lock();
-		if ( !m_pPermanentHandlers)
-		{
-			Unlock();
-			return FALSE;
-		}
-		if (m_pPermanentHandlers == pInfo) // check first item
-		{
-			m_pPermanentHandlers = m_pPermanentHandlers->m_pNext;
-			delete pInfo;
-			Unlock();
-			return TRUE;
-		} else
-		{
-			CJabberMessagePermanentInfo* pTmp = m_pPermanentHandlers;
-			while (pTmp->m_pNext)
-			{
-				if (pTmp->m_pNext == pInfo)
-				{
-					pTmp->m_pNext = pTmp->m_pNext->m_pNext;
-					delete pInfo;
-					Unlock();
-					return TRUE;
-				}
-				pTmp = pTmp->m_pNext;
-			}
-		}
-		Unlock();
-		return FALSE;
-	}
-	BOOL HandleMessagePermanent(HXML node, ThreadData *pThreadData);
-	BOOL FillPermanentHandlers();
+	bool HandleMessagePermanent(HXML node, ThreadData *pThreadData);
+	void FillPermanentHandlers();
 };
 
 #endif

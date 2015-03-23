@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -29,11 +29,19 @@ Boston, MA 02111-1307, USA.
 
 // Prototypes ///////////////////////////////////////////////////////////////////////////
 
-typedef vector<ExtraIcon*>::iterator IconIter;
+int SortFunc(const ExtraIcon *p1, const ExtraIcon *p2)
+{
+	int ret = p1->getPosition() - p2->getPosition();
+	if (ret != 0)
+		return ret;
 
+	int id1 = (p1->getType() != EXTRAICON_TYPE_GROUP) ? ((BaseExtraIcon*) p1)->getID() : 0;
+	int id2 = (p2->getType() != EXTRAICON_TYPE_GROUP) ? ((BaseExtraIcon*) p2)->getID() : 0;
+	return id1 - id2;
+}
+
+LIST<ExtraIcon> extraIconsByHandle(10), extraIconsBySlot(10, SortFunc);
 LIST<BaseExtraIcon> registeredExtraIcons(10);
-vector<ExtraIcon*> extraIconsByHandle;
-vector<ExtraIcon*> extraIconsBySlot;
 
 BOOL clistRebuildAlreadyCalled = FALSE;
 BOOL clistApplyAlreadyCalled = FALSE;
@@ -56,25 +64,6 @@ int ModulesLoaded(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-void KillModuleExtraIcons(int hLangpack)
-{
-	for (IconIter p1 = extraIconsByHandle.begin(); p1 != extraIconsByHandle.end(); p1++)
-		if ((*p1)->hLangpack == hLangpack)
-			extraIconsByHandle.erase(p1--);
-
-	for (IconIter p2 = extraIconsBySlot.begin(); p2 != extraIconsBySlot.end(); p2++)
-		if ((*p2)->hLangpack == hLangpack)
-			extraIconsBySlot.erase(p2--);
-
-	for (int i=registeredExtraIcons.getCount()-1; i >= 0; i--) {
-		BaseExtraIcon *p = registeredExtraIcons[i];
-		if (p->hLangpack == hLangpack) {
-			registeredExtraIcons.remove(i);
-			delete p;
-		}
-	}
-}
-
 int GetNumberOfSlots()
 {
 	return clistSlotCount;
@@ -93,7 +82,7 @@ int ExtraImage_ExtraIDToColumnNum(int extra)
 	return (extra < 1 || extra > EXTRA_ICON_COUNT) ? -1 : extra-1;
 }
 
-int Clist_SetExtraIcon(HANDLE hContact, int slot, HANDLE hImage)
+int Clist_SetExtraIcon(MCONTACT hContact, int slot, HANDLE hImage)
 {
 	if (cli.hwndContactTree == 0)
 		return -1;
@@ -102,7 +91,7 @@ int Clist_SetExtraIcon(HANDLE hContact, int slot, HANDLE hImage)
 	if (icol == -1)
 		return -1;
 
-	HANDLE hItem = (HANDLE)SendMessage(cli.hwndContactTree, CLM_FINDCONTACT, (WPARAM)hContact, 0);
+	HANDLE hItem = (HANDLE)SendMessage(cli.hwndContactTree, CLM_FINDCONTACT, hContact, 0);
 	if (hItem == 0)
 		return -1;
 
@@ -112,17 +101,16 @@ int Clist_SetExtraIcon(HANDLE hContact, int slot, HANDLE hImage)
 
 ExtraIcon* GetExtraIcon(HANDLE id)
 {
-	unsigned int i = (int)id;
-
-	if (i < 1 || i > extraIconsByHandle.size())
+	int i = (int)id;
+	if (i < 1 || i > extraIconsByHandle.getCount())
 		return NULL;
 
-	return extraIconsByHandle[i - 1];
+	return extraIconsByHandle[i-1];
 }
 
 ExtraIcon* GetExtraIconBySlot(int slot)
 {
-	for (unsigned int i = 0; i < extraIconsBySlot.size(); i++) {
+	for (int i = 0; i < extraIconsBySlot.getCount(); i++) {
 		ExtraIcon *extra = extraIconsBySlot[i];
 		if (extra->getSlot() == slot)
 			return extra;
@@ -140,10 +128,10 @@ BaseExtraIcon* GetExtraIconByName(const char *name)
 	return NULL;
 }
 
-static void LoadGroups(vector<ExtraIconGroup *> &groups)
+static void LoadGroups(LIST<ExtraIconGroup> &groups)
 {
-	unsigned int count = db_get_w(NULL, MODULE_NAME "Groups", "Count", 0);
-	for (unsigned int i = 0; i < count; i++) {
+	int count = db_get_w(NULL, MODULE_NAME "Groups", "Count", 0);
+	for (int i=0; i < count; i++) {
 		char setting[512];
 		mir_snprintf(setting, SIZEOF(setting), "%d_count", i);
 		unsigned int items = db_get_w(NULL, MODULE_NAME "Groups", setting, 0);
@@ -155,36 +143,33 @@ static void LoadGroups(vector<ExtraIconGroup *> &groups)
 
 		for (unsigned int j = 0; j < items; j++) {
 			mir_snprintf(setting, SIZEOF(setting), "%d_%d", i, j);
+			ptrA szIconName(db_get_sa(NULL, MODULE_NAME "Groups", setting));
+			if (IsEmpty(szIconName))
+				continue;
 
-			DBVARIANT dbv;
-			if (!db_get_s(NULL, MODULE_NAME "Groups", setting, &dbv)) {
-				if (!IsEmpty(dbv.pszVal)) {
-					BaseExtraIcon *extra = GetExtraIconByName(dbv.pszVal);
-					if (extra != NULL) {
-						group->items.push_back(extra);
+			BaseExtraIcon *extra = GetExtraIconByName(szIconName);
+			if (extra == NULL)
+				continue;
 
-						if (extra->getSlot() >= 0)
-							group->setSlot(extra->getSlot());
-					}
-				}
-				db_free(&dbv);
-			}
+			group->items.insert(extra);
+			if (extra->getSlot() >= 0)
+				group->setSlot(extra->getSlot());
 		}
 
-		if (group->items.size() < 2) {
+		if (group->items.getCount() < 2) {
 			delete group;
 			continue;
 		}
 
-		groups.push_back(group);
+		groups.insert(group);
 	}
 }
 
-static ExtraIconGroup * IsInGroup(vector<ExtraIconGroup *> &groups, BaseExtraIcon *extra)
+static ExtraIconGroup* IsInGroup(LIST<ExtraIconGroup> &groups, BaseExtraIcon *extra)
 {
-	for (unsigned int i = 0; i < groups.size(); i++) {
+	for (int i = 0; i < groups.getCount(); i++) {
 		ExtraIconGroup *group = groups[i];
-		for (unsigned int j = 0; j < group->items.size(); j++) {
+		for (int j = 0; j < group->items.getCount(); j++) {
 			if (extra == group->items[j])
 				return group;
 		}
@@ -192,84 +177,96 @@ static ExtraIconGroup * IsInGroup(vector<ExtraIconGroup *> &groups, BaseExtraIco
 	return NULL;
 }
 
-struct compareFunc : std::binary_function<const ExtraIcon *, const ExtraIcon *, bool>
+void RebuildListsBasedOnGroups(LIST<ExtraIconGroup> &groups)
 {
-	bool operator()(const ExtraIcon * one, const ExtraIcon * two) const
-	{
-		return *one < *two;
+	extraIconsByHandle.destroy();
+
+	for (int i=0; i < registeredExtraIcons.getCount(); i++)
+		extraIconsByHandle.insert(registeredExtraIcons[i]);
+
+	for (int k=0; k < extraIconsBySlot.getCount(); k++) {
+		ExtraIcon *extra = extraIconsBySlot[k];
+		if (extra->getType() == EXTRAICON_TYPE_GROUP)
+			delete extra;
 	}
-};
+	extraIconsBySlot.destroy();
 
-void RebuildListsBasedOnGroups(vector<ExtraIconGroup *> &groups)
-{
-	unsigned int i;
-	for (i = 0; i < extraIconsByHandle.size(); i++)
-		extraIconsByHandle[i] = registeredExtraIcons[i];
-
-	for (i = 0; i < extraIconsBySlot.size(); i++) {
-		ExtraIcon *extra = extraIconsBySlot[i];
-		if (extra->getType() != EXTRAICON_TYPE_GROUP)
-			continue;
-
-		delete extra;
-	}
-	extraIconsBySlot.clear();
-
-	for (i = 0; i < groups.size(); i++) {
+	for (int i=0; i < groups.getCount(); i++) {
 		ExtraIconGroup *group = groups[i];
 
-		for (unsigned int j = 0; j < group->items.size(); j++)
-			extraIconsByHandle[group->items[j]->getID() - 1] = group;
+		for (int j = 0; j < group->items.getCount(); j++)
+			extraIconsByHandle.put(group->items[j]->getID()-1, group);
 
-		extraIconsBySlot.push_back(group);
+		extraIconsBySlot.insert(group);
 	}
 
-	for (i = 0; i < extraIconsByHandle.size(); i++) {
-		ExtraIcon *extra = extraIconsByHandle[i];
+	for (int k=0; k < extraIconsByHandle.getCount(); k++) {
+		ExtraIcon *extra = extraIconsByHandle[k];
 		if (extra->getType() != EXTRAICON_TYPE_GROUP)
-			extraIconsBySlot.push_back(extra);
+			extraIconsBySlot.insert(extra);
 	}
-
-	std::sort(extraIconsBySlot.begin(), extraIconsBySlot.end(), compareFunc());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int ClistExtraListRebuild(WPARAM wParam, LPARAM lParam)
+void KillModuleExtraIcons(int hLangpack)
+{
+	LIST<ExtraIcon> arDeleted(1);
+
+	for (int i=registeredExtraIcons.getCount()-1; i >= 0; i--) {
+		BaseExtraIcon *p = registeredExtraIcons[i];
+		if (p->hLangpack == hLangpack) {
+			registeredExtraIcons.remove(i);
+			arDeleted.insert(p);
+		}
+	}
+
+	if (arDeleted.getCount() == 0)
+		return;
+
+	LIST<ExtraIconGroup> groups(1);
+	LoadGroups(groups);
+	RebuildListsBasedOnGroups(groups);
+
+	for (int k=0; k < arDeleted.getCount(); k++)
+		delete arDeleted[k];
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+int ClistExtraListRebuild(WPARAM, LPARAM)
 {
 	clistRebuildAlreadyCalled = TRUE;
 
 	ResetIcons();
 
-	for (unsigned int i = 0; i < extraIconsBySlot.size(); i++)
+	for (int i=0; i < extraIconsBySlot.getCount(); i++)
 		extraIconsBySlot[i]->rebuildIcons();
 
 	return 0;
 }
 
-int ClistExtraImageApply(WPARAM wParam, LPARAM lParam)
+int ClistExtraImageApply(WPARAM hContact, LPARAM)
 {
-	HANDLE hContact = (HANDLE)wParam;
 	if (hContact == NULL)
 		return 0;
 
 	clistApplyAlreadyCalled = TRUE;
 
-	for (unsigned int i = 0; i < extraIconsBySlot.size(); i++)
+	for (int i=0; i < extraIconsBySlot.getCount(); i++)
 		extraIconsBySlot[i]->applyIcon(hContact);
 
 	return 0;
 }
 
-int ClistExtraClick(WPARAM wParam, LPARAM lParam)
+int ClistExtraClick(WPARAM hContact, LPARAM lParam)
 {
-	HANDLE hContact = (HANDLE)wParam;
 	if (hContact == NULL)
 		return 0;
 
 	int clistSlot = (int)lParam;
 
-	for (unsigned int i = 0; i < extraIconsBySlot.size(); i++) {
+	for (int i=0; i < extraIconsBySlot.getCount(); i++) {
 		ExtraIcon *extra = extraIconsBySlot[i];
 		if (ConvertToClistSlot(extra->getSlot()) == clistSlot) {
 			extra->onClick(hContact);
@@ -314,7 +311,7 @@ void fnReloadExtraIcons()
 	bImageCreated = true;
 }
 
-void fnSetAllExtraIcons(HWND hwndList, HANDLE hContact)
+void fnSetAllExtraIcons(MCONTACT hContact)
 {
 	if (cli.hwndContactTree == 0)
 		return;
@@ -335,13 +332,13 @@ void fnSetAllExtraIcons(HWND hwndList, HANDLE hContact)
 		if (pdnce == NULL)
 			continue;
 
-		NotifyEventHooks(hEventExtraImageApplying, (WPARAM)hContact, 0);
+		NotifyEventHooks(hEventExtraImageApplying, hContact, 0);
 		if (hcontgiven) break;
 		Sleep(0);
 	}
 
 	g_mutex_bSetAllExtraIconsCycle = 0;
-	cli.pfnInvalidateRect(hwndList, NULL, FALSE);
+	cli.pfnInvalidateRect(cli.hwndContactTree, NULL, FALSE);
 	Sleep(0);
 }
 
@@ -353,17 +350,17 @@ INT_PTR ExtraIcon_Register(WPARAM wParam, LPARAM lParam)
 	if (wParam == 0)
 		return 0;
 
-	EXTRAICON_INFO *ei = (EXTRAICON_INFO *) wParam;
-	if (ei->cbSize < (int)sizeof(EXTRAICON_INFO))
+	EXTRAICON_INFO *ei = (EXTRAICON_INFO *)wParam;
+	if (ei->cbSize < sizeof(EXTRAICON_INFO))
 		return 0;
 	if (ei->type != EXTRAICON_TYPE_CALLBACK && ei->type != EXTRAICON_TYPE_ICOLIB)
 		return 0;
-	if ( IsEmpty(ei->name) || IsEmpty(ei->description))
+	if (IsEmpty(ei->name) || IsEmpty(ei->description))
 		return 0;
 	if (ei->type == EXTRAICON_TYPE_CALLBACK && (ei->ApplyIcon == NULL || ei->RebuildIcons == NULL))
 		return 0;
 
-	ptrT tszDesc( mir_a2t(ei->description));
+	ptrT tszDesc(mir_a2t(ei->description));
 	TCHAR *desc = TranslateTH(lParam, tszDesc);
 
 	BaseExtraIcon *extra = GetExtraIconByName(ei->name);
@@ -372,8 +369,8 @@ INT_PTR ExtraIcon_Register(WPARAM wParam, LPARAM lParam)
 			return 0;
 
 		// Found one, now merge it
-		if ( _tcsicmp(extra->getDescription(), desc)) {
-			tstring newDesc = extra->getDescription();
+		if (_tcsicmp(extra->getDescription(), desc)) {
+			CMString newDesc = extra->getDescription();
 			newDesc += _T(" / ");
 			newDesc += desc;
 			extra->setDescription(newDesc.c_str());
@@ -416,27 +413,26 @@ INT_PTR ExtraIcon_Register(WPARAM wParam, LPARAM lParam)
 
 	mir_snprintf(setting, SIZEOF(setting), "Slot_%s", ei->name);
 	int slot = db_get_w(NULL, MODULE_NAME, setting, 1);
-	if (slot == (WORD) -1)
+	if (slot == (WORD)-1)
 		slot = -1;
 	extra->setSlot(slot);
 
 	extra->hLangpack = (int)lParam;
 
 	registeredExtraIcons.insert(extra);
-	extraIconsByHandle.push_back(extra);
+	extraIconsByHandle.insert(extra);
 
-	vector<ExtraIconGroup *> groups;
+	LIST<ExtraIconGroup> groups(1);
 	LoadGroups(groups);
 
 	ExtraIconGroup *group = IsInGroup(groups, extra);
 	if (group != NULL)
 		RebuildListsBasedOnGroups(groups);
 	else {
-		for (unsigned int i = 0; i < groups.size(); i++)
+		for (int i = 0; i < groups.getCount(); i++)
 			delete groups[i];
 
-		extraIconsBySlot.push_back(extra);
-		std::sort(extraIconsBySlot.begin(), extraIconsBySlot.end(), compareFunc());
+		extraIconsBySlot.insert(extra);
 	}
 
 	if (slot >= 0 || group != NULL) {
@@ -444,7 +440,7 @@ INT_PTR ExtraIcon_Register(WPARAM wParam, LPARAM lParam)
 			extra->rebuildIcons();
 
 		slot = 0;
-		for (unsigned int i = 0; i < extraIconsBySlot.size(); i++) {
+		for (int i = 0; i < extraIconsBySlot.getCount(); i++) {
 			ExtraIcon *ex = extraIconsBySlot[i];
 			if (ex->getSlot() < 0)
 				continue;
@@ -460,13 +456,13 @@ INT_PTR ExtraIcon_Register(WPARAM wParam, LPARAM lParam)
 	return id;
 }
 
-INT_PTR ExtraIcon_SetIcon(WPARAM wParam, LPARAM lParam)
+INT_PTR ExtraIcon_SetIcon(WPARAM wParam, LPARAM)
 {
 	if (wParam == 0)
 		return -1;
 
 	EXTRAICON *ei = (EXTRAICON*)wParam;
-	if (ei->cbSize < (int)sizeof(EXTRAICON) || ei->hExtraIcon == NULL || ei->hContact == NULL)
+	if (ei->cbSize < sizeof(EXTRAICON) || ei->hExtraIcon == NULL || ei->hContact == NULL)
 		return -1;
 
 	ExtraIcon *extra = GetExtraIcon(ei->hExtraIcon);
@@ -476,13 +472,13 @@ INT_PTR ExtraIcon_SetIcon(WPARAM wParam, LPARAM lParam)
 	return extra->setIcon((int)ei->hExtraIcon, ei->hContact, ei->hImage);
 }
 
-INT_PTR ExtraIcon_SetIconByName(WPARAM wParam, LPARAM lParam)
+INT_PTR ExtraIcon_SetIconByName(WPARAM wParam, LPARAM)
 {
 	if (wParam == 0)
 		return -1;
 
 	EXTRAICON *ei = (EXTRAICON*)wParam;
-	if (ei->cbSize < (int)sizeof(EXTRAICON) || ei->hExtraIcon == NULL || ei->hContact == NULL)
+	if (ei->cbSize < sizeof(EXTRAICON) || ei->hExtraIcon == NULL || ei->hContact == NULL)
 		return -1;
 
 	ExtraIcon *extra = GetExtraIcon(ei->hExtraIcon);
@@ -492,7 +488,7 @@ INT_PTR ExtraIcon_SetIconByName(WPARAM wParam, LPARAM lParam)
 	return extra->setIconByName((int)ei->hExtraIcon, ei->hContact, ei->icoName);
 }
 
-static INT_PTR svcExtraIcon_Add(WPARAM wParam, LPARAM lParam)
+static INT_PTR svcExtraIcon_Add(WPARAM wParam, LPARAM)
 {
 	return (INT_PTR)ExtraIcon_Add((HICON)wParam);
 }
@@ -501,7 +497,7 @@ static INT_PTR svcExtraIcon_Add(WPARAM wParam, LPARAM lParam)
 
 static IconItem iconList[] =
 {
-	{ LPGEN("Chat Activity"), "ChatActivity",  IDI_CHAT   },
+	{ LPGEN("Chat activity"), "ChatActivity",  IDI_CHAT   },
 	{ LPGEN("Male"),          "gender_male",   IDI_MALE   },
 	{ LPGEN("Female"),		  "gender_female", IDI_FEMALE }
 };
@@ -513,25 +509,25 @@ void LoadExtraIconsModule()
 	clistSlotCount = LOWORD(ret);
 
 	// Services
-	CreateServiceFunction(MS_EXTRAICON_REGISTER, &ExtraIcon_Register);
-	CreateServiceFunction(MS_EXTRAICON_SET_ICON, &ExtraIcon_SetIcon);
+	CreateServiceFunction(MS_EXTRAICON_REGISTER, ExtraIcon_Register);
+	CreateServiceFunction(MS_EXTRAICON_SET_ICON, ExtraIcon_SetIcon);
 	CreateServiceFunction(MS_EXTRAICON_SET_ICON_BY_NAME, &ExtraIcon_SetIconByName);
 
-	CreateServiceFunction(MS_CLIST_EXTRA_ADD_ICON, &svcExtraIcon_Add);
+	CreateServiceFunction(MS_CLIST_EXTRA_ADD_ICON, svcExtraIcon_Add);
 
 	hEventExtraClick = CreateHookableEvent(ME_CLIST_EXTRA_CLICK);
 	hEventExtraImageApplying = CreateHookableEvent(ME_CLIST_EXTRA_IMAGE_APPLY);
 	hEventExtraImageListRebuilding = CreateHookableEvent(ME_CLIST_EXTRA_LIST_REBUILD);
 
 	// Icons
-	Icon_Register(NULL, "Contact List", iconList, SIZEOF(iconList));
+	Icon_Register(NULL, LPGEN("Contact list"), iconList, SIZEOF(iconList));
 
 	// Hooks
-	HookEvent(ME_SYSTEM_MODULESLOADED, &ModulesLoaded);
+	HookEvent(ME_SYSTEM_MODULESLOADED, ModulesLoaded);
 
-	HookEvent(ME_CLIST_EXTRA_LIST_REBUILD, &ClistExtraListRebuild);
-	HookEvent(ME_CLIST_EXTRA_IMAGE_APPLY, &ClistExtraImageApply);
-	HookEvent(ME_CLIST_EXTRA_CLICK, &ClistExtraClick);
+	HookEvent(ME_CLIST_EXTRA_LIST_REBUILD, ClistExtraListRebuild);
+	HookEvent(ME_CLIST_EXTRA_IMAGE_APPLY, ClistExtraImageApply);
+	HookEvent(ME_CLIST_EXTRA_CLICK, ClistExtraClick);
 
 	DefaultExtraIcons_Load();
 }
@@ -540,6 +536,4 @@ void UnloadExtraIconsModule(void)
 {
 	for (int i=0; i < registeredExtraIcons.getCount(); i++)
 		delete registeredExtraIcons[i];
-
-	registeredExtraIcons.destroy();
 }

@@ -24,10 +24,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <windows.h>
 #include <commctrl.h>
 
+#include <malloc.h>
+
 #include <newpluginapi.h>
 #include <m_options.h>
 #include <m_clc.h>
-#include <m_database.h>
+#include <m_utils.h>
 #include <m_langpack.h>
 #include <m_icolib.h>
 #include <m_message.h>
@@ -44,29 +46,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define MODNAME "Sessions"
 
+#define MS_SESSIONS_LAUNCHME "Sessions/Service/LaunchMe"
+
 extern IconItem iconList[];
 
 #define MIIM_STRING	0x00000040
 
-int DelUserDefSession(int  ses_count);
+int DelUserDefSession(int ses_count);
 int DeleteAutoSession(int ses_count);
-int LoadSession(WPARAM ,LPARAM );
-int SaveSessionHandles(WPARAM ,LPARAM );
-INT_PTR SaveUserSessionHandles(WPARAM ,LPARAM );
+int LoadSession(WPARAM, LPARAM);
+int SaveSessionHandles(WPARAM, LPARAM);
+INT_PTR SaveUserSessionHandles(WPARAM, LPARAM);
 int SaveUserSessionName(TCHAR*);
-INT_PTR CloseCurrentSession(WPARAM ,LPARAM );
+INT_PTR CloseCurrentSession(WPARAM, LPARAM);
 int SaveSessionDate();
 
-extern HINSTANCE hinstance;
-extern HANDLE session_list_recovered[255];
-extern HANDLE session_list[255];
-extern unsigned int ses_limit;
-extern unsigned int g_ses_count;
-extern BOOL g_bExclHidden;	
-extern BOOL g_bWarnOnHidden;
-extern BOOL g_bOtherWarnings;
-extern BOOL g_bCrashRecovery;
-extern BOOL g_bIncompletedSave;
+extern HINSTANCE g_hInst;
+extern MCONTACT session_list_recovered[255];
+extern MCONTACT session_list[255];
+extern int g_ses_limit;
+extern int g_ses_count;
+extern bool g_bExclHidden;	
+extern bool g_bWarnOnHidden;
+extern bool g_bOtherWarnings;
+extern bool g_bCrashRecovery;
+extern bool g_bIncompletedSave;
 
 #define TIMERID_LOAD		  12
 #define TIMERID_SHOW          11

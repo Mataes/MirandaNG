@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -130,23 +131,23 @@ typedef unsigned __int64 JabberCapsBits;
 
 #define JABBER_FEAT_CAPTCHA                     _T("urn:xmpp:captcha")
 
+#define JABBER_FEAT_ATTENTION                   _T("urn:xmpp:attention:0")
+#define JABBER_CAPS_ATTENTION                   ((JabberCapsBits)1<<36)
+
 // deferred
-#define JABBER_FEAT_ATTENTION                   _T("http://www.xmpp.org/extensions/xep-0224.html#ns")
-#define JABBER_CAPS_ATTENTION                   ((JabberCapsBits)1<<34)
 #define JABBER_FEAT_USER_ACTIVITY               _T("http://jabber.org/protocol/activity")
-#define JABBER_CAPS_USER_ACTIVITY               ((JabberCapsBits)1<<35)
+#define JABBER_CAPS_USER_ACTIVITY               ((JabberCapsBits)1<<37)
 #define JABBER_FEAT_USER_ACTIVITY_NOTIFY        _T("http://jabber.org/protocol/activity+notify")
-#define JABBER_CAPS_USER_ACTIVITY_NOTIFY        ((JabberCapsBits)1<<36)
-#define JABBER_FEAT_ATTENTION_0                 _T("urn:xmpp:attention:0")
-#define JABBER_CAPS_ATTENTION_0                 ((JabberCapsBits)1<<37)
+#define JABBER_CAPS_USER_ACTIVITY_NOTIFY        ((JabberCapsBits)1<<38)
 #define JABBER_FEAT_MIRANDA_NOTES               _T("http://miranda-ng.org/storage#notes")
-#define JABBER_CAPS_MIRANDA_NOTES               ((JabberCapsBits)1<<38)
+#define JABBER_CAPS_MIRANDA_NOTES               ((JabberCapsBits)1<<39)
 #define JABBER_FEAT_JINGLE                      _T("urn:xmpp:jingle:1")
-#define JABBER_CAPS_JINGLE                      ((JabberCapsBits)1<<39)
+#define JABBER_CAPS_JINGLE                      ((JabberCapsBits)1<<40)
 #define JABBER_FEAT_ROSTER_EXCHANGE             _T("http://jabber.org/protocol/rosterx")
-#define JABBER_CAPS_ROSTER_EXCHANGE             ((JabberCapsBits)1<<40)
-#define JABBER_FEAT_GTALK_PMUC                  _T("http://www.google.com/xmpp/protocol/pmuc/v1")
-#define JABBER_CAPS_GTALK_PMUC                  ((JabberCapsBits)1<<41)
+#define JABBER_CAPS_ROSTER_EXCHANGE             ((JabberCapsBits)1<<41)
+
+#define JABBER_FEAT_DIRECT_MUC_INVITE           _T("jabber:x:conference")
+#define JABBER_CAPS_DIRECT_MUC_INVITE           ((JabberCapsBits)1<<42)
 
 #define JABBER_FEAT_PUBSUB_EVENT                _T("http://jabber.org/protocol/pubsub#event")
 #define JABBER_FEAT_PUBSUB_NODE_CONFIG          _T("http://jabber.org/protocol/pubsub#node_config")
@@ -154,22 +155,29 @@ typedef unsigned __int64 JabberCapsBits;
 #define JABBER_CAPS_MESSAGE_EVENTS_NO_DELIVERY  ((JabberCapsBits)1<<62)
 #define JABBER_CAPS_OTHER_SPECIAL               (JABBER_CAPS_MESSAGE_EVENTS_NO_DELIVERY|JABBER_RESOURCE_CAPS_ERROR) // must contain all the caps not listed in g_JabberFeatCapPairs, to prevent using these bits for features registered through IJabberNetInterface::RegisterFeature()
 
-#define JABBER_CAPS_MIRANDA_NODE                _T("http://miranda-ng.org/caps")
-#define JABBER_CAPS_MIRANDA_ALL                 (JABBER_CAPS_DISCO_INFO|JABBER_CAPS_DISCO_ITEMS|JABBER_CAPS_MUC|JABBER_CAPS_ENTITY_CAPS|JABBER_CAPS_SI|JABBER_CAPS_SI_FT|JABBER_CAPS_BYTESTREAMS|JABBER_CAPS_IBB|JABBER_CAPS_OOB|JABBER_CAPS_CHATSTATES|JABBER_CAPS_AGENTS|JABBER_CAPS_BROWSE|JABBER_CAPS_VERSION|JABBER_CAPS_LAST_ACTIVITY|JABBER_CAPS_DATA_FORMS|JABBER_CAPS_MESSAGE_EVENTS|JABBER_CAPS_VCARD_TEMP|JABBER_CAPS_ENTITY_TIME|JABBER_CAPS_PING|JABBER_CAPS_PRIVACY_LISTS|JABBER_CAPS_MESSAGE_RECEIPTS|JABBER_CAPS_PRIVATE_STORAGE|JABBER_CAPS_ATTENTION_0|JABBER_CAPS_JINGLE|JABBER_CAPS_ROSTER_EXCHANGE|JABBER_CAPS_SECUREIM|JABBER_CAPS_MIROTR|JABBER_CAPS_NEWGPG|JABBER_CAPS_COMMANDS|JABBER_CAPS_USER_MOOD_NOTIFY|JABBER_CAPS_USER_TUNE_NOTIFY|JABBER_CAPS_USER_ACTIVITY_NOTIFY|JABBER_CAPS_PLATFORMX86|JABBER_CAPS_PLATFORMX64)
+#define JABBER_CAPS_MIRANDA_NODE    _T("http://miranda-ng.org/caps")
+#define JABBER_CAPS_MIRANDA_PARTIAL (JABBER_CAPS_DISCO_INFO | JABBER_CAPS_DISCO_ITEMS | JABBER_CAPS_MUC | JABBER_CAPS_ENTITY_CAPS | JABBER_CAPS_SI | JABBER_CAPS_SI_FT | \
+                                     JABBER_CAPS_BYTESTREAMS | JABBER_CAPS_IBB | JABBER_CAPS_OOB | JABBER_CAPS_CHATSTATES | JABBER_CAPS_AGENTS | JABBER_CAPS_BROWSE | \
+											    JABBER_CAPS_VERSION | JABBER_CAPS_LAST_ACTIVITY | JABBER_CAPS_DATA_FORMS | JABBER_CAPS_MESSAGE_EVENTS | JABBER_CAPS_VCARD_TEMP | \
+												 JABBER_CAPS_ENTITY_TIME | JABBER_CAPS_PING | JABBER_CAPS_PRIVACY_LISTS | JABBER_CAPS_MESSAGE_RECEIPTS | JABBER_CAPS_PRIVATE_STORAGE | \
+												 JABBER_CAPS_ROSTER_EXCHANGE | JABBER_CAPS_DIRECT_MUC_INVITE)
 
-#define JABBER_CAPS_MIRANDA_PARTIAL             (JABBER_CAPS_DISCO_INFO|JABBER_CAPS_DISCO_ITEMS|JABBER_CAPS_MUC|JABBER_CAPS_ENTITY_CAPS|JABBER_CAPS_SI|JABBER_CAPS_SI_FT|JABBER_CAPS_BYTESTREAMS|JABBER_CAPS_IBB|JABBER_CAPS_OOB|JABBER_CAPS_CHATSTATES|JABBER_CAPS_AGENTS|JABBER_CAPS_BROWSE|JABBER_CAPS_VERSION|JABBER_CAPS_LAST_ACTIVITY|JABBER_CAPS_DATA_FORMS|JABBER_CAPS_MESSAGE_EVENTS|JABBER_CAPS_VCARD_TEMP|JABBER_CAPS_ENTITY_TIME|JABBER_CAPS_PING|JABBER_CAPS_PRIVACY_LISTS|JABBER_CAPS_MESSAGE_RECEIPTS|JABBER_CAPS_PRIVATE_STORAGE|JABBER_CAPS_ATTENTION_0|JABBER_CAPS_JINGLE|JABBER_CAPS_ROSTER_EXCHANGE)
+#define JABBER_CAPS_MIRANDA_ALL     (JABBER_CAPS_MIRANDA_PARTIAL | JABBER_CAPS_COMMANDS | \
+                                     JABBER_CAPS_USER_MOOD_NOTIFY | JABBER_CAPS_USER_TUNE_NOTIFY | JABBER_CAPS_USER_ACTIVITY_NOTIFY | JABBER_CAPS_PLATFORMX86 | JABBER_CAPS_PLATFORMX64)
 
-#define JABBER_EXT_SECUREIM                     "secureim"
-#define JABBER_EXT_MIROTR                       "mirotr"
-#define JABBER_EXT_NEWGPG                       "new_gpg"
-#define JABBER_EXT_COMMANDS                     "cmds"
-#define JABBER_EXT_USER_MOOD                    "mood"
-#define JABBER_EXT_USER_TUNE                    "tune"
-#define JABBER_EXT_USER_ACTIVITY                "activity"
-#define JABBER_EXT_GTALK_PMUC                   "pmuc-v1"
-#define JABBER_EXT_MIR_NOTES                    "mir_notes"
-#define JABBER_EXT_PLATFORMX86                  "x86"
-#define JABBER_EXT_PLATFORMX64                  "x64"
+
+#define JABBER_EXT_SECUREIM                     _T("secureim")
+#define JABBER_EXT_MIROTR                       _T("mirotr")
+#define JABBER_EXT_JINGLE                       _T("jingle")
+#define JABBER_EXT_NEWGPG                       _T("new_gpg")
+#define JABBER_EXT_NUDGE                        _T("nudge")
+#define JABBER_EXT_COMMANDS                     _T("cmds")
+#define JABBER_EXT_USER_MOOD                    _T("mood")
+#define JABBER_EXT_USER_TUNE                    _T("tune")
+#define JABBER_EXT_USER_ACTIVITY                _T("activity")
+#define JABBER_EXT_MIR_NOTES                    _T("mir_notes")
+#define JABBER_EXT_PLATFORMX86                  _T("x86")
+#define JABBER_EXT_PLATFORMX64                  _T("x64")
 
 #define JABBER_FEAT_EXT_ADDRESSING              _T("http://jabber.org/protocol/address")
 #define JABBER_FEAT_NESTED_ROSTER_GROUPS        _T("roster:delimiter")
@@ -185,7 +193,6 @@ typedef unsigned __int64 JabberCapsBits;
 #define JABBER_FEAT_IQ_ROSTER                   _T("jabber:iq:roster")
 #define JABBER_FEAT_DELAY                       _T("jabber:x:delay")
 #define JABBER_FEAT_ENTITY_TIME_OLD             _T("jabber:iq:time")
-#define JABBER_FEAT_GTALK_SHARED_STATUS         _T("google:shared-status")
 
 #define JABBER_FEAT_MUC_ADMIN                   _T("http://jabber.org/protocol/muc#admin")
 #define JABBER_FEAT_MUC_OWNER                   _T("http://jabber.org/protocol/muc#owner")
@@ -261,7 +268,7 @@ class CJabberClientCapsManager
 {
 
 protected:
-	CRITICAL_SECTION m_cs;
+	mir_cs m_cs;
 	CJabberClientCaps *m_pClients;
 	CJabberProto *ppro;
 
@@ -272,27 +279,31 @@ public:
 	CJabberClientCapsManager(CJabberProto* proto);
 	~CJabberClientCapsManager();
 
-	__inline void Lock()
-	{	EnterCriticalSection(&m_cs);
-	}
-	__inline void Unlock()
-	{	LeaveCriticalSection(&m_cs);
-	}
-
 	void AddDefaultCaps();
 
 	JabberCapsBits GetClientCaps(TCHAR *szNode, TCHAR *szVer);
 	BOOL SetClientCaps(const TCHAR *szNode, const TCHAR *szVer, JabberCapsBits jcbCaps, int nIqId = -1);
 	BOOL SetClientCaps(int nIqId, JabberCapsBits jcbCaps);
 
-	BOOL HandleInfoRequest(HXML iqNode, CJabberIqInfo* pInfo, const TCHAR *szNode);
+	BOOL HandleInfoRequest(HXML iqNode, CJabberIqInfo *pInfo, const TCHAR *szNode);
 };
 
 struct JabberFeatCapPair
 {
-	const TCHAR *szFeature;
+	LPCTSTR szFeature;
 	JabberCapsBits jcbCap;
-	const TCHAR *tszDescription;
+	LPCTSTR tszDescription;
+};
+
+struct JabberFeatCapPairExt
+{
+	LPCTSTR szFeature;
+	JabberCapsBits jcbCap;
+	LPCSTR szService;
+
+	int Valid() const
+	{	return (szService == NULL) ? true : ServiceExists(szService);
+	}
 };
 
 struct JabberFeatCapPairDynamic
@@ -303,7 +314,7 @@ struct JabberFeatCapPairDynamic
 	TCHAR *szDescription;
 };
 
-extern const JabberFeatCapPair g_JabberFeatCapPairs[];
-extern const JabberFeatCapPair g_JabberFeatCapPairsExt[];
+extern const JabberFeatCapPair    g_JabberFeatCapPairs[];
+extern const JabberFeatCapPairExt g_JabberFeatCapPairsExt[];
 
 #endif

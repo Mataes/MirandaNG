@@ -60,13 +60,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <m_icolib.h>
 #include <m_genmenu.h>
 #include <m_imgsrvc.h>
+#include <m_string.h>
 
 #include <m_metacontacts.h>
 #include <m_smileyadd.h>
-#include <m_smileyadd_deprecated.h>
 #include <m_folders.h>
 
-#include "bkstring.h"
 #include "regexp\wcpattern.h"
 #include "regexp\wcmatcher.h"
 
@@ -88,7 +87,6 @@ typedef WCMatcher _TMatcher;
 #include "smltool.h"
 
 extern HINSTANCE g_hInst;
-extern char* metaProtoName;
 extern HANDLE hNetlibUser;
 extern HANDLE hEvent1;
 extern HGENMENU hContactMenuItem;
@@ -154,15 +152,6 @@ public:
 #define A2T_SM     (wchar_t*)A2W_SM
 #define W2T_SM(p1) (TCHAR*)p1
 
-
-inline unsigned short GetWinVer(void)
-{
-	unsigned short ver = LOWORD(GetVersion());
-	ver = (ver & 0xFF) << 8 | (ver >> 8);
-	return ver;
-}
-
-
 // init functions
 void InstallDialogBoxHook(void);
 void RemoveDialogBoxHook(void);
@@ -171,15 +160,15 @@ bool IsOldSrmm(void);
 
 //functions for general use (defined in general.cpp)
 int CalculateTextHeight(HDC hdc, CHARFORMAT2* chf);
-const TCHAR* GetImageExt(bkstring &fname);
+const TCHAR* GetImageExt(CMString &fname);
 
-HANDLE DecodeMetaContact(HANDLE hContact);
+MCONTACT DecodeMetaContact(MCONTACT hContact);
 bool IsSmileyProto(char* proto);
 
 HICON ImageList_GetIconFixed (HIMAGELIST himl, INT i, UINT fStyle);
 
-void pathToRelative(const bkstring& pSrc, bkstring& pOut);
-void pathToAbsolute(const bkstring& pSrc, bkstring& pOut);
+void pathToRelative(const CMString& pSrc, CMString& pOut);
+void pathToAbsolute(const CMString& pSrc, CMString& pOut);
 
 bool InitGdiPlus(void);
 void DestroyGdiPlus(void);
@@ -189,13 +178,12 @@ HICON GetDefaultIcon(bool copy = true);
 
 void CloseRichCallback(HWND hwnd);
 void CloseRichOwnerCallback(HWND hwnd);
-bool SetRichCallback(HWND hwnd, HANDLE hContact, bool subany, bool subnew);
+bool SetRichCallback(HWND hwnd, MCONTACT hContact, bool subany, bool subnew);
 void SetRichOwnerCallback(HWND hwnd, HWND hwndInput, HWND hwndLog);
 void ProcessAllInputAreas(bool restoreText);
 void RichEditData_Destroy(void);
 
 void CloseSmileys(void);
-void DestroySmileyBase(void);
 void DestroyAniSmileys(void);
 
 void UrlDecode(char* str);

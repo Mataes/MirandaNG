@@ -76,7 +76,6 @@ plugin may add different menu items with some service.
 
 25-11-2002		Full support of runtime build of all menus.
 				Contact		MS_CLIST_ADDCONTACTMENUITEM
-								MS_CLIST_REMOVECONTACTMENUITEM
 								MS_CLIST_MENUBUILDCONTACT
 								ME_CLIST_PREBUILDCONTACTMENU
 
@@ -100,16 +99,12 @@ plugin may add different menu items with some service.
 // SubGroup MENU
 
 // Group MENU
-typedef struct{
-int wParam;
-int lParam;
-}GroupMenuParam,*lpGroupMenuParam;
-
-//remove a item from SubGroup menu
-//wParam=hMenuItem returned by MS_CLIST_ADDSubGroupMENUITEM
-//lParam=0
-//returns 0 on success, nonzero on failure
-#define MS_CLIST_REMOVESUBGROUPMENUITEM					"CList/RemoveSubGroupMenuItem"
+typedef struct
+{
+	int wParam;
+	int lParam;
+}
+GroupMenuParam,*lpGroupMenuParam;
 
 //builds the SubGroup menu
 //wParam=lParam=0
@@ -129,11 +124,7 @@ __forceinline HGENMENU Menu_AddSubGroupMenuItem(lpGroupMenuParam gmp, CLISTMENUI
 //wParam=lParam=0
 #define ME_CLIST_PREBUILDSUBGROUPMENU						"CList/PreBuildSubGroupMenu"
 
-//remove a item from Group menu
-//wParam=hMenuItem returned by MS_CLIST_ADDGROUPMENUITEM
-//lParam=0
-//returns 0 on success, nonzero on failure
-#define MS_CLIST_REMOVEGROUPMENUITEM					"CList/RemoveGroupMenuItem"
+// Group MENU
 
 //builds the Group menu
 //wParam=lParam=0
@@ -153,15 +144,7 @@ __forceinline HGENMENU Menu_AddGroupMenuItem(lpGroupMenuParam gmp, CLISTMENUITEM
 //wParam=lParam=0
 #define ME_CLIST_PREBUILDGROUPMENU						"CList/PreBuildGroupMenu"
 
-// Group MENU
-
-
 // TRAY MENU
-//remove a item from tray menu
-//wParam=hMenuItem returned by MS_CLIST_ADDTRAYMENUITEM
-//lParam=0
-//returns 0 on success, nonzero on failure
-#define MS_CLIST_REMOVETRAYMENUITEM					"CList/RemoveTrayMenuItem"
 
 //builds the tray menu
 //wParam=lParam=0
@@ -187,31 +170,16 @@ __forceinline HGENMENU Menu_AddTrayMenuItem(CLISTMENUITEM *mi)
 //wParam=lParam=0
 #define ME_CLIST_PREBUILDSTATUSMENU "CList/PreBuildStatusMenu"
 
-//remove a item from main menu
-//wParam=hMenuItem returned by MS_CLIST_ADDMAINMENUITEM
-//lParam=0
-//returns 0 on success, nonzero on failure
-#define MS_CLIST_REMOVEMAINMENUITEM					"CList/RemoveMainMenuItem"
-
 //builds the main menu
 //wParam=lParam=0
 //returns a HMENU identifying the menu.
 #define MS_CLIST_MENUBUILDMAIN						"CList/MenuBuildMain"
-
-
 
 //the main menu is about to be built
 //wParam=lParam=0
 #define ME_CLIST_PREBUILDMAINMENU					"CList/PreBuildMainMenu"
 
 
-
-
-//remove a item from contact menu
-//wParam=hMenuItem returned by MS_CLIST_ADDCONTACTMENUITEM
-//lParam=0
-//returns 0 on success, nonzero on failure
-#define MS_CLIST_REMOVECONTACTMENUITEM			"CList/RemoveContactMenuItem"
 /*GENMENU_MODULE*/
 
 #define SETTING_NOOFFLINEBOTTOM_DEFAULT 0
@@ -249,31 +217,6 @@ typedef struct
 }
 	TCheckProcParam,*PCheckProcParam;
 
-typedef struct
-{
-	int cbSize;
-	char *name;
-
-	/*
-	This service called when module build menu(MO_BUILDMENU).
-	Service called with params
-
-	wparam=PCheckProcParam
-	lparam=0
-	if return==FALSE item is skiped.
-	*/
-	char *CheckService;
-
-	/*
-	This service called when user select menu item.
-	Service called with params
-	wparam=ownerdata
-	lparam=lParam from MO_PROCESSCOMMAND
-	*/
-	char *ExecService;//called when processmenuitem called
-}
-	TMenuParam,*PMenuParam;
-
 //used in MO_BUILDMENU
 typedef struct tagListParam
 {
@@ -308,20 +251,6 @@ typedef struct
 //Service automatically find right menuobject and menuitem
 //and call MO_PROCESSCOMMAND
 #define MO_PROCESSCOMMANDBYMENUIDENT		"MO/ProcessCommandByMenuIdent"
-
-
-//wparam=0;
-//lparam=PMenuParam;
-//returns=MenuObjectHandle on success,-1 on failure
-#define MO_CREATENEWMENUOBJECT				"MO/CreateNewMenuObject"
-
-//wparam=MenuObjectHandle
-//lparam=0
-//returns 0 on success,-1 on failure
-//Note: you must free all ownerdata structures, before you
-//call this service.MO_REMOVEMENUOBJECT NOT free it.
-#define MO_REMOVEMENUOBJECT					"MO/RemoveMenuObject"
-
 
 //wparam=MenuItemHandle
 //lparam=0
@@ -382,6 +311,39 @@ typedef struct
 //enable ability user to edit menuitems via options page.
 #define OPT_USERDEFINEDITEMS 1
 
+// szName = unique menu object identifier
+// szDisplayName = menu display name (auto-translated by core)
+// szCheckService = this service called when module build menu(MO_BUILDMENU).
+//    Service is called with params wparam = PCheckProcParam, lparam = 0
+//    if service returns FALSE, item is skipped.
+// szExecService = this service called when user select menu item.
+//    Service called with params wparam = ownerdata; lparam = lParam from MO_PROCESSCOMMAND
+// 
+// returns = MenuObjectHandle on success,-1 on failure
+
+struct TMenuParam
+{
+	int cbSize;
+	LPCSTR name, CheckService, ExecService;
+};
+
+__forceinline HANDLE MO_CreateMenuObject(LPCSTR szName, LPCSTR szDisplayName, LPCSTR szCheckService, LPCSTR szExecService)
+{
+	TMenuParam param = { sizeof(param), szName, szCheckService, szExecService };
+	return (HANDLE)CallService("MO/CreateNewMenuObject", (WPARAM)szDisplayName, (LPARAM)&param);
+}
+
+//wparam=MenuObjectHandle
+//lparam=0
+//returns 0 on success,-1 on failure
+//Note: you must free all ownerdata structures, before you
+//call this service.MO_REMOVEMENUOBJECT NOT free it.
+#define MO_REMOVEMENUOBJECT "MO/RemoveMenuObject"
+
+// wparam=0
+// lparam=*lpOptParam
+// returns TRUE if it processed the command, FALSE otherwise
+#define MO_SRV_SETOPTIONSMENUOBJECT "MO/SetOptionsMenuObject"
 
 typedef struct tagOptParam
 {
@@ -391,21 +353,26 @@ typedef struct tagOptParam
 }
 	OptParam,*lpOptParam;
 
+__forceinline void MO_SetMenuObjectParam(HANDLE hMenu, int iSetting, int iValue)
+{
+	OptParam param = { hMenu, iSetting, iValue };
+	CallService(MO_SRV_SETOPTIONSMENUOBJECT, 0, (LPARAM)&param);
+}
+__forceinline void MO_SetMenuObjectParam(HANDLE hMenu, int iSetting, LPCSTR pszValue)
+{
+	OptParam param = { hMenu, iSetting, (INT_PTR)pszValue };
+	CallService(MO_SRV_SETOPTIONSMENUOBJECT, 0, (LPARAM)&param);
+}
+
 //wparam=0
 //lparam=*lpOptParam
 //returns TRUE if it processed the command, FALSE otherwise
-#define MO_SETOPTIONSMENUOBJECT					"MO/SetOptionsMenuObject"
-
-
-//wparam=0
-//lparam=*lpOptParam
-//returns TRUE if it processed the command, FALSE otherwise
-#define MO_SETOPTIONSMENUITEM					"MO/SetOptionsMenuItem"
+#define MO_SETOPTIONSMENUITEM "MO/SetOptionsMenuItem"
 
 //wparam=char* szProtoName
 //lparam=0
 //returns HGENMENU of the root item or NULL
-#define MO_GETPROTOROOTMENU					"MO/GetProtoRootMenu"
+#define MO_GETPROTOROOTMENU "MO/GetProtoRootMenu"
 
 __forceinline HGENMENU MO_GetProtoRootMenu( const char* szProtoName )
 {

@@ -50,6 +50,7 @@ Boston, MA 02111-1307, USA.
 #include <newpluginapi.h>
 #include <m_avatars.h>
 #include <m_awaymsg.h>
+#include <m_clistint.h>
 #include <m_clc.h>
 #include <m_clui.h>
 #include <m_cluiframes.h>
@@ -96,7 +97,6 @@ extern HFONT hFontTitle, hFontLabels, hFontValues, hFontTrayTitle;
 extern COLORREF	colTitle, colLabels, colBg, colValues;
 
 extern int iCodePage;
-extern char szMetaModuleName[256];
 
 extern FI_INTERFACE *fii;
 

@@ -193,17 +193,14 @@ INT_PTR CALLBACK OptionsDlgProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lP
 
 int OptInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = {0};
-	odp.cbSize = sizeof(odp);
-	odp.position = 0;
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = hInst;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPTIONS);
-	odp.pszGroup = LPGEN("Contact List");
+	odp.pszGroup = LPGEN("Contact list");
 	odp.pszTitle = LPGEN("Start position");
 	odp.pfnDlgProc = OptionsDlgProc;
 	odp.flags = ODPF_BOLDGROUPS;
 	Options_AddPage(wParam, &odp);
-
 	return 0;
 }
 

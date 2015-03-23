@@ -19,72 +19,70 @@ Boston, MA 02111-1307, USA.
 
 #include "common.h"
 
-PlugOptions opts;
-WNDPROC g_pOldProc;
-
-LRESULT CALLBACK MyEditProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-	switch (message) {
-	case WM_KEYDOWN:
-		SendMessage(GetParent(GetParent(hwnd)), PSM_CHANGED, 0, 0);
-		break;
-	}
-	return CallWindowProc(g_pOldProc, hwnd, message, wParam, lParam);
-}
-
 INT_PTR CALLBACK UpdateNotifyOptsProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	DBVARIANT dbv;
-
 	switch (msg) {
 	case WM_INITDIALOG:
+	{
 		TranslateDialogDefault(hwndDlg);
-		CheckDlgButton(hwndDlg, IDC_UPDATEONSTARTUP, opts.bUpdateOnStartup);
-		CheckDlgButton(hwndDlg, IDC_ONLYONCEADAY, opts.bOnlyOnceADay);
+		CheckDlgButton(hwndDlg, IDC_UPDATEONSTARTUP, opts.bUpdateOnStartup ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hwndDlg, IDC_ONLYONCEADAY, opts.bOnlyOnceADay ? BST_CHECKED : BST_UNCHECKED);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_ONLYONCEADAY), opts.bUpdateOnStartup);
-		CheckDlgButton(hwndDlg, IDC_UPDATEONPERIOD, opts.bUpdateOnPeriod);
+		CheckDlgButton(hwndDlg, IDC_UPDATEONPERIOD, opts.bUpdateOnPeriod ? BST_CHECKED : BST_UNCHECKED);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_PERIOD), opts.bUpdateOnPeriod);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_PERIODSPIN), opts.bUpdateOnPeriod);
 		EnableWindow(GetDlgItem(hwndDlg, IDC_PERIODMEASURE), opts.bUpdateOnPeriod);
+		CheckDlgButton(hwndDlg, IDC_SILENTMODE, opts.bSilentMode ? BST_CHECKED : BST_UNCHECKED);
+		if (db_get_b(NULL, MODNAME, DB_SETTING_NEED_RESTART, 0))
+			ShowWindow(GetDlgItem(hwndDlg, IDC_NEEDRESTARTLABEL), SW_SHOW);
 
 		SendDlgItemMessage(hwndDlg, IDC_PERIODSPIN, UDM_SETRANGE, 0, MAKELONG(99, 1));
 		SendDlgItemMessage(hwndDlg, IDC_PERIODSPIN, UDM_SETPOS, 0, (LPARAM)opts.Period);
 
 		Edit_LimitText(GetDlgItem(hwndDlg, IDC_PERIOD), 2);
-		g_pOldProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_PERIOD), GWLP_WNDPROC, (LPARAM)MyEditProc);
 
 		ComboBox_InsertString(GetDlgItem(hwndDlg, IDC_PERIODMEASURE), 0, TranslateT("hours"));
 		ComboBox_InsertString(GetDlgItem(hwndDlg, IDC_PERIODMEASURE), 1, TranslateT("days"));
 		ComboBox_SetCurSel(GetDlgItem(hwndDlg, IDC_PERIODMEASURE), opts.bPeriodMeasure);
 
-		EnableWindow(GetDlgItem(hwndDlg, IDC_CUSTOMURL), FALSE);
-		if ( db_get_s(NULL, MODNAME, "UpdateURL", &dbv)) {
-			SetDlgItemText(hwndDlg, IDC_CUSTOMURL, _T(DEFAULT_UPDATE_URL));
-			CheckDlgButton(hwndDlg, IDC_STABLE, TRUE);
+		if (db_get_b(NULL, MODNAME, DB_SETTING_DONT_SWITCH_TO_STABLE, 0)) {
+			EnableWindow(GetDlgItem(hwndDlg, IDC_STABLE), FALSE);
+			// Reset setting if needed
+			int UpdateMode = db_get_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_STABLE);
+			if (UpdateMode == UPDATE_MODE_STABLE)
+				db_set_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_TRUNK);
+			ShowWindow(GetDlgItem(hwndDlg, IDC_DONTSWITCHTOSTABLE), SW_SHOW);
 		}
-		else {
-			SetDlgItemTextA(hwndDlg, IDC_CUSTOMURL, dbv.pszVal);
-			if ( !strcmp(dbv.pszVal, DEFAULT_UPDATE_URL))
-				CheckDlgButton(hwndDlg, IDC_STABLE, TRUE);
-			else if ( !strcmp(dbv.pszVal, DEFAULT_UPDATE_URL_TRUNK))
-				CheckDlgButton(hwndDlg, IDC_TRUNK, TRUE);
-			else if ( !strcmp(dbv.pszVal, DEFAULT_UPDATE_URL_TRUNK_SYMBOLS))
-				CheckDlgButton(hwndDlg, IDC_TRUNK_SYMBOLS, TRUE);
-			else {
-				CheckDlgButton(hwndDlg, IDC_CUSTOM, TRUE);
+
+		switch (GetUpdateMode()) {
+			case UPDATE_MODE_STABLE:
+				SetDlgItemText(hwndDlg, IDC_CUSTOMURL, _T(DEFAULT_UPDATE_URL));
+				CheckDlgButton(hwndDlg, IDC_STABLE, BST_CHECKED);
+				break;
+			case UPDATE_MODE_TRUNK:
+				SetDlgItemText(hwndDlg, IDC_CUSTOMURL, _T(DEFAULT_UPDATE_URL_TRUNK));
+				CheckDlgButton(hwndDlg, IDC_TRUNK, BST_CHECKED);
+				break;
+			case UPDATE_MODE_TRUNK_SYMBOLS:
+				SetDlgItemText(hwndDlg, IDC_CUSTOMURL, _T(DEFAULT_UPDATE_URL_TRUNK_SYMBOLS));
+				CheckDlgButton(hwndDlg, IDC_TRUNK_SYMBOLS, BST_CHECKED);
+				break;
+			default:
+				CheckDlgButton(hwndDlg, IDC_CUSTOM, BST_CHECKED);
 				EnableWindow(GetDlgItem(hwndDlg, IDC_CUSTOMURL), TRUE);
-			}
-			db_free(&dbv);
+
+				ptrT url(db_get_tsa(NULL, MODNAME, DB_SETTING_UPDATE_URL));
+				SetDlgItemText(hwndDlg, IDC_CUSTOMURL, (url == NULL) ? ptrT(GetDefaultUrl()) : url);
 		}
+	}
 		return TRUE;
 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_UPDATEONSTARTUP:
-			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 			EnableWindow(GetDlgItem(hwndDlg, IDC_ONLYONCEADAY), IsDlgButtonChecked(hwndDlg, IDC_UPDATEONSTARTUP));
-			break;
 
+		case IDC_SILENTMODE:
 		case IDC_ONLYONCEADAY:
 			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 			break;
@@ -100,11 +98,33 @@ INT_PTR CALLBACK UpdateNotifyOptsProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPA
 			break;
 
 		case IDC_TRUNK_SYMBOLS:
-		case IDC_TRUNK:
-		case IDC_STABLE:
-		case IDC_CUSTOM:
-			EnableWindow(GetDlgItem(hwndDlg, IDC_CUSTOMURL), IsDlgButtonChecked(hwndDlg, IDC_CUSTOM));
+			EnableWindow(GetDlgItem(hwndDlg, IDC_CUSTOMURL), FALSE);
+			SetDlgItemText(hwndDlg, IDC_CUSTOMURL, _T(DEFAULT_UPDATE_URL_TRUNK_SYMBOLS));
 			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+			break;
+		case IDC_TRUNK:
+			EnableWindow(GetDlgItem(hwndDlg, IDC_CUSTOMURL), FALSE);
+			SetDlgItemText(hwndDlg, IDC_CUSTOMURL, _T(DEFAULT_UPDATE_URL_TRUNK));
+			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+			break;
+		case IDC_STABLE:
+			EnableWindow(GetDlgItem(hwndDlg, IDC_CUSTOMURL), FALSE);
+			SetDlgItemText(hwndDlg, IDC_CUSTOMURL, _T(DEFAULT_UPDATE_URL));
+			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+			break;
+		case IDC_CUSTOM:
+			EnableWindow(GetDlgItem(hwndDlg, IDC_CUSTOMURL), TRUE);
+			{
+				ptrT url(db_get_tsa(NULL, MODNAME, DB_SETTING_UPDATE_URL));
+				SetDlgItemText(hwndDlg, IDC_CUSTOMURL, (url == NULL) ? ptrT(GetDefaultUrl()) : url);
+			}
+			SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
+			break;
+
+		case IDC_PERIOD:
+		case IDC_CUSTOMURL:
+			if ((HWND)lParam == GetFocus() && (HIWORD(wParam) == EN_CHANGE))
+				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 			break;
 
 		case IDC_PERIODMEASURE:
@@ -131,41 +151,42 @@ INT_PTR CALLBACK UpdateNotifyOptsProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPA
 				SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 
 			if (hdr && hdr->code == PSN_APPLY) {
-				opts.bUpdateOnStartup = IsDlgButtonChecked(hwndDlg, IDC_UPDATEONSTARTUP);
-				opts.bOnlyOnceADay = IsDlgButtonChecked(hwndDlg, IDC_ONLYONCEADAY);
-
-				opts.bUpdateOnPeriod = IsDlgButtonChecked(hwndDlg, IDC_UPDATEONPERIOD);
-
+				db_set_b(NULL, MODNAME, "UpdateOnStartup", opts.bUpdateOnStartup = IsDlgButtonChecked(hwndDlg, IDC_UPDATEONSTARTUP));
+				db_set_b(NULL, MODNAME, "OnlyOnceADay", opts.bOnlyOnceADay = IsDlgButtonChecked(hwndDlg, IDC_ONLYONCEADAY));
+				db_set_b(NULL, MODNAME, "UpdateOnPeriod", opts.bUpdateOnPeriod = IsDlgButtonChecked(hwndDlg, IDC_UPDATEONPERIOD));
+				db_set_b(NULL, MODNAME, "PeriodMeasure", opts.bPeriodMeasure = ComboBox_GetCurSel(GetDlgItem(hwndDlg, IDC_PERIODMEASURE)));
+				db_set_b(NULL, MODNAME, "SilentMode", opts.bSilentMode = IsDlgButtonChecked(hwndDlg, IDC_SILENTMODE));
 				TCHAR buffer[3] = {0};
 				Edit_GetText(GetDlgItem(hwndDlg, IDC_PERIOD), buffer, SIZEOF(buffer));
-				opts.Period = _ttoi(buffer);
+				db_set_dw(NULL, MODNAME, "Period", opts.Period = _ttoi(buffer));
 
-				opts.bPeriodMeasure = ComboBox_GetCurSel(GetDlgItem(hwndDlg, IDC_PERIODMEASURE));
-
-				db_set_b(NULL, MODNAME, "UpdateOnStartup", opts.bUpdateOnStartup);
-				db_set_b(NULL, MODNAME, "OnlyOnceADay", opts.bOnlyOnceADay);
-				db_set_b(NULL, MODNAME, "UpdateOnPeriod", opts.bUpdateOnPeriod);
-				db_set_b(NULL, MODNAME, "PeriodMeasure", opts.bPeriodMeasure);
-				db_set_dw(NULL, MODNAME, "Period", opts.Period);
-
-				InitTimer(1);
-
-				if ( IsDlgButtonChecked(hwndDlg, IDC_STABLE))
-					db_set_s(NULL, MODNAME, "UpdateURL", DEFAULT_UPDATE_URL);
-				else if ( IsDlgButtonChecked(hwndDlg, IDC_TRUNK))
-					db_set_s(NULL, MODNAME, "UpdateURL", DEFAULT_UPDATE_URL_TRUNK);
+				mir_forkthread(InitTimer, (void*)1);
+				
+				if ( IsDlgButtonChecked(hwndDlg, IDC_STABLE)) {
+					db_set_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_STABLE);
+					opts.bForceRedownload = 0;
+					db_unset(NULL, MODNAME, DB_SETTING_REDOWNLOAD);
+				}
+				else if ( IsDlgButtonChecked(hwndDlg, IDC_TRUNK)) {
+					db_set_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_TRUNK);
+					opts.bForceRedownload = 0;
+					db_unset(NULL, MODNAME, DB_SETTING_REDOWNLOAD);
+				}
 				else if ( IsDlgButtonChecked(hwndDlg, IDC_TRUNK_SYMBOLS)) {
-					ptrA oldUrl = db_get_sa(NULL, MODNAME, "UpdateURL");
-					if (strcmp(oldUrl, DEFAULT_UPDATE_URL_TRUNK_SYMBOLS)) {
-						opts.bForceRedownload = true;
-						db_set_b(NULL, MODNAME, "ForceRedownload", 1);
+					// Only set ForceRedownload if the previous UpdateMode was different
+					// to redownload all plugin with pdb files
+					if (db_get_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_STABLE) != UPDATE_MODE_TRUNK_SYMBOLS) {
+						db_set_b(NULL, MODNAME, DB_SETTING_REDOWNLOAD, opts.bForceRedownload = 1);
+						db_set_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_TRUNK_SYMBOLS);
 					}
-
-					db_set_s(NULL, MODNAME, "UpdateURL", DEFAULT_UPDATE_URL_TRUNK_SYMBOLS);
-				} else {
-					char szUrl[100];
-					GetDlgItemTextA(hwndDlg, IDC_CUSTOMURL, szUrl, SIZEOF(szUrl));
-					db_set_s(NULL, MODNAME, "UpdateURL", szUrl);
+				}
+				else {
+					TCHAR tszUrl[100];
+					GetDlgItemText(hwndDlg, IDC_CUSTOMURL, tszUrl, SIZEOF(tszUrl));
+					db_set_ts(NULL, MODNAME, DB_SETTING_UPDATE_URL, tszUrl);
+					db_set_b(NULL, MODNAME, DB_SETTING_UPDATE_MODE, UPDATE_MODE_CUSTOM);
+					opts.bForceRedownload = 0;
+					db_unset(NULL, MODNAME, DB_SETTING_REDOWNLOAD);
 				}
 			}
 			break;
@@ -176,9 +197,6 @@ INT_PTR CALLBACK UpdateNotifyOptsProc(HWND hwndDlg, UINT msg, WPARAM wParam, LPA
 
 INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	int i;
-	char str[20] = {0}, str2[20] = {0};
-
 	switch (msg) {
 	case WM_INITDIALOG:
 		TranslateDialogDefault(hdlg);
@@ -186,20 +204,14 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		//Colors
 		if (PopupOptions.DefColors == byCOLOR_OWN) {
 			CheckDlgButton(hdlg, IDC_USEOWNCOLORS, BST_CHECKED);
-			CheckDlgButton(hdlg, IDC_USEPOPUPCOLORS, BST_UNCHECKED);
-			CheckDlgButton(hdlg, IDC_USEWINCOLORS, BST_UNCHECKED);
 		}
-		if (PopupOptions.DefColors == byCOLOR_WINDOWS) {
-			CheckDlgButton(hdlg, IDC_USEOWNCOLORS, BST_UNCHECKED);
-			CheckDlgButton(hdlg, IDC_USEPOPUPCOLORS, BST_UNCHECKED);
+		else if (PopupOptions.DefColors == byCOLOR_WINDOWS) {
 			CheckDlgButton(hdlg, IDC_USEWINCOLORS, BST_CHECKED);
 		}
-		if (PopupOptions.DefColors == byCOLOR_POPUP) {
-			CheckDlgButton(hdlg, IDC_USEOWNCOLORS, BST_UNCHECKED);
+		else if (PopupOptions.DefColors == byCOLOR_POPUP) {
 			CheckDlgButton(hdlg, IDC_USEPOPUPCOLORS, BST_CHECKED);
-			CheckDlgButton(hdlg, IDC_USEWINCOLORS, BST_UNCHECKED);
 		}
-		for (i = 0; i < POPUPS; i++) {
+		for (int i = 0; i < POPUPS; i++) {
 			SendDlgItemMessage(hdlg, (i+42071), CPM_SETCOLOUR, 0, PopupsList[i].colorBack);
 			SendDlgItemMessage(hdlg, (i+41071), CPM_SETCOLOUR, 0, PopupsList[i].colorText);
 			EnableWindow(GetDlgItem(hdlg, (i+42071)), (PopupOptions.DefColors == byCOLOR_OWN));
@@ -210,37 +222,26 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 		SendDlgItemMessage(hdlg, IDC_TIMEOUT_VALUE_SPIN, UDM_SETRANGE32, -1, 9999);
 		SetDlgItemInt(hdlg, IDC_TIMEOUT_VALUE, PopupOptions.Timeout, TRUE);
 		//Mouse actions
-		for (i = 0; i < SIZEOF(PopupActions); i++) {
-			SendMessage(GetDlgItem(hdlg, IDC_LC), CB_SETITEMDATA, SendMessage(GetDlgItem(hdlg, IDC_LC), CB_ADDSTRING, 0, (LPARAM)TranslateTS(PopupActions[i].Text)), PopupActions[i].Action);
-			SendMessage(GetDlgItem(hdlg, IDC_RC), CB_SETITEMDATA, SendMessage(GetDlgItem(hdlg, IDC_RC), CB_ADDSTRING, 0, (LPARAM)TranslateTS(PopupActions[i].Text)), PopupActions[i].Action);
+		for (int i = 0; i < SIZEOF(PopupActions); i++) {
+			SendDlgItemMessage(hdlg, IDC_LC, CB_SETITEMDATA, SendDlgItemMessage(hdlg, IDC_LC, CB_ADDSTRING, 0, (LPARAM)TranslateTS(PopupActions[i].Text)), PopupActions[i].Action);
+			SendDlgItemMessage(hdlg, IDC_RC, CB_SETITEMDATA, SendDlgItemMessage(hdlg, IDC_RC, CB_ADDSTRING, 0, (LPARAM)TranslateTS(PopupActions[i].Text)), PopupActions[i].Action);
 		}
 		SendDlgItemMessage(hdlg, IDC_LC, CB_SETCURSEL, PopupOptions.LeftClickAction, 0);
 		SendDlgItemMessage(hdlg, IDC_RC, CB_SETCURSEL, PopupOptions.RightClickAction, 0);
 
-		//Popups nitified
-		for (i = 0; i < POPUPS; i++) {
+		//Popups notified
+		for (int i = 0; i < POPUPS; i++) {
+			char str[20] = {0};
 			mir_snprintf(str, SIZEOF(str), "Popups%d", i);
-			mir_snprintf(str2, SIZEOF(str2), "Popups%dM", i);
 			CheckDlgButton(hdlg, (i+40071), (db_get_b(NULL, MODNAME, str, DEFAULT_POPUP_ENABLED)) ? BST_CHECKED: BST_UNCHECKED);
-			CheckDlgButton(hdlg, (i+1024), (db_get_b(NULL, MODNAME, str2, DEFAULT_MESSAGE_ENABLED)) ? BST_CHECKED: BST_UNCHECKED);
-			if (IsDlgButtonChecked(hdlg, (i+40071)))
-				EnableWindow(GetDlgItem(hdlg, (i+1024)), FALSE);
-			else if (i > 0)
-				EnableWindow(GetDlgItem(hdlg, (i+1024)), TRUE);
 		}
-
-		EnableWindow(GetDlgItem(hdlg, (40071)), FALSE);
-		return TRUE;
-
-	case WM_SHOWWINDOW:
-		EnableWindow(GetDlgItem(hdlg, (40071)), FALSE);
 		return TRUE;
 
 	case WM_COMMAND:
 		{
 			WORD idCtrl = LOWORD(wParam), wNotifyCode = HIWORD(wParam);
 			if (wNotifyCode == CPN_COLOURCHANGED) {
-				if (idCtrl > 40070) 				{
+				if (idCtrl > 40070) {
 					//It's a color picker change. idCtrl is the control id.
 					COLORREF color = SendDlgItemMessage(hdlg, idCtrl, CPM_GETCOLOUR, 0, 0);
 					int ctlID = idCtrl;
@@ -251,9 +252,6 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 					SendMessage(GetParent(hdlg), PSM_CHANGED, 0, 0);
 					return TRUE;
 				}
-			}
-
-			if (wNotifyCode == CBN_SELCHANGE) {
 				if (idCtrl == IDC_LC)
 					PopupOptions.LeftClickAction = (BYTE)SendDlgItemMessage(hdlg, IDC_LC, CB_GETCURSEL, 0, 0);
 				else if (idCtrl == IDC_RC)
@@ -269,7 +267,7 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 
 				PopupOptions.DefColors = byCOLOR_OWN;
 
-				for (i = 0; i < POPUPS; i++) {
+				for (int i = 0; i < POPUPS; i++) {
 					EnableWindow(GetDlgItem(hdlg, (i+42071)), TRUE); //Background
 					EnableWindow(GetDlgItem(hdlg, (i+41071)), TRUE); //Text
 				}
@@ -282,7 +280,7 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 
 				//Use Windows colors
 				PopupOptions.DefColors = byCOLOR_WINDOWS;
-				for (i = 0; i < POPUPS; i++) {
+				for (int i = 0; i < POPUPS; i++) {
 					EnableWindow(GetDlgItem(hdlg, (i+42071)), FALSE); //Background
 					EnableWindow(GetDlgItem(hdlg, (i+41071)), FALSE); //Text
 				}
@@ -295,7 +293,7 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 
 				//Use Popup colors
 				PopupOptions.DefColors = byCOLOR_POPUP;
-				for (i = 0; i < POPUPS; i++)  {
+				for (int i = 0; i < POPUPS; i++)  {
 					EnableWindow(GetDlgItem(hdlg, (i+42071)), FALSE); //Background
 					EnableWindow(GetDlgItem(hdlg, (i+41071)), FALSE); //Text
 				}
@@ -307,9 +305,8 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 					LPCTSTR Title = TranslateT("Plugin Updater");
 					LPCTSTR Text = TranslateT("Test");
 					for (int i = 0; i < POPUPS; i++) {
-						if ((!IsDlgButtonChecked(hdlg, (i+40071))) || (!IsWindowEnabled(GetDlgItem(hdlg, (i+40071)))))
-							continue;
-						ShowPopup(0, Title, Text, i, 0);
+						if (IsDlgButtonChecked(hdlg, i+40071))
+							ShowPopup(Title, Text, i);
 					}
 				}
 				break;
@@ -317,19 +314,19 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 			case IDC_TIMEOUT_VALUE:
 			case IDC_MSG_BOXES:
 			case IDC_ERRORS:
-				EnableWindow(GetDlgItem(hdlg, IDC_ERRORS_MSG), !IsDlgButtonChecked(hdlg, IDC_ERRORS));
+				EnableWindow(GetDlgItem(hdlg, IDC_ERRORS_MSG), BST_UNCHECKED == IsDlgButtonChecked(hdlg, IDC_ERRORS));
 				if ((HIWORD(wParam) == BN_CLICKED || HIWORD(wParam) == EN_CHANGE) && (HWND)lParam == GetFocus())
 					SendMessage(GetParent(hdlg), PSM_CHANGED, 0, 0);
 				break;
 
 			case IDC_INFO_MESSAGES:
-				EnableWindow(GetDlgItem(hdlg, IDC_INFO_MESSAGES_MSG), !IsDlgButtonChecked(hdlg, IDC_INFO_MESSAGES));
+				EnableWindow(GetDlgItem(hdlg, IDC_INFO_MESSAGES_MSG), BST_UNCHECKED == IsDlgButtonChecked(hdlg, IDC_INFO_MESSAGES));
 				if ((HIWORD(wParam) == BN_CLICKED || HIWORD(wParam) == EN_CHANGE) && (HWND)lParam == GetFocus())
 					SendMessage(GetParent(hdlg), PSM_CHANGED, 0, 0);
 				break;
 
 			case IDC_PROGR_DLG:
-				EnableWindow(GetDlgItem(hdlg, IDC_PROGR_DLG_MSG), !IsDlgButtonChecked(hdlg, IDC_PROGR_DLG));
+				EnableWindow(GetDlgItem(hdlg, IDC_PROGR_DLG_MSG), BST_UNCHECKED == IsDlgButtonChecked(hdlg, IDC_PROGR_DLG));
 				if ((HIWORD(wParam) == BN_CLICKED || HIWORD(wParam) == EN_CHANGE) && (HWND)lParam == GetFocus())
 					SendMessage(GetParent(hdlg), PSM_CHANGED, 0, 0);
 				break;
@@ -358,7 +355,7 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 				//Text color
 				char szSetting[20] = {0};
 				DWORD ctlColor = 0;
-				for (i = 0; i <= POPUPS-1; i++) {
+				for (int i = 0; i < POPUPS; i++) {
 					ctlColor = SendDlgItemMessage(hdlg, (i+42071), CPM_GETCOLOUR, 0, 0);
 					PopupsList[i].colorBack = ctlColor;
 					mir_snprintf(szSetting, SIZEOF(szSetting), "Popups%iBg", i);
@@ -378,11 +375,10 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 				//Right mouse click
 				db_set_b(NULL, MODNAME, "RightClickAction", PopupOptions.RightClickAction);
 				//Notified popups
-				for (i = 0; i < POPUPS; i++) {
+				for (int i = 0; i < POPUPS; i++) {
+					char str[20] = {0};
 					mir_snprintf(str, SIZEOF(str), "Popups%d", i);
 					db_set_b(NULL, MODNAME, str, (BYTE)(IsDlgButtonChecked(hdlg, (i+40071))));
-					mir_snprintf(str2, SIZEOF(str2), "Popups%dM", i);
-					db_set_b(NULL, MODNAME, str2, (BYTE)(IsDlgButtonChecked(hdlg, (i+1024))));
 				}
 				return TRUE;
 			} //case PSN_APPLY
@@ -392,10 +388,9 @@ INT_PTR CALLBACK DlgPopupOpts(HWND hdlg, UINT msg, WPARAM wParam, LPARAM lParam)
 	return FALSE;
 }
 
-int OptInit(WPARAM wParam, LPARAM lParam)
+int OptInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = {0};
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.position = 100000000;
 	odp.hInstance = hInst;
 	odp.flags = ODPF_BOLDGROUPS | ODPF_TCHAR;
@@ -405,7 +400,7 @@ int OptInit(WPARAM wParam, LPARAM lParam)
 	odp.pfnDlgProc = UpdateNotifyOptsProc;
 	Options_AddPage(wParam, &odp);
 
-	if ( ServiceExists(MS_POPUP_ADDPOPUP)) {
+	if ( ServiceExists(MS_POPUP_ADDPOPUPT)) {
 		odp.pszTemplate = MAKEINTRESOURCEA(IDD_POPUP);
 		odp.ptszGroup = LPGENT("Popups");
 		odp.ptszTitle = LPGENT("Plugin Updater");
@@ -413,4 +408,9 @@ int OptInit(WPARAM wParam, LPARAM lParam)
 		Options_AddPage(wParam, &odp);
 	}
 	return 0;
+}
+
+void InitOptions()
+{
+	HookEvent(ME_OPT_INITIALISE, OptInit);
 }

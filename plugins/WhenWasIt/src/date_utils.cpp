@@ -30,10 +30,10 @@ time_t Today()
 
 bool IsDOBValid(int year, int month, int day)
 {
-	return (year != 0 && month != 0 && day != 0);
+	return (month != 0 && day != 0);
 }
 
-int GetContactDOB(HANDLE hContact, int &year, int &month, int &day)
+int GetContactDOB(MCONTACT hContact, int &year, int &month, int &day)
 {
 	year = db_get_w(hContact, "UserInfo", "DOBy", 0);
 	month = db_get_b(hContact, "UserInfo", "DOBm", 0);
@@ -69,17 +69,20 @@ int GetContactDOB(HANDLE hContact, int &year, int &month, int &day)
 	return DOB_UNKNOWN;
 }
 
-int GetContactAge(HANDLE hContact)
+int GetContactAge(MCONTACT hContact)
 {
 	int year, month, day;
 	time_t tNow;
 	time(&tNow);
 	struct tm *now = localtime(&tNow);
 	GetContactDOB(hContact, year, month, day);
-	return (now->tm_year + 1900) - year;
+	if (year == 0) 
+		return 0; 
+	else 
+		return (now->tm_year + 1900) - year;
 }
 
-char GetContactGender(HANDLE hContact)
+char GetContactGender(MCONTACT hContact)
 {
 	char gender = db_get_b(hContact, "UserInfo", "Gender", 'U');
 	if (gender == 'U')
@@ -185,7 +188,7 @@ void FillStandard(char *&module, char *&sYear, char *&sMonth, char *&sDay)
 	sDay = "DOBd";
 }
 
-int SaveBirthday(HANDLE hContact, int year, int month, int day, int mode)
+int SaveBirthday(MCONTACT hContact, int year, int month, int day, int mode)
 {
 	char *sModule, *sdModule, *sd2Module; //s* = keep, sd* = delete, sd2* = delete
 	char *sYear, *sdYear, *sd2Year;

@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2007 Artem Shpynov
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
+Copyright (c) 2007 Artem Shpynov
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -35,7 +36,7 @@ static BOOL IsAeroMode()
 
 static BOOL IsVSMode()
 {
-	return isThemeActive && IsWinVerVistaPlus() && isThemeActive();
+	return IsWinVerVistaPlus() && IsThemeActive();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +100,7 @@ int LoadIcoTabsModule()
 {
 	WNDCLASSEX wc;
 
-	ZeroMemory(&wc, sizeof(wc));
+	memset(&wc, 0, sizeof(wc));
 	wc.cbSize = sizeof(wc);
 	wc.lpszClassName = MIRANDAICOTABCLASS;
 	wc.lpfnWndProc = MIcoTabWndProc;
@@ -139,7 +140,7 @@ static void MIcoTab_SetupColors(MIcoTabCtrl *dat)
 	dat->clSelBorder	 = RGB(dat->rgbSelTop.rgbRed, dat->rgbSelTop.rgbGreen, dat->rgbSelTop.rgbBlue);
 	dat->clHotBorder	 = RGB(dat->rgbHotTop.rgbRed, dat->rgbHotTop.rgbGreen, dat->rgbHotTop.rgbBlue);
 
-	if ( !dat->hFont) dat->hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+	if (!dat->hFont) dat->hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
 }
 
 static void MIcoTab_FillRect(HDC hdc, int x, int y, int width, int height, COLORREF cl)
@@ -196,13 +197,13 @@ static void MIcoTab_DrawItem(HWND hwnd, HDC hdc, MIcoTabCtrl *dat, MIcoTab *tab,
 			rc.top = iTopSpace;
 			rc.right = itemX + dat->itemWidth;
 			rc.bottom = iTopSpace + dat->itemHeight;
-			HANDLE hTheme = openThemeData(hwnd, L"ListView");
+			HANDLE hTheme = OpenThemeData(hwnd, L"ListView");
 			if (dat->nHotIdx == i || GetFocus() == hwnd)
-				drawThemeBackground(hTheme, hdc, LVP_LISTITEM, LISS_HOTSELECTED, &rc, NULL);
+				DrawThemeBackground(hTheme, hdc, LVP_LISTITEM, LISS_HOTSELECTED, &rc, NULL);
 			else
-				drawThemeBackground(hTheme, hdc, LVP_LISTITEM, LISS_SELECTED, &rc, NULL);
+				DrawThemeBackground(hTheme, hdc, LVP_LISTITEM, LISS_SELECTED, &rc, NULL);
 
-			closeThemeData(hTheme);
+			CloseThemeData(hTheme);
 		}
 		else {
 			MIcoTab_FillRect(hdc, itemX, ITC_BORDER_SIZE, dat->itemWidth, dat->itemHeight, dat->clSelBorder);
@@ -217,10 +218,10 @@ static void MIcoTab_DrawItem(HWND hwnd, HDC hdc, MIcoTabCtrl *dat, MIcoTab *tab,
 			rc.top = iTopSpace;
 			rc.right = itemX + dat->itemWidth;
 			rc.bottom = iTopSpace + dat->itemHeight;
-			setWindowTheme(hwnd, L"explorer", NULL);
-			HANDLE hTheme = openThemeData(hwnd, L"ListView");
-			drawThemeBackground(hTheme, hdc, LVP_LISTITEM, LISS_HOT, &rc, NULL);
-			closeThemeData(hTheme);
+			SetWindowTheme(hwnd, L"explorer", NULL);
+			HANDLE hTheme = OpenThemeData(hwnd, L"ListView");
+			DrawThemeBackground(hTheme, hdc, LVP_LISTITEM, LISS_HOT, &rc, NULL);
+			CloseThemeData(hTheme);
 		}
 		else {
 			MIcoTab_FillRect(hdc, itemX, ITC_BORDER_SIZE, dat->itemWidth, dat->itemHeight, dat->clHotBorder);
@@ -242,11 +243,11 @@ static void MIcoTab_DrawItem(HWND hwnd, HDC hdc, MIcoTabCtrl *dat, MIcoTab *tab,
 		dto.dwSize = sizeof(dto);
 		dto.dwFlags = DTT_COMPOSITED|DTT_GLOWSIZE;
 		dto.iGlowSize = 10;
-		HANDLE hTheme = openThemeData(hwnd, L"Window");
+		HANDLE hTheme = OpenThemeData(hwnd, L"Window");
 		wchar_t *tcsNameW = mir_t2u(tab->tcsName);
 		drawThemeTextEx(hTheme, hdc, WP_CAPTION, CS_ACTIVE, tcsNameW, -1, DT_VCENTER|DT_CENTER|DT_END_ELLIPSIS, &textRect, &dto);
 		mir_free(tcsNameW);
-		closeThemeData(hTheme);
+		CloseThemeData(hTheme);
 	}
 	else DrawText(hdc, tab->tcsName, -1, &textRect, DT_VCENTER|DT_CENTER|DT_END_ELLIPSIS);
 
@@ -322,7 +323,6 @@ static LRESULT CALLBACK MIcoTabWndProc(HWND hwndDlg, UINT  msg, WPARAM wParam, L
 	switch(msg) {
 	case WM_NCCREATE:
 		itc = new MIcoTabCtrl; //(MIcoTabCtrl*)mir_alloc(sizeof(MIcoTabCtrl));
-		if (itc == NULL) return FALSE;
 		itc->nSelectedIdx = -1;
 		itc->nHotIdx = -1;
 		itc->bMouseInside = FALSE;
@@ -359,7 +359,7 @@ static LRESULT CALLBACK MIcoTabWndProc(HWND hwndDlg, UINT  msg, WPARAM wParam, L
 		return TRUE;
 
 	case WM_MOUSEMOVE:
-		if ( !itc->bMouseInside) {
+		if (!itc->bMouseInside) {
 			TRACKMOUSEEVENT tme = {0};
 			tme.cbSize = sizeof(tme);
 			tme.dwFlags = TME_LEAVE;
@@ -463,7 +463,7 @@ static LRESULT CALLBACK MIcoTabWndProc(HWND hwndDlg, UINT  msg, WPARAM wParam, L
 
 	case ITCM_SETBACKGROUND:
 		itc->hBkgBmp = (HBITMAP)lParam;
-		if ( !itc->hBkgDC)
+		if (!itc->hBkgDC)
 			itc->hBkgDC = CreateCompatibleDC(NULL);
 		itc->hBkgOldBmp = (HBITMAP)SelectObject(itc->hBkgDC, itc->hBkgBmp);
 		{
@@ -477,7 +477,7 @@ static LRESULT CALLBACK MIcoTabWndProc(HWND hwndDlg, UINT  msg, WPARAM wParam, L
 	case ITCM_ADDITEM:
 	{
 		MIcoTab* pMit = (MIcoTab *)wParam;
-		if ( !pMit)
+		if (!pMit)
 			return FALSE;
 
 		MIcoTab* pListMit = (MIcoTab *)mir_calloc(sizeof(MIcoTab));
@@ -503,7 +503,7 @@ static LRESULT CALLBACK MIcoTabWndProc(HWND hwndDlg, UINT  msg, WPARAM wParam, L
 	}
 
 	case ITCM_SETSEL:
-		if (wParam >= 0 && (int)wParam < itc->pList.getCount()) {
+		if ((int)wParam >= 0 && (int)wParam < itc->pList.getCount()) {
 			itc->nSelectedIdx = wParam;
 			SetWindowText(hwndDlg, itc->pList[itc->nSelectedIdx]->tcsName);
 			RedrawWindow(hwndDlg, NULL, NULL, RDW_INVALIDATE);
@@ -517,7 +517,7 @@ static LRESULT CALLBACK MIcoTabWndProc(HWND hwndDlg, UINT  msg, WPARAM wParam, L
 		return itc->nSelectedIdx;
 
 	case ITCM_GETITEMDATA:
-		if (wParam >= 0 && (int)wParam < itc->pList.getCount())
+		if ((int)wParam >= 0 && (int)wParam < itc->pList.getCount())
 			return ((MIcoTab *)itc->pList[wParam])->data;
 		return 0;
 

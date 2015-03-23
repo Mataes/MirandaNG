@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -20,12 +21,13 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "hdr/modern_commonheaders.h"
 #include "hdr/modern_clc.h"
 #include "hdr/modern_commonprototypes.h"
 
 #define CacheArrSize 255
-ClcGroup *CacheIndex[CacheArrSize] = {NULL};
+ClcGroup *CacheIndex[CacheArrSize] = { NULL };
 bool CacheIndexClear = TRUE;
 
 /* the CLC uses 3 different ways to identify elements in its list, this file
@@ -45,19 +47,18 @@ exclusively externally
 2->1: GetRowByIndex()
 */
 
-int GetContactIndex(ClcGroup *group,ClcContact *contact)
+int GetContactIndex(ClcGroup *group, ClcContact *contact)
 {
-	for (int i=0; i < group->cl.count; i++)
+	for (int i = 0; i < group->cl.count; i++)
 		if (group->cl.items[i]->hContact == contact->hContact)  return i;
 	return -1;
 }
 
-int cliGetRowsPriorTo(ClcGroup *group,ClcGroup *subgroup,int contactIndex)
+int cliGetRowsPriorTo(ClcGroup *group, ClcGroup *subgroup, int contactIndex)
 {
 	int count = 0;
-	BYTE k;
 	int subcontactscount = 0;
-	k = db_get_b(NULL,"CLC","MetaExpanding",SETTING_METAEXPANDING_DEFAULT);
+	BYTE k = db_get_b(NULL, "CLC", "MetaExpanding", SETTING_METAEXPANDING_DEFAULT);
 	group->scanIndex = 0;
 	for (;;) {
 		if (group->scanIndex == group->cl.count) {
@@ -66,55 +67,48 @@ int cliGetRowsPriorTo(ClcGroup *group,ClcGroup *subgroup,int contactIndex)
 			group->scanIndex++;
 			continue;
 		}
-		if (group == subgroup && contactIndex-subcontactscount == group->scanIndex) return count;
+		if (group == subgroup && contactIndex - subcontactscount == group->scanIndex) return count;
 		count++;
-		
-		/*		if ((group->cl.items[group->scanIndex]->type == CLCIT_CONTACT) && (group->cl.items[group->scanIndex].flags & CONTACTF_STATUSMSG)) {
-		count++;
-		}
-		*/
-		if (group->cl.items[group->scanIndex]->type == CLCIT_GROUP) {
-			if (group->cl.items[group->scanIndex]->group == subgroup && contactIndex == -1)
-				return count-1;
-			if (group->cl.items[group->scanIndex]->group->expanded) {
-				group = group->cl.items[group->scanIndex]->group;
+
+		ClcContact *c = group->cl.items[group->scanIndex];
+		if (c->type == CLCIT_GROUP) {
+			if (c->group == subgroup && contactIndex == -1)
+				return count - 1;
+			
+			if (c->group->expanded) {
+				group = c->group;
 				group->scanIndex = 0;
 				subcontactscount = 0;
 				continue;
 			}
 		}
-		if (group == subgroup)
-		{
-			if (group->cl.items[group->scanIndex]->type == CLCIT_CONTACT && group->cl.items[group->scanIndex]->SubAllocated)
-			{
-				int rows = (group->cl.items[group->scanIndex]->SubAllocated*group->cl.items[group->scanIndex]->SubExpanded*k);
-				if (group->scanIndex+rows >= contactIndex)
-					return count+(contactIndex-group->scanIndex)-1;				
+		if (group == subgroup) {
+			if (c->type == CLCIT_CONTACT && c->SubAllocated) {
+				int rows = (c->SubAllocated*c->SubExpanded*k);
+				if (group->scanIndex + rows >= contactIndex)
+					return count + (contactIndex - group->scanIndex) - 1;
 			}
 		}
-		if (group->cl.items[group->scanIndex]->type == CLCIT_CONTACT)
-		{
-			count += (group->cl.items[group->scanIndex]->SubAllocated*group->cl.items[group->scanIndex]->SubExpanded*k);
-			subcontactscount += (group->cl.items[group->scanIndex]->SubAllocated*group->cl.items[group->scanIndex]->SubExpanded*k);
+		if (c->type == CLCIT_CONTACT) {
+			count += (c->SubAllocated * c->SubExpanded * k);
+			subcontactscount += (c->SubAllocated * c->SubExpanded * k);
 		}
 		group->scanIndex++;
 	}
 	return -1;
 }
 
-int cliFindItem(HWND hwnd,ClcData *dat,HANDLE hItem,ClcContact **contact,ClcGroup **subgroup,int *isVisible)
+int cliFindItem(HWND hwnd, ClcData *dat, DWORD dwItem, ClcContact **contact, ClcGroup **subgroup, int *isVisible)
 {
-  return FindItem(hwnd,dat, hItem,contact,subgroup,isVisible,FALSE);
+	return FindItem(hwnd, dat, dwItem, contact, subgroup, isVisible, FALSE);
 }
 
-int FindItem(HWND hwnd,ClcData *dat,HANDLE hItem,ClcContact **contact,ClcGroup **subgroup,int *isVisible, BOOL isIgnoreSubcontacts)
+int FindItem(HWND hwnd, ClcData *dat, DWORD dwItem, ClcContact **contact, ClcGroup **subgroup, int *isVisible, BOOL isIgnoreSubcontacts)
 {
 	int index = 0, i;
 	int nowVisible = 1;
-	ClcGroup *group;
-	
-	group = &dat->list;
 
+	ClcGroup *group = &dat->list;
 	group->scanIndex = 0;
 	group = &dat->list;
 
@@ -122,13 +116,13 @@ int FindItem(HWND hwnd,ClcData *dat,HANDLE hItem,ClcContact **contact,ClcGroup *
 		if (group->scanIndex == group->cl.count) {
 			ClcGroup *tgroup;
 			group = group->parent;
-			if (group == NULL) break;
+			if (group == NULL)
+				break;
+
 			nowVisible = 1;
-			for (tgroup = group;tgroup;tgroup = tgroup->parent)
-			{
-				if ( !tgroup->expanded) 
-				{
-					nowVisible = 0; 
+			for (tgroup = group; tgroup; tgroup = tgroup->parent) {
+				if (!tgroup->expanded) {
+					nowVisible = 0;
 					break;
 				}
 			}
@@ -136,64 +130,50 @@ int FindItem(HWND hwnd,ClcData *dat,HANDLE hItem,ClcContact **contact,ClcGroup *
 			continue;
 		}
 		if (nowVisible) index++;
-		if ((IsHContactGroup(hItem) && group->cl.items[group->scanIndex]->type == CLCIT_GROUP && ((UINT_PTR)hItem&~HCONTACT_ISGROUP) == group->cl.items[group->scanIndex]->groupId)  || 
-			(IsHContactContact(hItem) && group->cl.items[group->scanIndex]->type == CLCIT_CONTACT && group->cl.items[group->scanIndex]->hContact == hItem)  || 
-			(IsHContactInfo(hItem) && group->cl.items[group->scanIndex]->type == CLCIT_INFO && group->cl.items[group->scanIndex]->hContact == (HANDLE)((UINT_PTR)hItem&~HCONTACT_ISINFO))) 
-		{
+
+		ClcContact *c = group->cl.items[group->scanIndex];
+		if ((IsHContactGroup(dwItem) && c->type == CLCIT_GROUP && (dwItem & ~HCONTACT_ISGROUP) == c->groupId) ||
+			(IsHContactContact(dwItem) && c->type == CLCIT_CONTACT && c->hContact == dwItem) ||
+			(IsHContactInfo(dwItem) && c->type == CLCIT_INFO && c->hContact == (dwItem & ~HCONTACT_ISINFO))) {
 			if (isVisible) {
-				if ( !nowVisible) *isVisible = 0;
+				if (!nowVisible) *isVisible = 0;
 				else {
-					int posy = cliGetRowTopY(dat,index+1);
-					if (posy < dat->yScroll) 
+					int posy = cliGetRowTopY(dat, index + 1);
+					if (posy < dat->yScroll)
 						*isVisible = 0;
 					else {
 						RECT clRect;
-						GetClientRect(hwnd,&clRect);
-						if (posy >= dat->yScroll+clRect.bottom) *isVisible = 0;
+						GetClientRect(hwnd, &clRect);
+						if (posy >= dat->yScroll + clRect.bottom) *isVisible = 0;
 						else *isVisible = 1;
 					}
 				}
 			}
-			if (contact) *contact = group->cl.items[group->scanIndex];
+			if (contact) *contact = c;
 			if (subgroup) *subgroup = group;
-			
+
 			return 1;
 		}
-		if ( !isIgnoreSubcontacts && 
-			IsHContactContact(hItem)  && 
-			group->cl.items[group->scanIndex]->type == CLCIT_CONTACT  && 
-			group->cl.items[group->scanIndex]->SubAllocated > 0)
-		{
-			for (i=0; i < group->cl.items[group->scanIndex]->SubAllocated; i++)
-			{
-				if (group->cl.items[group->scanIndex]->subcontacts[i].hContact == hItem)
-				{	
-#ifdef _DEBUG
-					if (IsBadWritePtr(&group->cl.items[group->scanIndex]->subcontacts[i], sizeof(ClcContact)))
-					{
-						log1("FindIltem->IsBadWritePtr | 2o  [%08x]", &group->cl.items[group->scanIndex]->subcontacts[i]);
-						PostMessage(hwnd,CLM_AUTOREBUILD, 0, 0);
-						
-						return 0;
-					}
-#endif
-					if (contact) *contact = &group->cl.items[group->scanIndex]->subcontacts[i];
+
+		if (!isIgnoreSubcontacts && IsHContactContact(dwItem) && c->type == CLCIT_CONTACT && c->SubAllocated > 0) {
+			for (i = 0; i < c->SubAllocated; i++) {
+				if (c->subcontacts[i].hContact == dwItem) {
+					if (contact) *contact = &c->subcontacts[i];
 					if (subgroup) *subgroup = group;
-					
 					return 1;
 				}
 			}
 		}
 
-		if (group->cl.items[group->scanIndex]->type == CLCIT_GROUP) {
-			group = group->cl.items[group->scanIndex]->group;
+		if (c->type == CLCIT_GROUP) {
+			group = c->group;
 			group->scanIndex = 0;
 			nowVisible &= group->expanded;
 			continue;
 		}
 		group->scanIndex++;
 	}
-	
+
 	if (isVisible) *isVisible = FALSE;
 	if (contact)   *contact = NULL;
 	if (subgroup)  *subgroup = NULL;
@@ -202,100 +182,96 @@ int FindItem(HWND hwnd,ClcData *dat,HANDLE hItem,ClcContact **contact,ClcGroup *
 
 void ClearRowByIndexCache()
 {
-	if ( !CacheIndexClear) 
-	{
+	if (!CacheIndexClear) {
 		memset(CacheIndex, 0, sizeof(CacheIndex));
 		CacheIndexClear = TRUE;
-	};
+	}
 }
-int cliGetRowByIndex(ClcData *dat,int testindex,ClcContact **contact,ClcGroup **subgroup)
+
+int cliGetRowByIndex(ClcData *dat, int testindex, ClcContact **contact, ClcGroup **subgroup)
 {
 	int index = 0, i;
 	ClcGroup *group = &dat->list;
 
 	if (testindex < 0) return (-1);
-	{
-		group->scanIndex = 0;
-		for (;;) {
-			if (group->scanIndex == group->cl.count) {
-				group = group->parent;
-				if (group == NULL) break;
-				group->scanIndex++;
-				continue;
-			}
-			if ((index>0) && (index < CacheArrSize)) 
-			{
-				CacheIndex[index] = group;
-				CacheIndexClear = FALSE;
-			};
 
-			if (testindex == index) {
-				if (contact) *contact = group->cl.items[group->scanIndex];
-				if (subgroup) *subgroup = group;
-				return index;
-			}
-
-			if (group->cl.items[group->scanIndex]->type == CLCIT_CONTACT)
-				if (group->cl.items[group->scanIndex]->SubAllocated)
-					if (group->cl.items[group->scanIndex]->SubExpanded && dat->expandMeta)
-					{
-						for (i=0;i < group->cl.items[group->scanIndex]->SubAllocated;i++)
-						{
-							if ((index>0) && (index < CacheArrSize)) 
-							{
-								CacheIndex[index] = group;
-								CacheIndexClear = FALSE;
-							};
-							index++;
-							if (testindex == index) {
-								if (contact) 
-								{
-									*contact = &group->cl.items[group->scanIndex]->subcontacts[i];
-									(*contact)->subcontacts = group->cl.items[group->scanIndex];
-								}
-
-								if (subgroup) *subgroup = group;
-								return index;
-							}
-						}
-
-					}
-					index++;
-					if (group->cl.items[group->scanIndex]->type == CLCIT_GROUP && group->cl.items[group->scanIndex]->group->expanded) {
-						group = group->cl.items[group->scanIndex]->group;
-						group->scanIndex = 0;
-						continue;
-					}
-					group->scanIndex++;
+	group->scanIndex = 0;
+	for (;;) {
+		if (group->scanIndex == group->cl.count) {
+			group = group->parent;
+			if (group == NULL) break;
+			group->scanIndex++;
+			continue;
 		}
-	};
+
+		if (index > 0 && index < CacheArrSize) {
+			CacheIndex[index] = group;
+			CacheIndexClear = FALSE;
+		}
+
+		ClcContact *c = group->cl.items[group->scanIndex];
+		if (testindex == index) {
+			if (contact) *contact = c;
+			if (subgroup) *subgroup = group;
+			return index;
+		}
+
+		if (c->type == CLCIT_CONTACT)
+			if (c->SubAllocated)
+				if (c->SubExpanded && dat->expandMeta) {
+					for (i = 0; i < c->SubAllocated; i++) {
+						if ((index>0) && (index < CacheArrSize)) {
+							CacheIndex[index] = group;
+							CacheIndexClear = FALSE;
+						}
+						index++;
+						if (testindex == index) {
+							if (contact) {
+								*contact = &c->subcontacts[i];
+								(*contact)->subcontacts = c;
+							}
+
+							if (subgroup) *subgroup = group;
+							return index;
+						}
+					}
+				}
+
+		index++;
+		if (c->type == CLCIT_GROUP && c->group->expanded) {
+			group = c->group;
+			group->scanIndex = 0;
+			continue;
+		}
+		group->scanIndex++;
+	}
 	return -1;
 }
 
 HANDLE ContactToHItem(ClcContact *contact)
 {
-	switch(contact->type) {
-case CLCIT_CONTACT:
-	return contact->hContact;
-case CLCIT_GROUP:
-	return (HANDLE)(contact->groupId|HCONTACT_ISGROUP);
-case CLCIT_INFO:
-	return (HANDLE)((DWORD_PTR)contact->hContact|HCONTACT_ISINFO);
+	switch (contact->type) {
+	case CLCIT_CONTACT:
+		return (HANDLE)contact->hContact;
+	case CLCIT_GROUP:
+		return (HANDLE)(contact->groupId | HCONTACT_ISGROUP);
+	case CLCIT_INFO:
+		return (HANDLE)((DWORD_PTR)contact->hContact | HCONTACT_ISINFO);
 	}
 	return NULL;
 }
 
-HANDLE ContactToItemHandle(ClcContact *contact,DWORD *nmFlags)
+HANDLE ContactToItemHandle(ClcContact *contact, DWORD *nmFlags)
 {
-	switch(contact->type) {
-case CLCIT_CONTACT:
-	return contact->hContact;
-case CLCIT_GROUP:
-	if (nmFlags) *nmFlags |= CLNF_ISGROUP;
-	return (HANDLE)contact->groupId;
-case CLCIT_INFO:
-	if (nmFlags) *nmFlags |= CLNF_ISINFO;
-	return (HANDLE)((DWORD_PTR)contact->hContact|HCONTACT_ISINFO);
+	switch (contact->type) {
+	case CLCIT_CONTACT:
+		return (HANDLE)contact->hContact;
+	case CLCIT_GROUP:
+		if (nmFlags) *nmFlags |= CLNF_ISGROUP;
+		return (HANDLE)contact->groupId;
+	case CLCIT_INFO:
+		if (nmFlags) *nmFlags |= CLNF_ISINFO;
+		return (HANDLE)((DWORD_PTR)contact->hContact | HCONTACT_ISINFO);
 	}
 	return NULL;
 }

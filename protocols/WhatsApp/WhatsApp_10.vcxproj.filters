@@ -113,6 +113,18 @@
     <ClCompile Include="src\OpenSSL\rsa_sign.c">
       <Filter>WhatsAPI++\OpenSSL</Filter>
     </ClCompile>
+    <ClCompile Include="src\WhatsAPI++\PhoneNumber.cpp">
+      <Filter>WhatsAPI++\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WhatsAPI++\WARegister.cpp">
+      <Filter>WhatsAPI++\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\WhatsAPI++\KeyStream.cpp">
+      <Filter>WhatsAPI++\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\avatars.cpp">
+      <Filter>Miranda Plugin\Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\common.h">
@@ -190,6 +202,15 @@
     <ClInclude Include="src\version.h">
       <Filter>Miranda Plugin\Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\WhatsAPI++\WARegister.h">
+      <Filter>WhatsAPI++\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\WhatsAPI++\PhoneNumber.h">
+      <Filter>WhatsAPI++\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\resource.h">
+      <Filter>Miranda Plugin\Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\whatsapp.rc">
@@ -204,18 +225,6 @@
       <Filter>Resources</Filter>
     </None>
     <None Include="res\add-group.ico">
-      <Filter>Resources</Filter>
-    </None>
-    <None Include="res\add-user-to-group.ico">
-      <Filter>Resources</Filter>
-    </None>
-    <None Include="res\change-group-subject.ico">
-      <Filter>Resources</Filter>
-    </None>
-    <None Include="res\leave-group.ico">
-      <Filter>Resources</Filter>
-    </None>
-    <None Include="res\remove-user-from-group.ico">
       <Filter>Resources</Filter>
     </None>
   </ItemGroup>

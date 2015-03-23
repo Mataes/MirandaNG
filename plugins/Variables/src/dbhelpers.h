@@ -22,79 +22,79 @@
 #endif
 
 // database helpers
-static int __inline DBWriteIthSettingByte(DWORD i, HANDLE hContact,const char *szModule,const char *szSetting,BYTE val) {
+static int __inline DBWriteIthSettingByte(DWORD i, MCONTACT hContact,const char *szModule,const char *szSetting,BYTE val) {
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_set_b(hContact, szModule, dbSetting, val);
 }
 
-static int __inline DBWriteIthSettingWord(DWORD i, HANDLE hContact,const char *szModule,const char *szSetting,WORD val) {
+static int __inline DBWriteIthSettingWord(DWORD i, MCONTACT hContact,const char *szModule,const char *szSetting,WORD val) {
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_set_w(hContact, szModule, dbSetting, val);
 }
 
-static int __inline DBWriteIthSettingDword(DWORD i, HANDLE hContact,const char *szModule,const char *szSetting,DWORD val) {
+static int __inline DBWriteIthSettingDword(DWORD i, MCONTACT hContact,const char *szModule,const char *szSetting,DWORD val) {
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_set_dw(hContact, szModule, dbSetting, val);
 }
 
-static int __inline DBWriteIthSettingString(DWORD i, HANDLE hContact,const char *szModule,const char *szSetting,const char *val) {
+static int __inline DBWriteIthSettingString(DWORD i, MCONTACT hContact,const char *szModule,const char *szSetting,const char *val) {
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_set_s(hContact, szModule, dbSetting, val);
 }
 
-static int __inline DBGetIthSettingByte(DWORD i, HANDLE hContact, const char *szModule, const char *szSetting, int errorValue) {
+static int __inline DBGetIthSettingByte(DWORD i, MCONTACT hContact, const char *szModule, const char *szSetting, int errorValue) {
 
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_get_b(hContact, szModule, dbSetting, errorValue);
 }
 
-static WORD __inline DBGetIthSettingWord(DWORD i, HANDLE hContact, const char *szModule, const char *szSetting, int errorValue) {
+static WORD __inline DBGetIthSettingWord(DWORD i, MCONTACT hContact, const char *szModule, const char *szSetting, int errorValue) {
 
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_get_w(hContact, szModule, dbSetting, errorValue);
 }
 
-static DWORD __inline DBGetIthSettingDword(DWORD i, HANDLE hContact, const char *szModule, const char *szSetting, int errorValue) {
+static DWORD __inline DBGetIthSettingDword(DWORD i, MCONTACT hContact, const char *szModule, const char *szSetting, int errorValue) {
 
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_get_dw(hContact, szModule, dbSetting, errorValue);
 }
 
-static int __inline DBGetIthSetting(DWORD i, HANDLE hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv) {
+static int __inline DBGetIthSetting(DWORD i, MCONTACT hContact, const char *szModule, const char *szSetting, DBVARIANT *dbv) {
 
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_get(hContact, szModule, dbSetting, dbv);
 }
 
-static int __inline DBDeleteIthSetting(DWORD i, HANDLE hContact,const char *szModule,const char *szSetting) {
+static int __inline DBDeleteIthSetting(DWORD i, MCONTACT hContact,const char *szModule,const char *szSetting) {
 
 	char dbSetting[128];
 
-	mir_snprintf(dbSetting, sizeof(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
+	mir_snprintf(dbSetting, SIZEOF(dbSetting), "%s%u_%s", PREFIX_ITH, i, szSetting);
 	return db_unset(hContact, szModule, dbSetting);
 }
 

@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -105,7 +106,7 @@ bool CheckProtocolOrder(void)
 
 static bool ProtoToInclude(PROTOACCOUNT *pa)
 {
-	if ( !Proto_IsAccountEnabled(pa))
+	if (!Proto_IsAccountEnabled(pa))
 		return false;
 
 	PROTOCOLDESCRIPTOR *pd = Proto_IsProtocolLoaded(pa->szProtoName);
@@ -129,7 +130,7 @@ static int FillTree(HWND hwnd)
 			continue;
 
 		PROTOACCOUNT *pa = accounts[idx];
-		if ( !ProtoToInclude(pa))
+		if (!ProtoToInclude(pa))
 			continue;
 
 		ProtocolData *PD = (ProtocolData*)mir_alloc(sizeof(ProtocolData));
@@ -195,12 +196,12 @@ INT_PTR CALLBACK ProtocolOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 
 					if (tvi.lParam != 0) {
 						ProtocolData* ppd = (ProtocolData*)tvi.lParam;
-						PROTOACCOUNT* pa = Proto_GetAccount(ppd->RealName);
+						PROTOACCOUNT *pa = Proto_GetAccount(ppd->RealName);
 						if (pa != NULL) {
 							while (idx < accounts.getCount() && !ProtoToInclude(accounts[idx])) idx++;
 							pa->iOrder = idx++;
 							if (ppd->enabled)
-								pa->bIsVisible = ppd->show;
+								pa->bIsVisible = ppd->show != 0;
 						}
 					}
 
@@ -272,7 +273,7 @@ INT_PTR CALLBACK ProtocolOrderOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				HTREEITEM it = hti.hItem;
 				hti.pt.y -= TreeView_GetItemHeight(hwndProtoOrder) / 2;
 				TreeView_HitTest(hwndProtoOrder, &hti);
-				if ( !(hti.flags & TVHT_ABOVE))
+				if (!(hti.flags & TVHT_ABOVE))
 					TreeView_SetInsertMark(hwndProtoOrder, hti.hItem, 1);
 				else
 					TreeView_SetInsertMark(hwndProtoOrder, it, 0);

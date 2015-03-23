@@ -2,9 +2,9 @@
 Popup Plus plugin for Miranda IM
 
 Copyright	© 2002 Luca Santarelli,
-			© 2004-2007 Victor Pavlychko
-			© 2010 MPK
-			© 2010 Merlin_de
+© 2004-2007 Victor Pavlychko
+© 2010 MPK
+© 2010 Merlin_de
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -41,22 +41,22 @@ private:
 	COLOR32 *bitsSave;
 	int width, height;
 
-	void free();
+	void freemem();
 
-	bool loadFromFile_pixel(const char *fn, const char *fnAlpha = 0);
-	bool loadFromFile_gradient(const char *fn, const char *fnAlpha = 0);
-	bool loadFromFile_png(const char *fn, const char *fnAlpha = 0);
-	bool loadFromFile_default(const char *fn, const char *fnAlpha = 0);
+	bool loadFromFile_pixel(const TCHAR *fn);
+	bool loadFromFile_gradient(const TCHAR *fn);
+	bool loadFromFile_png(const TCHAR *fn);
+	bool loadFromFile_default(const TCHAR *fn, const TCHAR *fnAlpha = 0);
 	void premultipleChannels();
 
 public:
 	MyBitmap();
 	MyBitmap(int w, int h);
-	MyBitmap(const char *fn, const char *fnAlpha = 0);
+	MyBitmap(const TCHAR *fn, const TCHAR *fnAlpha = 0);
 	~MyBitmap();
 	void allocate(int w, int h);
 
-	bool loadFromFile(const char *fn, const char *fnAlpha = 0);
+	bool loadFromFile(const TCHAR *fn, const TCHAR *fnAlpha = 0);
 
 	int getWidth() { return width; }
 	int getHeight() { return height; }
@@ -66,7 +66,7 @@ public:
 
 	void makeOpaque();
 	void makeOpaqueRect(int x1, int y1, int x2, int y2);
-	void makeOpaqueRect(RECT rc) { makeOpaqueRect(rc.left, rc.top, rc.right, rc.bottom);  }
+	void makeOpaqueRect(RECT rc) { makeOpaqueRect(rc.left, rc.top, rc.right, rc.bottom); }
 
 	void saveAlpha(int x = 0, int y = 0, int w = 0, int h = 0);
 	void restoreAlpha(int x = 0, int y = 0, int w = 0, int h = 0);
@@ -74,7 +74,7 @@ public:
 	void DrawBits(COLOR32 *inbits, int inw, int inh, int x, int y, int w, int h);
 	void BlendBits(COLOR32 *inbits, int inw, int inh, int x, int y, int w, int h);
 
-	void DrawNoAlpha(MyBitmap *bmp, int x, int y, int w, int h);
+	void DrawNoAlpha(MyBitmap *bmp, int x, int y);
 
 	void Blend(MyBitmap *bmp, int x, int y, int w, int h);
 	void Draw(MyBitmap *bmp, int x, int y, int w, int h);
@@ -85,12 +85,11 @@ public:
 	void BlendPart(MyBitmap *bmp, int xin, int yin, int win, int hin, int x, int y, int w, int h);
 	void BlendPartColorized(MyBitmap *bmp, int xin, int yin, int win, int hin, int x, int y, int w, int h, COLOR32 color);
 	void DrawPart(MyBitmap *bmp, int xin, int yin, int win, int hin, int x, int y, int w, int h);
-//	void DrawPartNoAlpha(MyBitmap *bmp, int x, int y, int w, int h);
-//	void DrawPartColorized(MyBitmap *bmp, int x, int y, int w, int h, COLOR32 color);
+	//	void DrawPartNoAlpha(MyBitmap *bmp, int x, int y, int w, int h);
+	//	void DrawPartColorized(MyBitmap *bmp, int x, int y, int w, int h, COLOR32 color);
 
 	void DrawIcon(HICON hic, int x, int y, int w = 0, int h = 0);
-	void Draw_TextA(char *str, int x, int y);
-	void Draw_TextW(WCHAR *str, int x, int y);
+	void Draw_Text(TCHAR *str, int x, int y);
 
 	__forceinline COLOR32 *getBits() { return bits; }
 	__forceinline COLOR32 *getRow(int row) { return bits + row * width; }

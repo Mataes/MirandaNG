@@ -8,23 +8,26 @@ uses windows,messages;
 type
   tmApiCard = class
   private
-    function  GetDescription:pAnsiChar; 
-    function  GetResultType :pAnsiChar; 
-    procedure SetCurrentService(item:pAnsiChar);
+    function  GetDescription:PAnsiChar; 
+    function  GetResultType :PAnsiChar; 
+    procedure SetCurrentService(item:PAnsiChar);
+    function  GetWindowStatus:boolean;
   public
-    constructor Create(fname:pAnsiChar; lparent:HWND=0);
+    constructor Create(fname:PAnsiChar; lparent:HWND=0);
     destructor Destroy; override;
     procedure FillList(combo:HWND; mode:integer=0);
 
-    function NameFromList(cb:HWND):pAnsiChar;
-    function HashToName(ahash:longword):pAnsiChar;
-    function FillParams(wnd:HWND{;item:pAnsiChar};wparam:boolean):pAnsiChar;
-    procedure Show;//(item:pAnsiChar);
+    function NameFromList(cb:HWND):PAnsiChar;
+    function HashToName(ahash:longword):PAnsiChar;
+    function FillParams(wnd:HWND{;item:PAnsiChar};wparam:boolean):PAnsiChar;
+    function GetParam(wparam:boolean):PAnsiChar;
+    procedure Show;//(item:PAnsiChar);
 
-    property Description:pAnsiChar read GetDescription;
-    property ResultType :pAnsiChar read GetResultType;
-    property Service    :pAnsiChar write SetCurrentService;
-    property Event      :pAnsiChar write SetCurrentService;
+    property Description:PAnsiChar read GetDescription;
+    property ResultType :PAnsiChar read GetResultType;
+    property Service    :PAnsiChar write SetCurrentService;
+    property Event      :PAnsiChar write SetCurrentService;
+    property IsShown    :boolean   read GetWindowStatus;
   private
     storage:pointer;
     current:pointer;
@@ -33,7 +36,7 @@ type
     HelpWindow:HWND;
     isServiceHelp:boolean;
 
-    procedure Update(item:pAnsiChar=nil);
+    procedure Update(item:PAnsiChar=nil);
   end;
 
 function CreateServiceCard(parent:HWND=0):tmApiCard;
@@ -41,6 +44,10 @@ function CreateEventCard  (parent:HWND=0):tmApiCard;
 
 implementation
 
+{
+  mirutils unit is for ConvertFileName function only
+  m_api is for TranslateW and TrandlateDialogDefault
+}
 uses common,io,m_api,mirutils,memini,wrapper;
 
 {$r mApiCard.res}
@@ -59,10 +66,10 @@ const
   ServiceHlpFile = 'plugins\services.ini';
   EventsHlpFile  = 'plugins\events.ini';
 }
-function tmApiCard.GetResultType:pAnsiChar;
+function tmApiCard.GetResultType:PAnsiChar;
 var
   buf:array [0..2047] of AnsiChar;
-  p:pAnsiChar;
+  p:PAnsiChar;
 begin
   if storage<>nil then
   begin
@@ -76,7 +83,7 @@ begin
     result:=nil;
 end;
 
-function tmApiCard.GetDescription:pAnsiChar;
+function tmApiCard.GetDescription:PAnsiChar;
 begin
   if storage<>nil then
   begin
@@ -86,14 +93,36 @@ begin
     result:=nil;
 end;
 
-function tmApiCard.FillParams(wnd:HWND{;item:pAnsiChar};wparam:boolean):pAnsiChar;
+function tmApiCard.GetWindowStatus:boolean;
+begin
+  result:=HelpWindow<>0;
+end;
+
+function tmApiCard.GetParam(wparam:boolean):PAnsiChar;
+var
+  paramname:PAnsiChar;
+begin
+  if storage=nil then
+  begin
+    result:=nil;
+    exit;
+  end;
+  if wparam then
+    paramname:='wparam'
+  else
+    paramname:='lparam';
+
+  StrDup(result,GetParamSectionStr(current,paramname,''));
+end;
+
+function tmApiCard.FillParams(wnd:HWND{;item:PAnsiChar};wparam:boolean):PAnsiChar;
 var
   buf :array [0..2047] of AnsiChar;
   bufw:array [0..2047] of WideChar;
   j:integer;
   p,pp,pc:PAnsiChar;
-  tmp:pWideChar;
-  paramname:pAnsiChar;
+  tmp:PWideChar;
+  paramname:PAnsiChar;
 begin
   if storage=nil then
   begin
@@ -107,6 +136,10 @@ begin
 
   StrCopy(buf,GetParamSectionStr(current,paramname,''));
   StrDup(result,@buf);
+
+  if wnd=0 then
+    exit;
+
   SendMessage(wnd,CB_RESETCONTENT,0,0);
   if buf[0]<>#0 then
   begin
@@ -128,7 +161,7 @@ begin
         if pp^<>#0 then
         begin
           bufw[j]:=' '; bufw[j+1]:='-'; bufw[j+2]:=' '; inc(j,3);
-          FastAnsitoWideBuf(pp+1,tmp);
+          FastAnsiToWideBuf(pp+1,tmp);
           StrCopyW(bufw+j,TranslateW(tmp));
           SendMessageW(wnd,CB_ADDSTRING,0,lparam(@bufw));
         end
@@ -137,9 +170,9 @@ begin
       end
       else
       begin
-        FastAnsitoWideBuf(p,tmp);
+        FastAnsiToWideBuf(p,tmp);
         SendMessageW(wnd,CB_ADDSTRING,0,lparam(TranslateW(tmp)));
-        if (p=@buf) and (lstrcmpia(p,'structure')=0) then
+        if (p=@buf) and (StrCmp(p,'structure')=0) then
           break;
       end;
       p:=pc+1;
@@ -149,7 +182,7 @@ begin
   SendMessage(wnd,CB_SETCURSEL,0,0);
 end;
 
-function tmApiCard.HashToName(ahash:longword):pAnsiChar;
+function tmApiCard.HashToName(ahash:longword):PAnsiChar;
 var
   p,pp:PAnsiChar;
 begin
@@ -170,10 +203,10 @@ begin
   end;
 end;
 
-function tmApiCard.NameFromList(cb:HWND):pAnsiChar;
+function tmApiCard.NameFromList(cb:HWND):PAnsiChar;
 var
   buf:array [0..255] of AnsiChar;
-  pc:pAnsiChar;
+  pc:PAnsiChar;
   idx:integer;
 begin
   pc:=GetDlgText(cb,true);
@@ -184,6 +217,7 @@ begin
     // edit field is text from list
     if StrCmp(pc,@buf)=0 then
     begin
+      mFreeMem(pc);
       result:=HashToName(CB_GetData(cb,idx));
       exit;
     end;
@@ -192,7 +226,7 @@ begin
   result:=pc;
 end;
 
-procedure tmApiCard.FillList(combo:hwnd; mode:integer=0);
+procedure tmApiCard.FillList(combo:HWND; mode:integer=0);
 var
   tmpbuf:array [0..127] of AnsiChar;
   p,pp,pc:PAnsiChar;
@@ -242,7 +276,7 @@ begin
   end;
 end;
 
-function ServiceHelpDlg(Dialog:HWnd;hMessage:uint;wParam:WPARAM;lParam:LPARAM):LRESULT; stdcall;
+function ServiceHelpDlg(Dialog:HWND;hMessage:uint;wParam:WPARAM;lParam:LPARAM):LRESULT; stdcall;
 var
   buf:PAnsiChar;
   tmp:PWideChar;
@@ -349,7 +383,7 @@ begin
   end;
 end;
 
-procedure tmApiCard.SetCurrentService(item:pAnsiChar);
+procedure tmApiCard.SetCurrentService(item:PAnsiChar);
 begin
   if (item=nil) or (item^=#0) then
     current:=nil
@@ -357,7 +391,7 @@ begin
     current:=SearchSection(storage,item,namespace);
 end;
 
-procedure tmApiCard.Update(item:pAnsiChar=nil);
+procedure tmApiCard.Update(item:PAnsiChar=nil);
 begin
   SendMessage(HelpWindow,WM_UPDATEHELP,0,LPARAM(self));
 end;
@@ -365,7 +399,7 @@ end;
 procedure tmApiCard.Show;
 var
   note,
-  title:pWideChar;
+  title:PWideChar;
 begin
   if HelpWindow=0 then
   begin
@@ -386,7 +420,7 @@ begin
       end;
       SendMessageW(HelpWindow,WM_SETTEXT,0,LPARAM(TranslateW(title)));
 
-      SendMessageW(GetDlgItem(HelpWindow,IDC_HLP_NOTE),WM_SETTEXT,0,LPARAM(TranslateW(Note)));
+      SendMessageW(GetDlgItem(HelpWindow,IDC_HLP_NOTE),WM_SETTEXT,0,LPARAM(TranslateW(note)));
     end;
   end
   else
@@ -402,13 +436,13 @@ begin
   Update(current);
 end;
 
-constructor tmApiCard.Create(fname:pAnsiChar; lparent:HWND=0);
+constructor tmApiCard.Create(fname:PAnsiChar; lparent:HWND=0);
 var
-  IniFile: array [0..511] of AnsiChar;
+  INIFile: array [0..511] of AnsiChar;
 begin
   inherited Create;
 
-  StrCopy(@IniFile,fname);
+  StrCopy(@INIFile,fname);
   HelpWindow:=0;
   current:=nil;
   if fname<>nil then
@@ -416,13 +450,13 @@ begin
     ConvertFileName(fname,@INIFile);
   //  CallService(MS_UTILS_PATHTOABSOLUTE,
   //    WPARAM(PAnsiChar(ServiceHlpFile)),LPARAM(INIFile));
-    if GetFSize(pAnsiChar(@INIFile))=0 then
+    if GetFSize(PAnsiChar(@INIFile))=0 then
     begin
       INIFile[0]:=#0;
     end;
     parent:=lparent;
   end;
-  storage:=OpenStorage(pAnsiChar(@IniFile));
+  storage:=OpenStorage(PAnsiChar(@INIFile));
 end;
 
 destructor tmApiCard.Destroy;

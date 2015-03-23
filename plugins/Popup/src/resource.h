@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by resource.rc
+// Used by ..\res\resource.rc
 //
 #define IDD_OPT_POPUP                   101
 #define IDD_OPT_POPUP_ADVANCED          102
@@ -53,6 +53,8 @@
 #define IDC_FADEOUT                     1013
 #define IDC_FADEOUT_SPIN                1014
 #define IDC_FADEOUT_TXT2                1015
+#define IDC_HISTORYSIZE_SPIN            1016
+#define IDC_MAXPOPUPS_SPIN              1017
 #define IDC_PREVIEW                     1033
 #define IDC_DEBUG                       1034
 #define IDC_GRP_MULTIMONITOR            1035
@@ -66,7 +68,6 @@
 #define IDC_AVT_SIZE_SLIDE              1057
 #define IDC_AVT_SIZE                    1058
 #define IDC_AVT_REQUEST                 1059
-#define IDC_TRANS_9X                    1062
 #define IDC_TRANS                       1063
 #define IDC_TRANS_TXT1                  1064
 #define IDC_TRANS_SLIDER                1065

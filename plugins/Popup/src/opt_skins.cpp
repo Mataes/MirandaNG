@@ -34,13 +34,13 @@ void RegisterOptPrevBox()
 	WNDCLASSEX wcl;
 	wcl.cbSize = sizeof(wcl);
 	wcl.lpfnWndProc = (WNDPROC)BoxPreviewWndProc;
-	wcl.style = IsWinVerXPPlus() ? CS_DROPSHADOW : 0;
+	wcl.style = CS_DROPSHADOW;
 	wcl.cbClsExtra = 0;
 	wcl.cbWndExtra = 0;
 	wcl.hInstance = hInst;
 	wcl.hIcon = NULL;
 	wcl.hCursor = LoadCursor(NULL, IDC_ARROW);
-	wcl.hbrBackground = NULL; //(HBRUSH)GetStockObject(LTGRAY_BRUSH);
+	wcl.hbrBackground = NULL; // (HBRUSH)GetStockObject(LTGRAY_BRUSH);
 	wcl.lpszMenuName = NULL;
 	wcl.lpszClassName = _T(BOXPREVIEW_WNDCLASS);
 	wcl.hIconSm = (HICON)LoadImage(hInst, MAKEINTRESOURCE(IDI_POPUP), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
@@ -52,12 +52,12 @@ void RegisterOptPrevBox()
 		MSGERROR(msg);
 	}
 
-	// register custom class for dialog box with drop-shadow attribute
-	// "#32770" stays for class name of default system dialog box
+	//  register custom class for dialog box with drop-shadow attribute
+	//  "#32770" stays for class name of default system dialog box
 	GetClassInfoEx(hInst, _T("#32770"), &wcl);
 	wcl.hInstance = hInst;
 	wcl.lpszClassName = _T("PopupPlusDlgBox");
-	wcl.style |= IsWinVerXPPlus() ? CS_DROPSHADOW : 0;
+	wcl.style |= CS_DROPSHADOW;
 	g_wndClass.cPopupPlusDlgBox = RegisterClassEx(&wcl);
 	err = GetLastError();
 	if (!g_wndClass.cPopupPlusDlgBox) {
@@ -72,7 +72,7 @@ static void updatePreviewImage(HWND hwndBox)
 	gPreviewOk = false;
 
 	POPUPDATA2 ppd;
-	ZeroMemory(&ppd, sizeof(ppd));
+	memset(&ppd, 0, sizeof(ppd));
 	ppd.cbSize		= sizeof(ppd);
 	ppd.flags		= PU2_TCHAR;
 	ppd.lchIcon		= LoadSkinnedIcon(SKINICON_STATUS_ONLINE);
@@ -175,7 +175,6 @@ LRESULT CALLBACK WndProcPreviewBox(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
 int  SkinOptionList_AddSkin(OPTTREE_OPTION* &options, int *OptionsCount, int pos, DWORD *dwGlobalOptions) {
 	const PopupSkin *skin = 0;
-	LPTSTR pszName = NULL;
 	if (skin = skins.getSkin(PopupOptions.SkinPack)) {
 		for (int i = 1; i <= 10; i++) {
 			if (!skin->getFlagName(i))
@@ -187,11 +186,11 @@ int  SkinOptionList_AddSkin(OPTTREE_OPTION* &options, int *OptionsCount, int pos
 			options[pos].iconIndex		= 0;
 			options[pos].pszSettingName	= mir_tstrdup(_T("Skin options"));
 			options[pos].pszOptionName	= (LPTSTR)mir_alloc(sizeof(TCHAR)*(
-				lstrlen(options[pos].pszSettingName)+
-				lstrlenA(skin->getFlagName(i)) +10 ));
-			wsprintf(options[pos].pszOptionName, _T("%s/%hs"), options[pos].pszSettingName, skin->getFlagName(i)); //!!!!!!!!!!!!!
+				mir_tstrlen(options[pos].pszSettingName)+
+				mir_strlen(skin->getFlagName(i)) +10 ));
+			wsprintf(options[pos].pszOptionName, _T("%s/%hs"), options[pos].pszSettingName, skin->getFlagName(i)); // !!!!!!!!!!!!!
 			options[pos].bState			= skin->getFlag(i) ? TRUE : FALSE;
-			options[pos].Data			= i;	//skin flag index
+			options[pos].Data			= i;	// skin flag index
 			*dwGlobalOptions |= skin->getFlag(i) ? (1 << (i-1)) : 0;
 			pos++;
 		}
@@ -199,14 +198,14 @@ int  SkinOptionList_AddSkin(OPTTREE_OPTION* &options, int *OptionsCount, int pos
 	return pos;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////
+// // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // // /
 
 static LPTSTR mainOption [] = {
 	LPGENT("Show clock"),
 	LPGENT("Drop shadow effect"),
 	LPGENT("Drop shadow effect")_T("/")LPGENT("non rectangular"),
 	LPGENT("Enable Aero Glass (Vista+)"),
-	LPGENT("Use Windows colours"),
+	LPGENT("Use Windows colors"),
 	LPGENT("Use advanced text render")};
 
 int SkinOptionList_AddMain(OPTTREE_OPTION* &options, int *OptionsCount, int pos, DWORD *dwGlobalOptions)
@@ -219,12 +218,10 @@ int SkinOptionList_AddMain(OPTTREE_OPTION* &options, int *OptionsCount, int pos,
 			bCheck = PopupOptions.DisplayTime;
 			break;
 		case 1:
-			if (!IsWinVerXPPlus()) continue;
 			*dwGlobalOptions |= PopupOptions.DropShadow ? (1 << i) : 0;
 			bCheck = PopupOptions.DropShadow;
 			break;
 		case 2:
-			if (!IsWinVerXPPlus()) continue;
 			*dwGlobalOptions |= PopupOptions.EnableFreeformShadows ? (1 << i) : 0;
 			bCheck = PopupOptions.EnableFreeformShadows;
 			break;
@@ -250,9 +247,9 @@ int SkinOptionList_AddMain(OPTTREE_OPTION* &options, int *OptionsCount, int pos,
 		options[pos].iconIndex	= 0;
 		options[pos].pszSettingName = mir_tstrdup(LPGENT("Global settings"));
 		options[pos].pszOptionName	= (LPTSTR)mir_alloc(sizeof(TCHAR)*(
-			lstrlen(options[pos].pszSettingName)+
-			lstrlen(mainOption[i]) + 10));
-		wsprintf(options[pos].pszOptionName, _T("%s/%s"), options[pos].pszSettingName, mainOption[i]); //!!!!!!!!!!!!!
+			mir_tstrlen(options[pos].pszSettingName)+
+			mir_tstrlen(mainOption[i]) + 10));
+		wsprintf(options[pos].pszOptionName, _T("%s/%s"), options[pos].pszSettingName, mainOption[i]); // !!!!!!!!!!!!!
 		options[pos].bState			= bCheck;
 		pos++;
 	}
@@ -271,23 +268,23 @@ bool SkinOptionList_Update (OPTTREE_OPTION* &options, int *OptionsCount, HWND hw
 		options = NULL;
 		*OptionsCount = 0;
 	}
-	//add "Global options"
+	// add "Global options"
 	DWORD dwGlobalOptions = 0;
 	int pos = SkinOptionList_AddMain(options, OptionsCount, 0, &dwGlobalOptions);
-	//add "Skin options"
+	// add "Skin options"
 	DWORD dwSkinOptions = 0;
 	pos = SkinOptionList_AddSkin(options, OptionsCount, pos, &dwSkinOptions);
-	//generate treeview
+	// generate treeview
 	int index = -1;
 	OptTree_ProcessMessage(hwndDlg, WM_INITDIALOG, 0, 0, &index, IDC_SKIN_LIST_OPT, options, *OptionsCount);
 
-	//check "Skin options" state 
+	// check "Skin options" state 
 	char prefix[128];
-	mir_snprintf(prefix, sizeof(prefix),"skin.%S", PopupOptions.SkinPack);
+	mir_snprintf(prefix, SIZEOF(prefix),"skin.%S", PopupOptions.SkinPack);
 	OptTree_SetOptions(hwndDlg, IDC_SKIN_LIST_OPT, options, *OptionsCount,
 		db_get_dw(NULL, MODULNAME, prefix, dwSkinOptions), _T("Skin options"));
 
-	//check "Global Settings"
+	// check "Global Settings"
 	OptTree_SetOptions(hwndDlg, IDC_SKIN_LIST_OPT, options, *OptionsCount,
 		dwGlobalOptions, _T("Global settings"));
 
@@ -295,9 +292,9 @@ bool SkinOptionList_Update (OPTTREE_OPTION* &options, int *OptionsCount, HWND hw
 }
 
 void LoadOption_Skins() {
-	//skin pack
+	// skin pack
 	PopupOptions.SkinPack				= (LPTSTR)DBGetContactSettingStringX(NULL,MODULNAME, "SkinPack", "* Popup Classic",DBVT_TCHAR);
-	//more Skin options
+	// more Skin options
 	PopupOptions.DisplayTime			= db_get_b(NULL,MODULNAME, "DisplayTime", TRUE);
 	PopupOptions.DropShadow				= db_get_b(NULL,MODULNAME, "DropShadow", TRUE);
 	PopupOptions.EnableFreeformShadows	= db_get_b(NULL,MODULNAME, "EnableShadowRegion", 1);
@@ -308,7 +305,7 @@ void LoadOption_Skins() {
 
 INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	static bool bDlgInit = false;	//some controls send WM_COMMAND before or during WM_INITDIALOG
+	static bool bDlgInit = false;	// some controls send WM_COMMAND before or during WM_INITDIALOG
 	static HANDLE hhkFontsReload = 0;
 	static OPTTREE_OPTION *skinOptions = NULL;
 	static int skinOptionsCount = 0;
@@ -317,13 +314,13 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 		int index = -1;
 		OptTree_ProcessMessage(hwndDlg, msg, wParam, lParam, &index, IDC_SKIN_LIST_OPT, skinOptions, skinOptionsCount);
 		if (index != -1) {
-			if (lstrcmp(skinOptions[index].pszSettingName, _T("Skin options")) == 0) {
+			if (mir_tstrcmp(skinOptions[index].pszSettingName, _T("Skin options")) == 0) {
 				const PopupSkin *skin = 0;
 				if (skin = skins.getSkin(PopupOptions.SkinPack)) {
 					skin->setFlag(skinOptions[index].Data, skinOptions[index].bState ? true : false);
 				}
 			}
-			else if (lstrcmp(skinOptions[index].pszSettingName, _T("Global settings")) == 0) {
+			else if (mir_tstrcmp(skinOptions[index].pszSettingName, _T("Global settings")) == 0) {
 				switch (skinOptions[index].dwFlag) {
 				case (1 << 0):
 					PopupOptions.DisplayTime = skinOptions[index].bState;
@@ -356,10 +353,9 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 			HWND		hCtrl	= NULL;
 			DWORD		dwIndex	= 0;
 
-			//Skin List
+			// Skin List
 			hCtrl = GetDlgItem(hwndDlg, IDC_SKINLIST);
 			ListBox_ResetContent(hCtrl);
-			LPTSTR Temp = NULL;
 			for (const Skins::SKINLIST *sl = skins.getSkinList(); sl; sl = sl->next)
 			{
 				dwIndex = ListBox_AddString(hCtrl, sl->name);
@@ -367,19 +363,19 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 			}
 			ListBox_SetCurSel(hCtrl, ListBox_FindString(hCtrl, 0, PopupOptions.SkinPack));
 
-			//Skin List reload button
-			SendMessage(GetDlgItem(hwndDlg, IDC_BTN_RELOAD), BUTTONSETASFLATBTN, TRUE, 0);
-			SendMessage(GetDlgItem(hwndDlg, IDC_BTN_RELOAD), BM_SETIMAGE, IMAGE_ICON, (LPARAM)IcoLib_GetIcon(ICO_OPT_RELOAD,0));
-			SendMessage(GetDlgItem(hwndDlg, IDC_BTN_RELOAD), BUTTONADDTOOLTIP, (WPARAM)Translate("Refresh List"), 0);
+			// Skin List reload button
+			SendDlgItemMessage(hwndDlg, IDC_BTN_RELOAD, BUTTONSETASFLATBTN, TRUE, 0);
+			SendDlgItemMessage(hwndDlg, IDC_BTN_RELOAD, BM_SETIMAGE, IMAGE_ICON, (LPARAM)IcoLib_GetIcon(ICO_OPT_RELOAD,0));
+			SendDlgItemMessage(hwndDlg, IDC_BTN_RELOAD, BUTTONADDTOOLTIP, (WPARAM)Translate("Refresh List"), 0);
 
-			//Skin Option List
+			// Skin Option List
 			SkinOptionList_Update (skinOptions, &skinOptionsCount, hwndDlg);
 
-			//PreviewBox
+			// PreviewBox
 			mir_subclassWindow(GetDlgItem(hwndDlg, IDC_PREVIEWBOX), WndProcPreviewBox);
 			updatePreviewImage(GetDlgItem(hwndDlg, IDC_PREVIEWBOX));
 
-			//hooks
+			// hooks
 			hhkFontsReload = HookEventMessage(ME_FONT_RELOAD, hwndDlg, WM_USER);
 
 			TranslateDialogDefault(hwndDlg);
@@ -396,11 +392,11 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 			HWND hCtrl	= NULL;
 			UINT idCtrl	= LOWORD(wParam);
 			switch (HIWORD(wParam)) {
-			case BN_KILLFOCUS:		//Button controls
-			case BN_SETFOCUS:		//Button controls
+			case BN_KILLFOCUS:		// Button controls
+			case BN_SETFOCUS:		// Button controls
 				return TRUE;
 				break;
-			case BN_CLICKED:		//Button controls
+			case BN_CLICKED:		// Button controls
 				switch(idCtrl) {
 				case IDC_PREVIEW:
 					PopupPreview();
@@ -408,11 +404,10 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 				case IDC_BTN_RELOAD:
 					{
-						LPTSTR Temp		= NULL;
 						DWORD  dwIndex	= 0;
 						TCHAR  szNewSkin[128];
 						LPTSTR pszOldSkin = mir_tstrdup(PopupOptions.SkinPack);
-						skins.load(_T(""));
+						skins.load();
 						hCtrl = GetDlgItem(hwndDlg, IDC_SKINLIST);
 						ListBox_ResetContent(hCtrl);
 						for (const Skins::SKINLIST *sl = skins.getSkinList(); sl; sl = sl->next)
@@ -421,9 +416,9 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 							ListBox_SetItemData(hCtrl, dwIndex, sl->name);
 						}
 						ListBox_SetCurSel(hCtrl, ListBox_FindString(hCtrl, 0, PopupOptions.SkinPack));
-						//make shure we have select skin (ListBox_SetCurSel may be fail)
+						// make shure we have select skin (ListBox_SetCurSel may be fail)
 						ListBox_GetText(hCtrl, ListBox_GetCurSel(hCtrl), &szNewSkin);
-						if (lstrcmp(pszOldSkin, szNewSkin) != 0) {
+						if (mir_tstrcmp(pszOldSkin, szNewSkin) != 0) {
 							mir_free(PopupOptions.SkinPack);
 							PopupOptions.SkinPack = mir_tstrdup(szNewSkin);
 						}
@@ -431,25 +426,25 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 						const PopupSkin *skin = 0;
 						if (skin = skins.getSkin(PopupOptions.SkinPack)) {
-							//update Skin Option List from reload SkinPack
+							// update Skin Option List from reload SkinPack
 							bDlgInit = false;
 							bDlgInit = SkinOptionList_Update (skinOptions, &skinOptionsCount, hwndDlg);
 						}
 
 						SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
-					}//end IDC_BTN_RELOAD:
+					}// end IDC_BTN_RELOAD:
 					break;
 				case IDC_GETSKINS:
-					CallService(MS_UTILS_OPENURL,0,(LPARAM)"http://miranda-ng.org/");
+					CallService(MS_UTILS_OPENURL,0,(LPARAM)"http:// miranda-ng.org/addons/category/13");
 					break;
-				}//end switch(idCtrl)
+				}// end switch(idCtrl)
 				updatePreviewImage(GetDlgItem(hwndDlg, IDC_PREVIEWBOX));
 				break;
-			case CBN_SELCHANGE:		//combo box controls
+			case CBN_SELCHANGE:		// combo box controls
 				switch(idCtrl) {
 				case IDC_SKINLIST:
 					{
-						//Skin list change
+						// Skin list change
 						mir_free(PopupOptions.SkinPack);
 						PopupOptions.SkinPack = mir_tstrdup((TCHAR *)SendDlgItemMessage(
 							hwndDlg,
@@ -462,7 +457,7 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 							mir_free(PopupOptions.SkinPack);
 							PopupOptions.SkinPack = mir_tstrdup(skin->getName());
 
-							//update Skin Option List
+							// update Skin Option List
 							bDlgInit = false;
 							bDlgInit = SkinOptionList_Update (skinOptions, &skinOptionsCount, hwndDlg);
 						}
@@ -470,12 +465,11 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 					}
 					SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 					break;
-				}//end switch(idCtrl)
+				}// end switch(idCtrl)
 				break;
-			}//end switch (HIWORD(wParam))
+			}// end switch (HIWORD(wParam))
 			break;
-		}// end WM_COMMAND
-		return FALSE;
+		}//  end WM_COMMAND
 
 	case WM_NOTIFY:
 		if (!bDlgInit) return FALSE;
@@ -488,24 +482,24 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 
 			case PSN_APPLY: 
 				{
-					//skin pack
+					// skin pack
 					db_set_ts(NULL, MODULNAME, "SkinPack", PopupOptions.SkinPack);
-					//skin options
+					// skin options
 					const PopupSkin *skin = 0;
 					if (skin = skins.getSkin(PopupOptions.SkinPack))
 						skin->saveOpts();
 					skins.freeAllButActive();
-					//more Skin options
+					// more Skin options
 					db_set_b(NULL, MODULNAME, "DisplayTime", PopupOptions.DisplayTime);
 					db_set_b(NULL, MODULNAME, "DropShadow", PopupOptions.DropShadow);
 					db_set_b(NULL, MODULNAME, "EnableShadowRegion", PopupOptions.EnableFreeformShadows);
 					db_set_b(NULL, MODULNAME, "EnableAeroGlass", PopupOptions.EnableAeroGlass);
 					db_set_b(NULL, MODULNAME, "UseMText", PopupOptions.UseMText);
-				}//end PSN_APPLY:
+				}// end PSN_APPLY:
 				return TRUE;
-			}//switch (((LPNMHDR)lParam)->code)
+			}// switch (((LPNMHDR)lParam)->code)
 			break;
-		}//end switch (((LPNMHDR)lParam)->idFrom)
+		}// end switch (((LPNMHDR)lParam)->idFrom)
 		return FALSE;
 
 	case WM_DESTROY:
@@ -525,7 +519,7 @@ INT_PTR CALLBACK DlgProcPopSkinsOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPAR
 			skinOptionsCount = 0;
 		}
 		return TRUE;
-	}//end switch (msg)
+	}// end switch (msg)
 	return FALSE;
 }
 
@@ -535,7 +529,7 @@ static void BoxPreview_OnPaint(HWND hwnd, HDC mydc, int mode)
 
 	switch (mode) {
 	case 0:
-		{ // Avatar
+		{ //  Avatar
 			HDC hdcAvatar = CreateCompatibleDC(mydc);
 			HBITMAP hbmSave = (HBITMAP)SelectObject(hdcAvatar, hbmNoAvatar);
 			GetClientRect(hwnd, &rc);
@@ -550,7 +544,7 @@ static void BoxPreview_OnPaint(HWND hwnd, HDC mydc, int mode)
 			break;
 		}
 	case 1:
-		{ // Opacity
+		{ //  Opacity
 			HBRUSH hbr = CreateSolidBrush(fonts.clBack);
 			HFONT hfnt = (HFONT)SelectObject(mydc, fonts.title);
 			GetClientRect(hwnd, &rc);
@@ -558,15 +552,15 @@ static void BoxPreview_OnPaint(HWND hwnd, HDC mydc, int mode)
 			DrawIconEx(mydc, 10, (rc.bottom-rc.top-16)/2, IcoLib_GetIcon(ICO_POPUP_ON,0), 16, 16, 0, hbr, DI_NORMAL);
 			SetBkMode(mydc, TRANSPARENT);
 			GetClientRect(hwnd, &rc);
-			rc.left += 30; // 10+16+4 -- icon
+			rc.left += 30; //  10+16+4 -- icon
 			rc.right -= (rc.right-rc.left)/3;
 			rc.bottom -= (rc.bottom-rc.top)/3;
-			DrawText(mydc, _T(MODULNAME_LONG), lstrlen(_T(MODULNAME_LONG)), &rc, DT_CENTER|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER);
+			DrawText(mydc, _T(MODULNAME_LONG), -1, &rc, DT_CENTER | DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER);
 			GetClientRect(hwnd, &rc);
-			rc.left += 30; // 10+16+4 -- icon
+			rc.left += 30; //  10+16+4 -- icon
 			rc.left += (rc.right-rc.left)/3;
 			rc.top += (rc.bottom-rc.top)/3;
-			DrawText(mydc, _T(MODULNAME_LONG), lstrlen(_T(MODULNAME_LONG)), &rc, DT_CENTER|DT_NOPREFIX|DT_SINGLELINE|DT_VCENTER);
+			DrawText(mydc, _T(MODULNAME_LONG), -1, &rc, DT_CENTER | DT_NOPREFIX | DT_SINGLELINE | DT_VCENTER);
 			GetClientRect(hwnd, &rc);
 			FrameRect(mydc, &rc, (HBRUSH)GetStockObject(BLACK_BRUSH));
 			SelectObject(mydc, hfnt);
@@ -575,7 +569,7 @@ static void BoxPreview_OnPaint(HWND hwnd, HDC mydc, int mode)
 		break;
 
 	case 2:
-		{ // Position
+		{ //  Position
 			HBRUSH hbr = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
 			GetClientRect(hwnd, &rc);
 			FillRect(mydc, &rc, hbr);

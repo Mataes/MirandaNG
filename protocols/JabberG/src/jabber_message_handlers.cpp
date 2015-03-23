@@ -1,11 +1,12 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-08  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2008-09  Dmitriy Chervov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-08  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (c) 2008-09  Dmitriy Chervov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -24,9 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "jabber.h"
-#include "jabber_message_manager.h"
 
-BOOL CJabberProto::OnMessageError(HXML node, ThreadData *pThreadData, CJabberMessageInfo* pInfo)
+BOOL CJabberProto::OnMessageError(HXML node, ThreadData*, CJabberMessageInfo* pInfo)
 {
 	// we check if is message delivery failure
 	int id = JabberGetPacketID(node);
@@ -39,7 +39,8 @@ BOOL CJabberProto::OnMessageError(HXML node, ThreadData *pThreadData, CJabberMes
 			char *errText = mir_t2a(szErrText);
 			ProtoBroadcastAck(pInfo->GetHContact(), ACKTYPE_MESSAGE, ACKRESULT_FAILED, (HANDLE)id, (LPARAM)errText);
 			mir_free(errText);
-		} else {
+		}
+		else {
 			TCHAR buf[512];
 			HXML bodyNode = xmlGetChild(node, "body");
 			if (bodyNode)
@@ -54,7 +55,7 @@ BOOL CJabberProto::OnMessageError(HXML node, ThreadData *pThreadData, CJabberMes
 	return TRUE;
 }
 
-BOOL CJabberProto::OnMessageIbb(HXML node, ThreadData *pThreadData, CJabberMessageInfo* pInfo)
+BOOL CJabberProto::OnMessageIbb(HXML, ThreadData*, CJabberMessageInfo* pInfo)
 {
 	BOOL bOk = FALSE;
 	const TCHAR *sid = xmlGetAttrValue(pInfo->GetChildNode(), _T("sid"));
@@ -65,20 +66,20 @@ BOOL CJabberProto::OnMessageIbb(HXML node, ThreadData *pThreadData, CJabberMessa
 	return TRUE;
 }
 
-BOOL CJabberProto::OnMessagePubsubEvent(HXML node, ThreadData *pThreadData, CJabberMessageInfo* pInfo)
+BOOL CJabberProto::OnMessagePubsubEvent(HXML node, ThreadData*, CJabberMessageInfo*)
 {
 	OnProcessPubsubEvent(node);
 	return TRUE;
 }
 
-BOOL CJabberProto::OnMessageGroupchat(HXML node, ThreadData *pThreadData, CJabberMessageInfo* pInfo)
+BOOL CJabberProto::OnMessageGroupchat(HXML node, ThreadData*, CJabberMessageInfo* pInfo)
 {
 	JABBER_LIST_ITEM *chatItem = ListGetItemPtr(LIST_CHATROOM, pInfo->GetFrom());
-	if (chatItem)
-	{	// process GC message
+	if (chatItem) // process GC message
 		GroupchatProcessMessage(node);
-	} else
-	{	// got message from unknown conference... let's leave it :)
+	
+	// got message from unknown conference... let's leave it :)
+	else { 
 //			TCHAR *conference = NEWTSTR_ALLOCA(from);
 //			if (TCHAR *s = _tcschr(conference, _T('/'))) *s = 0;
 //			XmlNode p("presence"); xmlAddAttr(p, "to", conference); xmlAddAttr(p, "type", "unavailable");

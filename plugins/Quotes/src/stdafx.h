@@ -5,7 +5,6 @@
 
 #pragma once
 
-#define TEST_IMPORT_EXPORT
 //#define CHART_IMPLEMENT
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
@@ -36,6 +35,7 @@
 
 #include <m_variables.h>
 #include <m_Quotes.h>
+#include <m_toptoolbar.h>
 
 #include <boost\bind.hpp>
 #include <boost\scoped_ptr.hpp>
@@ -57,7 +57,7 @@ inline std::string quotes_t2a(const TCHAR* t)
 {
 	std::string s;
 	char* p = mir_t2a(t);
-	if(p)
+	if (p)
 	{
 		s = p;
 		mir_free(p);
@@ -69,7 +69,7 @@ inline tstring quotes_a2t(const char* s)
 {
 	tstring t;
 	TCHAR* p = mir_a2t(s);
-	if(p)
+	if (p)
 	{
 		t = p;
 		mir_free(p);
@@ -77,9 +77,9 @@ inline tstring quotes_a2t(const char* s)
 	return t;
 }
 
-inline int quotes_stricmp(LPCTSTR p1,LPCTSTR p2)
+inline int quotes_stricmp(LPCTSTR p1, LPCTSTR p2)
 {
-	return _tcsicmp(p1,p2);
+	return _tcsicmp(p1, p2);
 }
 
 #include "resource.h"
@@ -129,35 +129,35 @@ inline int quotes_stricmp(LPCTSTR p1,LPCTSTR p2)
 
 namespace detail
 {
-	template<typename T,typename TD> struct safe_string_impl
+	template<typename T, typename TD> struct safe_string_impl
 	{
 		typedef T* PTR;
 
 		safe_string_impl(PTR p) : m_p(p){}
-		~safe_string_impl(){TD::dealloc(m_p);}
+		~safe_string_impl(){ TD::dealloc(m_p); }
 
 		PTR m_p;
 	};
 
 	template<typename T> struct MirandaFree
 	{
-		static void dealloc(T* p){mir_free(p);}
+		static void dealloc(T* p){ mir_free(p); }
 	};
 
 	template<typename T> struct OwnerFree
 	{
-		static void dealloc(T* p){::free(p);}
+		static void dealloc(T* p){ ::free(p); }
 	};
 }
 
-template<typename T> struct mir_safe_string : public detail::safe_string_impl<T,detail::MirandaFree<T>>
+template<typename T> struct mir_safe_string : public detail::safe_string_impl < T, detail::MirandaFree<T> >
 {
-	mir_safe_string(PTR p) : detail::safe_string_impl<T,detail::MirandaFree<T>>(p){}
+	mir_safe_string(PTR p) : detail::safe_string_impl<T, detail::MirandaFree<T>>(p){}
 };
 
-template<typename T> struct safe_string : public detail::safe_string_impl<T,detail::OwnerFree<T>>
+template<typename T> struct safe_string : public detail::safe_string_impl < T, detail::OwnerFree<T> >
 {
-	safe_string(PTR p) : detail::safe_string_impl<T,detail::OwnerFree<T>>(p){}
+	safe_string(PTR p) : detail::safe_string_impl<T, detail::OwnerFree<T>>(p){}
 };
 
 extern HINSTANCE g_hInstance;

@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project, 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -11,7 +12,7 @@ modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
 
-This program is distributed in the hope that it will be useful, 
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -44,7 +45,7 @@ struct SoundItem
 
 static int CompareSounds(const SoundItem* p1, const SoundItem* p2)
 {
-	return lstrcmpA(p1->name, p2->name);
+	return mir_strcmp(p1->name, p2->name);
 }
 
 static OBJLIST<SoundItem> arSounds(10, CompareSounds);
@@ -78,7 +79,7 @@ static INT_PTR ServiceSkinAddNewSound(WPARAM wParam, LPARAM lParam)
 	item->ptszTempFile = NULL;
 	item->hLangpack = (int)wParam;
 	arSounds.insert(item);
-	
+
 	TCHAR* ptszDefaultFile;
 	if (ssd->dwFlags & SSDF_UNICODE) {
 		item->ptszDescription = mir_tstrdup(ssd->ptszDescription);
@@ -163,7 +164,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 		SendMessage(hwndDlg, DM_HIDEPANE, 0, 0);
 		SendMessage(hwndDlg, DM_REBUILD_STREE, 0, 0);
 		TreeView_SetItemState(hwndTree, 0, TVIS_SELECTED, TVIS_SELECTED);
-		CheckDlgButton(hwndDlg, IDC_ENABLESOUNDS, db_get_b(NULL, "Skin", "UseSound", 0));
+		CheckDlgButton(hwndDlg, IDC_ENABLESOUNDS, db_get_b(NULL, "Skin", "UseSound", 0) ? BST_CHECKED : BST_UNCHECKED);
 		SendMessage(hwndDlg, DM_CHECKENABLED, 0, 0);
 		return TRUE;
 
@@ -190,7 +191,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 					TreeView_SetItem(hwndTree, &tvis.item);
 				}
 				tvis.item.stateMask = TVIS_STATEIMAGEMASK;
-				tvis.item.state = INDEXTOSTATEIMAGEMASK( !db_get_b(NULL, "SkinSoundsOff", arSounds[i].name, 0)?2:1);
+				tvis.item.state = INDEXTOSTATEIMAGEMASK(!db_get_b(NULL, "SkinSoundsOff", arSounds[i].name, 0)?2:1);
 				tvis.item.lParam = i;
 				tvis.item.pszText = arSounds[i].getDescr();
 				TreeView_InsertItem(hwndTree, &tvis);
@@ -234,7 +235,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 
 	case DM_CHECKENABLED:
 		EnableWindow( GetDlgItem(hwndDlg, IDC_SOUNDTREE), IsDlgButtonChecked(hwndDlg, IDC_ENABLESOUNDS));
-		if ( !IsDlgButtonChecked(hwndDlg, IDC_ENABLESOUNDS))
+		if (BST_UNCHECKED == IsDlgButtonChecked(hwndDlg, IDC_ENABLESOUNDS))
 			SendMessage(hwndDlg, DM_HIDEPANE, 0, 0);
 		else if (TreeView_GetSelection(hwndTree) && TreeView_GetParent(hwndTree, TreeView_GetSelection(hwndTree)))
 			SendMessage(hwndDlg, DM_SHOWPANE, 0, 0);
@@ -261,7 +262,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 				NotifyEventHooks(hPlayEvent, 1, (LPARAM)arSounds[tvi.lParam].ptszTempFile);
 			else {
 				DBVARIANT dbv;
-				if ( !db_get_ts(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
+				if (!db_get_ts(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
 					TCHAR szPathFull[MAX_PATH];
 					PathToAbsoluteT(dbv.ptszVal, szPathFull);
 					NotifyEventHooks(hPlayEvent, 1, (LPARAM)szPathFull);
@@ -297,20 +298,20 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 						db_free(&dbv);
 			}	}	}
 
-			mir_sntprintf(strFull, SIZEOF(strFull), _T("%s"), snd.ptszTempFile ? snd.ptszTempFile : _T(""));
+			_tcsncpy_s(strFull, (snd.ptszTempFile ? snd.ptszTempFile : _T("")), _TRUNCATE);
 			PathToAbsoluteT(strFull, strdir);
 
 			OPENFILENAME ofn;
-			ZeroMemory(&ofn, sizeof(ofn));
+			memset(&ofn, 0, sizeof(ofn));
 			if (GetModuleHandle(_T("bass_interface.dll")))
-				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.wav, *.mp3, *.ogg)%c*.wav;*.mp3;*.ogg%c%s (*)%c*%c"), TranslateT("Sound Files"), 0, 0, TranslateT("All Files"), 0, 0);
+				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.wav, *.mp3, *.ogg)%c*.wav;*.mp3;*.ogg%c%s (*)%c*%c"), TranslateT("Sound files"), 0, 0, TranslateT("All files"), 0, 0);
 			else
-				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.wav)%c*.wav%c%s (*)%c*%c"), TranslateT("WAV Files"), 0, 0, TranslateT("All Files"), 0, 0);
+				mir_sntprintf(filter, SIZEOF(filter), _T("%s (*.wav)%c*.wav%c%s (*)%c*%c"), TranslateT("WAV files"), 0, 0, TranslateT("All files"), 0, 0);
 			ofn.lStructSize = OPENFILENAME_SIZE_VERSION_400;
 			ofn.hwndOwner = GetParent(hwndDlg);
 			ofn.hInstance = NULL;
 			ofn.lpstrFilter = filter;
-			
+
 			TCHAR* slash = _tcsrchr(strdir, '\\');
 			if (slash) {
 				*slash = 0;
@@ -323,7 +324,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 			ofn.nMaxFile = SIZEOF(str);
 			ofn.nMaxFileTitle = MAX_PATH;
 			ofn.lpstrDefExt = _T("wav");
-			if ( !GetOpenFileName(&ofn))
+			if (!GetOpenFileName(&ofn))
 				break;
 
 			PathToRelativeT(str, strFull);
@@ -331,7 +332,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 			SetDlgItemText(hwndDlg, IDC_LOCATION, strFull);
 		}
 		if (LOWORD(wParam) == IDC_GETMORE) {
-			CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://miranda-ng.org/");
+			CallService(MS_UTILS_OPENURL, OUF_NEWWINDOW, (LPARAM)"http://miranda-ng.org/addons/category/14");
 			break;
 		}
 		if (LOWORD(wParam) == IDC_LOCATION)
@@ -391,7 +392,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 							SetDlgItemText(hwndDlg, IDC_LOCATION, arSounds[tvi.lParam].ptszTempFile);
 						else {
 							DBVARIANT dbv;
-							if ( !db_get_ts(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
+							if (!db_get_ts(NULL, "SkinSounds", arSounds[tvi.lParam].name, &dbv)) {
 								SetDlgItemText(hwndDlg, IDC_LOCATION, dbv.ptszVal);
 								db_free(&dbv);
 							}
@@ -420,7 +421,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 								SendMessage(GetParent(hwndDlg), PSM_CHANGED, 0, 0);
 				}
 				break;
-			}	
+			}
 		}
 		break;
 
@@ -433,8 +434,7 @@ INT_PTR CALLBACK DlgProcSoundOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM 
 
 static int SkinOptionsInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = { 0 };
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.position = -200000000;
 	odp.hInstance = hInst;
 	odp.pszTemplate = MAKEINTRESOURCEA(IDD_OPT_SOUND);
@@ -468,6 +468,4 @@ void UnloadSkinSounds(void)
 {
 	for (int i=0; i < arSounds.getCount(); i++)
 		arSounds[i].clear();
-
-	arSounds.destroy();
 }

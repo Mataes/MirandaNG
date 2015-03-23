@@ -21,27 +21,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 SmileyPackCListType g_SmileyPackCStore;
 
 
-bool SmileyPackCListType::AddSmileyPack(HANDLE hContact, TCHAR* dir)
+bool SmileyPackCListType::AddSmileyPack(MCONTACT hContact, TCHAR* dir)
 {
 	bool res = true;
-	if (GetSmileyPack(hContact) == NULL)
-	{
+	if (GetSmileyPack(hContact) == NULL) {
 		SmileyPackCType *smileyPack = new SmileyPackCType;
 
 		res = smileyPack->LoadSmileyDir(dir);
-		if (res)
-		{
+		if (res) {
 			smileyPack->SetId(hContact);
 			m_SmileyPacks.insert(smileyPack);
 		}
-		else
-			delete smileyPack;
+		else delete smileyPack;
 	}
 	return res;
 }
 
 
-bool SmileyPackCListType::AddSmiley(HANDLE hContact, TCHAR* path)
+bool SmileyPackCListType::AddSmiley(MCONTACT hContact, TCHAR* path)
 {
 	SmileyPackCType *smpack = GetSmileyPack(hContact);
 	if (smpack == NULL) {  
@@ -54,7 +51,7 @@ bool SmileyPackCListType::AddSmiley(HANDLE hContact, TCHAR* path)
 }
 
 
-SmileyPackCType* SmileyPackCListType::GetSmileyPack(HANDLE id)
+SmileyPackCType* SmileyPackCListType::GetSmileyPack(MCONTACT id)
 {
 	for (int i = 0; i < m_SmileyPacks.getCount(); i++)
 		if (m_SmileyPacks[i].GetId() == id)
@@ -64,7 +61,7 @@ SmileyPackCType* SmileyPackCListType::GetSmileyPack(HANDLE id)
 }
 
 
-SmileyCType::SmileyCType(const bkstring& fullpath, const TCHAR* filepath)
+SmileyCType::SmileyCType(const CMString& fullpath, const TCHAR* filepath)
 {
 	LoadFromResource(fullpath, 0); 
 	CreateTriggerText(T2A_SM(filepath));
@@ -86,11 +83,12 @@ bool SmileyCType::CreateTriggerText(char* text)
 	TCHAR *txt = mir_utf8decodeT(res);
 	res[reslen] = save;
 
-	if (txt == NULL) return false;
+	if (txt == NULL)
+		return false;
 
 	m_TriggerText = txt;
 	mir_free(txt);
-
+	mir_free(res);
 	return true;
 }
 
@@ -101,30 +99,28 @@ bool SmileyCType::CreateTriggerText(char* text)
 
 bool SmileyPackCType::LoadSmileyDir(TCHAR* dir)
 {
-	bkstring dirs = dir;
+	CMString dirs = dir;
 	dirs += _T("\\*.*");
 
 	_tfinddata_t c_file;
 	INT_PTR hFile = _tfindfirst((TCHAR*)dirs.c_str(), &c_file);
-	if (hFile > -1L)
-	{
+	if (hFile > -1L) {
 		do {
-			if (c_file.name[0] != '.')
-			{
-				bkstring fullpath = dir;
+			if (c_file.name[0] != '.') {
+				CMString fullpath = dir;
 				fullpath = fullpath + _T("\\") + c_file.name;
 				TCHAR* div = _tcsrchr(c_file.name, '.');
-				if (div)
-				{
+				if (div) {
 					*div = 0;
 					SmileyCType *smlc = new SmileyCType(fullpath, c_file.name);
-					if (smlc->GetTriggerText().empty())
+					if (smlc->GetTriggerText().IsEmpty())
 						delete smlc;
 					else
 						m_SmileyList.insert(smlc);
 				}
 			}
-		} while( _tfindnext( hFile, &c_file ) == 0 );
+		}
+			while( _tfindnext( hFile, &c_file ) == 0 );
 		_findclose( hFile );
 		AddTriggersToSmileyLookup();
 		return true;
@@ -135,22 +131,21 @@ bool SmileyPackCType::LoadSmileyDir(TCHAR* dir)
 
 bool SmileyPackCType::LoadSmiley(TCHAR* path)
 {
-	bkstring dirs = path;
-	bkstring::size_type slash = dirs.find_last_of('\\');
-	bkstring::size_type dot = dirs.find_last_of('.');
+	CMString dirs = path;
+	int slash = dirs.ReverseFind('\\');
+	int dot = dirs.ReverseFind('.');
 
-	bkstring name = dirs.substr(slash+1, dot - slash - 1); 
+	CMString name = dirs.Mid(slash+1, dot - slash - 1); 
 
-	for (int i=0; i < m_SmileyList.getCount(); i++) {
+	for (int i=0; i < m_SmileyList.getCount(); i++)
 		if (m_SmileyList[i].GetTriggerText() == name) {
 			m_SmileyList[i].LoadFromResource(dirs, 0);
 			return true; 
 		}
-	}
 
 	m_SmileyList.insert(new SmileyCType(dirs, (TCHAR*)name.c_str()));
 
-	bkstring empty;
+	CMString empty;
 	m_SmileyLookup.insert(new SmileyLookup(
 		m_SmileyList[m_SmileyList.getCount()-1].GetTriggerText(), false, m_SmileyList.getCount()-1, empty));
 
@@ -160,7 +155,7 @@ bool SmileyPackCType::LoadSmiley(TCHAR* path)
 
 void SmileyPackCType::AddTriggersToSmileyLookup(void)
 {
-	bkstring empty;
+	CMString empty;
 	for (int dist=0; dist<m_SmileyList.getCount(); dist++) {
 		SmileyLookup *dats = new SmileyLookup(m_SmileyList[dist].GetTriggerText(), false, dist, empty); 
 		m_SmileyLookup.insert(dats);

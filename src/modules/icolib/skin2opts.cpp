@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -45,12 +46,12 @@ static HICON ExtractIconFromPath(const TCHAR *path, int cxIcon, int cyIcon)
 	int n;
 	HICON hIcon;
 
-	if ( !path)
+	if (!path)
 		return (HICON)NULL;
 
-	lstrcpyn(file, path, SIZEOF(file));
+	mir_tstrncpy(file, path, SIZEOF(file));
 	comma = _tcsrchr(file, ',');
-	if ( !comma)
+	if (!comma)
 		n = 0;
 	else {
 		n = _ttoi(comma+1);
@@ -77,7 +78,7 @@ int IcoLib_ReleaseIcon(HICON hIcon, char* szIconName, bool big)
 	if (szIconName)
 		item = IcoLib_FindIcon(szIconName);
 
-	if ( !item && hIcon) // find by HICON
+	if (!item && hIcon) // find by HICON
 		item = IcoLib_FindHIcon(hIcon, big);
 
 	int res = 1;
@@ -102,7 +103,7 @@ HICON IconItem_GetIcon_Preview(IcolibItem* item)
 {
 	HICON hIcon = NULL;
 
-	if ( !item->temp_reset) {
+	if (!item->temp_reset) {
 		HICON hRefIcon = IconItem_GetIcon(item, false);
 		hIcon = CopyIcon(hRefIcon);
 		if (item->source_small && item->source_small->icon == hRefIcon)
@@ -118,7 +119,7 @@ HICON IconItem_GetIcon_Preview(IcolibItem* item)
 			}
 		}
 
-		if ( !hIcon && item->default_file) {
+		if (!hIcon && item->default_file) {
 			IconSourceItem_Release(&item->default_icon);
 			item->default_icon = GetIconSourceItem(item->default_file, item->default_indx, item->cx, item->cy);
 			if (item->default_icon) {
@@ -131,7 +132,7 @@ HICON IconItem_GetIcon_Preview(IcolibItem* item)
 			}
 		}
 
-		if ( !hIcon)
+		if (!hIcon)
 			return CopyIcon(hIconBlank);
 	}
 	return hIcon;
@@ -149,7 +150,7 @@ static void LoadSectionIcons(TCHAR *filename, SectionItem* sectionActive)
 {
 	TCHAR path[ MAX_PATH ];
 	mir_sntprintf(path, SIZEOF(path), _T("%s,"), filename);
-	int suffIndx = lstrlen(path);
+	size_t suffIndx = mir_tstrlen(path);
 
 	mir_cslock lck(csIconList);
 
@@ -196,7 +197,7 @@ static void UndoChanges(int iconIndx, int cmd)
 {
 	IcolibItem *item = iconList[ iconIndx ];
 
-	if ( !item->temp_file && !item->temp_icon && item->temp_reset && cmd == ID_CANCELCHANGE)
+	if (!item->temp_file && !item->temp_icon && item->temp_reset && cmd == ID_CANCELCHANGE)
 		item->temp_reset = FALSE;
 	else {
 		SAFE_FREE((void**)&item->temp_file);
@@ -232,7 +233,7 @@ void UndoSubItemChanges(HWND htv, HTREEITEM hItem, int cmd)
 
 static void OpenIconsPage()
 {
-	CallService(MS_UTILS_OPENURL, 1, (LPARAM)"http://miranda-ng.org/");
+	CallService(MS_UTILS_OPENURL, OUF_NEWWINDOW, (LPARAM)"http://miranda-ng.org/");
 }
 
 static int OpenPopupMenu(HWND hwndDlg)
@@ -258,34 +259,34 @@ static TCHAR* OpenFileDlg(HWND hParent, const TCHAR* szFile, BOOL bAll)
 	ofn.lStructSize = OPENFILENAME_SIZE_VERSION_400;
 	ofn.hwndOwner = hParent;
 
-	lstrcpy(filter, TranslateT("Icon Sets"));
+	mir_tstrcpy(filter, TranslateT("Icon sets"));
 	if (bAll)
-		lstrcat(filter, _T(" (*.dll;*.icl;*.exe;*.ico)"));
+		mir_tstrcat(filter, _T(" (*.dll;*.icl;*.exe;*.ico)"));
 	else
-		lstrcat(filter, _T(" (*.dll)"));
+		mir_tstrcat(filter, _T(" (*.dll)"));
 
-	pfilter = filter+lstrlen(filter)+1;
+	pfilter = filter+mir_tstrlen(filter)+1;
 	if (bAll)
-		lstrcpy(pfilter, _T("*.DLL;*.ICL;*.EXE;*.ICO"));
+		mir_tstrcpy(pfilter, _T("*.DLL;*.ICL;*.EXE;*.ICO"));
 	else
-		lstrcpy(pfilter, _T("*.DLL"));
+		mir_tstrcpy(pfilter, _T("*.DLL"));
 
-	pfilter += lstrlen(pfilter) + 1;
-	lstrcpy(pfilter, TranslateT("All Files"));
-	lstrcat(pfilter, _T(" (*)"));
-	pfilter += lstrlen(pfilter) + 1;
-	lstrcpy(pfilter, _T("*"));
-	pfilter += lstrlen(pfilter) + 1;
+	pfilter += mir_tstrlen(pfilter) + 1;
+	mir_tstrcpy(pfilter, TranslateT("All files"));
+	mir_tstrcat(pfilter, _T(" (*)"));
+	pfilter += mir_tstrlen(pfilter) + 1;
+	mir_tstrcpy(pfilter, _T("*"));
+	pfilter += mir_tstrlen(pfilter) + 1;
 	*pfilter = '\0';
 
 	ofn.lpstrFilter = filter;
 	ofn.lpstrDefExt = _T("dll");
-	lstrcpyn(file, szFile, SIZEOF(file));
+	mir_tstrncpy(file, szFile, SIZEOF(file));
 	ofn.lpstrFile = file;
 	ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_DONTADDTORECENT;
 	ofn.nMaxFile = MAX_PATH*2;
 
-	if ( !GetOpenFileName(&ofn))
+	if (!GetOpenFileName(&ofn))
 		return NULL;
 
 	return mir_tstrdup(file);
@@ -342,18 +343,18 @@ static HTREEITEM FindNamedTreeItemAt(HWND hwndTree, HTREEITEM hItem, const TCHAR
 	else
 		tvi.hItem = TreeView_GetRoot(hwndTree);
 
-	if ( !name)
+	if (!name)
 		return tvi.hItem;
 
 	tvi.mask = TVIF_TEXT;
 	tvi.pszText = str;
-	tvi.cchTextMax = MAX_PATH;
+	tvi.cchTextMax = SIZEOF(str);
 
 	while (tvi.hItem)
 	{
 		TreeView_GetItem(hwndTree, &tvi);
 
-		if ( !lstrcmp(tvi.pszText, name))
+		if (!mir_tstrcmp(tvi.pszText, name))
 			return tvi.hItem;
 
 		tvi.hItem = TreeView_GetNextSibling(hwndTree, tvi.hItem);
@@ -416,8 +417,7 @@ INT_PTR CALLBACK DlgProcIconImport(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 			SendMessage(hwndDlg, WM_SIZE, 0, MAKELPARAM(rcThis.right-rcThis.left, rcThis.bottom-rcThis.top));
 		}
 
-		if (shAutoComplete)
-			shAutoComplete( GetDlgItem(hwndDlg, IDC_ICONSET), 1);
+		SHAutoComplete( GetDlgItem(hwndDlg, IDC_ICONSET), 1);
 
 		SetDlgItemText(hwndDlg, IDC_ICONSET, _T("icons.dll"));
 		return TRUE;
@@ -470,7 +470,7 @@ INT_PTR CALLBACK DlgProcIconImport(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 			{
 				TCHAR str[MAX_PATH], *file;
 				GetDlgItemText(hwndDlg, IDC_ICONSET, str, SIZEOF(str));
-				if ( !(file = OpenFileDlg(GetParent(hwndDlg), str, TRUE)))
+				if (!(file = OpenFileDlg(GetParent(hwndDlg), str, TRUE)))
 					break;
 				SetDlgItemText(hwndDlg, IDC_ICONSET, file);
 				SAFE_FREE((void**)&file);
@@ -526,7 +526,7 @@ INT_PTR CALLBACK DlgProcIconImport(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				}
 			}
 
-			if ( !onItem && dropHiLite != -1) {
+			if (!onItem && dropHiLite != -1) {
 				ImageList_DragLeave(hwndDragOver);
 				ListView_SetItemState(hPPreview, dropHiLite, 0, LVIS_DROPHILITED);
 				UpdateWindow(hPPreview);
@@ -551,7 +551,7 @@ INT_PTR CALLBACK DlgProcIconImport(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				lvi.mask = LVIF_PARAM;
 				lvi.iItem = dragItem; lvi.iSubItem = 0;
 				ListView_GetItem(hPreview, &lvi);
-				mir_sntprintf(path, MAX_PATH, _T("%s,%d"), filename, (int)lvi.lParam);
+				mir_sntprintf(path, SIZEOF(path), _T("%s,%d"), filename, (int)lvi.lParam);
 				SendMessage(hwndParent, DM_CHANGEICON, dropHiLite, (LPARAM)path);
 				ListView_SetItemState( GetDlgItem(hwndParent, IDC_PREVIEW), dropHiLite, 0, LVIS_DROPHILITED);
 			}
@@ -584,7 +584,7 @@ INT_PTR CALLBACK DlgProcIconImport(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 		break;
 
 	case WM_SIZE: // make the dlg resizeable
-		if ( !IsIconic(hwndDlg)) {
+		if (!IsIconic(hwndDlg)) {
 			UTILRESIZEDIALOG urd = {0};
 			urd.cbSize = sizeof(urd);
 			urd.hInstance = hInst;
@@ -611,7 +611,7 @@ INT_PTR CALLBACK DlgProcIconImport(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 
 static int CALLBACK DoSortIconsFunc(LPARAM lParam1, LPARAM lParam2, LPARAM)
 {
-	return lstrcmpi(iconList[lParam1]->getDescr(), iconList[lParam2]->getDescr());
+	return mir_tstrcmpi(iconList[lParam1]->getDescr(), iconList[lParam2]->getDescr());
 }
 
 static int CALLBACK DoSortIconsFuncByOrder(LPARAM lParam1, LPARAM lParam2, LPARAM)
@@ -697,7 +697,7 @@ INT_PTR CALLBACK DlgProcIcoLibOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 			TCHAR itemName[1024];
 			HTREEITEM hSection;
 
-			if ( !hwndTree) break;
+			if (!hwndTree) break;
 
 			TreeView_SelectItem(hwndTree, NULL);
 			TreeView_DeleteAllItems(hwndTree);
@@ -707,7 +707,7 @@ INT_PTR CALLBACK DlgProcIcoLibOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				int sectionLevel = 0;
 
 				hSection = NULL;
-				lstrcpy(itemName, sectionList[indx]->name);
+				mir_tstrcpy(itemName, sectionList[indx]->name);
 				sectionName = itemName;
 
 				while (sectionName) {
@@ -722,8 +722,8 @@ INT_PTR CALLBACK DlgProcIcoLibOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 
 					pItemName = TranslateTS(pItemName);
 					hItem = FindNamedTreeItemAt(hwndTree, hSection, pItemName);
-					if ( !sectionName || !hItem) {
-						if ( !hItem) {
+					if (!sectionName || !hItem) {
+						if (!hItem) {
 							TVINSERTSTRUCT tvis = {0};
 							TreeItem *treeItem = (TreeItem *)mir_alloc(sizeof(TreeItem));
 							treeItem->value = SECTIONPARAM_MAKE(indx, sectionLevel, sectionName ? 0 : SECTIONPARAM_HAVEPAGE);
@@ -822,7 +822,7 @@ INT_PTR CALLBACK DlgProcIcoLibOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 				{
 					mir_cslock lck(csIconList);
 					hIcon = iconList[lvi.lParam]->temp_icon;
-					if ( !hIcon)
+					if (!hIcon)
 						hIcon = IconItem_GetIcon_Preview(iconList[lvi.lParam]);
 				}
 
@@ -1038,8 +1038,7 @@ INT_PTR CALLBACK DlgProcIcoLibOpts(HWND hwndDlg, UINT msg, WPARAM wParam, LPARAM
 
 int SkinOptionsInit(WPARAM wParam, LPARAM)
 {
-	OPTIONSDIALOGPAGE odp = {0};
-	odp.cbSize = sizeof(odp);
+	OPTIONSDIALOGPAGE odp = { sizeof(odp) };
 	odp.hInstance = hInst;
 	odp.flags = ODPF_BOLDGROUPS;
 	odp.position = -180000000;

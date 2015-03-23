@@ -1,10 +1,11 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2007     Maxim Mluhov
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (ñ) 2012-15 Miranda NG project
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -43,13 +44,13 @@ void JabberIbbFreeJibb(JABBER_IBB_TRANSFER *jibb)
 		mir_free(jibb);
 }	}
 
-BOOL CJabberProto::OnFtHandleIbbIq(HXML iqNode, CJabberIqInfo* pInfo)
+BOOL CJabberProto::OnFtHandleIbbIq(HXML iqNode, CJabberIqInfo *pInfo)
 {
-	if ( !_tcscmp(pInfo->GetChildNodeName(), _T("open")))
+	if (!_tcscmp(pInfo->GetChildNodeName(), _T("open")))
 		FtHandleIbbRequest(iqNode, TRUE);
-	else if ( !_tcscmp(pInfo->GetChildNodeName(), _T("close")))
+	else if (!_tcscmp(pInfo->GetChildNodeName(), _T("close")))
 		FtHandleIbbRequest(iqNode, FALSE);
-	else if ( !_tcscmp(pInfo->GetChildNodeName(), _T("data"))) {
+	else if (!_tcscmp(pInfo->GetChildNodeName(), _T("data"))) {
 		BOOL bOk = FALSE;
 		const TCHAR *sid = xmlGetAttrValue(pInfo->GetChildNode(), _T("sid"));
 		const TCHAR *seq = xmlGetAttrValue(pInfo->GetChildNode(), _T("seq"));
@@ -67,7 +68,7 @@ BOOL CJabberProto::OnFtHandleIbbIq(HXML iqNode, CJabberIqInfo* pInfo)
 	return TRUE;
 }
 
-void CJabberProto::OnIbbInitiateResult(HXML, CJabberIqInfo* pInfo)
+void CJabberProto::OnIbbInitiateResult(HXML, CJabberIqInfo *pInfo)
 {
 	JABBER_IBB_TRANSFER *jibb = (JABBER_IBB_TRANSFER *)pInfo->GetUserData();
 	if (pInfo->GetIqType() == JABBER_IQ_TYPE_RESULT)
@@ -76,7 +77,7 @@ void CJabberProto::OnIbbInitiateResult(HXML, CJabberIqInfo* pInfo)
 		SetEvent(jibb->hEvent);
 }
 
-void CJabberProto::OnIbbCloseResult(HXML, CJabberIqInfo* pInfo)
+void CJabberProto::OnIbbCloseResult(HXML, CJabberIqInfo *pInfo)
 {
 	JABBER_IBB_TRANSFER *jibb = (JABBER_IBB_TRANSFER *)pInfo->GetUserData();
 	if (pInfo->GetIqType() == JABBER_IQ_TYPE_RESULT)
@@ -87,7 +88,7 @@ void CJabberProto::OnIbbCloseResult(HXML, CJabberIqInfo* pInfo)
 
 void CJabberProto::IbbSendThread(JABBER_IBB_TRANSFER *jibb)
 {
-	Log("Thread started: type=ibb_send");
+	debugLogA("Thread started: type=ibb_send");
 
 	jibb->hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	jibb->bStreamInitialized = FALSE;
@@ -95,7 +96,7 @@ void CJabberProto::IbbSendThread(JABBER_IBB_TRANSFER *jibb)
 	jibb->state = JIBB_SENDING;
 
 	m_ThreadInfo->send(
-		XmlNodeIq(m_iqManager.AddHandler(&CJabberProto::OnIbbInitiateResult, JABBER_IQ_TYPE_SET, jibb->dstJID, 0, -1, jibb))
+		XmlNodeIq( AddIQ(&CJabberProto::OnIbbInitiateResult, JABBER_IQ_TYPE_SET, jibb->dstJID, 0, -1, jibb))
 			<< XCHILDNS(_T("open"), JABBER_FEAT_IBB) << XATTR(_T("sid"), jibb->sid) << XATTRI(_T("block-size"), JABBER_IBB_BLOCK_SIZE)
 			<< XATTR(_T("stanza"), _T("message")));
 
@@ -104,17 +105,15 @@ void CJabberProto::IbbSendThread(JABBER_IBB_TRANSFER *jibb)
 	jibb->hEvent = NULL;
 
 	if (jibb->bStreamInitialized) {
-
 		jibb->wPacketId = 0;
 
 		BOOL bSent = (this->*jibb->pfnSend)(JABBER_IBB_BLOCK_SIZE, jibb->ft);
 
-		if ( !jibb->bStreamClosed)
-		{
+		if (!jibb->bStreamClosed) {
 			jibb->hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 
 			m_ThreadInfo->send(
-				XmlNodeIq(m_iqManager.AddHandler(&CJabberProto::OnIbbCloseResult, JABBER_IQ_TYPE_SET, jibb->dstJID, 0, -1, jibb))
+				XmlNodeIq( AddIQ(&CJabberProto::OnIbbCloseResult, JABBER_IQ_TYPE_SET, jibb->dstJID, 0, -1, jibb))
 					<< XCHILDNS(_T("close"), JABBER_FEAT_IBB) << XATTR(_T("sid"), jibb->sid));
 
 			WaitForSingleObject(jibb->hEvent, INFINITE);
@@ -123,10 +122,8 @@ void CJabberProto::IbbSendThread(JABBER_IBB_TRANSFER *jibb)
 
 			if (jibb->bStreamClosed && bSent)
 				jibb->state = JIBB_DONE;
-
-		} else {
-			jibb->state = JIBB_ERROR;
 		}
+		else jibb->state = JIBB_ERROR;
 	}
 
 	(this->*jibb->pfnFinal)((jibb->state==JIBB_DONE)?TRUE:FALSE, jibb->ft);
@@ -136,7 +133,7 @@ void CJabberProto::IbbSendThread(JABBER_IBB_TRANSFER *jibb)
 
 void __cdecl CJabberProto::IbbReceiveThread(JABBER_IBB_TRANSFER *jibb)
 {
-	Log("Thread started: type=ibb_recv");
+	debugLogA("Thread started: type=ibb_recv");
 
 	filetransfer *ft = jibb->ft;
 
@@ -168,7 +165,7 @@ void __cdecl CJabberProto::IbbReceiveThread(JABBER_IBB_TRANSFER *jibb)
 BOOL CJabberProto::OnIbbRecvdData(const TCHAR *data, const TCHAR *sid, const TCHAR *seq)
 {
 	JABBER_LIST_ITEM *item = ListGetItemPtr(LIST_FTRECV, sid);
-	if ( !item) return FALSE;
+	if (item == NULL) return FALSE;
 
 	WORD wSeq = (WORD)_ttoi(seq);
 	if (wSeq != item->jibb->wPacketId) {

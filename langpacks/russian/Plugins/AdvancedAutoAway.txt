@@ -2,9 +2,7 @@
 ;============================================================
 ;  File: AdvancedAutoAway.dll
 ;  Plugin: Advanced Auto Away
-;  Version: 0.8.0.42
-;  URL: http://addons.miranda-im.org/details.php?action=viewfile&id=4254
-;  Source: http://pboonplugins.googlecode.com/svn/trunk/StatusPlugins/AdvancedAutoAway/
+;  Version: 0.8.1.1
 ;  Authors: P Boon
 ;============================================================
 [An Auto Away module with some more options than the original.]
@@ -13,7 +11,7 @@
 Проверять наличие соединения
 [Max. retries]
 Макс. попыток
-[Account Connection]
+[Account connection]
 Подключение учётной записи
 [Delay between retries (secs)]
 Задержка между попытками (сек)
@@ -31,7 +29,7 @@
 Постоянно проверять подключение к Интернету
 [Do so by pinging host]
 Пинговать хост
-[Confirm Status]
+[Confirm status]
 Подтвердите статус
 [Close]
 Закрыть
@@ -41,37 +39,39 @@
 Профиль
 [Message]
 Сообщение
+[Account]
+Учётная запись
+[Set]
+Выбрать
+[when full-screen mode is active]
+при полноэкранном режиме
+[when screen saver engages]
+при запуске заставки
+[when workstation is locked]
+при блокировке компьютера
 [after]
 через
 [minutes of inactivity]
 минут неактивности
 [minutes of level 1 mode]
 минут режима 1
-[Confirm resetting status]
-Подтвердить сброс статуса
-[Account]
-Учётная запись
-[Only set if current status is]
-Только если статус:
+[only set when inactive]
+только при неактивности
 [Monitor Miranda's activity only]
 Следить только за Miranda
 [Reset status on return]
 Восстановить статус при возвращении
-[when screen saver engages]
-при запуске заставки
-[Set]
-Выбрать
-[only set when inactive]
-только при неактивности
-[when workstation is locked]
-при блокировке компьютера
-[Command Line]
+[Confirm resetting status]
+Подтвердить сброс статуса
+[Only set if current status is]
+Только если статус:
+[Command line]
 Ком. строка
-[Copy to Clipboard]
+[Copy to clipboard]
 Копировать в буфер обмена
-[Command Line:]
+[Command line:]
 Ком. строка:
-[Create Shortcut]
+[Create shortcut]
 Создать ярлык
 [Add new profile]
 Добавить профиль
@@ -86,7 +86,7 @@
 [Show CMDL]
 Ком. строка
 [Activate status profile]
-Cтатус-профиль
+Статус-профиль
 [Set docked]
 Парковать
 [Other]
@@ -102,12 +102,12 @@ Cтатус-профиль
 [s]
 с
 [Set window location]
-Позиция окна
+Положение окна
 [Set window size]
 Размер окна
 [Allow override]
 Изменять
-[Note: status profiles can be created in the 'Status Profiles' options screen]
+[Note: status profiles can be created in the 'Status profiles' options screen]
 Статус-профиль можно создать во вкладке "Профили статусов".
 [Window on startup]
 Окно при запуске
@@ -117,13 +117,13 @@ Cтатус-профиль
 Разрывать связь при выходе
 [Dial-up (experimental)]
 Уд. доступ (экспериментально)
-[Background colour]
+[Background color]
 Цвет фона
-[Text colour]
+[Text color]
 Цвет текста
-[Use Windows colours]
+[Use Windows colors]
 Цвета Windows
-[Use default colours]
+[Use default colors]
 Цвета по умолчанию
 [Delay]
 Задержка
@@ -137,7 +137,7 @@ Cтатус-профиль
 Закрыть окно
 [Cancel reconnecting]
 Отмена подключения
-[Colours]
+[Colors]
 Цвета
 [Preview]
 Тест
@@ -171,8 +171,8 @@ Cтатус-профиль
 Настройки для каждой учётной записи
 [Use same settings for all accounts]
 Общие настройки для всех учётных записей
-[Ignore caps-lock, num-lock and scroll-lock keys]
-Игнорировать клавиши caps-lock, num-lock и scroll-lock
+[Ignore Caps Lock, Num Lock and Scroll Lock keys]
+Игнорировать клавиши Caps Lock, Num Lock и Scroll Lock
 [Check interval (secs)]
 Интервал проверки (сек)
 [Confirm dialog timeout (secs)]
@@ -183,10 +183,10 @@ Cтатус-профиль
 Следить за активностью клавиатуры
 [Monitor mouse activity]
 Следить за активностью мыши
-[Ignore CRTL, ALT, SHIFT, TAB, ESC and Windows keys]
+[Ignore CTRL, ALT, SHIFT, TAB, ESC and Windows keys]
 Игнорировать клавиши Ctrl, Alt, Shift, Tab, Esc, Win
 [Ignore any key combination with above keys]
-Игнор. комбинации с упомянутыми клавишами
+Игнорировать комбинации с упомянутыми клавишами
 [Accounts]
 Учётные записи
 [Enable checking]
@@ -207,7 +207,7 @@ Cтатус-профиль
 Подтверждать при загрузке
 [Create a main menu item]
 Пункт в главном меню
-[Status Profiles]
+[Status profiles]
 Профили статусов
 [Hotkey]
 Горячая клавиша
@@ -217,7 +217,7 @@ Cтатус-профиль
 Макс. задержка (сек)
 [Increase delay exponential]
 Увеличить экспоненциально
-[Cancel all if a account connects from another location]
+[Cancel all if an account connects from another location]
 Отменить, если учётная запись подключена из другого места
 [Reconnect on APM resume]
 Переподключаться после спящего режима
@@ -251,20 +251,20 @@ Cтатус-профиль
 минут режима "%s"
 [Rules]
 Правила
-[Status Messages]
+[Status messages]
 Статусные сообщения
 [Auto Away]
 Отсутствие
 [I've been away since %time%.]
 Отошел в %time%. Скоро вернусь.
 [Give it up, I'm not in!]
-Меня нет.
+Ну нет меня сейчас, нет...
 [Not right now.]
 Не сейчас.
 [Give a guy some peace, would ya?]
 Прошу не тревожить...
 [I'm a chatbot!]
-Свободен
+Свободен.
 [Yep, I'm here.]
 Да, я здесь.
 [Nope, not here.]
@@ -272,9 +272,9 @@ Cтатус-профиль
 [I'm hiding from the mafia.]
 Я прячусь от мафии.
 [That'll be the phone.]
-Да дайте же человеку поговорить по телефону...
-[Mmm...food.]
-Ммм... поесть бы...
+Дайте же человеку поговорить по телефону.
+[Mmm... food.]
+Ммм... поесть бы.
 [idleeeeeeee]
 ожидание...
 [Set %s message for %s.]

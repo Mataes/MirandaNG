@@ -1,10 +1,11 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by resource.rc
+// Used by D:\miranda-ng\plugins\Import\res\resource.rc
 //
 #define IDC_BACK                        3
 #define IDD_WIZARD                      101
 #define IDD_OPTIONS                     102
+#define IDD_ACCMERGE                    105
 #define IDD_IMPORTTYPE                  106
 #define IDD_WIZARDINTRO                 107
 #define IDD_FINISHED                    108
@@ -26,7 +27,9 @@
 #define IDC_STATIC_ALL                  1019
 #define IDC_STATIC_CONTACTS             1020
 #define IDC_STATIC_CUSTOM               1021
+#define IDC_RADIO_COMPLETE              1022
 #define IDC_DATETIMEPICKER              1023
+#define IDC_STATIC_ALL2                 1023
 #define IDC_IN_FT                       1024
 #define IDC_CONTACTS                    1025
 #define IDC_SYSTEM                      1026
@@ -48,10 +51,10 @@
 #define IDC_STATIC                      -1
 
 // Next default values for new objects
-//
+// 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        105
+#define _APS_NEXT_RESOURCE_VALUE        106
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1041
 #define _APS_NEXT_SYMED_VALUE           101

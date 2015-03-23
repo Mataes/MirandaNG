@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -47,11 +48,11 @@ MUUID* GetPluginInterfaces(const TCHAR* ptszFileName, bool& bIsPlugin)
 
 	__try {
 		__try {
-			if ( !hMap )
+			if (!hMap )
 				__leave;
 
 			DWORD dwHSize = 0, filesize = GetFileSize( hFile, &dwHSize );
-			if ( !filesize || filesize == INVALID_FILE_SIZE || dwHSize)
+			if (!filesize || filesize == INVALID_FILE_SIZE || dwHSize)
 				__leave;
 
 			if ( filesize < sizeof(IMAGE_DOS_HEADER) + sizeof(IMAGE_NT_HEADERS) )
@@ -61,7 +62,7 @@ MUUID* GetPluginInterfaces(const TCHAR* ptszFileName, bool& bIsPlugin)
 			if (ptr == NULL)
 				__leave;
 
-			PIMAGE_NT_HEADERS pINTH;
+			PIMAGE_NT_HEADERS pINTH = { 0 };
 			PIMAGE_DOS_HEADER pIDH = (PIMAGE_DOS_HEADER)ptr;
 			if ( pIDH->e_magic == IMAGE_DOS_SIGNATURE )
 				pINTH = (PIMAGE_NT_HEADERS)(ptr + pIDH->e_lfanew);
@@ -74,7 +75,7 @@ MUUID* GetPluginInterfaces(const TCHAR* ptszFileName, bool& bIsPlugin)
 				__leave;
 
 			int nSections = pINTH->FileHeader.NumberOfSections;
-			if ( !nSections )
+			if (!nSections )
 				__leave;
 
 			INT_PTR base;
@@ -102,7 +103,7 @@ MUUID* GetPluginInterfaces(const TCHAR* ptszFileName, bool& bIsPlugin)
 
 			BYTE* pImage = ptr + pIDH->e_lfanew + pINTH->FileHeader.SizeOfOptionalHeader + sizeof(IMAGE_NT_HEADERS) - sizeof(IMAGE_OPTIONAL_HEADER);
 			IMAGE_SECTION_HEADER *pExp = getSectionByRVA((IMAGE_SECTION_HEADER *)pImage, nSections, pIDD);
-			if ( !pExp) __leave;
+			if (!pExp) __leave;
 
 			BYTE *pSecStart = ptr + pExp->PointerToRawData - pExp->VirtualAddress;
 			IMAGE_EXPORT_DIRECTORY *pED = (PIMAGE_EXPORT_DIRECTORY)&pSecStart[expvaddr];
@@ -114,18 +115,18 @@ MUUID* GetPluginInterfaces(const TCHAR* ptszFileName, bool& bIsPlugin)
 			bool bHasLoad = false, bHasUnload = false, bHasInfo = false, bHasMuuids = false;
 			for (size_t i=0; i < pED->NumberOfNames; i++, ptrRVA++, ptrOrdRVA++) {
 				char *szName = (char*)&pSecStart[*ptrRVA];
-				if ( !lstrcmpA(szName, "Load"))
+				if (!mir_strcmp(szName, "Load"))
 					bHasLoad = true;
-				if ( !lstrcmpA(szName, "MirandaPluginInfoEx"))
+				if (!mir_strcmp(szName, "MirandaPluginInfoEx"))
 					bHasInfo = true;
-				else if ( !lstrcmpA(szName, "Unload"))
+				else if (!mir_strcmp(szName, "Unload"))
 					bHasUnload = true;
-				else if ( !lstrcmpA(szName, "MirandaInterfaces")) {
+				else if (!mir_strcmp(szName, "MirandaInterfaces")) {
 					bHasMuuids = true;
 					pIds = (MUUID*)&pSecStart[ ptrFuncList[*ptrOrdRVA]];
 				}
 				// old plugin, skip it
-				else if ( !lstrcmpA(szName, "MirandaPluginInterfaces"))
+				else if (!mir_strcmp(szName, "MirandaPluginInterfaces"))
 					__leave;
 			}
 

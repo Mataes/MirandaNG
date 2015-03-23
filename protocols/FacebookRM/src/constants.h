@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,22 +24,34 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Product management
 #define FACEBOOK_NAME							"Facebook"
-#define FACEBOOK_MOBILE							"Facebook (Mobile)"
 #define FACEBOOK_URL_HOMEPAGE					"http://www.facebook.com"
 #define FACEBOOK_URL_REQUESTS					"http://www.facebook.com/n/?reqs.php"
 #define FACEBOOK_URL_MESSAGES					"http://www.facebook.com/n/?inbox"
-#define FACEBOOK_URL_NOTIFICATIONS				"http://www.facebook.com/n/?notifications.php"
+#define FACEBOOK_URL_NOTIFICATIONS				"http://www.facebook.com/n/?notifications"
 #define FACEBOOK_URL_PROFILE					"http://www.facebook.com/profile.php?id="
 #define FACEBOOK_URL_GROUP						"http://www.facebook.com/n/?home.php&sk=group_"
 #define FACEBOOK_URL_PICTURE					"http://graph.facebook.com/%s/picture"
+#define FACEBOOK_URL_CONVERSATION				"http://www.facebook.com/messages/"
+//#define FACEBOOK_URL_STICKER					"http://www.facebook.com/stickers/asset/?sticker_id=%s&image_type=BestEffortImage"
 
 // Connection
 #define FACEBOOK_SERVER_REGULAR					"www.facebook.com"
-#define FACEBOOK_SERVER_MOBILE					"m.facebook.com"
+#define FACEBOOK_SERVER_MOBILE					"mbasic.facebook.com"
 #define FACEBOOK_SERVER_CHAT					"%s-%s.facebook.com"
 #define FACEBOOK_SERVER_LOGIN					"login.facebook.com"
 #define FACEBOOK_SERVER_APPS					"apps.facebook.com"
 #define FACEBOOK_SERVER_DOMAIN					"facebook.com"
+
+// Facebook clients
+#define FACEBOOK_CLIENT_WEB						"Facebook (website)"
+#define FACEBOOK_CLIENT_MOBILE					"Facebook (mobile)"
+#define FACEBOOK_CLIENT_OTHER					"Facebook (other)"
+#define FACEBOOK_CLIENT_APP						"Facebook App"
+#define FACEBOOK_CLIENT_MESSENGER				"Facebook Messenger"
+
+// Various constants
+#define FACEBOOK_NOTIFICATIONS_CHATROOM			"_notifications"
+#define FACEBOOK_CHATROOM_NAMES_COUNT			3 // number of participant names to use for chatrooms without specific name (on website it's 2)
 
 // Limits
 #define FACEBOOK_MESSAGE_LIMIT					200000 // this is guessed limit, in reality it is bigger
@@ -48,14 +60,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define FACEBOOK_MIND_LIMIT_TEXT				"63206"
 #define FACEBOOK_TIMEOUTS_LIMIT					3
 #define FACEBOOK_GROUP_NAME_LIMIT				100
+#define FACEBOOK_MESSAGES_ON_OPEN_LIMIT			99
+#define FACEBOOK_TYPING_TIME					60
+#define FACEBOOK_IGNORE_COUNTER_LIMIT			30 // how many consequent requests it should keep info about duplicit message ids
+#define FACEBOOK_PING_TIME						600 // every 10 minutes send activity_ping (it is just random/guessed value)
 
 // Defaults
 #define FACEBOOK_MINIMAL_POLL_RATE				10
 #define FACEBOOK_DEFAULT_POLL_RATE				24 // in seconds
 #define FACEBOOK_MAXIMAL_POLL_RATE				60
 
-#define DEFAULT_FORCE_HTTPS						0
-#define DEFAULT_FORCE_HTTPS_CHANNEL				0
 #define DEFAULT_SET_MIRANDA_STATUS				0
 #define DEFAULT_LOGGING_ENABLE					0
 #define DEFAULT_SYSTRAY_NOTIFY					0
@@ -63,21 +77,40 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define DEFAULT_BIG_AVATARS						0
 #define DEFAULT_DISCONNECT_CHAT					0
 #define DEFAULT_MAP_STATUSES					0
-#define DEFAULT_LOAD_MOBILE						0
 #define DEFAULT_CUSTOM_SMILEYS					0
-#define DEFAULT_LOCAL_TIME						0
 #define DEFAULT_LOAD_PAGES						0
+#define DEFAULT_KEEP_UNREAD						0
+#define DEFAULT_INBOX_ONLY						0
+#define DEFAULT_FILTER_ADS						0
+#define DEFAULT_LOGIN_SYNC   					0
+#define DEFAULT_MESSAGES_ON_OPEN				0
+#define DEFAULT_MESSAGES_ON_OPEN_COUNT			10
+#define DEFAULT_HIDE_CHATS						0
+#define DEFAULT_ENABLE_CHATS					1
+#define DEFAULT_NOTIFICATIONS_CHATROOM			0
 
 #define DEFAULT_EVENT_NOTIFICATIONS_ENABLE		1
-#define DEFAULT_EVENT_FEEDS_ENABLE				1
+#define DEFAULT_EVENT_FEEDS_ENABLE				0
 #define DEFAULT_EVENT_OTHER_ENABLE				1
 #define DEFAULT_EVENT_CLIENT_ENABLE				1
+#define DEFAULT_EVENT_FRIENDSHIP_ENABLE			1
+#define DEFAULT_EVENT_TICKER_ENABLE				0
 
 // Event flags
 #define FACEBOOK_EVENT_CLIENT					0x10000000 // Facebook error or info message
 #define FACEBOOK_EVENT_NEWSFEED					0x20000000 // Facebook newsfeed (wall) message
 #define FACEBOOK_EVENT_NOTIFICATION				0x40000000 // Facebook new notification
-#define FACEBOOK_EVENT_OTHER					0x80000000 // Facebook other event - friend requests/new messages
+#define FACEBOOK_EVENT_OTHER					0x80000000 // Facebook other event (poke sent, status update, ...)
+#define FACEBOOK_EVENT_FRIENDSHIP				0x01000000 // Facebook friendship event
+#define FACEBOOK_EVENT_TICKER					0x02000000 // Facebook ticker message
+
+// Send message return values
+#define SEND_MESSAGE_OK							0
+#define SEND_MESSAGE_ERROR						1
+#define SEND_MESSAGE_CANCEL						-1
+
+// Event types
+#define FACEBOOK_EVENTTYPE_CALL					10010
 
 // Facebook request types // TODO: Provide MS_ and release in FB plugin API?
 enum RequestType {
@@ -88,34 +121,37 @@ enum RequestType {
 	REQUEST_DTSG,				// getting __fb_dtsg__
 	REQUEST_RECONNECT,			// getting __sequence_num__ and __channel_id__
 	REQUEST_VISIBILITY,			// setting chat visibility
-	REQUEST_IDENTITY_SWITCH,	// changing identity to post status from pages
+	REQUEST_IDENTITY_SWITCH,	// changing identity to post status for pages
+	REQUEST_CAPTCHA_REFRESH,	// refreshing captcha dialog (changing captcha type)
 
 	REQUEST_FEEDS,				// getting feeds
 	REQUEST_NOTIFICATIONS,		// getting notifications
-	REQUEST_LOAD_REQUESTS,		// getting friend requests
+	REQUEST_LOAD_FRIENDSHIPS,	// getting friendship requests
 	REQUEST_PAGES,				// getting pages list
 
 	REQUEST_POST_STATUS,		// posting status to our or friends's wall
-	REQUEST_STATUS_COMPOSER,	// posting status to our or friends's wall with url links
 	REQUEST_LINK_SCRAPER,		// getting data for some url link
 	REQUEST_SEARCH,				// searching
 	REQUEST_POKE,				// sending pokes
 	REQUEST_NOTIFICATIONS_READ, // marking notifications read
 
 	REQUEST_BUDDY_LIST,			// getting regular updates (friends online, ...)
-	REQUEST_LOAD_FRIENDS,		// getting list of all friends
-	REQUEST_USER_INFO,			// getting info about particular user
-	REQUEST_REQUEST_FRIEND,		// requesting friendships
-	REQUEST_APPROVE_FRIEND,		// approving friendships
+	REQUEST_USER_INFO,			// getting info about particular friend
+	REQUEST_USER_INFO_ALL,		// getting info about all friends
+	REQUEST_USER_INFO_MOBILE,	// getting info about particular user (from mobile website)
+	REQUEST_ADD_FRIEND,			// requesting friendships
 	REQUEST_DELETE_FRIEND,		// deleting friendships
-	REQUEST_CANCEL_REQUEST,		// canceling friendship request
+	REQUEST_CANCEL_FRIENDSHIP,	// canceling (our) friendship request
+	REQUEST_FRIENDSHIP,			// approving or ignoring friendship requests
 
-	REQUEST_MESSAGE_SEND,		// sending message
-	REQUEST_MESSAGE_SEND2,		// sending message through inbox
-	REQUEST_MESSAGES_RECEIVE,	// receiving messages
+	REQUEST_MESSAGE_SEND_CHAT,	// sending message through chat
+	REQUEST_MESSAGE_SEND_INBOX,	// sending message through inbox
+	REQUEST_MESSAGES_RECEIVE,	// receiving messages and other realtime actions
+	REQUEST_ACTIVE_PING,		// sending activity ping
 	REQUEST_TYPING_SEND,		// sending typing notification
 
 	REQUEST_THREAD_INFO,		// getting thread info
+	REQUEST_THREAD_SYNC,		// getting thread sync (changes since something)
 	REQUEST_UNREAD_THREADS,		// getting unread threads
 	REQUEST_ASYNC,				// marking messages read and getting other things
 	REQUEST_MARK_READ,			// marking messages read (new)
@@ -135,6 +171,19 @@ enum ContactType {
 	CONTACT_APPROVE	= 4		// contact that is asking us for approval of friendship
 };
 
+enum ClientType {
+	CLIENT_WEB		 = 1,	// Facebook website
+	CLIENT_APP		 = 2,	// Facebook mobile application
+	CLIENT_MESSENGER = 3,	// Facebook Messenger application
+	CLIENT_OTHER	 = 4,	// Facebook over XMPP
+	CLIENT_MOBILE	 = 5	// Facebook on unknown mobile client (can't be determined for offline contacts)
+};
+
+enum MessageType {
+	MESSAGE = 1,	// Classic message
+	CALL	= 2,	// Video call
+};
+
 typedef struct {
 	const char *name;
 	const char *id;
@@ -142,12 +191,14 @@ typedef struct {
 
 // News Feed types
 static const ttype feed_types[] = {
-	{ LPGEN("Most Recent"), "lf_" }, //h_chr?
-	{ LPGEN("Wall Posts"), "app_2915120374" },
-	{ LPGEN("Top News"), "h_nor" }, //h
-	{ LPGEN("Photos"), "app_2305272732_2392950137" },
-	{ LPGEN("Links"), "app_2309869772" },
-	{ LPGEN("Apps and Games"), "appsandgames" },
+	{ LPGEN("Top News"), "h_nor" },
+	{ LPGEN("Most Recent"), "h_chr" },
+	{ LPGEN("Pages"), "pages" },
+	//{ LPGEN("Apps and Games"), "FEED_FILTER_KEY_APPS_AND_GAMES" },
+
+	//{ LPGEN("Wall Posts"), "app_2915120374" },	
+	//{ LPGEN("Photos"), "app_2305272732_2392950137" },
+	//{ LPGEN("Links"), "app_2309869772" },
 };
 
 // Server types

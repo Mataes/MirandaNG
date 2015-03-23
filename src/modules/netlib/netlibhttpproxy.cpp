@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-12 Miranda IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -41,7 +42,7 @@ static int HttpGatewayReadSetResult(NetlibConnection *nlc, char *buf, int num, i
 	int rbytes = nlc->dataBufferLen - bytes;
 
 	memcpy(buf, nlc->dataBuffer, bytes);
-	if ( !peek)
+	if (!peek)
 	{
 		memmove(nlc->dataBuffer, nlc->dataBuffer + bytes, rbytes);
 		nlc->dataBufferLen = rbytes;
@@ -118,15 +119,15 @@ static bool NetlibHttpGatewaySend(NetlibConnection *nlc, RequestType reqType, co
 		NETLIBOPENCONNECTION nloc;
 		NetlibConnFromUrl(nlhrSend.szUrl, false, nloc);
 
-		bool sameHost = lstrcmpA(nlc->nloc.szHost, nloc.szHost) == 0 && nlc->nloc.wPort == nloc.wPort;
+		bool sameHost = mir_strcmp(nlc->nloc.szHost, nloc.szHost) == 0 && nlc->nloc.wPort == nloc.wPort;
 
-		if ( !sameHost)
+		if (!sameHost)
 		{
 			NetlibDoClose(nlc);
 
 			mir_free((char*)nlc->nloc.szHost);
 			nlc->nloc = nloc;
-			if ( !NetlibDoConnect(nlc))
+			if (!NetlibDoConnect(nlc))
 				return false;
 		}
 		else
@@ -187,7 +188,7 @@ static bool NetlibHttpGatewayOscarPost(NetlibConnection *nlc, const char *buf, i
 	nlcSend.wProxyPort = nlc->wProxyPort;
 	nlcSend.proxyType = nlc->proxyType;
 
-	if ( !NetlibReconnect(&nlcSend)) return false;
+	if (!NetlibReconnect(&nlcSend)) return false;
 	nlc->s2 = nlcSend.s;
 
 	nlcSend.hOkToCloseEvent	 = CreateEvent(NULL, TRUE, TRUE, NULL);
@@ -271,7 +272,7 @@ int NetlibHttpGatewayRecv(NetlibConnection *nlc, char *buf, int len, int flags)
 {
 	bool peek = (flags & MSG_PEEK) != 0;
 
-	if (nlc->dataBufferLen != 0 && ( !peek || nlc->dataBufferLen >= len))
+	if (nlc->dataBufferLen != 0 && (!peek || nlc->dataBufferLen >= len))
 	{
 		return HttpGatewayReadSetResult(nlc, buf, len, peek);
 	}
@@ -303,7 +304,7 @@ int NetlibHttpGatewayRecv(NetlibConnection *nlc, char *buf, int len, int flags)
 		int numPackets = 0;
 		if (nlc->nlhpi.szHttpGetUrl)
 		{
-			if ( !NetlibHttpGatewaySend(nlc, reqOldGet, NULL, 0))
+			if (!NetlibHttpGatewaySend(nlc, reqOldGet, NULL, 0))
 			{
 				if (GetLastError() == ERROR_ACCESS_DENIED || nlc->termRequested)
 					break;
@@ -314,7 +315,7 @@ int NetlibHttpGatewayRecv(NetlibConnection *nlc, char *buf, int len, int flags)
 		}
 		else
 		{
-			if ( !NetlibHttpGatewayStdPost(nlc, numPackets))
+			if (!NetlibHttpGatewayStdPost(nlc, numPackets))
 			{
 				if (GetLastError() == ERROR_ACCESS_DENIED || nlc->termRequested)
 					break;
@@ -421,7 +422,7 @@ int NetlibInitHttpConnection(NetlibConnection *nlc, NetlibUser *nlu, NETLIBOPENC
 			return 0;
 		}
 	}
-	if ( !nlu->user.pfnHttpGatewayInit(nlc, nloc, nlhrReply))
+	if (!nlu->user.pfnHttpGatewayInit(nlc, nloc, nlhrReply))
 	{
 		NetlibHttpFreeRequestStruct(0, (LPARAM)nlhrReply);
 		return 0;

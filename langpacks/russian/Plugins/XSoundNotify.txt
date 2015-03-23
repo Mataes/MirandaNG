@@ -7,13 +7,11 @@
 ;============================================================
 [Provides extended options for sound notifications.]
 Предоставляет расширенные опции звуковых уведомлений о входящих сообщениях.
-[XSound Notify]
-Пользовательские звуки
-[Protocol :]
-Протокол:
-[Nick :]
+[Account:]
+Учётная запись:
+[Nick:]
 Ник:
-[Sound :]
+[Sound:]
 Звук:
 [Not set]
 Не установлено
@@ -21,15 +19,25 @@
 Выбрать
 [Test play]
 Тест
+[Reset]
+Сброс
 [Ignore sound for this contact]
 Игнорировать звук для этого контакта
-[Custom contact sound]
-Пользовательский звук контакта
+[Cancel]
+Отмена
 [Custom sound for %s (%s)]
 Пользовательский звук для %s (%s)
-[Self status]
-Свой статус
 [Sound files]
 Звуковые файлы
 [WAV files]
 Файлы WAV
+[(Unknown contact)]
+(Неизвестный контакт)
+[Sounds]
+Звуки
+[XSound Notify]
+Пользовательские звуки
+[Self status]
+Свой статус
+[Custom contact sound]
+Заданный звук контакта

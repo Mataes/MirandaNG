@@ -1,9 +1,10 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project, 
-all portions of this codebase are copyrighted to the people 
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org),
+Copyright (c) 2000-08 Miranda ICQ/IM project,
+all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
 This program is free software; you can redistribute it and/or
@@ -20,55 +21,57 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
+
 #include "hdr/modern_commonheaders.h"
 #include "m_clui.h"
 #include "hdr/modern_clist.h"
 #include "hdr/modern_commonprototypes.h"
 
-struct 
+struct
 {
-	int m_cache_nStatus,order;
-} statusModeOrder[] = {
-	{ID_STATUS_OFFLINE,500},
-	{ID_STATUS_ONLINE,10},
-	{ID_STATUS_AWAY,200},
-	{ID_STATUS_DND,110},
-	{ID_STATUS_NA,450},
-	{ID_STATUS_OCCUPIED,100},
-	{ID_STATUS_FREECHAT,0},
-	{ID_STATUS_INVISIBLE,20},
-	{ID_STATUS_ONTHEPHONE,150},
-	{ID_STATUS_OUTTOLUNCH,425}};
+	int status, order;
+}
+static statusModeOrder[] =
+{
+	{ ID_STATUS_OFFLINE, 500 },
+	{ ID_STATUS_ONLINE, 10 },
+	{ ID_STATUS_AWAY, 200 },
+	{ ID_STATUS_DND, 110 },
+	{ ID_STATUS_NA, 450 },
+	{ ID_STATUS_OCCUPIED, 100 },
+	{ ID_STATUS_FREECHAT, 0 },
+	{ ID_STATUS_INVISIBLE, 20 },
+	{ ID_STATUS_ONTHEPHONE, 150 },
+	{ ID_STATUS_OUTTOLUNCH, 425 }
+};
 
-static int GetContactStatus(HANDLE hContact)
+static int GetContactStatus(MCONTACT hContact)
 {
 	return (GetContactCachedStatus(hContact));
 }
 
-
-void cli_ChangeContactIcon(HANDLE hContact,int iIcon,int add)
+void cli_ChangeContactIcon(MCONTACT hContact, int iIcon, int add)
 {
-	corecli.pfnChangeContactIcon((HANDLE) hContact,(int)iIcon,(int)add);
+	corecli.pfnChangeContactIcon(hContact, iIcon, add);
 }
 
 static int GetStatusModeOrdering(int statusMode)
 {
-	int i;
-	for (i=0;i < SIZEOF(statusModeOrder);i++)
-		if (statusModeOrder[i].m_cache_nStatus == statusMode) return statusModeOrder[i].order;
+	for (int i = 0; i < SIZEOF(statusModeOrder); i++)
+		if (statusModeOrder[i].status == statusMode)
+			return statusModeOrder[i].order;
 	return 1000;
 }
 
-
-DWORD CompareContacts2_getLMTime(HANDLE hContact)
+DWORD CompareContacts2_getLMTime(MCONTACT hContact)
 {
-	HANDLE hDbEvent = db_event_last(hContact);
-	while(hDbEvent) {
+	MEVENT hDbEvent = db_event_last(hContact);
+	while (hDbEvent) {
 		DBEVENTINFO dbei = { sizeof(dbei) };
 		db_event_get(hDbEvent, &dbei);
 		if (dbei.eventType == EVENTTYPE_MESSAGE && !(dbei.flags & DBEF_SENT))
 			return dbei.timestamp;
-		hDbEvent = db_event_prev(hDbEvent);
+		hDbEvent = db_event_prev(hContact, hDbEvent);
 	}
 	return 0;
 }
@@ -81,28 +84,26 @@ int GetProtoIndex(char * szName)
 	if (szName) {
 		PROTOACCOUNT **accs = NULL;
 		int accCount = 0;
-		ProtoEnumAccounts( &accCount, &accs );    
+		ProtoEnumAccounts(&accCount, &accs);
 
-		for (int i=0; i < accCount; i++)
-			if ( !mir_strcmpi(szName, accs[i]->szModuleName))
+		for (int i = 0; i < accCount; i++)
+			if (!mir_strcmpi(szName, accs[i]->szModuleName))
 				return accs[i]->iOrder;
 	}
 
 	return -1;
 }
 
-int CompareContacts2(const ClcContact *contact1,const ClcContact *contact2, int by)
+int CompareContacts2(const ClcContact *contact1, const ClcContact *contact2, int by)
 {
-	HANDLE a;
-	HANDLE b;
 	TCHAR *namea, *nameb;
-	int statusa,statusb;
-	char *szProto1,*szProto2;
+	int statusa, statusb;
+	char *szProto1, *szProto2;
 
 	if ((INT_PTR)contact1 < 100 || (INT_PTR)contact2 < 100) return 0;
 
-	a = contact1->hContact;
-	b = contact2->hContact;
+	MCONTACT a = contact1->hContact;
+	MCONTACT b = contact2->hContact;
 
 	namea = (TCHAR *)contact1->szText;
 	statusa = GetContactCachedStatus(contact1->hContact);
@@ -113,50 +114,46 @@ int CompareContacts2(const ClcContact *contact1,const ClcContact *contact2, int 
 	szProto2 = contact2->proto;
 
 	if (by == SORTBY_STATUS) { //status
-		int ordera,orderb;
+		int ordera, orderb;
 		ordera = GetStatusModeOrdering(statusa);
 		orderb = GetStatusModeOrdering(statusb);
-		if (ordera != orderb) return ordera-orderb;
-		else return 0;
+		return (ordera != orderb) ? ordera - orderb : 0;
 	}
 
+	//one is offline: offline goes below online
+	if (g_CluiData.fSortNoOfflineBottom == 0 && (statusa == ID_STATUS_OFFLINE) != (statusb == ID_STATUS_OFFLINE))
+		return 2 * (statusa == ID_STATUS_OFFLINE) - 1;
 
-	if (g_CluiData.fSortNoOfflineBottom == 0 && (statusa == ID_STATUS_OFFLINE) != (statusb == ID_STATUS_OFFLINE)) { //one is offline: offline goes below online
-		return 2*(statusa == ID_STATUS_OFFLINE)-1;
-	}
+	if (by == SORTBY_NAME) //name
+		return mir_tstrcmpi(namea, nameb);
 
-	if (by == SORTBY_NAME) 
-	{ //name
-		return mir_tstrcmpi(namea,nameb);
-	} 
-	if (by == SORTBY_NAME_LOCALE) 
-	{ //name
+	if (by == SORTBY_NAME_LOCALE) {
+		//name
 		static int LocaleId = -1;
 		if (LocaleId == -1) LocaleId = CallService(MS_LANGPACK_GETLOCALE, 0, 0);
-		return (CompareString(LocaleId,NORM_IGNORECASE,SAFETSTRING(namea),-1,SAFETSTRING(nameb),-1))-2;
-	} 
-	else if (by == SORTBY_LASTMSG) 
-	{ //last message
+		return (CompareString(LocaleId, NORM_IGNORECASE, SAFETSTRING(namea), -1, SAFETSTRING(nameb), -1)) - 2;
+	}
+	if (by == SORTBY_LASTMSG) {
+		//last message
 		DWORD ta = CompareContacts2_getLMTime(a);
 		DWORD tb = CompareContacts2_getLMTime(b);
-		return tb-ta;
-	} 
-	else if (by == SORTBY_PROTO) 
-	{
-		int rc = GetProtoIndex(szProto1)-GetProtoIndex(szProto2);
-
-		if (rc != 0 && (szProto1 != NULL && szProto2 != NULL)) return rc;
+		return tb - ta;
 	}
-    else if (by == SORTBY_RATE)
-        return contact2->bContactRate-contact1->bContactRate;
+	if (by == SORTBY_PROTO) {
+		int rc = GetProtoIndex(szProto1) - GetProtoIndex(szProto2);
+		if (rc != 0 && (szProto1 != NULL && szProto2 != NULL))
+			return rc;
+	}
+	else if (by == SORTBY_RATE)
+		return contact2->bContactRate - contact1->bContactRate;
 	// else :o)
 	return 0;
 }
 
-int cliCompareContacts(const ClcContact *contact1,const ClcContact *contact2)
+int cliCompareContacts(const ClcContact *contact1, const ClcContact *contact2)
 {
 	int i, r;
-	for (i=0; i < SIZEOF(g_CluiData.bSortByOrder); i++) 
+	for (i = 0; i < SIZEOF(g_CluiData.bSortByOrder); i++)
 	{
 		r = CompareContacts2(contact1, contact2, g_CluiData.bSortByOrder[i]);
 		if (r != 0)
@@ -167,35 +164,35 @@ int cliCompareContacts(const ClcContact *contact1,const ClcContact *contact2)
 
 #undef SAFESTRING
 
-INT_PTR ToggleHideOffline(WPARAM wParam,LPARAM lParam)
+INT_PTR ToggleHideOffline(WPARAM, LPARAM)
 {
-	return pcli->pfnSetHideOffline((WPARAM)-1,0);
+	return pcli->pfnSetHideOffline((WPARAM)-1, 0);
 }
 
-INT_PTR ToggleGroups(WPARAM wParam,LPARAM lParam)
+INT_PTR ToggleGroups(WPARAM, LPARAM)
 {
 	db_set_b(NULL, "CList", "UseGroups",
-				(BYTE) !db_get_b(NULL, "CList", "UseGroups", SETTING_USEGROUPS_DEFAULT));
+		(BYTE)!db_get_b(NULL, "CList", "UseGroups", SETTING_USEGROUPS_DEFAULT));
 	pcli->pfnLoadContactTree();
 	return 0;
 }
 
-INT_PTR SetUseGroups(WPARAM wParam, LPARAM lParam)
-{	
-	int newVal = !(GetWindowLongPtr(pcli->hwndContactTree,GWL_STYLE)&CLS_USEGROUPS);
-	if ( wParam != -1 )
+INT_PTR SetUseGroups(WPARAM wParam, LPARAM)
+{
+	int newVal = !(GetWindowLongPtr(pcli->hwndContactTree, GWL_STYLE)&CLS_USEGROUPS);
+	if (wParam != -1)
 	{
-		if ( !newVal == wParam ) return 0;
+		if (!newVal == (int)wParam) return 0;
 		newVal = wParam;
 	}
-	db_set_b(NULL,"CList","UseGroups",(BYTE)newVal);
-	SendMessage(pcli->hwndContactTree,CLM_SETUSEGROUPS,newVal,0);
+	db_set_b(NULL, "CList", "UseGroups", (BYTE)newVal);
+	SendMessage(pcli->hwndContactTree, CLM_SETUSEGROUPS, newVal, 0);
 	return 0;
 }
 
-INT_PTR ToggleSounds(WPARAM wParam,LPARAM lParam)
+INT_PTR ToggleSounds(WPARAM, LPARAM)
 {
 	db_set_b(NULL, "Skin", "UseSound",
-		(BYTE) !db_get_b(NULL, "Skin", "UseSound", SETTING_ENABLESOUNDS_DEFAULT ));
+		(BYTE)!db_get_b(NULL, "Skin", "UseSound", SETTING_ENABLESOUNDS_DEFAULT));
 	return 0;
 }

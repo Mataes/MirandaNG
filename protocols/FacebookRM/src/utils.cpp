@@ -3,7 +3,7 @@
 Facebook plugin for Miranda Instant Messenger
 _____________________________________________
 
-Copyright © 2009-11 Michal Zelinka, 2011-13 Robert Pösel
+Copyright © 2009-11 Michal Zelinka, 2011-15 Robert Pösel
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -51,30 +51,22 @@ std::string utils::time::mili_timestamp()
 	std::string timestamp = utils::time::unix_timestamp();
 	GetSystemTime(&st);
 	timestamp.append(utils::conversion::to_string((void*)&st.wMilliseconds, UTILS_CONV_UNSIGNED_NUMBER));
-	return timestamp;
+	return timestamp.substr(0, 13);
 }
 
-DWORD utils::time::fix_timestamp(unsigned __int64 mili_timestamp)
+time_t utils::time::from_string(const std::string &data)
 {
-	// If it is really mili_timestamp
-	if (mili_timestamp > 100000000000) {
-		return (DWORD) (mili_timestamp / 1000);
-	}
-	return (DWORD) mili_timestamp;
-}
+	long long timestamp = _strtoi64(data.c_str(), NULL, 10);
 
-DWORD utils::conversion::to_timestamp(std::string data)
-{
-	DWORD timestamp = NULL;
-	if (!utils::conversion::from_string<DWORD>(timestamp, data, std::dec)) {
-		timestamp = static_cast<DWORD>(::time(NULL));
-	}
-	return timestamp;
-}
+	// If it is milli timestamp
+	if (timestamp > 100000000000)
+		timestamp /= 1000;
 
-struct tm *utils::conversion::fbtime_to_timeinfo(unsigned __int64 timestamp) {
-	time_t time = utils::time::fix_timestamp(timestamp);
-	return localtime(&time);
+	// If conversion fails, use local time?
+	//if (!timestamp)
+	//	timestamp = ::time(NULL);
+
+	return (time_t)timestamp;
 }
 
 std::string utils::conversion::to_string(void* data, WORD type)
@@ -83,15 +75,16 @@ std::string utils::conversion::to_string(void* data, WORD type)
 
 	switch (type)
 	{
-  	case UTILS_CONV_BOOLEAN:
+	case UTILS_CONV_BOOLEAN:
 		out << (data ? "true" : "false");
+		break;
 
-    case UTILS_CONV_TIME_T:
+	case UTILS_CONV_TIME_T:
 		out << (*(time_t*)data);
 		break;
 
 	case UTILS_CONV_SIGNED_NUMBER:
-  		out << (*(signed int*)data);
+		out << (*(signed int*)data);
 		break;
 
 	case UTILS_CONV_UNSIGNED_NUMBER:
@@ -102,7 +95,7 @@ std::string utils::conversion::to_string(void* data, WORD type)
 	return out.str();
 }
 
-void utils::text::replace_first(std::string* data, std::string from, std::string to)
+void utils::text::replace_first(std::string* data, const std::string &from, const std::string &to)
 {
 	std::string::size_type position = data->find(from);
 	if (position != std::string::npos)
@@ -111,18 +104,18 @@ void utils::text::replace_first(std::string* data, std::string from, std::string
 	}
 }
 
-void utils::text::replace_all(std::string* data, std::string from, std::string to)
+void utils::text::replace_all(std::string* data, const std::string &from, const std::string &to)
 {
 	std::string::size_type position = 0;
 
 	while ((position = data->find(from, position)) != std::string::npos)
 	{
 		data->replace(position, from.size(), to);
-		position++;
+		position += to.size();
 	}
 }
 
-unsigned int utils::text::count_all(std::string* data, std::string term)
+unsigned int utils::text::count_all(std::string* data, const std::string &term)
 {
 	unsigned int count = 0;
 	std::string::size_type position = 0;
@@ -138,24 +131,31 @@ unsigned int utils::text::count_all(std::string* data, std::string term)
 
 void utils::text::append_ordinal(unsigned long value, std::string* data)
 {
-	if (value >= 128 && value <= 2047)
+	if (value <= 127)
+	{ // U+0000 .. U+007F
+		*data += (char)value;
+	}
+	else if (value >= 128 && value <= 2047)
 	{ // U+0080 .. U+07FF
 		*data += (char)(192 + (value / 64));
 		*data += (char)(128 + (value % 64));
-	} 
+	}
 	else if (value >= 2048 && value <= 65535)
 	{ // U+0800 .. U+FFFF
 		*data += (char)(224 + (value / 4096));
 		*data += (char)(128 + ((value / 64) % 64));
 		*data += (char)(128 + (value % 64));
 	}
-	else if (value <= 127)
-	{ // U+0000 .. U+007F
-		*data += (char)value;
+	else
+	{
+		*data += (char)((value >> 24) & 0xFF);
+		*data += (char)((value >> 16) & 0xFF);
+		*data += (char)((value >> 8) & 0xFF);
+		*data += (char)((value)& 0xFF);
 	}
 }
 
-std::string utils::text::special_expressions_decode(std::string data)
+std::string utils::text::html_entities_decode(std::string data)
 {
 	utils::text::replace_all(&data, "&amp;", "&");
 	utils::text::replace_all(&data, "&quot;", "\"");
@@ -163,7 +163,7 @@ std::string utils::text::special_expressions_decode(std::string data)
 	utils::text::replace_all(&data, "&gt;", ">");
 
 	utils::text::replace_all(&data, "&hearts;", "\xE2\x99\xA5"); // direct byte replacement
-//	utils::text::replace_all(&data, "&hearts;", "\\u2665");      // indirect slashu replacement
+	//	utils::text::replace_all(&data, "&hearts;", "\\u2665");      // indirect slashu replacement
 
 	utils::text::replace_all(&data, "\\/", "/");
 	utils::text::replace_all(&data, "\\\\", "\\");
@@ -177,45 +177,31 @@ std::string utils::text::special_expressions_decode(std::string data)
 	// http://www.natural-innovations.com/wa/doc-charset.html
 	// http://webdesign.about.com/library/bl_htmlcodes.htm
 
-	std::string new_string = "";
+	std::string new_string;
 	for (std::string::size_type i = 0; i < data.length(); i++)
 	{
-		if (data.at(i) == '&' && (i+1) < data.length() && data.at(i+1) == '#')
+		if (data.at(i) == '&' && (i + 1) < data.length() && data.at(i + 1) == '#')
 		{
-			unsigned int udn;
 			std::string::size_type comma = data.find(";", i);
 			if (comma != std::string::npos) {
 				bool hexa = false;
-				if ((i+2) < data.length() && data.at(i+2) == 'x') {
+				if ((i + 2) < data.length() && data.at(i + 2) == 'x') {
 					hexa = true;
 					i += 3;
-				} else {
+				}
+				else {
 					i += 2;
 				}
-				udn = strtol(data.substr(i, comma-i).c_str(), NULL, hexa ? 16 : 10);
+
+				std::string num = data.substr(i, comma - i);
+				if (!num.empty()) {
+					unsigned long udn = strtoul(num.c_str(), NULL, hexa ? 16 : 10);
+					utils::text::append_ordinal(udn, &new_string);
+				}
+
 				i = comma;
+				continue;
 			}
-			
-			utils::text::append_ordinal(udn, &new_string);
-			continue;
-		}
-
-		if (data.at(i) == -19 && (i+2) < data.length()) {
-			std::string chs = data.substr(i, i+2).c_str();
-			unsigned char a[4] = {0};
-			memcpy(&a[1], chs.c_str(), 3);
-			
-			new_string += "\\u";
-			utils::text::append_ordinal((unsigned long)a, &new_string);
-			
-			/*u = reinterpret_cast<unsigned char&>(data.at(i+1));
-			utils::text::append_ordinal(u, &new_string);
-
-			u = reinterpret_cast<unsigned char&>(data.at(i+2));
-			utils::text::append_ordinal(u, &new_string);*/
-
-			i += 2;
-			continue;
 		}
 
 		new_string += data.at(i);
@@ -228,8 +214,8 @@ std::string utils::text::edit_html(std::string data)
 {
 	std::string::size_type end = 0;
 	std::string::size_type start = 0;
-	std::string new_string = "";
-  
+	std::string new_string;
+
 	while (end != std::string::npos)
 	{
 		end = data.find("<span class=\\\"text_exposed_hide", start);
@@ -237,14 +223,15 @@ std::string utils::text::edit_html(std::string data)
 		{
 			new_string += data.substr(start, end - start);
 			start = data.find("<\\/span", end);
-		} else {
+		}
+		else {
 			new_string += data.substr(start, data.length() - start);
 		}
 	}
 
 	start = end = 0;
 	data = new_string;
-	new_string = "";
+	new_string.clear();
 
 	while (end != std::string::npos)
 	{
@@ -253,7 +240,8 @@ std::string utils::text::edit_html(std::string data)
 		{
 			new_string += data.substr(start, end - start);
 			start = data.find("<\\/span", end);
-		} else {
+		}
+		else {
 			new_string += data.substr(start, data.length() - start);
 		}
 	}
@@ -261,15 +249,16 @@ std::string utils::text::edit_html(std::string data)
 	// Remove "Translate" link
 	start = end = 0;
 	data = new_string;
-	new_string = "";
+	new_string.clear();
 	while (end != std::string::npos)
 	{
-		end = data.find("translate_story_link\\\">", start);
+		end = data.find("role=\\\"button\\\">", start);
 		if (end != std::string::npos)
 		{
 			new_string += data.substr(start, end - start);
-			start = data.find("<\\/div", end);
-		} else {
+			start = data.find("<\\/a", end);
+		}
+		else {
 			new_string += data.substr(start, data.length() - start);
 		}
 	}
@@ -283,7 +272,7 @@ std::string utils::text::edit_html(std::string data)
 
 		start = new_string.find(">", start);
 		if (start != std::string::npos)
-			new_string.insert(start+1, "\n\n");
+			new_string.insert(start + 1, "\n\n");
 
 		start = new_string.find("<\\/div>", start);
 		if (start != std::string::npos)
@@ -296,13 +285,13 @@ std::string utils::text::edit_html(std::string data)
 	{
 		start = new_string.find(">", start);
 		if (start != std::string::npos)
-			new_string.insert(start+1, "\n");
+			new_string.insert(start + 1, "\n");
 
 		start = new_string.find("<\\/div>", start);
 		if (start != std::string::npos)
 			new_string.insert(start, "\n");
 	}
-  
+
 	utils::text::replace_all(&new_string, "<br \\/>", "\n");
 	utils::text::replace_all(&new_string, "\n\n\n", "\n\n");
 	//utils::text::replace_all(&new_string, "\\t", "");
@@ -311,13 +300,13 @@ std::string utils::text::edit_html(std::string data)
 }
 
 
-std::string utils::text::remove_html(std::string data)
+std::string utils::text::remove_html(const std::string &data)
 {
-	std::string new_string = "";
+	std::string new_string;
 
 	for (std::string::size_type i = 0; i < data.length(); i++)
 	{
-		if (data.at(i) == '<' && data.at(i+1) != ' ')
+		if (data.at(i) == '<' && (i + 1) < data.length() && data.at(i + 1) != ' ')
 		{
 			i = data.find(">", i);
 			if (i == std::string::npos)
@@ -332,15 +321,15 @@ std::string utils::text::remove_html(std::string data)
 	return new_string;
 }
 
-std::string utils::text::slashu_to_utf8(std::string data)
+std::string utils::text::slashu_to_utf8(const std::string &data)
 {
-	std::string new_string = "";
+	std::string new_string;
 
 	for (std::string::size_type i = 0; i < data.length(); i++)
 	{
-		if (data.at(i) == '\\' && (i+1) < data.length() && data.at(i+1) == 'u')
+		if (data.at(i) == '\\' && (i + 1) < data.length() && data.at(i + 1) == 'u')
 		{
-			unsigned int udn = strtol(data.substr(i + 2, 4).c_str(), NULL, 16);
+			unsigned long udn = strtoul(data.substr(i + 2, 4).c_str(), NULL, 16);
 			append_ordinal(udn, &new_string);
 			i += 5;
 			continue;
@@ -352,24 +341,24 @@ std::string utils::text::slashu_to_utf8(std::string data)
 	return new_string;
 }
 
-std::string utils::text::trim(std::string data, bool rtrim)
+std::string utils::text::trim(const std::string &data, bool rtrim)
 {
-	std::string spaces = " \t\r\n"; // TODO: include "nbsp"?
+	std::string spaces = " \t\r\n";
 	std::string::size_type begin = rtrim ? 0 : data.find_first_not_of(spaces);
-	std::string::size_type end = data.find_last_not_of(spaces) + 1;
+	std::string::size_type end = data.find_last_not_of(spaces);
 
-	return (end != std::string::npos) ? data.substr(begin, end - begin) : "";
+	return (end != std::string::npos) ? data.substr(begin, end + 1 - begin) : "";
 }
 
-void utils::text::explode(std::string str, std::string separator, std::vector<std::string>* results)
+void utils::text::explode(std::string str, const std::string &separator, std::vector<std::string>* results)
 {
 	std::string::size_type pos;
 	pos = str.find_first_of(separator);
 	while (pos != std::string::npos) {
 		if (pos > 0) {
-			results->push_back(str.substr(0,pos));
+			results->push_back(str.substr(0, pos));
 		}
-		str = str.substr(pos+1);
+		str = str.substr(pos + 1);
 		pos = str.find_first_of(separator);
 	}
 	if (str.length() > 0) {
@@ -382,9 +371,9 @@ std::string utils::text::source_get_value(std::string* data, unsigned int argume
 	va_list arg;
 	std::string ret;
 	std::string::size_type start = 0, end = 0;
-	
+
 	va_start(arg, argument_count);
-	
+
 	for (unsigned int i = argument_count; i > 0; i--)
 	{
 		if (i == 1)
@@ -393,7 +382,8 @@ std::string utils::text::source_get_value(std::string* data, unsigned int argume
 			if (start == std::string::npos || end == std::string::npos)
 				break;
 			ret = data->substr(start, end - start);
-		} else {
+		}
+		else {
 			std::string term = va_arg(arg, char*);
 			start = data->find(term, start);
 			if (start == std::string::npos)
@@ -401,8 +391,8 @@ std::string utils::text::source_get_value(std::string* data, unsigned int argume
 			start += term.length();
 		}
 	}
-	
-	va_end(arg);	
+
+	va_end(arg);
 	return ret;
 }
 
@@ -418,7 +408,8 @@ std::string utils::text::source_get_value2(std::string* data, const char *term, 
 		end = data->find_first_of(endings, start);
 		if (end != std::string::npos) {
 			ret = data->substr(start, end - start);
-		} else if (wholeString) {
+		}
+		else if (wholeString) {
 			ret = data->substr(start);
 		}
 	}
@@ -428,13 +419,13 @@ std::string utils::text::source_get_value2(std::string* data, const char *term, 
 
 std::string utils::text::source_get_form_data(std::string* data)
 {
-	std::string values = "";
+	std::string values;
 
 	std::string::size_type start = 0;
 	start = data->find("<input", start);
-	while (start != std::string::npos) {		
+	while (start != std::string::npos) {
 		start++;
-		std::string attr = "", value = "";
+		std::string attr, value;
 
 		std::string::size_type pos = data->find("name=\"", start);
 		if (pos != std::string::npos) {
@@ -443,7 +434,7 @@ std::string utils::text::source_get_form_data(std::string* data)
 			if (end != std::string::npos)
 				attr = data->substr(pos, end - pos);
 
-			
+
 			end = data->find(">", pos);
 			pos = data->find("value=\"", pos);
 			if (pos != std::string::npos && end != std::string::npos && pos < end) {
@@ -465,27 +456,44 @@ std::string utils::text::source_get_form_data(std::string* data)
 	return values;
 }
 
-int utils::number::random()
+std::tstring utils::text::prepare_name(const std::tstring &name, bool withSurnameLetter)
 {
-	srand(::time(NULL));
-	return rand();
+	std::tstring::size_type pos = name.find(_T(" "));
+	if (pos == std::tstring::npos)
+		return name;
+
+	std::tstring result = name.substr(0, pos);
+
+	if (withSurnameLetter) {
+		pos = name.rfind(_T(" ")) + 1; // we're sure there is some space in name so we can do +1 safely
+
+		if (pos < name.length())
+			result += _T(" ") + name.substr(pos, 1) + std::tstring(_T("."));
+	}
+
+	return result;
 }
 
-int utils::debug::log(std::string file_name, std::string text)
+std::string utils::text::rand_string(int len, const char *chars, unsigned int *number)
 {
-	char szFile[MAX_PATH];
-	GetModuleFileNameA(g_hInstance, szFile, SIZEOF(szFile));
-	std::string path = szFile;
-	path = path.substr(0, path.rfind("\\"));
-	path = path.substr(0, path.rfind("\\") + 1);
-	path = path + file_name.c_str() + ".txt";
+	std::stringstream out;
 
-	SYSTEMTIME time;
-	GetLocalTime(&time);
+	int strLen = (int)strlen(chars);
+	for (int i = 0; i < len; ++i) {
+		out << chars[utils::number::random(0, strLen, number)];
+	}
 
-	std::ofstream out(path.c_str(), std::ios_base::out | std::ios_base::app | std::ios_base::ate);
-	out << "[" << (time.wHour < 10 ? "0" : "") << time.wHour << ":" << (time.wMinute < 10 ? "0" : "") << time.wMinute << ":" << (time.wSecond < 10 ? "0" : "") << time.wSecond << "] " << text << std::endl;
-	out.close();
+	return out.str();
+}
 
-	return EXIT_SUCCESS;
+int utils::number::random(int min, int max, unsigned int *number)
+{
+	if (number != NULL) {
+		errno_t err = rand_s(number);
+		if (!err)
+			return (*number % (max - min)) + min;
+	}
+
+	// If called didn't specified "number" or there was error, fallback to rand()
+	return (rand() % (max - min)) + min;
 }

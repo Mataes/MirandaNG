@@ -1,7 +1,7 @@
 /*
 
 Copyright (C) 2009 Ricardo Pescuma Domenecci
-Copyright (C) 2012-13 Miranda NG Project
+Copyright (C) 2012-15 Miranda NG project
 
 This is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public
@@ -46,25 +46,21 @@ void IcolibExtraIcon::rebuildIcons()
 {
 }
 
-void IcolibExtraIcon::applyIcon(HANDLE hContact)
+void IcolibExtraIcon::applyIcon(MCONTACT hContact)
 {
 	if (!isEnabled() || hContact == NULL)
 		return;
 
 	HANDLE hImage = INVALID_HANDLE_VALUE;
 
-	DBVARIANT dbv;
-	if ( !db_get_s(hContact, MODULE_NAME, name.c_str(), &dbv)) {
-		if (!IsEmpty(dbv.pszVal))
-			hImage = GetIcon(dbv.pszVal);
-
-		db_free(&dbv);
-	}
+	ptrA szIconName(db_get_sa(hContact, MODULE_NAME, szName));
+	if (!IsEmpty(szIconName))
+		hImage = GetIcon(szIconName);
 
 	ClistSetExtraIcon(hContact, hImage);
 }
 
-int IcolibExtraIcon::setIcon(int id, HANDLE hContact, HANDLE hIcoLib)
+int IcolibExtraIcon::setIcon(int id, MCONTACT hContact, HANDLE hIcoLib)
 {
 	if (hContact == NULL || id != this->id)
 		return -1;
@@ -72,27 +68,23 @@ int IcolibExtraIcon::setIcon(int id, HANDLE hContact, HANDLE hIcoLib)
 	if (hIcoLib == INVALID_HANDLE_VALUE)
 		hIcoLib = NULL;
 
-	if ( isEnabled()) {
-		DBVARIANT dbv;
-		if ( !db_get_s(hContact, MODULE_NAME, name.c_str(), &dbv)) {
-			if (!IsEmpty(dbv.pszVal))
-				RemoveIcon(dbv.pszVal);
-
-			db_free(&dbv);
-		}
+	if (isEnabled()) {
+		ptrA szIconName(db_get_sa(hContact, MODULE_NAME, szName));
+		if (!IsEmpty(szIconName))
+			RemoveIcon(szIconName);
 	}
 
 	IcolibItem *p = (IcolibItem*)hIcoLib;
 	char *szName = (p) ? p->name : NULL;
 	storeIcon(hContact, szName);
 
-	if ( isEnabled())
+	if (isEnabled())
 		return ClistSetExtraIcon(hContact, (hIcoLib == NULL) ? INVALID_HANDLE_VALUE : AddIcon(szName));
 
 	return 0;
 }
 
-int IcolibExtraIcon::setIconByName(int id, HANDLE hContact, const char *icon)
+int IcolibExtraIcon::setIconByName(int id, MCONTACT hContact, const char *icon)
 {
 	if (hContact == NULL || id != this->id)
 		return -1;
@@ -100,32 +92,28 @@ int IcolibExtraIcon::setIconByName(int id, HANDLE hContact, const char *icon)
 	if (icon == INVALID_HANDLE_VALUE)
 		icon = NULL;
 
-	if ( isEnabled()) {
-		DBVARIANT dbv;
-		if ( !db_get_s(hContact, MODULE_NAME, name.c_str(), &dbv)) {
-			if (!IsEmpty(dbv.pszVal))
-				RemoveIcon(dbv.pszVal);
-
-			db_free(&dbv);
-		}
+	if (isEnabled()) {
+		ptrA szIconName(db_get_sa(hContact, MODULE_NAME, szName));
+		if (!IsEmpty(szIconName))
+			RemoveIcon(szIconName);
 	}
 
 	storeIcon(hContact, (char*)icon);
 
-	if ( isEnabled())
-		return ClistSetExtraIcon(hContact, ( IsEmpty(icon)) ? INVALID_HANDLE_VALUE : AddIcon(icon));
+	if (isEnabled())
+		return ClistSetExtraIcon(hContact, (IsEmpty(icon)) ? INVALID_HANDLE_VALUE : AddIcon(icon));
 
 	return 0;
 }
 
-void IcolibExtraIcon::storeIcon(HANDLE hContact, void *icon)
+void IcolibExtraIcon::storeIcon(MCONTACT hContact, void *icon)
 {
 	if (hContact == NULL)
 		return;
 
-	const char *icolibName = (const char *) icon;
-	if ( IsEmpty(icolibName))
-		db_unset(hContact, MODULE_NAME, name.c_str());
+	const char *icolibName = (const char *)icon;
+	if (IsEmpty(icolibName))
+		db_unset(hContact, MODULE_NAME, szName);
 	else
-		db_set_s(hContact, MODULE_NAME, name.c_str(), icolibName);
+		db_set_s(hContact, MODULE_NAME, szName, icolibName);
 }

@@ -24,14 +24,14 @@
 [All other]
 Другое
 [Typing]
-Набор текста
+Печатает
 [Protocols]
 Протоколы
 [Suppress notifications upon connection for]
 Не уведомлять при подключении
 [sec]
 сек
-[Prefix proto name]
+[Prefix protocol name]
 Имя учётной записи
 [Duration]
 Длительность
@@ -54,7 +54,9 @@
 [Obey 'Suppress online notification' settings]
 Включить временный запрет уведомлений
 [Auto positioning]
-Автопозиция
+Автомат. положение
+[Transparent input]
+Прозрачный клик
 [Preview]
 Просмотр
 [Translucency options]
@@ -66,8 +68,8 @@
 [Idle]
 Ожидание
 [Tooltip Notify]
-Уведомления
-[Other Status]
+Всплывающие уведомления
+[Other status]
 Другой статус
 [Tooltip Notify: Online]
 Уведомления: В сети

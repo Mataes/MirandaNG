@@ -1,10 +1,12 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright ( C ) 2002-04  Santithorn Bunchua
-Copyright ( C ) 2005-08  George Hazan
-Copyright ( C ) 2007     Maxim Mluhov
-Copyright ( C ) 2008-09  Dmitriy Chervov
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-08  George Hazan
+Copyright (c) 2007     Maxim Mluhov
+Copyright (c) 2008-09  Dmitriy Chervov
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -28,32 +30,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef __cplusplus
 
 #include <m_xml.h>
-
-struct IJabberInterface;
-
-struct IJabberSysInterface
-{
-	// Returns version of IJabberSysInterface.
-	virtual int STDMETHODCALLTYPE GetVersion() const = 0;
-
-	// Compares JIDs by their node@domain part (without resource name).
-	virtual int STDMETHODCALLTYPE CompareJIDs(LPCTSTR jid1, LPCTSTR jid2) = 0;
-
-	// Returns contact handle for given JID, or NULL on error.
-	virtual HANDLE STDMETHODCALLTYPE	ContactFromJID(LPCTSTR jid) = 0;
-
-	// Returns JID of hContact, or NULL on error. You must free the result using mir_free().
-	virtual LPTSTR STDMETHODCALLTYPE	ContactToJID(HANDLE hContact) = 0;
-
-	// Returns best resource name for given JID, or NULL on error. You must free the result using mir_free().
-	virtual LPTSTR STDMETHODCALLTYPE	GetBestResourceName(LPCTSTR jid) = 0;
-
-	// Returns all resource names for a given JID in format "resource1\0resource2\0resource3\0\0" (all resources are separated by \0 character and the whole string is terminated with two \0 characters), or NULL on error. You must free returned string using mir_free().
-	virtual LPTSTR STDMETHODCALLTYPE	GetResourceList(LPCTSTR jid) = 0;
-
-	// Returns Jabber module name. DO NOT free the returned string.
-	virtual char* STDMETHODCALLTYPE GetModuleName() const = 0;
-};
 
 // Iq type flags
 enum
@@ -98,17 +74,53 @@ enum
 	JH_PRIORITY_UNHANDLED = 5000 // useful for example to catch unhandled Iq stanzas to send a correct reply.
 };
 
+struct JABBER_DISCO_FIELD
+{
+	LPCTSTR category, type, name;
+};
+
 typedef void* HJHANDLER;
 
-typedef BOOL (*JABBER_HANDLER_FUNC)(IJabberInterface *ji, HXML node, void *pUserData);
+typedef BOOL (*JABBER_HANDLER_FUNC)(struct IJabberInterface *ji, HXML node, void *pUserData);
 
-struct IJabberNetInterface
+// IJabberInterface::dwFlags values
+enum
 {
-	// Returns version of IJabberNetInterface.
+	JIF_UNICODE = 1
+};
+
+// Overall Jabber interface
+struct IJabberInterface
+{
+	// Set of JIF_* flags.
+	virtual DWORD STDMETHODCALLTYPE GetFlags() const = 0;
+
+	// Returns version of IJabberInterface.
 	virtual int STDMETHODCALLTYPE GetVersion() const = 0;
 
+	// Returns Jabber plugin version.
+	virtual DWORD STDMETHODCALLTYPE GetJabberVersion() const = 0;
+
+	// Compares JIDs by their node@domain part (without resource name).
+	virtual int STDMETHODCALLTYPE CompareJIDs(LPCTSTR jid1, LPCTSTR jid2) = 0;
+
+	// Returns contact handle for given JID, or NULL on error.
+	virtual MCONTACT STDMETHODCALLTYPE	ContactFromJID(LPCTSTR jid) = 0;
+
+	// Returns JID of hContact, or NULL on error. You must free the result using mir_free().
+	virtual LPTSTR STDMETHODCALLTYPE	ContactToJID(MCONTACT hContact) = 0;
+
+	// Returns best resource name for given JID, or NULL on error. You must free the result using mir_free().
+	virtual LPTSTR STDMETHODCALLTYPE	GetBestResourceName(LPCTSTR jid) = 0;
+
+	// Returns all resource names for a given JID in format "resource1\0resource2\0resource3\0\0" (all resources are separated by \0 character and the whole string is terminated with two \0 characters), or NULL on error. You must free returned string using mir_free().
+	virtual LPTSTR STDMETHODCALLTYPE	GetResourceList(LPCTSTR jid) = 0;
+
+	// Returns Jabber module name. DO NOT free the returned string.
+	virtual char* STDMETHODCALLTYPE GetModuleName() const = 0;
+
 	// Returns id that can be used for next message sent through SendXmlNode().
-	virtual unsigned int STDMETHODCALLTYPE	SerialNext() = 0;
+	virtual int STDMETHODCALLTYPE	SerialNext() = 0;
 
 	// Sends XML node.
 	virtual int STDMETHODCALLTYPE SendXmlNode(HXML node) = 0;
@@ -134,7 +146,6 @@ struct IJabberNetInterface
 	// Unregisters handler by its handle.
 	virtual int STDMETHODCALLTYPE RemoveHandler(HJHANDLER hHandler) = 0;
 
-
 // Entity capabilities support (see xep-0115)
 	// Registers feature so that it's displayed with proper description in other users' details. Call this function in your ME_SYSTEM_MODULESLOADED handler. Returns TRUE on success or FALSE on error.
 	virtual int STDMETHODCALLTYPE RegisterFeature(LPCTSTR szFeature, LPCTSTR szDescription) = 0;
@@ -152,31 +163,6 @@ struct IJabberNetInterface
 	virtual HANDLE STDMETHODCALLTYPE GetHandle(void) = 0;
 };
 
-// IJabberInterface::dwFlags values
-enum
-{
-	JIF_UNICODE = 1
-};
-
-// Overall Jabber interface
-struct IJabberInterface
-{
-	// Set of JIF_* flags.
-	virtual DWORD STDMETHODCALLTYPE GetFlags() const = 0;
-
-	// Returns version of IJabberInterface.
-	virtual int STDMETHODCALLTYPE GetVersion() const = 0;
-
-	// Returns Jabber plugin version.
-	virtual DWORD STDMETHODCALLTYPE GetJabberVersion() const = 0;
-
-	// Jabber system utilities.
-	virtual IJabberSysInterface* STDMETHODCALLTYPE Sys() const = 0;
-
-	// Jabber network interface.
-	virtual IJabberNetInterface* STDMETHODCALLTYPE Net() const = 0;
-};
-
 /*
 A service to obtain Jabber API for a given account.
 If you store the pointer to the interface for later use, you must also hook ME_PROTO_ACCLISTCHANGED and update the pointer to prevent calling API for a removed account.
@@ -186,15 +172,14 @@ lParam = (LPARAM)(IJabberInterface**).
 
 Returns FALSE if all is Ok, and TRUE otherwise.
 */
-#define JS_GETJABBERAPI		"/GetJabberApi"
+#define JS_GETJABBERAPI "/GetJabberApi"
 
 __forceinline IJabberInterface *getJabberApi(const char *szAccount)
 {
 	IJabberInterface *ji;
 	if (!CallProtoService(szAccount, JS_GETJABBERAPI, 0, (LPARAM)&ji))
-	{
 		return ji;
-	}
+
 	return NULL;
 }
 
@@ -202,13 +187,29 @@ __forceinline IJabberInterface *getJabberApi(const char *szAccount)
 
 /*
 A menu hook to be called during Jabber protocol menu initialization.
-
-wParam = 0;
-lParam = (LPARAM)(IJabberInterface**).
-
+wParam = (HGENMENU)m_hMenuRoot;
+lParam = (LPARAM)(IJabberInterface*).
 Returns FALSE if all is Ok, and TRUE otherwise.
 */
 
 #define ME_JABBER_MENUINIT "Jabber/ProtoMenuInit"
+
+/*
+A hook to be called during extensions list's creation
+wParam = (WPARAM)(LIST<TCHAR>*) - extensions list to be populated;
+lParam = (LPARAM)(IJabberInterface*).
+Returns FALSE if all is Ok, and TRUE otherwise.
+*/
+
+#define ME_JABBER_EXTLISTINIT "Jabber/ExtListInit"
+
+/*
+A hook to be called during server disco info parsing
+wParam = (WPARAM)(JABBER_DISCO_FIELD*)
+lParam = (LPARAM)(IJabberInterface*).
+Returns FALSE if all is Ok, and TRUE otherwise.
+*/
+
+#define ME_JABBER_SRVDISCOINFO "Jabber/ServerDiscoInfo"
 
 #endif // M_JABBER_H__

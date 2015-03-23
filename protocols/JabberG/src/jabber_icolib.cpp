@@ -1,9 +1,10 @@
 /*
 
-Jabber Protocol Plugin for Miranda IM
-Copyright (C) 2002-04  Santithorn Bunchua
-Copyright (C) 2005-12  George Hazan
-Copyright (C) 2012-13  Miranda NG Project
+Jabber Protocol Plugin for Miranda NG
+
+Copyright (c) 2002-04  Santithorn Bunchua
+Copyright (c) 2005-12  George Hazan
+Copyright (ñ) 2012-15 Miranda NG project
 
 Idea & portions of code by Artem Shpynov
 
@@ -83,7 +84,7 @@ static int skinStatusToJabberStatus[] = {0,1,2,3,4,4,6,7,2,2};
 
 int CIconPool::CPoolItem::cmp(const CPoolItem *p1, const CPoolItem *p2)
 {
-	return lstrcmpA(p1->m_name, p2->m_name);
+	return mir_strcmp(p1->m_name, p2->m_name);
 }
 
 CIconPool::CPoolItem::CPoolItem():
@@ -168,7 +169,7 @@ CIconPool::CPoolItem *CIconPool::FindItemByName(const char *name)
 void CJabberProto::IconsInit(void)
 {
 	m_transportProtoTableStartIndex = (int *)mir_alloc(sizeof(int) * SIZEOF(TransportProtoTable));
-	for (int i = 0; i < SIZEOF(TransportProtoTable); i++)
+	for (int i=0; i < SIZEOF(TransportProtoTable); i++)
 		m_transportProtoTableStartIndex[i] = -1;
 }
 
@@ -185,7 +186,7 @@ HICON CJabberProto::LoadIconEx(const char* name, bool big)
 	if (HICON result = g_LoadIconEx(name, big))
 		return result;
 
-	if ( !strcmp(name, "main"))
+	if (!strcmp(name, "main"))
 		return Skin_GetIconByHandle(m_hProtoIcon, big);
 
 	return NULL;
@@ -227,7 +228,7 @@ static BOOL WildComparei(const TCHAR *name, const TCHAR *mask)
 
 static BOOL MatchMask(const TCHAR *name, const TCHAR *mask)
 {
-	if ( !mask || !name)
+	if (!mask || !name)
 		return mask == name;
 
 	if (*mask != '|')
@@ -239,7 +240,7 @@ static BOOL MatchMask(const TCHAR *name, const TCHAR *mask)
 		while (mask[e] != '\0' && mask[e] != '|')
 			e++;
 
-		temp[e]= _T('\0');
+		temp[e]= 0;
 		if (WildComparei(name, temp+s))
 			return TRUE;
 
@@ -256,7 +257,7 @@ static HICON ExtractIconFromPath(const char *path, BOOL * needFree)
 	char file[MAX_PATH],fileFull[MAX_PATH];
 	int n;
 	HICON hIcon;
-	lstrcpynA(file,path,sizeof(file));
+	mir_strncpy(file,path,sizeof(file));
 	comma=strrchr(file,',');
 	if (comma == NULL) n=0;
 	else {n=atoi(comma+1); *comma=0;}
@@ -277,8 +278,8 @@ static HICON LoadTransportIcon(char *filename,int i,char *IconName,TCHAR *SectNa
 	GetModuleFileNameA(NULL, szPath, MAX_PATH);
 	str=strrchr(szPath,'\\');
 	if (str != NULL) *str=0;
-	mir_snprintf(szMyPath, sizeof(szMyPath), "%s\\Icons\\%s", szPath, filename);
-	mir_snprintf(szFullPath, sizeof(szFullPath), "%s\\Icons\\%s,%d", szPath, filename, i);
+	mir_snprintf(szMyPath, SIZEOF(szMyPath), "%s\\Icons\\%s", szPath, filename);
+	mir_snprintf(szFullPath, SIZEOF(szFullPath), "%s\\Icons\\%s,%d", szPath, filename, i);
 	BOOL nf;
 	HICON hi=ExtractIconFromPath(szFullPath,&nf);
 	if (hi) has_proto_icon=TRUE;
@@ -316,12 +317,12 @@ int CJabberProto::LoadAdvancedIcons(int iID)
 	int first=-1;
 	HICON empty=LoadSmallIcon(NULL,MAKEINTRESOURCE(102));
 
-	mir_sntprintf(Group, SIZEOF(Group), _T("Status Icons/%s/%S %s"), m_tszUserName, proto, TranslateT("transport"));
+	mir_sntprintf(Group, SIZEOF(Group), LPGENT("Status icons")_T("/%s/%S %s"), m_tszUserName, proto, TranslateT("transport"));
 	mir_snprintf(defFile, SIZEOF(defFile), "proto_%s.dll",proto);
-	if ( !hAdvancedStatusIcon)
+	if (!hAdvancedStatusIcon)
 		hAdvancedStatusIcon=(HIMAGELIST)CallService(MS_CLIST_GETICONSIMAGELIST,0,0);
 
-	EnterCriticalSection(&m_csModeMsgMutex);
+	mir_cslock lck(m_csModeMsgMutex);
 	for (int i=0; i < ID_STATUS_ONTHEPHONE-ID_STATUS_OFFLINE; i++) {
 		BOOL needFree;
 		int n = skinStatusToJabberStatus[i];
@@ -330,20 +331,21 @@ int CJabberProto::LoadAdvancedIcons(int iID)
 		HICON hicon = LoadTransportIcon(defFile,-skinIconStatusToResourceId[i],Uname,Group,descr,-(n+ID_STATUS_OFFLINE),&needFree);
 		int index = (m_transportProtoTableStartIndex[iID] == -1)?-1:m_transportProtoTableStartIndex[iID]+n;
 		int added = ImageList_ReplaceIcon(hAdvancedStatusIcon,index,hicon?hicon:empty);
-		if (first == -1) first = added;
-		if (hicon && needFree) DestroyIcon(hicon);
+		if (first == -1)
+			first = added;
+		if (hicon && needFree)
+			DestroyIcon(hicon);
 	}
 
 	if (m_transportProtoTableStartIndex[iID] == -1)
 		m_transportProtoTableStartIndex[iID] = first;
-	LeaveCriticalSection(&m_csModeMsgMutex);
 	return 0;
 }
 
 int CJabberProto::GetTransportProtoID(TCHAR* TransportDomain)
 {
 	for (int i=0; i<SIZEOF(TransportProtoTable); i++)
-		if (MatchMask(TransportDomain, TransportProtoTable[i].mask))
+		if ( MatchMask(TransportDomain, TransportProtoTable[i].mask))
 			return i;
 
 	return -1;
@@ -382,47 +384,40 @@ int CJabberProto::OnReloadIcons(WPARAM, LPARAM)
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Prototype for Jabber and other protocols to return index of Advanced status
-// wParam - HCONTACT of called protocol
+// wParam - MCONTACT of called protocol
 // lParam - should be 0 (reserverd for futher usage)
 // return value: -1 - no Advanced status
 // : other - index of icons in clcimagelist.
 // if imagelist require advanced painting status overlay(like xStatus)
 // index should be shifted to HIWORD, LOWORD should be 0
 
-INT_PTR __cdecl CJabberProto::JGetAdvancedStatusIcon(WPARAM wParam, LPARAM)
+INT_PTR __cdecl CJabberProto::JGetAdvancedStatusIcon(WPARAM hContact, LPARAM)
 {
-	HANDLE hContact=(HANDLE)wParam;
-	if ( !hContact)
+	if (!hContact)
 		return -1;
 
-	if ( !getByte(hContact, "IsTransported", 0))
+	if (!getByte(hContact, "IsTransported", 0))
 		return -1;
 
-	DBVARIANT dbv;
-	if (getTString(hContact, "Transport", &dbv))
+	int iID = GetTransportProtoID( ptrT( getTStringA(hContact, "Transport")));
+	if (iID < 0)
 		return -1;
 
-	int iID = GetTransportProtoID(dbv.ptszVal);
-	db_free(&dbv);
-	if (iID >= 0) {
-		WORD Status = ID_STATUS_OFFLINE;
-		Status = getWord(hContact, "Status", ID_STATUS_OFFLINE);
-		if (Status < ID_STATUS_OFFLINE)
-			Status = ID_STATUS_OFFLINE;
-		else if (Status > ID_STATUS_INVISIBLE)
-			Status = ID_STATUS_ONLINE;
-		return GetTransportStatusIconIndex(iID, Status);
-	}
-	return -1;
+	WORD Status = getWord(hContact, "Status", ID_STATUS_OFFLINE);
+	if (Status < ID_STATUS_OFFLINE)
+		Status = ID_STATUS_OFFLINE;
+	else if (Status > ID_STATUS_INVISIBLE)
+		Status = ID_STATUS_ONLINE;
+	return GetTransportStatusIconIndex(iID, Status);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
 //   Transport check functions
 
-BOOL CJabberProto::DBCheckIsTransportedContact(const TCHAR *jid, HANDLE hContact)
+BOOL CJabberProto::DBCheckIsTransportedContact(const TCHAR *jid, MCONTACT hContact)
 {
 	// check if transport is already set
-	if ( !jid || !hContact)
+	if (!jid || !hContact)
 		return FALSE;
 
 	// strip domain part from jid
@@ -438,18 +433,17 @@ BOOL CJabberProto::DBCheckIsTransportedContact(const TCHAR *jid, HANDLE hContact
 	if (resourcepos != NULL)
 		*resourcepos = '\0';
 
-	for (int i=0; i < SIZEOF(TransportProtoTable); i++) {
+	for (int i=0; i < SIZEOF(TransportProtoTable); i++)
 		if (MatchMask(domain, TransportProtoTable[i].mask)) {
 			GetTransportStatusIconIndex(GetTransportProtoID(domain), ID_STATUS_OFFLINE);
 			isTransported = TRUE;
 			break;
-	}	}
+		}
 
-	if (m_lstTransports.getIndex(domain) == -1) {
-		if (isAgent) {
-			m_lstTransports.insert(mir_tstrdup(domain));
-			setByte(hContact, "IsTransport", 1);
-	}	}
+	if (m_lstTransports.getIndex(domain) == -1 && isAgent) {
+		m_lstTransports.insert( mir_tstrdup(domain));
+		setByte(hContact, "IsTransport", 1);
+	}
 
 	if (isTransported) {
 		setTString(hContact, "Transport", domain);
@@ -460,12 +454,10 @@ BOOL CJabberProto::DBCheckIsTransportedContact(const TCHAR *jid, HANDLE hContact
 
 void CJabberProto::CheckAllContactsAreTransported()
 {
-	for (HANDLE hContact = db_find_first(m_szModuleName); hContact; hContact = db_find_next(hContact, m_szModuleName)) {
-		DBVARIANT dbv;
-		if ( !getTString(hContact, "jid", &dbv)) {
-			DBCheckIsTransportedContact(dbv.ptszVal, hContact);
-			db_free(&dbv);
-		}
+	for (MCONTACT hContact = db_find_first(m_szModuleName); hContact; hContact = db_find_next(hContact, m_szModuleName)) {
+		ptrT jid( getTStringA(hContact, "jid"));
+		if (jid)
+			DBCheckIsTransportedContact(jid, hContact);
 	}
 }
 
@@ -474,62 +466,62 @@ void CJabberProto::CheckAllContactsAreTransported()
 
 static IconItem sharedIconList1[] =
 {
-	{   LPGEN("Privacy Lists"),         "privacylists",     IDI_PRIVACY_LISTS      },
-	{   LPGEN("Bookmarks"),             "bookmarks",        IDI_BOOKMARKS          },
-	{   LPGEN("Notes"),                 "notes",            IDI_NOTES              },
-	{   LPGEN("Multi-User Conference"), "group",            IDI_GROUP              },
-	{   LPGEN("Agents list"),           "Agents",           IDI_AGENTS             },
-	{   LPGEN("Transports"),            "transport",        IDI_TRANSPORT          },
-	{   LPGEN("Registered transports"), "transport_loc",    IDI_TRANSPORTL         },
-	{   LPGEN("Change password"),       "key",              IDI_KEYS               },
-	{   LPGEN("Personal vCard"),        "vcard",            IDI_VCARD              },
-	{   LPGEN("Convert to room"),       "convert",          IDI_USER2ROOM          },
-	{   LPGEN("Login/logout"),          "trlogonoff",       IDI_LOGIN              },
-	{   LPGEN("Resolve nicks"),         "trresolve",        IDI_REFRESH            },
-	{   LPGEN("Send note"),             "sendnote",         IDI_SEND_NOTE,         },
-	{   LPGEN("Service Discovery"),     "servicediscovery", IDI_SERVICE_DISCOVERY  },
-	{   LPGEN("AdHoc Command"),         "adhoc",            IDI_COMMAND            },
-	{   LPGEN("XML Console"),           "xmlconsole",       IDI_CONSOLE            },
-	{   LPGEN("OpenID Request"),        "openid",           IDI_HTTP_AUTH          }
+	{ LPGEN("Privacy Lists"),         "privacylists",     IDI_PRIVACY_LISTS      },
+	{ LPGEN("Bookmarks"),             "bookmarks",        IDI_BOOKMARKS          },
+	{ LPGEN("Notes"),                 "notes",            IDI_NOTES              },
+	{ LPGEN("Multi-User Conference"), "group",            IDI_GROUP              },
+	{ LPGEN("Agents list"),           "Agents",           IDI_AGENTS             },
+	{ LPGEN("Transports"),            "transport",        IDI_TRANSPORT          },
+	{ LPGEN("Registered transports"), "transport_loc",    IDI_TRANSPORTL         },
+	{ LPGEN("Change password"),       "key",              IDI_KEYS               },
+	{ LPGEN("Personal vCard"),        "vcard",            IDI_VCARD              },
+	{ LPGEN("Convert to room"),       "convert",          IDI_USER2ROOM          },
+	{ LPGEN("Login/logout"),          "trlogonoff",       IDI_LOGIN              },
+	{ LPGEN("Resolve nicks"),         "trresolve",        IDI_REFRESH            },
+	{ LPGEN("Send note"),             "sendnote",         IDI_SEND_NOTE,         },
+	{ LPGEN("Service Discovery"),     "servicediscovery", IDI_SERVICE_DISCOVERY  },
+	{ LPGEN("AdHoc Command"),         "adhoc",            IDI_COMMAND            },
+	{ LPGEN("XML Console"),           "xmlconsole",       IDI_CONSOLE            },
+	{ LPGEN("OpenID Request"),        "openid",           IDI_HTTP_AUTH          }
 };
 
 static IconItem sharedIconList2[] =
 {
-	{   LPGEN("Discovery succeeded"),   "disco_ok",         IDI_DISCO_OK           },
-	{   LPGEN("Discovery failed"),      "disco_fail",       IDI_DISCO_FAIL         },
-	{   LPGEN("Discovery in progress"), "disco_progress",   IDI_DISCO_PROGRESS     },
-	{   LPGEN("View as tree"),          "sd_view_tree",     IDI_VIEW_TREE          },
-	{   LPGEN("View as list"),          "sd_view_list",     IDI_VIEW_LIST          },
-	{   LPGEN("Apply filter"),          "sd_filter_apply",  IDI_FILTER_APPLY       },
-	{   LPGEN("Reset filter"),          "sd_filter_reset",  IDI_FILTER_RESET       }
+	{ LPGEN("Discovery succeeded"),   "disco_ok",         IDI_DISCO_OK           },
+	{ LPGEN("Discovery failed"),      "disco_fail",       IDI_DISCO_FAIL         },
+	{ LPGEN("Discovery in progress"), "disco_progress",   IDI_DISCO_PROGRESS     },
+	{ LPGEN("View as tree"),          "sd_view_tree",     IDI_VIEW_TREE          },
+	{ LPGEN("View as list"),          "sd_view_list",     IDI_VIEW_LIST          },
+	{ LPGEN("Apply filter"),          "sd_filter_apply",  IDI_FILTER_APPLY       },
+	{ LPGEN("Reset filter"),          "sd_filter_reset",  IDI_FILTER_RESET       }
 };
 
 static IconItem sharedIconList3[] =
 {
-	{   LPGEN("Navigate home"),         "sd_nav_home",      IDI_NAV_HOME           },
-	{   LPGEN("Refresh node"),          "sd_nav_refresh",   IDI_NAV_REFRESH        },
-	{   LPGEN("Browse node"),           "sd_browse",        IDI_BROWSE             },
-	{   LPGEN("RSS service"),           "node_rss",         IDI_NODE_RSS           },
-	{   LPGEN("Server"),                "node_server",      IDI_NODE_SERVER        },
-	{   LPGEN("Storage service"),       "node_store",       IDI_NODE_STORE         },
-	{   LPGEN("Weather service"),       "node_weather",     IDI_NODE_WEATHER       }
+	{ LPGEN("Navigate home"),         "sd_nav_home",      IDI_NAV_HOME           },
+	{ LPGEN("Refresh node"),          "sd_nav_refresh",   IDI_NAV_REFRESH        },
+	{ LPGEN("Browse node"),           "sd_browse",        IDI_BROWSE             },
+	{ LPGEN("RSS service"),           "node_rss",         IDI_NODE_RSS           },
+	{ LPGEN("Server"),                "node_server",      IDI_NODE_SERVER        },
+	{ LPGEN("Storage service"),       "node_store",       IDI_NODE_STORE         },
+	{ LPGEN("Weather service"),       "node_weather",     IDI_NODE_WEATHER       }
 };
 
 static IconItem sharedIconList4[] =
 {
-	{   LPGEN("Generic privacy list"),  "pl_list_any",      IDI_PL_LIST_ANY        },
-	{   LPGEN("Active privacy list"),   "pl_list_active",   IDI_PL_LIST_ACTIVE     },
-	{   LPGEN("Default privacy list"),  "pl_list_default",  IDI_PL_LIST_DEFAULT    },
-	{   LPGEN("Move up"),               "arrow_up",         IDI_ARROW_UP           },
-	{   LPGEN("Move down"),             "arrow_down",       IDI_ARROW_DOWN         },
-	{   LPGEN("Allow Messages"),        "pl_msg_allow",     IDI_PL_MSG_ALLOW       },
-	{   LPGEN("Allow Presences (in)"),  "pl_prin_allow",    IDI_PL_PRIN_ALLOW      },
-	{   LPGEN("Allow Presences (out)"), "pl_prout_allow",   IDI_PL_PROUT_ALLOW     },
-	{   LPGEN("Allow Queries"),         "pl_iq_allow",      IDI_PL_QUERY_ALLOW     },
-	{   LPGEN("Deny Messages"),         "pl_msg_deny",      IDI_PL_MSG_DENY        },
-	{   LPGEN("Deny Presences (in)"),   "pl_prin_deny",     IDI_PL_PRIN_DENY       },
-	{   LPGEN("Deny Presences (out)"),  "pl_prout_deny",    IDI_PL_PROUT_DENY      },
-	{   LPGEN("Deny Queries"),          "pl_iq_deny",       IDI_PL_QUERY_DENY      }
+	{ LPGEN("Generic privacy list"),  "pl_list_any",      IDI_PL_LIST_ANY        },
+	{ LPGEN("Active privacy list"),   "pl_list_active",   IDI_PL_LIST_ACTIVE     },
+	{ LPGEN("Default privacy list"),  "pl_list_default",  IDI_PL_LIST_DEFAULT    },
+	{ LPGEN("Move up"),               "arrow_up",         IDI_ARROW_UP           },
+	{ LPGEN("Move down"),             "arrow_down",       IDI_ARROW_DOWN         },
+	{ LPGEN("Allow Messages"),        "pl_msg_allow",     IDI_PL_MSG_ALLOW       },
+	{ LPGEN("Allow Presences (in)"),  "pl_prin_allow",    IDI_PL_PRIN_ALLOW      },
+	{ LPGEN("Allow Presences (out)"), "pl_prout_allow",   IDI_PL_PROUT_ALLOW     },
+	{ LPGEN("Allow Queries"),         "pl_iq_allow",      IDI_PL_QUERY_ALLOW     },
+	{ LPGEN("Deny Messages"),         "pl_msg_deny",      IDI_PL_MSG_DENY        },
+	{ LPGEN("Deny Presences (in)"),   "pl_prin_deny",     IDI_PL_PRIN_DENY       },
+	{ LPGEN("Deny Presences (out)"),  "pl_prout_deny",    IDI_PL_PROUT_DENY      },
+	{ LPGEN("Deny Queries"),          "pl_iq_deny",       IDI_PL_QUERY_DENY      }
 };
 
 void g_IconsInit()
@@ -566,7 +558,7 @@ HANDLE g_GetIconHandle(int iconId)
 HICON g_LoadIconEx(const char* name, bool big)
 {
 	char szSettingName[100];
-	mir_snprintf(szSettingName, sizeof(szSettingName), "%s_%s", GLOBAL_SETTING_PREFIX, name);
+	mir_snprintf(szSettingName, SIZEOF(szSettingName), "%s_%s", GLOBAL_SETTING_PREFIX, name);
 	return Skin_GetIcon(szSettingName, big);
 }
 

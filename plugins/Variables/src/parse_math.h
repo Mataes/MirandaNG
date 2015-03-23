@@ -2,7 +2,7 @@
     Variables Plugin for Miranda-IM (www.miranda-im.org)
     Copyright 2003-2006 P. Boon
 
-    This program is mir_free software; you can redistribute it and/or modify
+    This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
     (at your option) any later version.
@@ -17,14 +17,14 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#define ADD					"add"
-#define DIV					"div"
-#define HEX					"hex"
-#define MOD					"mod"
-#define MUL					"mul"
-#define MULDIV				"muldiv"
-#define MIN					"min"
-#define MAX					"max"
-#define NUM					"num"
-#define RAND				"rand"
-#define SUB					"sub"
+#define ADD					_T("add")
+#define DIV					_T("div")
+#define HEX					_T("hex")
+#define MOD					_T("mod")
+#define MUL					_T("mul")
+#define MULDIV				_T("muldiv")
+#define MIN					_T("min")
+#define MAX					_T("max")
+#define NUM					_T("num")
+#define RAND				_T("rand")
+#define SUB					_T("sub")

@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class SmileyCType : public SmileyType
 {
 public:
-	SmileyCType(const bkstring& fullpath, const TCHAR* filepath);
+	SmileyCType(const CMString& fullpath, const TCHAR* filepath);
 
 	bool CreateTriggerText(char* text);
 };
@@ -37,9 +37,9 @@ private:
 	SmileyVectorType m_SmileyList;
 	SmileyLookupType m_SmileyLookup;
 
-	HANDLE m_id;
+	MCONTACT m_id;
 
-	void InsertLookup(SmileyCType& sml, bkstring& lk, bool first);
+	void InsertLookup(SmileyCType& sml, CMString& lk, bool first);
 	void AddTriggersToSmileyLookup(void);
 
 public:
@@ -50,8 +50,8 @@ public:
 
 	SmileyCType* GetSmiley(unsigned index) { return &m_SmileyList[index]; }
 
-	HANDLE GetId(void) { return m_id; }
-	void SetId(HANDLE id) { m_id = id; }
+	MCONTACT GetId(void) { return m_id; }
+	void SetId(MCONTACT id) { m_id = id; }
 
 	bool LoadSmileyDir(TCHAR* dir);
 	bool LoadSmiley(TCHAR* path);
@@ -69,12 +69,12 @@ private:
 public:
 	int NumberOfSmileyPacks(void) { return m_SmileyPacks.getCount(); }
 
-	bool AddSmileyPack(HANDLE hContact, TCHAR* dir);
-	bool AddSmiley(HANDLE hContact, TCHAR* path);
+	bool AddSmileyPack(MCONTACT hContact, TCHAR* dir);
+	bool AddSmiley(MCONTACT hContact, TCHAR* path);
 
 	void ClearAndFreeAll(void) { 	m_SmileyPacks.destroy(); }
 
-	SmileyPackCType* GetSmileyPack(HANDLE id);
+	SmileyPackCType* GetSmileyPack(MCONTACT id);
 };
 
 extern SmileyPackCListType g_SmileyPackCStore;

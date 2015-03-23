@@ -27,11 +27,11 @@ const
   wParam - not used
   lParam - not used
 }
-  MS_VERSIONINFO_MENU_COMMAND = 'VersionInfo/MenuCommand';
+  MS_VERSIONINFO_MENU_COMMAND:PAnsiChar = 'VersionInfo/MenuCommand';
 
 {
   Returns a string containing the versioninfo post
-  wParam - (BOOL) suppress forum style formatting. If true the post won't have forum
+  wParam - (bool) suppress forum style formatting. If true the post won't have forum
            style formatting even if the option is checked in miranda's options.
   lParam - (^PAnsiChar) Pointer to a string that receives the info. Memory is allocated
            using miranda's version of malloc() and you need to use miranda's version
@@ -44,6 +44,6 @@ how to use:
   if GetInfoService(TRUE,LPARAM(@data))=0 then
     //success
 }
-  MS_VERSIONINFO_GETINFO = 'Versioninfo/GetInfo';
+  MS_VERSIONINFO_GETINFO:PAnsiChar = 'Versioninfo/GetInfo';
 
 {$ENDIF}

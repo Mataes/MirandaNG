@@ -1,8 +1,9 @@
 /*
 
-Miranda IM: the free IM client for Microsoft* Windows*
+Miranda NG: the free IM client for Microsoft* Windows*
 
-Copyright 2000-2008 Miranda ICQ/IM project,
+Copyright (ñ) 2012-15 Miranda NG project (http://miranda-ng.org)
+Copyright (c) 2000-08 Miranda ICQ/IM project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -37,7 +38,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define IGNOREEVENT_TYPINGNOTIFY  7 // 0.7+
 
 //determines if a message type to a contact should be ignored  v0.1.0.1+
-//wParam = (WPARAM)(HANDLE)hContact
+//wParam = (MCONTACT)hContact
 //lParam = message type, an ignoreevent_ constant
 //returns 0 if the message should be shown, or nonzero if it should be ignored
 //Use hContact = NULL to retrieve the setting for unknown contacts (not on the
@@ -46,14 +47,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MS_IGNORE_ISIGNORED   "Ignore/IsIgnored"
 
 //ignore future messages from a contact    v0.1.0.1+
-//wParam = (WPARAM)(HANDLE)hContact
+//wParam = (MCONTACT)hContact
 //lParam = message type, an ignoreevent_ constant
 //returns 0 on success or nonzero on failure
 //Use hContact = NULL to retrieve the setting for unknown contacts
 #define MS_IGNORE_IGNORE      "Ignore/Ignore"
 
 //receive future messages from a contact    v0.1.0.1+
-//wParam = (WPARAM)(HANDLE)hContact
+//wParam = (MCONTACT)hContact
 //lParam = message type, an ignoreevent_ constant
 //returns 0 on success or nonzero on failure
 //Use hContact = NULL to retrieve the setting for unknown contacts
@@ -61,4 +62,3 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 
 #endif // M_IGNORE_H__
-

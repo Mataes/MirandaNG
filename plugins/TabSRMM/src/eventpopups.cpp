@@ -1,50 +1,48 @@
-/*
- * astyle --force-indent=tab=4 --brackets=linux --indent-switches
- *		  --pad=oper --one-line=keep-blocks  --unpad=paren
- *
- * Miranda NG: the free IM client for Microsoft* Windows*
- *
- * Copyright 2000-2009 Miranda ICQ/IM project,
- * all portions of this codebase are copyrighted to the people
- * listed in contributors.txt.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * you should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- *
- * part of tabSRMM messaging plugin for Miranda.
- *
- * (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
- *
- * This implements the event notification module for tabSRMM. The code
- * is largely based on the NewEventNotify plugin for Miranda NG. See
- * notices below.
- *
- *  Name: NewEventNotify - Plugin for Miranda ICQ
- * 	Description: Notifies you when you receive a message
- * 	Author: icebreaker, <icebreaker@newmail.net>
- * 	Date: 18.07.02 13:59 / Update: 16.09.02 17:45
- * 	Copyright: (C) 2002 Starzinger Michael
- *
- */
+/////////////////////////////////////////////////////////////////////////////////////////
+// Miranda NG: the free IM client for Microsoft* Windows*
+//
+// Copyright (ñ) 2012-15 Miranda NG project,
+// Copyright (c) 2000-09 Miranda ICQ/IM project,
+// all portions of this codebase are copyrighted to the people
+// listed in contributors.txt.
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// you should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//
+// part of tabSRMM messaging plugin for Miranda.
+//
+// (C) 2005-2010 by silvercircle _at_ gmail _dot_ com and contributors
+//
+// implements the event notification module for tabSRMM. The code
+// is largely based on the NewEventNotify plugin for Miranda NG. See
+// notices below.
+//
+//  Name: NewEventNotify - Plugin for Miranda ICQ
+// 	Description: Notifies you when you receive a message
+// 	Author: icebreaker, <icebreaker@newmail.net>
+// 	Date: 18.07.02 13:59 / Update: 16.09.02 17:45
+// 	Copyright: (C) 2002 Starzinger Michael
 
 #include "commonheaders.h"
 
-static LIST<PLUGIN_DATAT> arPopupList(10, HandleKeySortT);
+static int TSAPI PopupPreview(NEN_OPTIONS *pluginOptions);
+
+static LIST<PLUGIN_DATAT> arPopupList(10, NumericKeySortT);
 
 BOOL bWmNotify = TRUE;
 
-static PLUGIN_DATAT* PU_GetByContact(const HANDLE hContact)
+static PLUGIN_DATAT* PU_GetByContact(const MCONTACT hContact)
 {
 	return arPopupList.find((PLUGIN_DATAT*)&hContact);
 }
@@ -56,7 +54,7 @@ static PLUGIN_DATAT* PU_GetByContact(const HANDLE hContact)
  */
 static void PU_CleanUp()
 {
-	for (int i=arPopupList.getCount()-1; i >= 0; i--) {
+	for (int i = arPopupList.getCount() - 1; i >= 0; i--) {
 		PLUGIN_DATAT *p = arPopupList[i];
 		if (p->hContact != NULL)
 			continue;
@@ -70,7 +68,7 @@ static void PU_CleanUp()
 static void CheckForRemoveMask()
 {
 	if (!M.GetByte(MODULE, "firsttime", 1) && (nen_options.maskActL & MASK_REMOVE || nen_options.maskActR & MASK_REMOVE || nen_options.maskActTE & MASK_REMOVE)) {
-		MessageBoxA(0, Translate("One of your popup actions is set to DISMISS EVENT.\nNote that this options may have unwanted side effects as it REMOVES the event from the unread queue.\nThis may lead to events not showing up as \"new\". If you don't want this behaviour, please review the Event Notifications settings page."), "tabSRMM Warning Message", MB_OK | MB_ICONSTOP);
+		MessageBox(0, TranslateT("One of your popup actions is set to DISMISS EVENT.\nNote that this options may have unwanted side effects as it REMOVES the event from the unread queue.\nThis may lead to events not showing up as \"new\". If you don't want this behavior, please review the 'Event notifications' settings page."), TranslateT("TabSRMM warning message"), MB_OK | MB_ICONSTOP);
 		db_set_b(0, MODULE, "firsttime", 1);
 	}
 }
@@ -92,15 +90,15 @@ int TSAPI NEN_ReadOptions(NEN_OPTIONS *options)
 	options->maskActR = (UINT)M.GetByte(MODULE, OPT_MASKACTR, DEFAULT_MASKACTR);
 	options->maskActTE = (UINT)M.GetByte(MODULE, OPT_MASKACTTE, DEFAULT_MASKACTR) & (MASK_OPEN | MASK_DISMISS);
 	options->bMergePopup = (BOOL)M.GetByte(MODULE, OPT_MERGEPOPUP, 0);
-	options->iDelayMsg = (int)M.GetDword(MODULE, OPT_DELAY_MESSAGE, (DWORD)DEFAULT_DELAY);
-	options->iDelayOthers = (int)M.GetDword(MODULE, OPT_DELAY_OTHERS, (DWORD)DEFAULT_DELAY);
-	options->iDelayErr = (int)M.GetDword(MODULE, OPT_DELAY_ERR, (DWORD)DEFAULT_DELAY);
+	options->iDelayMsg = (int)M.GetDword(MODULE, OPT_DELAY_MESSAGE, DEFAULT_DELAY);
+	options->iDelayOthers = (int)M.GetDword(MODULE, OPT_DELAY_OTHERS, DEFAULT_DELAY);
+	options->iDelayErr = (int)M.GetDword(MODULE, OPT_DELAY_ERR, DEFAULT_DELAY);
 	options->iDelayDefault = (int)DBGetContactSettingRangedWord(NULL, "Popup", "Seconds", SETTING_LIFETIME_DEFAULT, SETTING_LIFETIME_MIN, SETTING_LIFETIME_MAX);
 	options->bShowHeaders = (BYTE)M.GetByte(MODULE, OPT_SHOW_HEADERS, FALSE);
 	options->bNoRSS = (BOOL)M.GetByte(MODULE, OPT_NORSS, FALSE);
 	options->iDisable = (BYTE)M.GetByte(MODULE, OPT_DISABLE, 0);
 	options->iMUCDisable = (BYTE)M.GetByte(MODULE, OPT_MUCDISABLE, 0);
-	options->dwStatusMask = (DWORD)M.GetDword(MODULE, "statusmask", (DWORD) - 1);
+	options->dwStatusMask = (DWORD)M.GetDword(MODULE, "statusmask", (DWORD)-1);
 	options->bTraySupport = (BOOL)M.GetByte(MODULE, "traysupport", 0);
 	options->bWindowCheck = (BOOL)M.GetByte(MODULE, OPT_WINDOWCHECK, 0);
 	options->bNoRSS = (BOOL)M.GetByte(MODULE, OPT_NORSS, 0);
@@ -150,55 +148,19 @@ INT_PTR CALLBACK DlgProcPopupOpts(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 
 	switch (msg) {
 	case WM_INITDIALOG:
+		TranslateDialogDefault(hWnd);
 		{
-			TVINSERTSTRUCT tvi = {0};
-			int i;
-			SetWindowLongPtr(GetDlgItem(hWnd, IDC_EVENTOPTIONS), GWL_STYLE, GetWindowLongPtr(GetDlgItem(hWnd, IDC_EVENTOPTIONS), GWL_STYLE) | (TVS_NOHSCROLL | TVS_CHECKBOXES));
-			TranslateDialogDefault(hWnd);
-			HIMAGELIST himl = (HIMAGELIST)SendDlgItemMessage(hWnd, IDC_EVENTOPTIONS, TVM_SETIMAGELIST, TVSIL_STATE, (LPARAM)CreateStateImageList());
-			ImageList_Destroy(himl);
+			TreeViewInit(GetDlgItem(hWnd, IDC_EVENTOPTIONS), CTranslator::TREE_NEN, 0, TRUE);
 
-			if (!PluginConfig.g_PopupAvail) {
+			if (!PluginConfig.g_bPopupAvail) {
 				HWND	hwndChild = FindWindowEx(hWnd, 0, 0, 0);
-				while(hwndChild) {
+				while (hwndChild) {
 					ShowWindow(hwndChild, SW_HIDE);
 					hwndChild = FindWindowEx(hWnd, hwndChild, 0, 0);
 				}
 				Utils::showDlgControl(hWnd, IDC_NOPOPUPAVAIL, SW_SHOW);
 			}
-			else
-				Utils::showDlgControl(hWnd, IDC_NOPOPUPAVAIL, SW_HIDE);
-			/*
-			* fill the tree view
-			*/
-
-			TOptionListGroup *lGroups = CTranslator::getGroupTree(CTranslator::TREE_NEN);
-			for (i=0; lGroups[i].szName != NULL; i++) {
-				tvi.hParent = 0;
-				tvi.hInsertAfter = TVI_LAST;
-				tvi.item.mask = TVIF_TEXT | TVIF_STATE;
-				tvi.item.pszText = TranslateTS(lGroups[i].szName);
-				tvi.item.stateMask = TVIS_STATEIMAGEMASK | TVIS_EXPANDED | TVIS_BOLD;
-				tvi.item.state = INDEXTOSTATEIMAGEMASK(0) | TVIS_EXPANDED | TVIS_BOLD;
-				lGroups[i].handle = (LRESULT)TreeView_InsertItem(GetDlgItem(hWnd, IDC_EVENTOPTIONS), &tvi);
-			}
-
-			TOptionListItem *defaultItems = CTranslator::getTree(CTranslator::TREE_NEN);
-			for (i=0; defaultItems[i].szName != 0; i++) {
-				tvi.hParent = (HTREEITEM)lGroups[defaultItems[i].uGroup].handle;
-				tvi.hInsertAfter = TVI_LAST;
-				tvi.item.pszText = TranslateTS(defaultItems[i].szName);
-				tvi.item.mask = TVIF_TEXT | TVIF_STATE | TVIF_PARAM;
-				tvi.item.lParam = i;
-				tvi.item.stateMask = TVIS_STATEIMAGEMASK;
-				if (defaultItems[i].uType == LOI_TYPE_SETTING)
-					tvi.item.state = INDEXTOSTATEIMAGEMASK(*((BOOL *)defaultItems[i].lParam) ? 3 : 2);//2 : 1);
-				else if (defaultItems[i].uType == LOI_TYPE_FLAG) {
-					UINT uVal = *((UINT *)defaultItems[i].lParam);
-					tvi.item.state = INDEXTOSTATEIMAGEMASK(uVal & defaultItems[i].id ? 3 : 2);//2 : 1);
-				}
-				defaultItems[i].handle = (LRESULT)TreeView_InsertItem(GetDlgItem(hWnd, IDC_EVENTOPTIONS), &tvi);
-			}
+			else Utils::showDlgControl(hWnd, IDC_NOPOPUPAVAIL, SW_HIDE);
 
 			SendDlgItemMessage(hWnd, IDC_COLBACK_MESSAGE, CPM_SETCOLOUR, 0, options->colBackMsg);
 			SendDlgItemMessage(hWnd, IDC_COLTEXT_MESSAGE, CPM_SETCOLOUR, 0, options->colTextMsg);
@@ -230,23 +192,29 @@ INT_PTR CALLBACK DlgProcPopupOpts(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 			Utils::enableDlgControl(hWnd, IDC_COLTEXT_OTHERS, !options->bDefaultColorOthers);
 			Utils::enableDlgControl(hWnd, IDC_COLBACK_ERR, !options->bDefaultColorErr);
 			Utils::enableDlgControl(hWnd, IDC_COLTEXT_ERR, !options->bDefaultColorErr);
-			Utils::enableDlgControl(hWnd, IDC_COLTEXT_MUC,  (g_Settings.iPopupStyle == 3) ? TRUE : FALSE);
-			Utils::enableDlgControl(hWnd, IDC_COLBACK_MUC,  (g_Settings.iPopupStyle == 3) ? TRUE : FALSE);
+			Utils::enableDlgControl(hWnd, IDC_COLTEXT_MUC, g_Settings.iPopupStyle == 3);
+			Utils::enableDlgControl(hWnd, IDC_COLBACK_MUC, g_Settings.iPopupStyle == 3);
 
-			CheckDlgButton(hWnd, IDC_MUC_LOGCOLORS, g_Settings.iPopupStyle < 2 ? TRUE : FALSE);
-			Utils::enableDlgControl(hWnd, IDC_MUC_LOGCOLORS, g_Settings.iPopupStyle != 2 ? TRUE : FALSE);
+			CheckDlgButton(hWnd, IDC_MUC_LOGCOLORS, g_Settings.iPopupStyle < 2 ? BST_CHECKED : BST_UNCHECKED);
+			Utils::enableDlgControl(hWnd, IDC_MUC_LOGCOLORS, g_Settings.iPopupStyle != 2);
 
 			SetDlgItemInt(hWnd, IDC_MESSAGEPREVIEWLIMIT, options->iLimitPreview, FALSE);
-			CheckDlgButton(hWnd, IDC_LIMITPREVIEW, (options->iLimitPreview > 0) ? 1 : 0);
+			CheckDlgButton(hWnd, IDC_LIMITPREVIEW, (options->iLimitPreview > 0) ? BST_CHECKED : BST_UNCHECKED);
 			SendDlgItemMessage(hWnd, IDC_MESSAGEPREVIEWLIMITSPIN, UDM_SETRANGE, 0, MAKELONG(2048, options->iLimitPreview > 0 ? 50 : 0));
 			SendDlgItemMessage(hWnd, IDC_MESSAGEPREVIEWLIMITSPIN, UDM_SETPOS, 0, (LPARAM)options->iLimitPreview);
-			Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMIT, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW));
-			Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMITSPIN, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW));
+			Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMIT, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW) != 0);
+			Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMITSPIN, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW) != 0);
 
 			bWmNotify = FALSE;
 		}
 		return TRUE;
 
+	case WM_DESTROY:
+		TreeViewDestroy(GetDlgItem(hWnd, IDC_LOGOPTIONS));
+		bWmNotify = TRUE;
+		break;
+
+		// configure the option page - hide most of the settings here when either IEView
 	case DM_STATUSMASKSET:
 		db_set_dw(0, MODULE, "statusmask", (DWORD)lParam);
 		options->dwStatusMask = (int)lParam;
@@ -261,7 +229,7 @@ INT_PTR CALLBACK DlgProcPopupOpts(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 				break;
 
 			case IDC_POPUPSTATUSMODES:
-				hwndNew = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_CHOOSESTATUSMODES), hWnd, DlgProcSetupStatusModes, M.GetDword(MODULE, "statusmask", (DWORD) - 1));
+				hwndNew = CreateDialogParam(g_hInst, MAKEINTRESOURCE(IDD_CHOOSESTATUSMODES), hWnd, DlgProcSetupStatusModes, M.GetDword(MODULE, "statusmask", (DWORD)-1));
 				SendMessage(hwndNew, DM_SETPARENTDIALOG, 0, (LPARAM)hWnd);
 				break;
 
@@ -273,7 +241,7 @@ INT_PTR CALLBACK DlgProcPopupOpts(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 				else
 					g_Settings.iPopupStyle = 3;
 
-				Utils::enableDlgControl(hWnd, IDC_MUC_LOGCOLORS, g_Settings.iPopupStyle != 2 ? TRUE : FALSE);
+				Utils::enableDlgControl(hWnd, IDC_MUC_LOGCOLORS, g_Settings.iPopupStyle != 2);
 
 				options->bDefaultColorMsg = IsDlgButtonChecked(hWnd, IDC_CHKDEFAULTCOL_MESSAGE);
 				options->bDefaultColorOthers = IsDlgButtonChecked(hWnd, IDC_CHKDEFAULTCOL_OTHERS);
@@ -295,11 +263,11 @@ INT_PTR CALLBACK DlgProcPopupOpts(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 				Utils::enableDlgControl(hWnd, IDC_COLTEXT_OTHERS, !options->bDefaultColorOthers);
 				Utils::enableDlgControl(hWnd, IDC_COLBACK_ERR, !options->bDefaultColorErr);
 				Utils::enableDlgControl(hWnd, IDC_COLTEXT_ERR, !options->bDefaultColorErr);
-				Utils::enableDlgControl(hWnd, IDC_COLTEXT_MUC,  (g_Settings.iPopupStyle == 3) ? TRUE : FALSE);
-				Utils::enableDlgControl(hWnd, IDC_COLBACK_MUC,  (g_Settings.iPopupStyle == 3) ? TRUE : FALSE);
+				Utils::enableDlgControl(hWnd, IDC_COLTEXT_MUC, g_Settings.iPopupStyle == 3);
+				Utils::enableDlgControl(hWnd, IDC_COLBACK_MUC, g_Settings.iPopupStyle == 3);
 
-				Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMIT, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW));
-				Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMITSPIN, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW));
+				Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMIT, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW) != 0);
+				Utils::enableDlgControl(hWnd, IDC_MESSAGEPREVIEWLIMITSPIN, IsDlgButtonChecked(hWnd, IDC_LIMITPREVIEW) != 0);
 				//disable delay textbox when infinite is checked
 
 				Utils::enableDlgControl(hWnd, IDC_DELAY_MESSAGE, options->iDelayMsg != -1);
@@ -324,73 +292,35 @@ INT_PTR CALLBACK DlgProcPopupOpts(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPa
 		break;
 
 	case WM_NOTIFY:
-		if (((LPNMHDR) lParam)->idFrom == IDC_EVENTOPTIONS && ((LPNMHDR)lParam)->code == NM_CLICK) {
-			TVHITTESTINFO hti;
-			TVITEM item = {0};
-
-			item.mask = TVIF_HANDLE | TVIF_STATE;
-			item.stateMask = TVIS_STATEIMAGEMASK | TVIS_BOLD;
-			hti.pt.x = (short)LOWORD(GetMessagePos());
-			hti.pt.y = (short)HIWORD(GetMessagePos());
-			ScreenToClient(((LPNMHDR)lParam)->hwndFrom, &hti.pt);
-			if (TreeView_HitTest(((LPNMHDR)lParam)->hwndFrom, &hti)) {
-				item.hItem = (HTREEITEM)hti.hItem;
-				SendDlgItemMessageA(hWnd, IDC_EVENTOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
-				if (item.state & TVIS_BOLD && hti.flags & TVHT_ONITEMSTATEICON) {
-					item.state = INDEXTOSTATEIMAGEMASK(0) | TVIS_BOLD;
-					SendDlgItemMessageA(hWnd, IDC_EVENTOPTIONS, TVM_SETITEMA, 0, (LPARAM)&item);
-				}
-				else if (hti.flags&TVHT_ONITEMSTATEICON) {
-					if (((item.state & TVIS_STATEIMAGEMASK) >> 12) == 3) {
-						item.state = INDEXTOSTATEIMAGEMASK(1);
-						SendDlgItemMessageA(hWnd, IDC_EVENTOPTIONS, TVM_SETITEMA, 0, (LPARAM)&item);
-					}
-					SendMessage(GetParent(hWnd), PSM_CHANGED, 0, 0);
-				}
-			}
-		}
-
-		switch (((LPNMHDR)lParam)->code) {
-		case PSN_RESET:
-			NEN_ReadOptions(&nen_options);
+		switch (((LPNMHDR)lParam)->idFrom) {
+		case IDC_EVENTOPTIONS:
+			return TreeViewHandleClick(hWnd, ((LPNMHDR)lParam)->hwndFrom, wParam, lParam);
 			break;
 
-		case PSN_APPLY:
-			TOptionListItem *defaultItems = CTranslator::getTree(CTranslator::TREE_NEN);
-			for (int i=0; defaultItems[i].szName != NULL; i++) {
-				TVITEM item = {0};
-				item.mask = TVIF_HANDLE | TVIF_STATE;
-				item.hItem = (HTREEITEM)defaultItems[i].handle;
-				item.stateMask = TVIS_STATEIMAGEMASK;
+		default:
+			switch (((LPNMHDR)lParam)->code) {
+			case PSN_RESET:
+				NEN_ReadOptions(&nen_options);
+				break;
 
-				SendDlgItemMessageA(hWnd, IDC_EVENTOPTIONS, TVM_GETITEMA, 0, (LPARAM)&item);
-				if (defaultItems[i].uType == LOI_TYPE_SETTING) {
-					BOOL *ptr = (BOOL *)defaultItems[i].lParam;
-					*ptr = (item.state >> 12) == 3/*2*/ ? TRUE : FALSE;
-				}
-				else if (defaultItems[i].uType == LOI_TYPE_FLAG) {
-					UINT *uVal = (UINT *)defaultItems[i].lParam;
-					*uVal = ((item.state >> 12) == 3/*2*/) ? *uVal | defaultItems[i].id : *uVal & ~defaultItems[i].id;
-				}
+			case PSN_APPLY:
+				// scan the tree view and obtain the options...
+				TreeViewToDB(GetDlgItem(hWnd, IDC_EVENTOPTIONS), CTranslator::TREE_NEN, NULL, NULL);
+
+				db_set_b(0, CHAT_MODULE, "PopupStyle", (BYTE)g_Settings.iPopupStyle);
+				db_set_w(NULL, CHAT_MODULE, "PopupTimeout", g_Settings.iPopupTimeout);
+
+				g_Settings.crPUBkgColour = SendDlgItemMessage(hWnd, IDC_COLBACK_MUC, CPM_GETCOLOUR, 0, 0);
+				db_set_dw(0, CHAT_MODULE, "PopupColorBG", (DWORD)g_Settings.crPUBkgColour);
+				g_Settings.crPUTextColour = SendDlgItemMessage(hWnd, IDC_COLTEXT_MUC, CPM_GETCOLOUR, 0, 0);
+				db_set_dw(0, CHAT_MODULE, "PopupColorText", (DWORD)g_Settings.crPUTextColour);
+
+				NEN_WriteOptions(&nen_options);
+				CheckForRemoveMask();
+				CreateSystrayIcon(nen_options.bTraySupport);
+				SetEvent(g_hEvent); // wake up the thread which cares about the floater and tray
 			}
-
-			db_set_b(0, "Chat", "PopupStyle", (BYTE)g_Settings.iPopupStyle);
-			db_set_w(NULL, "Chat", "PopupTimeout", g_Settings.iPopupTimeout);
-
-			g_Settings.crPUBkgColour = SendDlgItemMessage(hWnd, IDC_COLBACK_MUC, CPM_GETCOLOUR, 0, 0);
-			db_set_dw(0, "Chat", "PopupColorBG", (DWORD)g_Settings.crPUBkgColour);
-			g_Settings.crPUTextColour = SendDlgItemMessage(hWnd, IDC_COLTEXT_MUC, CPM_GETCOLOUR, 0, 0);
-			db_set_dw(0, "Chat", "PopupColorText", (DWORD)g_Settings.crPUTextColour);
-
-			NEN_WriteOptions(&nen_options);
-			CheckForRemoveMask();
-			CreateSystrayIcon(nen_options.bTraySupport);
-			SetEvent(g_hEvent);                                 // wake up the thread which cares about the floater and tray
 		}
-		break;
-
-	case WM_DESTROY:
-		bWmNotify = TRUE;
 		break;
 	}
 
@@ -401,7 +331,7 @@ static int PopupAct(HWND hWnd, UINT mask, PLUGIN_DATAT* pdata)
 {
 	pdata->iActionTaken = TRUE;
 	if (mask & MASK_OPEN) {
-		for (int i=0; i < pdata->nrMerged; i++) {
+		for (int i = 0; i < pdata->nrMerged; i++) {
 			if (pdata->eventData[i].hEvent != 0) {
 				PostMessage(PluginConfig.g_hwndHotkeyHandler, DM_HANDLECLISTEVENT, (WPARAM)pdata->hContact, (LPARAM)pdata->eventData[i].hEvent);
 				pdata->eventData[i].hEvent = 0;
@@ -409,7 +339,7 @@ static int PopupAct(HWND hWnd, UINT mask, PLUGIN_DATAT* pdata)
 		}
 	}
 	if (mask & MASK_REMOVE) {
-		for (int i=0; i < pdata->nrMerged; i++) {
+		for (int i = 0; i < pdata->nrMerged; i++) {
 			if (pdata->eventData[i].hEvent != 0) {
 				PostMessage(PluginConfig.g_hwndHotkeyHandler, DM_REMOVECLISTEVENT, (WPARAM)pdata->hContact, (LPARAM)pdata->eventData[i].hEvent);
 				pdata->eventData[i].hEvent = 0;
@@ -428,7 +358,7 @@ static int PopupAct(HWND hWnd, UINT mask, PLUGIN_DATAT* pdata)
 	return 0;
 }
 
-static BOOL CALLBACK PopupDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+static LRESULT CALLBACK PopupDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	PLUGIN_DATAT *pdata = (PLUGIN_DATAT*)PUGetPluginData(hWnd);
 	if (pdata == NULL)
@@ -487,22 +417,22 @@ static BOOL CALLBACK PopupDlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM
 static TCHAR* ShortenPreview(DBEVENTINFO* dbe)
 {
 	bool	fAddEllipsis = false;
-	int iPreviewLimit = nen_options.iLimitPreview;
+	size_t iPreviewLimit = nen_options.iLimitPreview;
 	if (iPreviewLimit > 500 || iPreviewLimit == 0)
 		iPreviewLimit = 500;
 
 	TCHAR* buf = DbGetEventTextT(dbe, CP_ACP);
-	if (lstrlen(buf) > iPreviewLimit) {
+	if (mir_tstrlen(buf) > iPreviewLimit) {
 		fAddEllipsis = true;
-		int iIndex = iPreviewLimit;
-		int iWordThreshold = 20;
-		while(iIndex && buf[iIndex] != ' ' && iWordThreshold--)
+		size_t iIndex = iPreviewLimit;
+		size_t iWordThreshold = 20;
+		while (iIndex && buf[iIndex] != ' ' && iWordThreshold--)
 			buf[iIndex--] = 0;
 
 		buf[iIndex] = 0;
 	}
 	if (fAddEllipsis) {
-		buf = (TCHAR*)mir_realloc(buf, (lstrlen(buf) + 5) * sizeof(TCHAR));
+		buf = (TCHAR*)mir_realloc(buf, (mir_tstrlen(buf) + 5) * sizeof(TCHAR));
 		_tcscat(buf, _T("..."));
 	}
 	return buf;
@@ -517,7 +447,7 @@ static TCHAR* GetPreviewT(WORD eventType, DBEVENTINFO* dbe)
 		if (pBlob && nen_options.bPreview)
 			return ShortenPreview(dbe);
 
-		return mir_tstrdup( TranslateT("Message"));
+		return mir_tstrdup(TranslateT("Message"));
 
 	case EVENTTYPE_FILE:
 		if (pBlob) {
@@ -532,11 +462,11 @@ static TCHAR* GetPreviewT(WORD eventType, DBEVENTINFO* dbe)
 				if (dbe->cbBlob > (sizeof(DWORD) + namelength + 1))
 					szDescr = szFileName + namelength + 1;
 
-				ptrT tszFileName( DbGetEventStringT(dbe, szFileName));
+				ptrT tszFileName(DbGetEventStringT(dbe, szFileName));
 				TCHAR buf[1024];
 
 				if (szDescr && Utils::safe_strlen(szDescr, dbe->cbBlob - sizeof(DWORD) - namelength - 1) > 0) {
-					ptrT tszDescr( DbGetEventStringT(dbe, szDescr));
+					ptrT tszDescr(DbGetEventStringT(dbe, szDescr));
 					if (tszFileName && tszDescr) {
 						mir_sntprintf(buf, SIZEOF(buf), _T("%s: %s (%s)"), TranslateT("Incoming file"), tszFileName, tszDescr);
 						return mir_tstrdup(buf);
@@ -549,7 +479,7 @@ static TCHAR* GetPreviewT(WORD eventType, DBEVENTINFO* dbe)
 				}
 			}
 		}
-		return mir_tstrdup(TranslateT("Incoming file (invalid format"));
+		return mir_tstrdup(TranslateT("Incoming file (invalid format)"));
 
 	default:
 		if (nen_options.bPreview)
@@ -559,7 +489,7 @@ static TCHAR* GetPreviewT(WORD eventType, DBEVENTINFO* dbe)
 	}
 }
 
-static int PopupUpdateT(HANDLE hContact, HANDLE hEvent)
+static int PopupUpdateT(MCONTACT hContact, MEVENT hEvent)
 {
 	PLUGIN_DATAT *pdata = const_cast<PLUGIN_DATAT *>(PU_GetByContact(hContact));
 	if (!pdata)
@@ -583,7 +513,7 @@ static int PopupUpdateT(HANDLE hContact, HANDLE hEvent)
 
 	TCHAR timestamp[MAX_DATASIZE];
 	_tcsftime(timestamp, MAX_DATASIZE, _T("%Y.%m.%d %H:%M"), _localtime32((__time32_t *)&dbe.timestamp));
-	mir_sntprintf(pdata->eventData[pdata->nrMerged].tszText, MAX_SECONDLINE, _T("\n\n%s\n"), timestamp);
+	mir_sntprintf(pdata->eventData[pdata->nrMerged].tszText, SIZEOF(pdata->eventData[pdata->nrMerged].tszText), _T("\n\n%s\n"), timestamp);
 
 	TCHAR *szPreview = GetPreviewT(dbe.eventType, &dbe);
 	if (szPreview) {
@@ -603,18 +533,18 @@ static int PopupUpdateT(HANDLE hContact, HANDLE hEvent)
 	int i, available = MAX_SECONDLINE - 1;
 	if (pdata->pluginOptions->bShowHeaders) {
 		_tcsncpy(lpzText, szHeader, MAX_SECONDLINE);
-		available -= lstrlen(szHeader);
+		available -= (int)mir_tstrlen(szHeader);
 	}
 	else lpzText[0] = 0;
 
 	for (i = pdata->nrMerged; i >= 0; i--) {
-		available -= lstrlen(pdata->eventData[i].tszText);
+		available -= (int)mir_tstrlen(pdata->eventData[i].tszText);
 		if (available <= 0)
 			break;
 	}
 	i = (available > 0) ? i + 1 : i + 2;
 	for (; i <= pdata->nrMerged; i++)
-		_tcsncat(lpzText, pdata->eventData[i].tszText, MAX_SECONDLINE);
+		_tcsncat(lpzText, pdata->eventData[i].tszText, SIZEOF(lpzText));
 
 	pdata->eventData[pdata->nrMerged].hEvent = hEvent;
 	pdata->eventData[pdata->nrMerged].timestamp = dbe.timestamp;
@@ -626,17 +556,17 @@ static int PopupUpdateT(HANDLE hContact, HANDLE hEvent)
 	if (dbe.pBlob)
 		mir_free(dbe.pBlob);
 
-	CallService(MS_POPUP_CHANGETEXTT, (WPARAM)pdata->hWnd, (LPARAM)lpzText);
+	PUChangeTextT(pdata->hWnd, lpzText);
 	return 0;
 }
 
-static int PopupShowT(NEN_OPTIONS *pluginOptions, HANDLE hContact, HANDLE hEvent, UINT eventType, HWND hContainer)
+static int PopupShowT(NEN_OPTIONS *pluginOptions, MCONTACT hContact, MEVENT hEvent, UINT eventType, HWND hContainer)
 {
 	//there has to be a maximum number of popups shown at the same time
 	if (arPopupList.getCount() >= MAX_POPUPS)
 		return 2;
 
-	if (!PluginConfig.g_PopupAvail)
+	if (!PluginConfig.g_bPopupAvail)
 		return 0;
 
 	DBEVENTINFO dbe = { sizeof(dbe) };
@@ -650,7 +580,7 @@ static int PopupShowT(NEN_OPTIONS *pluginOptions, HANDLE hContact, HANDLE hEvent
 	if (hEvent == 0 && hContact == 0)
 		dbe.szModule = Translate("Unknown module or contact");
 
-	POPUPDATAT pud = {0};
+	POPUPDATAT pud = { 0 };
 	long iSeconds;
 	switch (eventType) {
 	case EVENTTYPE_MESSAGE:
@@ -679,20 +609,20 @@ static int PopupShowT(NEN_OPTIONS *pluginOptions, HANDLE hContact, HANDLE hEvent
 
 	//finally create the popup
 	pud.lchContact = hContact;
-	pud.PluginWindowProc = (WNDPROC)PopupDlgProc;
+	pud.PluginWindowProc = PopupDlgProc;
 	pud.PluginData = pdata;
 
 	if (hContact)
-		mir_sntprintf(pud.lptzContactName, MAX_CONTACTNAME, _T("%s"), pcli->pfnGetContactDisplayName(hContact, 0));
-	else 
-		_tcsncpy_s(pud.lptzContactName, SIZEOF(pud.lptzContactName), _A2T(dbe.szModule), _TRUNCATE);
+		_tcsncpy_s(pud.lptzContactName, pcli->pfnGetContactDisplayName(hContact, 0), _TRUNCATE);
+	else
+		_tcsncpy_s(pud.lptzContactName, _A2T(dbe.szModule), _TRUNCATE);
 
 	TCHAR *szPreview = GetPreviewT((WORD)eventType, &dbe);
 	if (szPreview) {
-		mir_sntprintf(pud.lptzText, MAX_SECONDLINE, _T("%s"), szPreview);
+		_tcsncpy_s(pud.lptzText, szPreview, _TRUNCATE);
 		mir_free(szPreview);
 	}
-	else _tcscpy(pud.lptzText, _T(" "));
+	else _tcsncpy(pud.lptzText, _T(" "), MAX_SECONDLINE);
 
 	pdata->eventData = (EVENT_DATAT *)mir_alloc(NR_MERGED * sizeof(EVENT_DATAT));
 	pdata->eventData[0].hEvent = hEvent;
@@ -703,7 +633,7 @@ static int PopupShowT(NEN_OPTIONS *pluginOptions, HANDLE hContact, HANDLE hEvent
 	pdata->nrMerged = 1;
 
 	// fix for broken popups -- process failures
-	if ( PUAddPopupT(&pud) < 0) {
+	if (PUAddPopupT(&pud) < 0) {
 		mir_free(pdata->eventData);
 		mir_free(pdata);
 	}
@@ -730,7 +660,7 @@ void TSAPI UpdateTrayMenuState(TWindowData *dat, BOOL bForced)
 	if (PluginConfig.g_hMenuTrayUnread == 0 || dat->hContact == NULL)
 		return;
 
-	MENUITEMINFO mii = {0};
+	MENUITEMINFO mii = { 0 };
 	mii.cbSize = sizeof(mii);
 	mii.fMask = MIIM_DATA | MIIM_BITMAP;
 
@@ -742,14 +672,14 @@ void TSAPI UpdateTrayMenuState(TWindowData *dat, BOOL bForced)
 		PluginConfig.m_UnreadInTray -= (mii.dwItemData & 0x0000ffff);
 	if (mii.dwItemData > 0 || bForced) {
 		TCHAR szMenuEntry[80];
-		mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszProto, 
+		mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszProto,
 			dat->cache->getNick(), dat->szStatus[0] ? dat->szStatus : _T("(undef)"), mii.dwItemData & 0x0000ffff);
 
 		if (!bForced)
 			mii.dwItemData = 0;
 		mii.fMask |= MIIM_STRING;
 		mii.dwTypeData = (LPTSTR)szMenuEntry;
-		mii.cch = lstrlen(szMenuEntry) + 1;
+		mii.cch = (int)mir_tstrlen(szMenuEntry) + 1;
 	}
 	mii.hbmpItem = HBMMENU_CALLBACK;
 	SetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)dat->hContact, FALSE, &mii);
@@ -759,74 +689,71 @@ void TSAPI UpdateTrayMenuState(TWindowData *dat, BOOL bForced)
  * if we want tray support, add the contact to the list of unread sessions in the tray menu
  */
 
-int TSAPI UpdateTrayMenu(const TWindowData *dat, WORD wStatus, const char *szProto, const TCHAR *szStatus, HANDLE hContact, DWORD fromEvent)
+int TSAPI UpdateTrayMenu(const TWindowData *dat, WORD wStatus, const char *szProto, const TCHAR *szStatus, MCONTACT hContact, DWORD fromEvent)
 {
-	if (PluginConfig.g_hMenuTrayUnread != 0 && hContact != 0 && szProto != NULL) {
-		if (szProto == NULL)
-			return 0;                                     // should never happen...
+	if (!PluginConfig.g_hMenuTrayUnread || hContact == 0 || szProto == NULL)
+		return 0;
 
-		PROTOACCOUNT *acc = (PROTOACCOUNT *)CallService(MS_PROTO_GETACCOUNT, 0, (LPARAM)szProto);
-		TCHAR *tszFinalProto = (acc && acc->tszAccountName ? acc->tszAccountName : 0);
-		if (tszFinalProto == 0)
-			return 0;									// should also NOT happen
+	PROTOACCOUNT *acc = ProtoGetAccount(szProto);
+	TCHAR *tszFinalProto = (acc && acc->tszAccountName ? acc->tszAccountName : 0);
+	if (tszFinalProto == 0)
+		return 0;
 
-		WORD wMyStatus = (wStatus == 0) ? db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE) : wStatus;
-		const TCHAR	*szMyStatus = (szStatus == NULL) ? (TCHAR*)CallService(MS_CLIST_GETSTATUSMODEDESCRIPTION, (WPARAM)wMyStatus, GSMDF_TCHAR) : szStatus;
+	WORD wMyStatus = (wStatus == 0) ? db_get_w(hContact, szProto, "Status", ID_STATUS_OFFLINE) : wStatus;
+	const TCHAR	*szMyStatus = (szStatus == NULL) ? pcli->pfnGetStatusModeDescription(wMyStatus, 0) : szStatus;
 
-		MENUITEMINFO mii = {0};
-		mii.cbSize = sizeof(mii);
-		mii.fMask = MIIM_DATA | MIIM_ID | MIIM_BITMAP;
-		mii.wID = (UINT)hContact;
-		mii.hbmpItem = HBMMENU_CALLBACK;
+	MENUITEMINFO mii = { sizeof(mii) };
+	mii.fMask = MIIM_DATA | MIIM_ID | MIIM_BITMAP;
+	mii.wID = (UINT)hContact;
+	mii.hbmpItem = HBMMENU_CALLBACK;
 
-		TCHAR	szMenuEntry[80];
-		const TCHAR *szNick = NULL;
-		if (dat != 0) {
-			szNick = dat->cache->getNick();
-			GetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
-			mii.dwItemData++;
-			if (fromEvent == 2)                         // from chat...
-				mii.dwItemData |= 0x10000000;
-			DeleteMenu(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, MF_BYCOMMAND);
-			mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszFinalProto, szNick, szMyStatus, mii.dwItemData & 0x0000ffff);
+	TCHAR	szMenuEntry[80];
+	const TCHAR *szNick = NULL;
+	if (dat != 0) {
+		szNick = dat->cache->getNick();
+		GetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
+		mii.dwItemData++;
+		if (fromEvent == 2)                         // from chat...
+			mii.dwItemData |= 0x10000000;
+		DeleteMenu(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, MF_BYCOMMAND);
+		mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszFinalProto, szNick, szMyStatus, mii.dwItemData & 0x0000ffff);
+		AppendMenu(PluginConfig.g_hMenuTrayUnread, MF_BYCOMMAND | MF_STRING, (UINT_PTR)hContact, szMenuEntry);
+		PluginConfig.m_UnreadInTray++;
+		if (PluginConfig.m_UnreadInTray)
+			SetEvent(g_hEvent);
+		SetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
+	}
+	else {
+		szNick = pcli->pfnGetContactDisplayName(hContact, 0);
+		if (CheckMenuItem(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, MF_BYCOMMAND | MF_UNCHECKED) == -1) {
+			mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszFinalProto, szNick, szMyStatus, fromEvent ? 1 : 0);
 			AppendMenu(PluginConfig.g_hMenuTrayUnread, MF_BYCOMMAND | MF_STRING, (UINT_PTR)hContact, szMenuEntry);
-			PluginConfig.m_UnreadInTray++;
+			mii.dwItemData = fromEvent ? 1 : 0;
+			PluginConfig.m_UnreadInTray += (mii.dwItemData & 0x0000ffff);
 			if (PluginConfig.m_UnreadInTray)
 				SetEvent(g_hEvent);
-			SetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
+			if (fromEvent == 2)
+				mii.dwItemData |= 0x10000000;
 		}
 		else {
-			szNick = pcli->pfnGetContactDisplayName(hContact, 0);
-			if (CheckMenuItem(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, MF_BYCOMMAND | MF_UNCHECKED) == -1) {
-				mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszFinalProto, szNick, szMyStatus, fromEvent ? 1 : 0);
-				AppendMenu(PluginConfig.g_hMenuTrayUnread, MF_BYCOMMAND | MF_STRING, (UINT_PTR)hContact, szMenuEntry);
-				mii.dwItemData = fromEvent ? 1 : 0;
-				PluginConfig.m_UnreadInTray += (mii.dwItemData & 0x0000ffff);
-				if (PluginConfig.m_UnreadInTray)
-					SetEvent(g_hEvent);
-				if (fromEvent == 2)
-					mii.dwItemData |= 0x10000000;
-			}
-			else {
-				GetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
-				mii.dwItemData += (fromEvent ? 1 : 0);
-				PluginConfig.m_UnreadInTray += (fromEvent ? 1 : 0);
-				if (PluginConfig.m_UnreadInTray)
-					SetEvent(g_hEvent);
-				mii.fMask |= MIIM_STRING;
-				if (fromEvent == 2)
-					mii.dwItemData |= 0x10000000;
-				mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszFinalProto, szNick, szMyStatus, mii.dwItemData & 0x0000ffff);
-				mii.cch = lstrlen(szMenuEntry) + 1;
-				mii.dwTypeData = (LPTSTR)szMenuEntry;
-			}
-			SetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
+			GetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
+			mii.dwItemData += (fromEvent ? 1 : 0);
+			PluginConfig.m_UnreadInTray += (fromEvent ? 1 : 0);
+			if (PluginConfig.m_UnreadInTray)
+				SetEvent(g_hEvent);
+			mii.fMask |= MIIM_STRING;
+			if (fromEvent == 2)
+				mii.dwItemData |= 0x10000000;
+			mir_sntprintf(szMenuEntry, SIZEOF(szMenuEntry), _T("%s: %s (%s) [%d]"), tszFinalProto, szNick, szMyStatus, mii.dwItemData & 0x0000ffff);
+			mii.cch = (int)mir_tstrlen(szMenuEntry) + 1;
+			mii.dwTypeData = (LPTSTR)szMenuEntry;
 		}
+		SetMenuItemInfo(PluginConfig.g_hMenuTrayUnread, (UINT_PTR)hContact, FALSE, &mii);
 	}
 	return 0;
 }
 
-int tabSRMM_ShowPopup(HANDLE hContact, HANDLE hDbEvent, WORD eventType, int windowOpen, TContainerData *pContainer, HWND hwndChild, const char *szProto, TWindowData *dat)
+int tabSRMM_ShowPopup(MCONTACT hContact, MEVENT hDbEvent, WORD eventType, int windowOpen, TContainerData *pContainer, HWND hwndChild, const char *szProto)
 {
 	if (nen_options.iDisable) // no popups at all. Period
 		return 0;
@@ -870,10 +797,10 @@ int tabSRMM_ShowPopup(HANDLE hContact, HANDLE hDbEvent, WORD eventType, int wind
 		return 0;
 	}
 passed:
-	if ( !PluginConfig.g_PopupAvail)
+	if (!PluginConfig.g_bPopupAvail)
 		return 0;
 
-	if ( PU_GetByContact(hContact) && nen_options.bMergePopup && eventType == EVENTTYPE_MESSAGE) {
+	if (PU_GetByContact(hContact) && nen_options.bMergePopup && eventType == EVENTTYPE_MESSAGE) {
 		if (PopupUpdateT(hContact, hDbEvent) != 0)
 			PopupShowT(&nen_options, hContact, hDbEvent, eventType, pContainer ? pContainer->hwnd : 0);
 	}
@@ -886,9 +813,9 @@ passed:
 * remove all popups for hContact, but only if the mask matches the current "mode"
 */
 
-void TSAPI DeletePopupsForContact(HANDLE hContact, DWORD dwMask)
+void TSAPI DeletePopupsForContact(MCONTACT hContact, DWORD dwMask)
 {
-	if (!(dwMask & nen_options.dwRemoveMask) || nen_options.iDisable || !PluginConfig.g_PopupAvail)
+	if (!(dwMask & nen_options.dwRemoveMask) || nen_options.iDisable || !PluginConfig.g_bPopupAvail)
 		return;
 
 	PLUGIN_DATAT *_T = 0;

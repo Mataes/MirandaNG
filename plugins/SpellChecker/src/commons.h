@@ -24,10 +24,11 @@ Boston, MA 02111-1307, USA.
 #define OEMRESOURCE
 
 #include <windows.h>
-#include <richedit.h>
+#include <msapi/richedit5.h>
 #include <tom.h>
 #include <richole.h>
 #include <commctrl.h>
+
 #include <map>
 #include <vector>
 #include <string>
@@ -120,7 +121,7 @@ struct Dialog
 {
 	HWND hwnd;
 	HWND hwnd_owner;
-	HANDLE hContact;
+	MCONTACT hContact;
 	char name[64];
 	Dictionary *lang;
 	TCHAR lang_name[32];
@@ -141,7 +142,7 @@ struct Dialog
 	vector<WrongWordPopupMenuData> *wrong_words;
 };
 
-BOOL CenterParent(HWND hwnd);
+static BOOL CenterParent(HWND hwnd);
 TCHAR *lstrtrim(TCHAR *str);
 BOOL lstreq(TCHAR *a, TCHAR *b, size_t len = -1);
 BOOL IsNumber(TCHAR c);
@@ -150,7 +151,7 @@ int MsgWindowEvent(WPARAM wParam, LPARAM lParam);
 int MsgWindowPopup(WPARAM wParam, LPARAM lParam);
 int IconPressed(WPARAM wParam, LPARAM lParam);
 
-int AddContactTextBox(HANDLE hContact, HWND hwnd, char *name, BOOL srmm, HWND hwndOwner);
+int AddContactTextBox(MCONTACT hContact, HWND hwnd, char *name, BOOL srmm, HWND hwndOwner);
 int RemoveContactTextBox(HWND hwnd);
 int ShowPopupMenu(HWND hwnd, HMENU hMenu, POINT pt, HWND hwndOwner);
 

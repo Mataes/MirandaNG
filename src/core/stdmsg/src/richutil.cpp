@@ -1,6 +1,6 @@
 /*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright 2000-12 Miranda IM, 2012-15 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -47,17 +47,6 @@ static int RichUtil_CmpVal(void *p1, void *p2)
 	return (int)((INT_PTR)tp1->hwnd - (INT_PTR)tp2->hwnd);
 }
 
-// UxTheme Stuff
-static HMODULE mTheme;
-
-static HANDLE  (WINAPI *MyOpenThemeData)(HWND, LPCWSTR);
-static HRESULT (WINAPI *MyCloseThemeData)(HANDLE);
-static BOOL    (WINAPI *MyIsThemeActive)(VOID);
-static HRESULT (WINAPI *MyDrawThemeBackground)(HANDLE, HDC, int, int, LPCRECT, LPCRECT);
-static HRESULT (WINAPI *MyGetThemeBackgroundContentRect)(HANDLE, HDC, int, int, LPCRECT, LPRECT);
-static HRESULT (WINAPI *MyDrawThemeParentBackground)(HWND, HDC, LPRECT);
-static BOOL    (WINAPI *MyIsThemeBackgroundPartiallyTransparent)(HANDLE, int, int);
-
 static CRITICAL_SECTION csRich;
 
 static LRESULT CALLBACK RichUtil_Proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -68,56 +57,29 @@ void RichUtil_Load(void)
 	sListInt.increment = 10;
 	sListInt.sortFunc = RichUtil_CmpVal;
 
-	mTheme = IsWinVerXPPlus() ? GetModuleHandleA("uxtheme") : 0;
-
 	InitializeCriticalSection(&csRich);
-	if (!mTheme) return;
-
-	MyOpenThemeData = (HANDLE (WINAPI *)(HWND, LPCWSTR))GetProcAddress(mTheme, "OpenThemeData");
-	MyCloseThemeData = (HRESULT (WINAPI *)(HANDLE))GetProcAddress(mTheme, "CloseThemeData");
-	MyIsThemeActive = (BOOL (WINAPI *)(VOID))GetProcAddress(mTheme, "IsThemeActive");
-	MyDrawThemeBackground = (HRESULT (WINAPI *)(HANDLE, HDC, int, int, const RECT*, const RECT *))GetProcAddress(mTheme, "DrawThemeBackground");
-	MyGetThemeBackgroundContentRect = (HRESULT (WINAPI *)(HANDLE, HDC, int, int,  const RECT *, RECT *))GetProcAddress(mTheme, "GetThemeBackgroundContentRect");
-	MyDrawThemeParentBackground = (HRESULT (WINAPI *)(HWND, HDC, RECT*))GetProcAddress(mTheme, "DrawThemeParentBackground");
-	MyIsThemeBackgroundPartiallyTransparent = (BOOL (WINAPI *)(HANDLE, int, int))GetProcAddress(mTheme, "IsThemeBackgroundPartiallyTransparent");
-
-	if (!MyOpenThemeData  ||
-		!MyCloseThemeData  ||
-		!MyIsThemeActive  ||
-		!MyDrawThemeBackground  ||
-		!MyGetThemeBackgroundContentRect  ||
-		!MyDrawThemeParentBackground  ||
-		!MyIsThemeBackgroundPartiallyTransparent)
-	{
-		FreeLibrary(mTheme);
-		mTheme = NULL;
-	}
 }
 
 void RichUtil_Unload(void)
 {
 	List_Destroy(&sListInt);
 	DeleteCriticalSection(&csRich);
-	if (mTheme)
-		FreeLibrary(mTheme);
 }
 
 int RichUtil_SubClass(HWND hwndEdit)
 {
-	if (IsWindow(hwndEdit))
-	{
+	if (IsWindow(hwndEdit)) {
 		int idx;
 
 		TRichUtil *ru = (TRichUtil*)mir_calloc(sizeof(TRichUtil));
 
 		ru->hwnd = hwndEdit;
 		ru->hasUglyBorder = 0;
-
-		EnterCriticalSection(&csRich);
-		if (!List_GetIndex(&sListInt, ru, &idx))
-			List_Insert(&sListInt, ru, idx);
-		LeaveCriticalSection(&csRich);
-
+		{
+			mir_cslock lck(csRich);
+			if (!List_GetIndex(&sListInt, ru, &idx))
+				List_Insert(&sListInt, ru, idx);
+		}
 		mir_subclassWindow(ru->hwnd, RichUtil_Proc);
 		RichUtil_ClearUglyBorder(ru);
 		return 1;
@@ -128,102 +90,98 @@ int RichUtil_SubClass(HWND hwndEdit)
 static LRESULT CALLBACK RichUtil_Proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	TRichUtil *ru;
-
-	EnterCriticalSection(&csRich);
-	ru = (TRichUtil *)List_Find(&sListInt, (TRichUtil*)&hwnd);
-	LeaveCriticalSection(&csRich);
+	{
+		mir_cslock lck(csRich);
+		ru = (TRichUtil *)List_Find(&sListInt, (TRichUtil*)&hwnd);
+	}
 
 	if (ru == NULL) return 0;
 
-	switch(msg) {
+	switch (msg) {
 	case WM_CHAR:
 		{
 			HWND hwndMsg = GetDlgItem(GetParent(hwnd), IDC_MESSAGE);
-			if (hwndMsg != hwnd)
-			{
+			if (hwndMsg != hwnd) {
 				SetFocus(hwndMsg);
 				SendMessage(hwndMsg, WM_CHAR, wParam, lParam);
 			}
-			break;
 		}
+		break;
 
 	case WM_THEMECHANGED:
 	case WM_STYLECHANGED:
-		{
-			RichUtil_ClearUglyBorder(ru);
-			break;
-		}
+		RichUtil_ClearUglyBorder(ru);
+		break;
 
 	case WM_NCPAINT:
-		{
-			LRESULT ret = mir_callNextSubclass(hwnd, RichUtil_Proc, msg, wParam, lParam);
-			if (ru->hasUglyBorder && MyIsThemeActive())
-			{
-				HANDLE hTheme = MyOpenThemeData(ru->hwnd, L"EDIT");
-				if (hTheme)
-				{
-					RECT rcBorder;
-					RECT rcClient;
-					int nState;
-					HDC hdc = GetWindowDC(ru->hwnd);
-					LONG style = GetWindowLongPtr(hwnd, GWL_STYLE);
+	{
+		LRESULT ret = mir_callNextSubclass(hwnd, RichUtil_Proc, msg, wParam, lParam);
+		if (ru->hasUglyBorder && IsThemeActive()) {
+			HANDLE hTheme = OpenThemeData(ru->hwnd, L"EDIT");
+			if (hTheme) {
+				RECT rcBorder;
+				RECT rcClient;
+				int nState;
+				HDC hdc = GetWindowDC(ru->hwnd);
+				LONG style = GetWindowLongPtr(hwnd, GWL_STYLE);
 
-					GetWindowRect(hwnd, &rcBorder);
-					rcBorder.right -= rcBorder.left; rcBorder.bottom -= rcBorder.top;
-					rcBorder.left = rcBorder.top = 0;
-					CopyRect(&rcClient, &rcBorder);
-					rcClient.left += ru->rect.left;
-					rcClient.top += ru->rect.top;
-					rcClient.right -= ru->rect.right;
-					rcClient.bottom -= ru->rect.bottom;
-					ExcludeClipRect(hdc, rcClient.left, rcClient.top, rcClient.right, rcClient.bottom);
+				GetWindowRect(hwnd, &rcBorder);
+				rcBorder.right -= rcBorder.left; rcBorder.bottom -= rcBorder.top;
+				rcBorder.left = rcBorder.top = 0;
+				CopyRect(&rcClient, &rcBorder);
+				rcClient.left += ru->rect.left;
+				rcClient.top += ru->rect.top;
+				rcClient.right -= ru->rect.right;
+				rcClient.bottom -= ru->rect.bottom;
+				ExcludeClipRect(hdc, rcClient.left, rcClient.top, rcClient.right, rcClient.bottom);
 
-					if (MyIsThemeBackgroundPartiallyTransparent(hTheme, EP_EDITTEXT, ETS_NORMAL))
-						MyDrawThemeParentBackground(hwnd, hdc, &rcBorder);
+				if (IsThemeBackgroundPartiallyTransparent(hTheme, EP_EDITTEXT, ETS_NORMAL))
+					DrawThemeParentBackground(hwnd, hdc, &rcBorder);
 
-					if (style & WS_DISABLED)
-						nState = ETS_DISABLED;
-					else if (style & ES_READONLY)
-						nState = ETS_READONLY;
-					else
-						nState = ETS_NORMAL;
+				if (style & WS_DISABLED)
+					nState = ETS_DISABLED;
+				else if (style & ES_READONLY)
+					nState = ETS_READONLY;
+				else
+					nState = ETS_NORMAL;
 
-					MyDrawThemeBackground(hTheme, hdc, EP_EDITTEXT, nState, &rcBorder, NULL);
-					MyCloseThemeData(hTheme);
-					ReleaseDC(hwnd, hdc);
-					return 0;
-				}
+				DrawThemeBackground(hTheme, hdc, EP_EDITTEXT, nState, &rcBorder, NULL);
+				CloseThemeData(hTheme);
+				ReleaseDC(hwnd, hdc);
+				return 0;
 			}
-			return ret;
 		}
+		return ret;
+	}
+
 	case WM_NCCALCSIZE:
-		{
-			LRESULT ret = mir_callNextSubclass(hwnd, RichUtil_Proc, msg, wParam, lParam);
-			NCCALCSIZE_PARAMS *ncsParam = (NCCALCSIZE_PARAMS*)lParam;
+	{
+		LRESULT ret = mir_callNextSubclass(hwnd, RichUtil_Proc, msg, wParam, lParam);
+		NCCALCSIZE_PARAMS *ncsParam = (NCCALCSIZE_PARAMS*)lParam;
 
-			if (ru->hasUglyBorder && MyIsThemeActive()) {
-				HANDLE hTheme = MyOpenThemeData(hwnd, L"EDIT");
-				if (hTheme) {
-					RECT rcClient ={0};
-					HDC hdc = GetDC(GetParent(hwnd));
+		if (ru->hasUglyBorder && IsThemeActive()) {
+			HANDLE hTheme = OpenThemeData(hwnd, L"EDIT");
+			if (hTheme) {
+				RECT rcClient = { 0 };
+				HDC hdc = GetDC(GetParent(hwnd));
 
-					if (MyGetThemeBackgroundContentRect(hTheme, hdc, EP_EDITTEXT, ETS_NORMAL, &ncsParam->rgrc[0], &rcClient) == S_OK) {
-						ru->rect.left = rcClient.left-ncsParam->rgrc[0].left;
-						ru->rect.top = rcClient.top-ncsParam->rgrc[0].top;
-						ru->rect.right = ncsParam->rgrc[0].right-rcClient.right;
-						ru->rect.bottom = ncsParam->rgrc[0].bottom-rcClient.bottom;
-						ncsParam->rgrc[0] = rcClient;
+				if (GetThemeBackgroundContentRect(hTheme, hdc, EP_EDITTEXT, ETS_NORMAL, &ncsParam->rgrc[0], &rcClient) == S_OK) {
+					ru->rect.left = rcClient.left - ncsParam->rgrc[0].left;
+					ru->rect.top = rcClient.top - ncsParam->rgrc[0].top;
+					ru->rect.right = ncsParam->rgrc[0].right - rcClient.right;
+					ru->rect.bottom = ncsParam->rgrc[0].bottom - rcClient.bottom;
+					ncsParam->rgrc[0] = rcClient;
 
-						MyCloseThemeData(hTheme);
-						ReleaseDC(GetParent(hwnd), hdc);
-						return WVR_REDRAW;
-					}
+					CloseThemeData(hTheme);
 					ReleaseDC(GetParent(hwnd), hdc);
-					MyCloseThemeData(hTheme);
+					return WVR_REDRAW;
 				}
+				ReleaseDC(GetParent(hwnd), hdc);
+				CloseThemeData(hTheme);
 			}
-			return ret;
 		}
+		return ret;
+	}
 
 	case WM_ENABLE:
 		RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW | RDW_FRAME);
@@ -234,11 +192,10 @@ static LRESULT CALLBACK RichUtil_Proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
 	case WM_NCDESTROY:
 		LRESULT ret = mir_callNextSubclass(hwnd, RichUtil_Proc, msg, wParam, lParam);
-
-		EnterCriticalSection(&csRich);
-		List_RemovePtr(&sListInt, ru);
-		LeaveCriticalSection(&csRich);
-
+		{
+			mir_cslock lck(csRich);
+			List_RemovePtr(&sListInt, ru);
+		}
 		mir_free(ru);
 		return ret;
 	}
@@ -247,11 +204,11 @@ static LRESULT CALLBACK RichUtil_Proc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 
 static void RichUtil_ClearUglyBorder(TRichUtil *ru)
 {
-	if (mTheme && MyIsThemeActive() && GetWindowLongPtr(ru->hwnd, GWL_EXSTYLE) & WS_EX_CLIENTEDGE)
-	{
+	if (IsThemeActive() && GetWindowLongPtr(ru->hwnd, GWL_EXSTYLE) & WS_EX_CLIENTEDGE) {
 		ru->hasUglyBorder = 1;
 		SetWindowLongPtr(ru->hwnd, GWL_EXSTYLE, GetWindowLongPtr(ru->hwnd, GWL_EXSTYLE) ^ WS_EX_CLIENTEDGE);
 	}
+
 	// Redraw window since the style may have changed
 	SetWindowPos(ru->hwnd, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 	RedrawWindow(ru->hwnd, NULL, NULL, RDW_INVALIDATE | RDW_NOCHILDREN | RDW_UPDATENOW | RDW_FRAME);

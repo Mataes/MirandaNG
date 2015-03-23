@@ -20,37 +20,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "chat.h"
 
-//globals
+// globals
 CLIST_INTERFACE *pcli;
+CHAT_MANAGER *pci, saveCI;
 
-HINSTANCE   g_hInst;
-HANDLE      g_hWindowList;
-HMENU       g_hMenu = NULL;
-int         hLangpack;
+SESSION_INFO g_TabSession;
+HMENU g_hMenu = NULL;
 
-FONTINFO    aFonts[OPTIONS_FONTCOUNT];
-HICON       hIcons[30];
-BOOL        IEviewInstalled = FALSE;
-HBRUSH      hListBkgBrush = NULL;
-BOOL        SmileyAddInstalled = FALSE;
-BOOL        PopupInstalled = FALSE;
-HBRUSH      hEditBkgBrush = NULL;
-HBRUSH      hListSelectedBkgBrush = NULL;
+HINSTANCE g_hInst;
+int hLangpack;
 
-HIMAGELIST  hImageList = NULL;
+BOOL SmileyAddInstalled = FALSE, PopupInstalled = FALSE;
+HIMAGELIST hIconsList;
 
-HIMAGELIST  hIconsList = NULL;
-
-TCHAR*      pszActiveWndID = 0;
-char*       pszActiveWndModule = 0;
+GlobalLogSettings g_Settings;
 
 /* Missing MinGW GUIDs */
 #ifdef __MINGW32__
 const CLSID IID_IRichEditOle = { 0x00020D00, 0x00, 0x00, { 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };
 const CLSID IID_IRichEditOleCallback = { 0x00020D03, 0x00, 0x00, { 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };
 #endif
-
-struct GlobalLogSettings_t g_Settings;
 
 PLUGININFOEX pluginInfo = {
 	sizeof(PLUGININFOEX),
@@ -78,122 +67,343 @@ extern "C" __declspec(dllexport) PLUGININFOEX* MirandaPluginInfoEx(DWORD miranda
 
 extern "C" __declspec(dllexport) const MUUID MirandaInterfaces[] = {MIID_CHAT, MIID_LAST};
 
+int OnShutdown(WPARAM, LPARAM)
+{
+	for (SESSION_INFO *si = pci->wndList; si; si = si->next)
+		SendMessage(si->hWnd, WM_CLOSE, 0, 0);
+
+	TabM_RemoveAll();
+	ImageList_Destroy(hIconsList);
+	return 0;
+}
+
+static void OnCreateModule(MODULEINFO *mi)
+{
+	mi->OnlineIconIndex = ImageList_AddIcon(hIconsList, LoadSkinnedProtoIcon(mi->pszModule, ID_STATUS_ONLINE));
+	mi->hOnlineIcon = ImageList_GetIcon(hIconsList, mi->OnlineIconIndex, ILD_TRANSPARENT);
+	mi->hOnlineTalkIcon = ImageList_GetIcon(hIconsList, mi->OnlineIconIndex, ILD_TRANSPARENT | INDEXTOOVERLAYMASK(1));
+	ImageList_AddIcon(hIconsList, mi->hOnlineTalkIcon);
+
+	mi->OfflineIconIndex = ImageList_AddIcon(hIconsList, LoadSkinnedProtoIcon(mi->pszModule, ID_STATUS_OFFLINE));
+	mi->hOfflineIcon = ImageList_GetIcon(hIconsList, mi->OfflineIconIndex, ILD_TRANSPARENT);
+	mi->hOfflineTalkIcon = ImageList_GetIcon(hIconsList, mi->OfflineIconIndex, ILD_TRANSPARENT | INDEXTOOVERLAYMASK(1));
+	ImageList_AddIcon(hIconsList, mi->hOfflineTalkIcon);
+}
+
+static void OnAddLog(SESSION_INFO *si, int isOk)
+{
+	if (isOk && si->hWnd) {
+		g_TabSession.pLog = si->pLog;
+		g_TabSession.pLogEnd = si->pLogEnd;
+		SendMessage(si->hWnd, GC_ADDLOG, 0, 0);
+	}
+	else if (si->hWnd) {
+		g_TabSession.pLog = si->pLog;
+		g_TabSession.pLogEnd = si->pLogEnd;
+		SendMessage(si->hWnd, GC_REDRAWLOG2, 0, 0);
+	}
+}
+
+static void OnClearLog(SESSION_INFO *si)
+{
+	if (si->hWnd) {
+		g_TabSession.pLog = si->pLog;
+		g_TabSession.pLogEnd = si->pLogEnd;
+	}
+}
+
+static void OnDblClickSession(SESSION_INFO *si)
+{
+	if (g_Settings.bTabsEnable)
+		SendMessage(si->hWnd, GC_REMOVETAB, 1, (LPARAM)si);
+	else
+		PostMessage(si->hWnd, GC_CLOSEWINDOW, 0, 0);
+}
+
+static void OnRemoveSession(SESSION_INFO *si)
+{
+	if (!g_Settings.bTabsEnable) {
+		if (si->hWnd)
+			SendMessage(si->hWnd, GC_EVENT_CONTROL + WM_USER + 500, SESSION_TERMINATE, 0);
+	}
+	else if (g_TabSession.hWnd)
+		SendMessage(g_TabSession.hWnd, GC_REMOVETAB, 1, (LPARAM)si);
+
+	if (si->hWnd)
+		g_TabSession.nUsersInNicklist = 0;
+}
+
+static void OnRenameSession(SESSION_INFO *si)
+{
+	if (g_TabSession.hWnd && g_Settings.bTabsEnable) {
+		g_TabSession.ptszName = si->ptszName;
+		SendMessage(g_TabSession.hWnd, GC_SESSIONNAMECHANGE, 0, (LPARAM)si);
+	}
+}
+
+static void OnReplaceSession(SESSION_INFO *si)
+{
+	if (si->hWnd)
+		g_TabSession.nUsersInNicklist = 0;
+
+	if (!g_Settings.bTabsEnable) {
+		if (si->hWnd)
+			RedrawWindow(GetDlgItem(si->hWnd, IDC_LIST), NULL, NULL, RDW_INVALIDATE);
+	}
+	else if (g_TabSession.hWnd)
+		RedrawWindow(GetDlgItem(g_TabSession.hWnd, IDC_LIST), NULL, NULL, RDW_INVALIDATE);
+}
+
+static void OnOfflineSession(SESSION_INFO *si)
+{
+	if (si->hWnd) {
+		g_TabSession.nUsersInNicklist = 0;
+		if (g_Settings.bTabsEnable)
+			g_TabSession.pUsers = 0;
+	}
+}
+
+static void OnEventBroadcast(SESSION_INFO *si, GCEVENT *gce)
+{
+	if (pci->SM_AddEvent(si->ptszID, si->pszModule, gce, FALSE) && si->hWnd && si->bInitDone) {
+		g_TabSession.pLog = si->pLog;
+		g_TabSession.pLogEnd = si->pLogEnd;
+		SendMessage(si->hWnd, GC_ADDLOG, 0, 0);
+	}
+	else if (si->hWnd && si->bInitDone) {
+		g_TabSession.pLog = si->pLog;
+		g_TabSession.pLogEnd = si->pLogEnd;
+		SendMessage(si->hWnd, GC_REDRAWLOG2, 0, 0);
+	}
+}
+
+static void OnSetStatusBar(SESSION_INFO *si)
+{
+	if (si->hWnd) {
+		g_TabSession.ptszStatusbarText = si->ptszStatusbarText;
+		SendMessage(si->hWnd, GC_UPDATESTATUSBAR, 0, 0);
+	}
+}
+
+static void OnAddUser(SESSION_INFO *si, USERINFO*)
+{
+	if (si->hWnd)
+		g_TabSession.nUsersInNicklist++;
+}
+
+static void OnNewUser(SESSION_INFO *si, USERINFO*)
+{
+	if (si->hWnd) {
+		g_TabSession.pUsers = si->pUsers;
+		SendMessage(si->hWnd, GC_UPDATENICKLIST, 0, 0);
+	}
+}
+
+static void OnRemoveUser(SESSION_INFO *si, USERINFO*)
+{
+	if (si->hWnd) {
+		g_TabSession.pUsers = si->pUsers;
+		g_TabSession.nUsersInNicklist--;
+	}
+}
+
+static void OnAddStatus(SESSION_INFO *si, STATUSINFO*)
+{
+	if (g_Settings.bTabsEnable && si->hWnd)
+		g_TabSession.pStatuses = si->pStatuses;
+}
+
+static void OnSetStatus(SESSION_INFO *si, int wStatus)
+{
+	if (g_Settings.bTabsEnable) {
+		if (si->hWnd)
+			g_TabSession.wStatus = wStatus;
+		if (g_TabSession.hWnd)
+			PostMessage(g_TabSession.hWnd, GC_FIXTABICONS, 0, (LPARAM)si);
+	}
+}
+
+static void OnSetTopic(SESSION_INFO *si)
+{
+	if (si->hWnd)
+		g_TabSession.ptszTopic = si->ptszTopic;
+}	
+
+static void OnFlashHighlight(SESSION_INFO *si, int bInactive)
+{
+	if (!bInactive)
+		return;
+
+	if (!g_Settings.bTabsEnable && si->hWnd && g_Settings.bFlashWindowHighlight)
+		SetTimer(si->hWnd, TIMERID_FLASHWND, 900, NULL);
+	if (g_Settings.bTabsEnable && g_TabSession.hWnd)
+		SendMessage(g_TabSession.hWnd, GC_SETMESSAGEHIGHLIGHT, 0, (LPARAM)si);
+}
+
+static void OnFlashWindow(SESSION_INFO *si, int bInactive)
+{
+	if (!bInactive)
+		return;
+
+	if (!g_Settings.bTabsEnable && si->hWnd && g_Settings.bFlashWindow)
+		SetTimer(si->hWnd, TIMERID_FLASHWND, 900, NULL);
+	if (g_Settings.bTabsEnable && g_TabSession.hWnd)
+		SendMessage(g_TabSession.hWnd, GC_SETTABHIGHLIGHT, 0, (LPARAM)si);
+}
+
+static BOOL DoTrayIcon(SESSION_INFO *si, GCEVENT *gce)
+{
+	if (gce->pDest->iType & g_Settings.dwTrayIconFlags)
+		return saveCI.DoTrayIcon(si, gce);
+	return TRUE;
+}
+
+static BOOL DoPopup(SESSION_INFO *si, GCEVENT *gce)
+{
+	if (gce->pDest->iType & g_Settings.dwPopupFlags)
+		return saveCI.DoPopup(si, gce);
+	return TRUE;
+}
+
+static void OnLoadSettings()
+{
+	if (g_Settings.MessageAreaFont)
+		DeleteObject(g_Settings.MessageAreaFont);
+
+	LOGFONT lf;
+	LoadMessageFont(&lf, &g_Settings.MessageAreaColor);
+	g_Settings.MessageAreaFont = CreateFontIndirect(&lf);
+
+	g_Settings.iX = db_get_dw(NULL, CHAT_MODULE, "roomx", -1);
+	g_Settings.iY = db_get_dw(NULL, CHAT_MODULE, "roomy", -1);
+
+	g_Settings.bTabsEnable = db_get_b(NULL, CHAT_MODULE, "Tabs", 1) != 0;
+	g_Settings.TabRestore = db_get_b(NULL, CHAT_MODULE, "TabRestore", 0) != 0;
+	g_Settings.TabsAtBottom = db_get_b(NULL, CHAT_MODULE, "TabBottom", 0) != 0;
+	g_Settings.TabCloseOnDblClick = db_get_b(NULL, CHAT_MODULE, "TabCloseOnDblClick", 0) != 0;
+}
+
+static void RegisterFonts()
+{
+	ColourIDT colourid = { sizeof(colourid) };
+	strncpy(colourid.dbSettingsGroup, CHAT_MODULE, sizeof(colourid.dbSettingsGroup));
+	_tcsncpy(colourid.group, LPGENT("Chat module"), SIZEOF(colourid.group));
+
+	strncpy(colourid.setting, "ColorLogBG", SIZEOF(colourid.setting));
+	_tcsncpy(colourid.name, LPGENT("Group chat log background"), SIZEOF(colourid.name));
+	colourid.defcolour = GetSysColor(COLOR_WINDOW);
+	ColourRegisterT(&colourid);
+
+	strncpy(colourid.setting, "ColorMessageBG", SIZEOF(colourid.setting));
+	_tcsncpy(colourid.name, LPGENT("Message background"), SIZEOF(colourid.name));
+	colourid.defcolour = GetSysColor(COLOR_WINDOW);
+	ColourRegisterT(&colourid);
+
+	strncpy(colourid.setting, "ColorNicklistBG", SIZEOF(colourid.setting));
+	_tcsncpy(colourid.name, LPGENT("Nick list background"), SIZEOF(colourid.name));
+	colourid.defcolour = GetSysColor(COLOR_WINDOW);
+	ColourRegisterT(&colourid);
+
+	strncpy(colourid.setting, "ColorNicklistLines", SIZEOF(colourid.setting));
+	_tcsncpy(colourid.name, LPGENT("Nick list lines"), SIZEOF(colourid.name));
+	colourid.defcolour = GetSysColor(COLOR_INACTIVEBORDER);
+	ColourRegisterT(&colourid);
+
+	strncpy(colourid.setting, "ColorNicklistSelectedBG", SIZEOF(colourid.setting));
+	_tcsncpy(colourid.name, LPGENT("Nick list background (selected)"), SIZEOF(colourid.name));
+	colourid.defcolour = GetSysColor(COLOR_HIGHLIGHT);
+	ColourRegisterT(&colourid);
+}
+
+static void TabsInit()
+{
+	memset(&g_TabSession, 0, sizeof(SESSION_INFO));
+	g_TabSession.iType = GCW_TABROOM;
+	g_TabSession.iSplitterX = g_Settings.iSplitterX;
+	g_TabSession.iSplitterY = g_Settings.iSplitterY;
+	g_TabSession.iLogFilterFlags = (int)db_get_dw(NULL, CHAT_MODULE, "FilterFlags", 0x03E0);
+	g_TabSession.bFilterEnabled = db_get_b(NULL, CHAT_MODULE, "FilterEnabled", 0);
+	g_TabSession.bNicklistEnabled = db_get_b(NULL, CHAT_MODULE, "ShowNicklist", 1);
+	g_TabSession.iFG = 4;
+	g_TabSession.bFGSet = TRUE;
+	g_TabSession.iBG = 2;
+	g_TabSession.bBGSet = TRUE;
+}
+
 extern "C" __declspec(dllexport) int Load(void)
 {
-	// set the memory & utf8 managers
-	mir_getLP( &pluginInfo );
+	mir_getLP(&pluginInfo);
 	mir_getCLI();
 
-	UpgradeCheck();
+	AddIcons();
+	RegisterFonts();
+
+	CHAT_MANAGER_INITDATA data = { &g_Settings, sizeof(MODULEINFO), sizeof(SESSION_INFO), LPGENT("Chat module"), FONTMODE_SKIP };
+	mir_getCI(&data);
+	saveCI = *pci;
+
+	pci->OnAddUser = OnAddUser;
+	pci->OnNewUser = OnNewUser;
+	pci->OnRemoveUser = OnRemoveUser;
+
+	pci->OnAddStatus = OnAddStatus;
+	pci->OnSetStatus = OnSetStatus;
+	pci->OnSetTopic = OnSetTopic;
+
+	pci->OnAddLog = OnAddLog;
+	pci->OnClearLog = OnClearLog;
+
+	pci->OnCreateModule = OnCreateModule;
+	pci->OnOfflineSession = OnOfflineSession;
+	pci->OnRemoveSession = OnRemoveSession;
+	pci->OnRenameSession = OnRenameSession;
+	pci->OnReplaceSession = OnReplaceSession;
+	pci->OnDblClickSession = OnDblClickSession;
+
+	pci->OnEventBroadcast = OnEventBroadcast;
+	pci->OnLoadSettings = OnLoadSettings;
+	pci->OnSetStatusBar = OnSetStatusBar;
+	pci->OnFlashWindow = OnFlashWindow;
+	pci->OnFlashHighlight = OnFlashHighlight;
+	pci->ShowRoom = ShowRoom;
+
+	pci->DoPopup = DoPopup;
+	pci->DoTrayIcon = DoTrayIcon;
+	pci->ReloadSettings();
 
 	g_hMenu = LoadMenu(g_hInst, MAKEINTRESOURCE(IDR_MENU));
-	HookEvents();
-	CreateServiceFunctions();
-	CreateHookableEvents();
-	OptionsInit();
+	LoadIcons();
 	TabsInit();
+
+	HookEvent(ME_OPT_INITIALISE, OptionsInitialize);
+	HookEvent(ME_SYSTEM_SHUTDOWN, OnShutdown);
 	return 0;
 }
 
 extern "C" __declspec(dllexport) int Unload(void)
 {
-	db_set_w(NULL, "Chat", "SplitterX", (WORD)g_Settings.iSplitterX);
-	db_set_w(NULL, "Chat", "SplitterY", (WORD)g_Settings.iSplitterY);
-	db_set_dw(NULL, "Chat", "roomx", g_Settings.iX);
-	db_set_dw(NULL, "Chat", "roomy", g_Settings.iY);
-	db_set_dw(NULL, "Chat", "roomwidth" , g_Settings.iWidth);
-	db_set_dw(NULL, "Chat", "roomheight", g_Settings.iHeight);
+	db_set_w(NULL, CHAT_MODULE, "SplitterX", (WORD)g_Settings.iSplitterX);
+	db_set_w(NULL, CHAT_MODULE, "SplitterY", (WORD)g_Settings.iSplitterY);
+	db_set_dw(NULL, CHAT_MODULE, "roomx", g_Settings.iX);
+	db_set_dw(NULL, CHAT_MODULE, "roomy", g_Settings.iY);
+	db_set_dw(NULL, CHAT_MODULE, "roomwidth", g_Settings.iWidth);
+	db_set_dw(NULL, CHAT_MODULE, "roomheight", g_Settings.iHeight);
 
-	CList_SetAllOffline(TRUE, NULL);
-
-	mir_free(pszActiveWndID);
-	mir_free(pszActiveWndModule);
-
+	if (g_Settings.MessageAreaFont)
+		DeleteObject(g_Settings.MessageAreaFont);
 	DestroyMenu(g_hMenu);
-	DestroyHookableEvents();
-	FreeIcons();
-	OptionsUnInit();
-	FreeLibrary(GetModuleHandle(_T("riched20.dll")));
-	UnhookEvents();
 	return 0;
-}
-
-void UpgradeCheck(void)
-{
-	DWORD dwVersion = db_get_dw(NULL, "Chat", "OldVersion", PLUGIN_MAKE_VERSION(0,2,9,9));
-	if (pluginInfo.version > dwVersion && dwVersion < PLUGIN_MAKE_VERSION(0,3,0,0)) {
-		db_unset(NULL, "ChatFonts",	"Font18");
-		db_unset(NULL, "ChatFonts",	"Font18Col");
-		db_unset(NULL, "ChatFonts",	"Font18Set");
-		db_unset(NULL, "ChatFonts",	"Font18Size");
-		db_unset(NULL, "ChatFonts",	"Font18Sty");
-		db_unset(NULL, "ChatFonts",	"Font19");
-		db_unset(NULL, "ChatFonts",	"Font19Col");
-		db_unset(NULL, "ChatFonts",	"Font19Set");
-		db_unset(NULL, "ChatFonts",	"Font19Size");
-		db_unset(NULL, "ChatFonts",	"Font19Sty");
-		db_unset(NULL, "Chat",		"ColorNicklistLines");
-		db_unset(NULL, "Chat",		"NicklistIndent");
-		db_unset(NULL, "Chat",		"NicklistRowDist");
-		db_unset(NULL, "Chat",		"ShowFormatButtons");
-		db_unset(NULL, "Chat",		"ShowLines");
-		db_unset(NULL, "Chat",		"ShowName");
-		db_unset(NULL, "Chat",		"ShowTopButtons");
-		db_unset(NULL, "Chat",		"SplitterX");
-		db_unset(NULL, "Chat",		"SplitterY");
-		db_unset(NULL, "Chat",		"IconFlags");
-		db_unset(NULL, "Chat",		"LogIndentEnabled");
-	}
-
-	db_set_dw(NULL, "Chat", "OldVersion", pluginInfo.version);
-}
-
-void LoadLogIcons(void)
-{
-	hIcons[ICON_ACTION]     = LoadIconEx( "log_action", FALSE );
-	hIcons[ICON_ADDSTATUS]  = LoadIconEx( "log_addstatus", FALSE );
-	hIcons[ICON_HIGHLIGHT]  = LoadIconEx( "log_highlight", FALSE );
-	hIcons[ICON_INFO]       = LoadIconEx( "log_info", FALSE );
-	hIcons[ICON_JOIN]       = LoadIconEx( "log_join", FALSE );
-	hIcons[ICON_KICK]       = LoadIconEx( "log_kick", FALSE );
-	hIcons[ICON_MESSAGE]    = LoadIconEx( "log_message_in", FALSE );
-	hIcons[ICON_MESSAGEOUT] = LoadIconEx( "log_message_out", FALSE );
-	hIcons[ICON_NICK]       = LoadIconEx( "log_nick", FALSE );
-	hIcons[ICON_NOTICE]     = LoadIconEx( "log_notice", FALSE );
-	hIcons[ICON_PART]       = LoadIconEx( "log_part", FALSE );
-	hIcons[ICON_QUIT]       = LoadIconEx( "log_quit", FALSE );
-	hIcons[ICON_REMSTATUS]  = LoadIconEx( "log_removestatus", FALSE );
-	hIcons[ICON_TOPIC]      = LoadIconEx( "log_topic", FALSE );
-	hIcons[ICON_STATUS1]    = LoadIconEx( "status1", FALSE );
-	hIcons[ICON_STATUS2]    = LoadIconEx( "status2", FALSE );
-	hIcons[ICON_STATUS3]    = LoadIconEx( "status3", FALSE );
-	hIcons[ICON_STATUS4]    = LoadIconEx( "status4", FALSE );
-	hIcons[ICON_STATUS0]    = LoadIconEx( "status0", FALSE );
-	hIcons[ICON_STATUS5]    = LoadIconEx( "status5", FALSE );
 }
 
 void LoadIcons(void)
 {
-	memset(hIcons, 0, sizeof(hIcons));
-
-	LoadLogIcons();
-	LoadMsgLogBitmaps();
-
-	hImageList = ImageList_Create(GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),IsWinVerXPPlus()? ILC_COLOR32 | ILC_MASK : ILC_COLOR16 | ILC_MASK,0,3);
-	hIconsList = ImageList_Create(GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),IsWinVerXPPlus()? ILC_COLOR32 | ILC_MASK : ILC_COLOR16 | ILC_MASK,0,100);
-	ImageList_AddIcon(hIconsList,LoadSkinnedIcon( SKINICON_EVENT_MESSAGE));
-	ImageList_AddIcon(hIconsList,LoadIconEx( "overlay", FALSE ));
+	hIconsList = ImageList_Create(GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), ILC_COLOR32 | ILC_MASK, 0, 100);
+	ImageList_AddIcon(hIconsList, LoadSkinnedIcon(SKINICON_EVENT_MESSAGE));
+	ImageList_AddIcon(hIconsList, LoadIconEx("overlay", FALSE));
 	ImageList_SetOverlayImage(hIconsList, 1, 1);
-	ImageList_AddIcon(hImageList, (HICON)LoadImage(g_hInst, MAKEINTRESOURCE(IDI_BLANK), IMAGE_ICON, 0, 0, 0));
-	ImageList_AddIcon(hImageList, (HICON)LoadImage(g_hInst, MAKEINTRESOURCE(IDI_BLANK), IMAGE_ICON, 0, 0, 0));
 }
 
-void FreeIcons(void)
-{
-	FreeMsgLogBitmaps();
-	ImageList_Destroy(hImageList);
-	ImageList_Destroy(hIconsList);
-}
+/////////////////////////////////////////////////////////////////////////////////////////
 
 CREOleCallback reOleCallback;
 

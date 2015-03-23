@@ -1,6 +1,6 @@
 /*
 
-Copyright 2000-12 Miranda IM, 2012-13 Miranda NG project,
+Copyright 2000-12 Miranda IM, 2012-15 Miranda NG project,
 all portions of this codebase are copyrighted to the people
 listed in contributors.txt.
 
@@ -22,32 +22,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef SRMM_CMDLIST_H
 #define SRMM_CMDLIST_H
 
-typedef struct _TCmdList
-{
-	TCHAR *szCmd;
-}
-TCmdList;
-
-int tcmdlist_append(SortedList *list, TCHAR *data);
-void tcmdlist_free(SortedList *list);
-
-__inline TCHAR* tcmdlist_getitem(SortedList *list, int ind)
-{ return ((TCmdList*)list->items[ind])->szCmd; }
-
-
-typedef struct _TMsgQueue
+struct TMsgQueue
 {
 	int id;
-	HANDLE hContact;
-	TCHAR* szMsg;
-	HANDLE hDbEvent;
+	MCONTACT hContact;
+	char *szMsg;
+	int flags;
 	unsigned ts;
-}
-TMsgQueue;
+};
 
-void msgQueue_add(HANDLE hContact, int id, const TCHAR* szMsg, HANDLE hDbEvent);
-void msgQueue_processack(HANDLE hContact, int id, BOOL success, const char* szErr);
-void msgQueue_init(void);
+void msgQueue_add(MCONTACT hContact, int id, char *szMsg, int flags);
+void msgQueue_processack(MCONTACT hContact, int id, BOOL success, const char* szErr);
 void msgQueue_destroy(void);
 
 #endif

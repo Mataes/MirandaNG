@@ -56,60 +56,7 @@ HGENMENU hMenuItemMain = 0;
 HGENMENU hMenuItemCont = 0;
 HGENMENU hMenuItemContApp = 0;
 
-HMODULE hUxTheme = 0;
-BOOL (WINAPI *MyEnableThemeDialogTexture)(HANDLE, DWORD) = 0;
-
-// function pointers, use typedefs for casting to shut up the compiler when using GetProcAddress()
-
-typedef BOOL (WINAPI *PITA)();
-typedef HANDLE (WINAPI *POTD)(HWND, LPCWSTR);
-typedef UINT (WINAPI *PDTB)(HANDLE, HDC, int, int, RECT *, RECT *);
-typedef UINT (WINAPI *PCTD)(HANDLE);
-typedef UINT (WINAPI *PDTT)(HANDLE, HDC, int, int, LPCWSTR, int, DWORD, DWORD, RECT *);
-
-PITA pfnIsThemeActive = 0;
-POTD pfnOpenThemeData = 0;
-PDTB pfnDrawThemeBackground = 0;
-PCTD pfnCloseThemeData = 0;
-PDTT pfnDrawThemeText = 0;
-
 #define FIXED_TAB_SIZE 100                  // default value for fixed width tabs
-
-/*
- * visual styles support (XP+)
- * returns 0 on failure
- */
-
-int InitVSApi()
-{
-	if ((hUxTheme = LoadLibraryA("uxtheme.dll"))  ==  0)
-		return 0;
-
-	pfnIsThemeActive = (PITA)GetProcAddress(hUxTheme, "IsThemeActive");
-	pfnOpenThemeData = (POTD)GetProcAddress(hUxTheme, "OpenThemeData");
-	pfnDrawThemeBackground = (PDTB)GetProcAddress(hUxTheme, "DrawThemeBackground");
-	pfnCloseThemeData = (PCTD)GetProcAddress(hUxTheme, "CloseThemeData");
-	pfnDrawThemeText = (PDTT)GetProcAddress(hUxTheme, "DrawThemeText");
-
-	MyEnableThemeDialogTexture = (BOOL (WINAPI *)(HANDLE, DWORD))GetProcAddress(hUxTheme, "EnableThemeDialogTexture");
-	if (pfnIsThemeActive != 0 && pfnOpenThemeData != 0 && pfnDrawThemeBackground != 0 && pfnCloseThemeData != 0 && pfnDrawThemeText != 0)
-		return 1;
-
-	return 0;
-}
-
-/*
- * unload uxtheme.dll
- */
-
-int FreeVSApi()
-{
-	if (hUxTheme != 0)
-		FreeLibrary(hUxTheme);
-	return 0;
-}
-
-//--------------------------------------------------------------------------------------------------
 
 static void GetProfileDirectory(TCHAR *szPath, int cbPath)
 //This is copied from Miranda's sources. In 0.2.1.0 it is needed, in newer vesions of Miranda use MS_DB_GETPROFILEPATH service
@@ -259,7 +206,7 @@ void WINAPI g_ReleaseIcon( HICON hIcon )
 static void LoadPlugins()
 {
 	TCHAR szSearchPath[MAX_PATH];
-	mir_sntprintf(szSearchPath, MAX_PATH, _T("%s\\Plugins\\YAMN\\*.dll"), szMirandaDir);
+	mir_sntprintf(szSearchPath, SIZEOF(szSearchPath), _T("%s\\Plugins\\YAMN\\*.dll"), szMirandaDir);
 
 	hDllPlugins = NULL;
 
@@ -273,15 +220,15 @@ static void LoadPlugins()
 				continue;
 
 			// we have a dot
-			int len = lstrlen(fd.cFileName); // find the length of the string
+			int len = mir_tstrlen(fd.cFileName); // find the length of the string
 			TCHAR* end = fd.cFileName+len; // get a pointer to the NULL
 			int safe = (end-dot)-1;	// figure out how many chars after the dot are "safe", not including NULL
 
-			if ((safe != 3) || (lstrcmpi(dot+1, _T("dll")) != 0)) //not bound, however the "dll" string should mean only 3 chars are compared
+			if ((safe != 3) || (mir_tstrcmpi(dot+1, _T("dll")) != 0)) //not bound, however the "dll" string should mean only 3 chars are compared
 				continue;
 
 			TCHAR szPluginPath[MAX_PATH];
-			mir_sntprintf(szPluginPath, MAX_PATH,_T("%s\\Plugins\\YAMN\\%s"), szMirandaDir, fd.cFileName);
+			mir_sntprintf(szPluginPath, SIZEOF(szPluginPath),_T("%s\\Plugins\\YAMN\\%s"), szMirandaDir, fd.cFileName);
 			HINSTANCE hDll = LoadLibrary(szPluginPath);
 			if (hDll == NULL)
 				continue;
@@ -366,8 +313,8 @@ extern "C" int __declspec(dllexport) Load(void)
 	optDateTime = db_get_b(NULL, YAMN_DBMODULE, YAMN_DBTIMEOPTIONS, optDateTime);
 
 	// Create new window queues for broadcast messages
-	YAMNVar.MessageWnds = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST, 0, 0);
-	YAMNVar.NewMailAccountWnd = (HANDLE)CallService(MS_UTILS_ALLOCWINDOWLIST, 0, 0);
+	YAMNVar.MessageWnds = WindowList_Create();
+	YAMNVar.NewMailAccountWnd = WindowList_Create();
 	YAMNVar.Shutdown = FALSE;
 
 	hCurSplitNS = LoadCursor(NULL, IDC_SIZENS);
@@ -386,7 +333,6 @@ extern "C" int __declspec(dllexport) Load(void)
 
 	LoadIcons();
 	LoadPlugins();
-	InitVSApi();
 
 	HOTKEYDESC hkd = {0};
 	hkd.cbSize = sizeof(hkd);
@@ -408,16 +354,16 @@ extern "C" int __declspec(dllexport) Load(void)
 
 static void UnloadPlugins()
 {
-	for (int i = iDllPlugins-1;i>=0;i--) {
+	if (hDllPlugins == NULL)
+		return;
+	for (int i = iDllPlugins - 1; i >= 0; i --) {
 		if (FreeLibrary(hDllPlugins[i])) {
 			hDllPlugins[i] = NULL;				//for safety
 			iDllPlugins --;
 		}
 	}
-	if (hDllPlugins) {
-		free((void *)hDllPlugins);
-		hDllPlugins = NULL;
-	}
+	free((void *)hDllPlugins);
+	hDllPlugins = NULL;
 }
 
 extern "C" int __declspec(dllexport) Unload(void)
@@ -425,14 +371,16 @@ extern "C" int __declspec(dllexport) Unload(void)
 #ifdef _DEBUG
 	UnInitDebug();
 #endif
+
+	WindowList_Destroy(YAMNVar.MessageWnds);
+	WindowList_Destroy(YAMNVar.NewMailAccountWnd);
+
 	DestroyCursor(hCurSplitNS);
 	DestroyCursor(hCurSplitWE);
 
 	CloseHandle(NoWriterEV);
 	CloseHandle(WriteToFileEV);
 	CloseHandle(ExitEV);
-
-	FreeVSApi();
 
 	DeleteCriticalSection(&AccountStatusCS);
 	DeleteCriticalSection(&FileWritingCS);

@@ -2,20 +2,20 @@
 	BossKey - Hide Miranda from your boss :)
 	Copyright (C) 2002-2003 Goblineye Entertainment, (C) 2007-2010 Billy_Bons
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-*/
+	You should have received a copy of the GNU General Public License
+	along with this program; if not, write to the Free Software
+	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+	*/
 
 #pragma once
 
@@ -30,9 +30,10 @@
 
 #include <windows.h>
 #include <shellapi.h>
+#include <Wtsapi32.h>
 
 #include <newpluginapi.h>
-#include <m_database.h>
+#include <m_utils.h>
 #include <m_langpack.h>
 #include <m_protosvc.h>
 #include <m_options.h>
@@ -80,26 +81,20 @@
 #define MS_BOSSKEY_HIDE				"BossKey/HideMiranda"
 #define MS_BOSSKEY_ISMIRANDAHIDDEN	"BossKey/IsMirandaHidden"
 
-#define TRIGGERNAME					"BossKey: Key pressed"
-#define TRIGGER_BK_HIDE				0x01
-#define TRIGGER_BK_SHOW				0x02
-#define SETTING_TRIGGERON			"TriggerOn"
-
 const unsigned STATUS_ARR_TO_ID[8] = { ID_STATUS_OFFLINE, ID_STATUS_ONLINE, ID_STATUS_AWAY, ID_STATUS_NA, ID_STATUS_OCCUPIED, ID_STATUS_DND, ID_STATUS_FREECHAT, ID_STATUS_INVISIBLE };
 extern bool g_fOptionsOpen; // options dialog is open. be sure not to hide anything while we're there.
-extern WORD g_wHotKey, g_wMask, g_wMaskAdv;
+extern WORD g_wMask, g_wMaskAdv;
 extern HINSTANCE g_hInstance;
 extern bool g_bWindowHidden;
 extern UINT minutes;
 
-int OptsDlgInit(WPARAM wParam,LPARAM lParam);
+int OptsDlgInit(WPARAM wParam, LPARAM lParam);
 INT_PTR BossKeyHideMiranda(WPARAM wParam, LPARAM lParam);
 void BossKeyMenuItemInit(void);
 void BossKeyMenuItemUnInit(void);
-TCHAR *GetBossKeyText(void);
+static TCHAR *GetBossKeyText(void);
 void InitIdleTimer(void);
 void UninitIdleTimer(void);
-LRESULT CALLBACK KbdProc(int nCode,WPARAM wParam,LPARAM lParam);
 TCHAR* GetDefStatusMsg(unsigned uMode, const char* szProto);
 
 // I never really liked STL's vector... hmm this is nicer anyway, more flexible
@@ -109,6 +104,4 @@ typedef struct HWND_ITEM_TYPE
 	HWND_ITEM_TYPE *next;
 }	HWND_ITEM;
 
-typedef BOOL (WINAPI *PWTSRegisterSessionNotification)(HWND hWnd, DWORD dwFlags);
-typedef BOOL (WINAPI *PWTSUnRegisterSessionNotification)(HWND hWnd);
-typedef HRESULT (WINAPI *PFNDwmIsCompositionEnabled)(BOOL *);
+typedef HRESULT(WINAPI *PFNDwmIsCompositionEnabled)(BOOL *);

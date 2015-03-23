@@ -123,11 +123,11 @@ HYAMNPROTOPLUGIN POP3Plugin			= NULL;
 YAMN_PROTOREGISTRATION POP3ProtocolRegistration =
 {
 	"POP3 protocol (internal)",
-	__VERSION_STRING,
-	"© 2002-2004 majvan | 2005-2007 tweety, yb",
-	"Mail notifier and browser for Miranda NG. Included POP3 protocol.",
-	"francois.mean@skynet.be",
-	"http://miranda-ng.org/",
+	__VERSION_STRING_DOTS,
+	__COPYRIGHT,
+	__DESCRIPTION,
+	__AUTHOREMAIL,
+	__AUTHORWEB,
 };
 
 static TCHAR *FileName = NULL;
@@ -227,7 +227,7 @@ int RegisterPOP3Plugin(WPARAM,LPARAM)
 	//First, we register this plugin
 	//it is quite impossible this function returns zero (failure) as YAMN and internal plugin structre versions are the same
 	POP3ProtocolRegistration.Name = Translate("POP3 protocol (internal)");
-	POP3ProtocolRegistration.Description = Translate("Mail notifier and browser for Miranda NG. Included POP3 protocol.");
+	POP3ProtocolRegistration.Description = Translate(__DESCRIPTION);
 	if (NULL==(POP3Plugin=(HYAMNPROTOPLUGIN)CallService(MS_YAMN_REGISTERPROTOPLUGIN,(WPARAM)&POP3ProtocolRegistration,(LPARAM)YAMN_PROTOREGISTRATIONVERSION)))
 		return 0;
 
@@ -276,7 +276,7 @@ int RegisterPOP3Plugin(WPARAM,LPARAM)
 
 	for (Finder=POP3Plugin->FirstAccount;Finder != NULL;Finder=Finder->Next) {
 		Finder->hContact = NULL;
-		for (HANDLE hContact = db_find_first(YAMN_DBMODULE); hContact; hContact = db_find_next(hContact, YAMN_DBMODULE)) {
+		for (MCONTACT hContact = db_find_first(YAMN_DBMODULE); hContact; hContact = db_find_next(hContact, YAMN_DBMODULE)) {
 			if (!db_get_s(hContact,YAMN_DBMODULE,"Id",&dbv)) {
 				if ( strcmp( dbv.pszVal, Finder->Name) == 0) {
 					Finder->hContact = hContact;
@@ -292,10 +292,10 @@ int RegisterPOP3Plugin(WPARAM,LPARAM)
 			}
 		}
 
-		if (Finder->hContact == NULL && (Finder->Flags & YAMN_ACC_ENA) && (Finder->NewMailN.Flags & YAMN_ACC_CONT)) {
+		if (!Finder->hContact && (Finder->Flags & YAMN_ACC_ENA) && (Finder->NewMailN.Flags & YAMN_ACC_CONT)) {
 			//No account contact found, have to create one
-			Finder->hContact =(HANDLE) CallService(MS_DB_CONTACT_ADD, 0, 0);
-			CallService(MS_PROTO_ADDTOCONTACT,(WPARAM)Finder->hContact,(LPARAM)YAMN_DBMODULE);
+			Finder->hContact = CallService(MS_DB_CONTACT_ADD, 0, 0);
+			CallService(MS_PROTO_ADDTOCONTACT, Finder->hContact, (LPARAM)YAMN_DBMODULE);
 			db_set_s(Finder->hContact,YAMN_DBMODULE,"Id",Finder->Name);
 			db_set_s(Finder->hContact,YAMN_DBMODULE,"Nick",Finder->Name);
 			db_set_s(Finder->hContact,"Protocol","p",YAMN_DBMODULE);
@@ -331,8 +331,8 @@ DWORD WINAPI WritePOP3Accounts()
 	DWORD ReturnValue = CallService(MS_YAMN_WRITEACCOUNTS,(WPARAM)POP3Plugin,(LPARAM)FileName);
 	if (ReturnValue == EACC_SYSTEM) {
 		TCHAR temp[1024] = {0};
-		mir_sntprintf(temp, SIZEOF(temp), _T("%s\n%s"), TranslateT("Error while copying data to disk occured. File in use?"), FileName);
-		MessageBox(NULL, temp, TranslateT("POP3 plugin- write file error"), MB_OK );
+		mir_sntprintf(temp, SIZEOF(temp), _T("%s\n%s"), TranslateT("Error while copying data to disk occurred. Is file in use?"), FileName);
+		MessageBox(NULL, temp, TranslateT("POP3 plugin - write file error"), MB_OK );
 	}
 
 	return ReturnValue;
