@@ -33,6 +33,8 @@
 Осталось дней
 [Import from database...]
 Импорт из профиля
+[Import from file...]
+Импорт из файла
 [Current = %r\\nPrevious = %p]
 Текущий = %r\\nПредыдущий = %p
 [Messages received]
